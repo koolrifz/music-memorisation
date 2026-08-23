@@ -356,4 +356,75 @@
         document.getElementById('timer-badge').innerText = "Time's up! Let's keep moving!";
         document.getElementById('timer-badge').style.color = "var(--accent-red)";
         
-        document.querySelectorAl
+        document.querySelectorAll('.input-cell input').forEach((input, idx) => {
+            input.disabled = true;
+            if (!input.classList.contains('correct')) {
+                input.value = currentExpectedNotes[idx];
+                input.style.color = "var(--accent-red)";
+                input.style.borderColor = "var(--accent-red)";
+            }
+        });
+
+        currentStreak = 0; 
+        updateProgressUI();
+
+        setTimeout(() => {
+            currentCardIndex++; 
+            updateProgressUI(); 
+            loadNextCard(); 
+        }, 1800); 
+    }
+
+    function setActiveBox(idx) {
+        document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
+        const target = document.getElementById(`box-${idx}`);
+        if (target && !target.disabled) { activeInputIndex = idx; target.classList.add('active-box'); currentNoteHasErrored = false; }
+    }
+
+    function handleKeypadInput(letter) {
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (!input || input.disabled) return;
+
+        input.value = letter;
+        const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase();
+
+        if (letter === correctVal) {
+            playSound('correct');
+            input.classList.remove('incorrect'); input.classList.add('correct');
+            if(!currentNoteHasErrored) { correctNotesFirstTry++; currentStreak++; if (currentStreak > maxStreak) maxStreak = currentStreak; }
+            totalNotesAttempted++; updateProgressUI();
+
+            if (activeInputIndex < currentExpectedNotes.length - 1) { 
+                setActiveBox(activeInputIndex + 1); 
+            } else { 
+                if (recallTimer) clearTimeout(recallTimer); 
+                if (fadeTimer) clearTimeout(fadeTimer);
+                
+                currentCardIndex++; 
+                setTimeout(() => { updateProgressUI(); loadNextCard(); }, 400); 
+            }
+        } else {
+            playSound('wrong');
+            input.classList.remove('correct'); input.classList.remove('incorrect'); void input.offsetWidth; input.classList.add('incorrect');
+            currentNoteHasErrored = true; currentStreak = 0; updateProgressUI();
+            setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 400);
+        }
+    }
+
+    function handleKeypadDelete() {
+        if (activeInputIndex > 0 && !document.getElementById(`box-${activeInputIndex}`).value) { setActiveBox(activeInputIndex - 1); }
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (input && !input.disabled) { input.value = ''; input.classList.remove('correct', 'incorrect'); }
+    }
+
+    function finishRound() {
+        playSound('complete');
+        switchScreen('screen-summary');
+        let accuracy = totalNotesAttempted === 0 ? 0 : Math.round((correctNotesFirstTry / totalNotesAttempted) * 100);
+        document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+        document.getElementById('final-streak').innerText = maxStreak;
+    }
+</script>
+
+</body>
+</html>
