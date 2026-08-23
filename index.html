@@ -102,8 +102,7 @@
             <option value="fade-2">Mode: Blitz (2s Fade)</option>
         </select>
         
-        <!-- Hardcoded inline onclick AND event listener fallback -->
-        <button class="btn btn-start" id="start-btn" onclick="startGame()">Start Round</button>
+        <button class="btn btn-start" id="start-btn">Start Round</button>
         <div id="error-box"></div>
     </div>
 </div>
@@ -133,7 +132,7 @@
         <h2>Round Complete!</h2>
         <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
         <div class="summary-stat">Max Streak: 🔥 <span id="final-streak" style="color:#ff9600; font-weight:bold;">0</span></div>
-        <button class="btn btn-start" id="restart-btn" onclick="switchScreen('screen-setup')">Play Again</button>
+        <button class="btn btn-start" id="restart-btn">Play Again</button>
     </div>
 </div>
 
@@ -145,11 +144,39 @@
         return false;
     };
 
+    // Robust mobile touch-safe event binding
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.keypad-btn[data-key]').forEach(btn => {
-            btn.addEventListener('click', () => handleKeypadInput(btn.getAttribute('data-key')));
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Bind both click and touchend to ensure mobile triggers instantly
+        ['click', 'touchend'].forEach(evt => {
+            startBtn.addEventListener(evt, (e) => {
+                e.preventDefault();
+                startGame();
+            });
+            restartBtn.addEventListener(evt, (e) => {
+                e.preventDefault();
+                switchScreen('screen-setup');
+            });
         });
-        document.getElementById('del-btn').addEventListener('click', handleKeypadDelete);
+
+        document.querySelectorAll('.keypad-btn[data-key]').forEach(btn => {
+            ['click', 'touchend'].forEach(evt => {
+                btn.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    handleKeypadInput(btn.getAttribute('data-key'));
+                });
+            });
+        });
+
+        const delBtn = document.getElementById('del-btn');
+        ['click', 'touchend'].forEach(evt => {
+            delBtn.addEventListener(evt, (e) => {
+                e.preventDefault();
+                handleKeypadDelete();
+            });
+        });
     });
 
     let audioCtx = null;
@@ -362,4 +389,49 @@
     }
 
     function handleKeypadInput(letter) {
-        const input = document.getE
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (!input || input.disabled) return;
+
+        input.value = letter;
+        const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase();
+
+        if (letter === correctVal) {
+            playSound('correct');
+            input.classList.remove('incorrect'); input.classList.add('correct');
+            if(!currentNoteHasErrored) { correctNotesFirstTry++; currentStreak++; if (currentStreak > maxStreak) maxStreak = currentStreak; }
+            totalNotesAttempted++; updateProgressUI();
+
+            if (activeInputIndex < currentExpectedNotes.length - 1) { 
+                setActiveBox(activeInputIndex + 1); 
+            } else { 
+                if (recallTimer) clearTimeout(recallTimer); 
+                if (fadeTimer) clearTimeout(fadeTimer);
+                
+                currentCardIndex++; 
+                setTimeout(() => { updateProgressUI(); loadNextCard(); }, 400); 
+            }
+        } else {
+            playSound('wrong');
+            input.classList.remove('correct'); input.classList.remove('incorrect'); void input.offsetWidth; input.classList.add('incorrect');
+            currentNoteHasErrored = true; currentStreak = 0; updateProgressUI();
+            setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 400);
+        }
+    }
+
+    function handleKeypadDelete() {
+        if (activeInputIndex > 0 && !document.getElementById(`box-${activeInputIndex}`).value) { setActiveBox(activeInputIndex - 1); }
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (input && !input.disabled) { input.value = ''; input.classList.remove('correct', 'incorrect'); }
+    }
+
+    function finishRound() {
+        playSound('complete');
+        switchScreen('screen-summary');
+        let accuracy = totalNotesAttempted === 0 ? 0 : Math.round((correctNotesFirstTry / totalNotesAttempted) * 100);
+        document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+        document.getElementById('final-streak').innerText = maxStreak;
+    }
+</script>
+
+</body>
+</html>
