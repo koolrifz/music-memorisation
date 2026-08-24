@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
-    <title>Note Quest - Perfected Helpers</title>
+    <title>Note Quest - Perfected Layout</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <style>
         :root {
@@ -61,13 +61,13 @@
         .score-counter { font-size: 18px; font-weight: 900; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
         .timer-badge { font-size: 14px; font-weight: 800; color: var(--accent-blue); text-align: center; margin-bottom: 2px; }
 
-        /* Collapsible Graphical Helper Sheet Modal */
+        /* Split Graphical Helper Sheet Modal */
         .helper-modal {
             width: 100%;
             max-width: 500px;
             background: #ffffff;
             border-radius: 16px;
-            padding: 8px;
+            padding: 8px 4px;
             margin-bottom: 8px;
             display: none;
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
@@ -77,7 +77,18 @@
         }
         .helper-modal.show { display: block; }
         .helper-modal h3 { margin: 0 0 6px 0; font-size: 13px; color: #1a2634; text-align: center; font-weight: 900; }
-        .helper-container { display: flex; justify-content: center; align-items: center; width: 100%; overflow: hidden; background: #fafbfc; border-radius: 8px; min-height: 90px; }
+        
+        .helper-container { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 15px; /* Separates the two staves beautifully */
+            width: 100%; 
+            background: #fafbfc; 
+            border-radius: 8px; 
+            min-height: 90px; 
+            padding-top: 5px;
+        }
 
         /* Prominent Notation Card */
         .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 150px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; }
@@ -186,7 +197,10 @@
     <!-- Collapsible Graphical Helper Sheet Modal -->
     <div class="helper-modal" id="helper-sheet-modal">
         <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
-        <div class="helper-container" id="helper-canvas-container"></div>
+        <div class="helper-container">
+            <div id="helper-lines-canvas"></div>
+            <div id="helper-spaces-canvas"></div>
+        </div>
     </div>
 
     <div class="card-wrapper fade-in" id="card-canvas-wrapper">
@@ -256,52 +270,64 @@
         }
     }
 
-    // COMPLETELY REWRITTEN HELPER GENERATOR (Bulletproof Core API)
+    // Safely applies bottom text annotation to notes to force text underneath the stave
+    function applyBottomAnnotation(text) {
+        const VF = Vex.Flow;
+        const anno = new VF.Annotation(text);
+        anno.setVerticalJustification(3); // 3 = BOTTOM in VexFlow 3.x
+        return anno;
+    }
+
     function renderHelperSheetGraphics() {
         try {
             const VF = Vex.Flow;
-            const container = document.getElementById('helper-canvas-container');
-            if (!container) return;
             
-            container.innerHTML = ''; 
+            // Render Block 1: Lines (Every Good Boy Deserves Fruit)
+            const linesDiv = document.getElementById('helper-lines-canvas');
+            if (linesDiv) {
+                linesDiv.innerHTML = ''; 
+                const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG);
+                renLines.resize(230, 100);
+                const ctxLines = renLines.getContext();
+                ctxLines.scale(0.70, 0.70);
 
-            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-            renderer.resize(480, 110);
-            const ctx = renderer.getContext();
-            ctx.scale(0.70, 0.70);
+                const stave1 = new VF.Stave(0, 5, 320);
+                stave1.addClef('treble').setContext(ctxLines).draw();
 
-            // Stave 1: Lines (Every Good Boy Deserves Fruit)
-            const stave1 = new VF.Stave(5, 10, 260);
-            stave1.addClef('treble').setContext(ctx).draw();
+                const lineNotes = [
+                    new VF.StaveNote({ keys: ['e/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Every')),
+                    new VF.StaveNote({ keys: ['g/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Good')),
+                    new VF.StaveNote({ keys: ['b/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Boy')),
+                    new VF.StaveNote({ keys: ['d/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Deserves')),
+                    new VF.StaveNote({ keys: ['f/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Fruit'))
+                ];
+                
+                VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
+            }
 
-            // Using pure addAnnotation + stem_direction: 1 (UP) to prevent text clipping
-            const lineNotes = [
-                new VF.StaveNote({ keys: ['e/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Every')),
-                new VF.StaveNote({ keys: ['g/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Good')),
-                new VF.StaveNote({ keys: ['b/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Boy')),
-                new VF.StaveNote({ keys: ['d/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Deserves')),
-                new VF.StaveNote({ keys: ['f/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Fruit'))
-            ];
-            
-            // FormatAndDraw safely calculates total beats & spaces without Voice crashing
-            VF.Formatter.FormatAndDraw(ctx, stave1, lineNotes);
+            // Render Block 2: Spaces (FACE)
+            const spacesDiv = document.getElementById('helper-spaces-canvas');
+            if (spacesDiv) {
+                spacesDiv.innerHTML = '';
+                const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG);
+                renSpaces.resize(175, 100);
+                const ctxSpaces = renSpaces.getContext();
+                ctxSpaces.scale(0.70, 0.70);
 
-            // Stave 2: Spaces (FACE)
-            const stave2 = new VF.Stave(275, 10, 195);
-            stave2.setContext(ctx).draw();
+                const stave2 = new VF.Stave(0, 5, 245);
+                stave2.addClef('treble').setContext(ctxSpaces).draw();
 
-            const spaceNotes = [
-                new VF.StaveNote({ keys: ['f/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('F')),
-                new VF.StaveNote({ keys: ['a/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('A')),
-                new VF.StaveNote({ keys: ['c/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('C')),
-                new VF.StaveNote({ keys: ['e/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('E'))
-            ];
-            
-            VF.Formatter.FormatAndDraw(ctx, stave2, spaceNotes);
-
+                const spaceNotes = [
+                    new VF.StaveNote({ keys: ['f/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('F')),
+                    new VF.StaveNote({ keys: ['a/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('A')),
+                    new VF.StaveNote({ keys: ['c/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('C')),
+                    new VF.StaveNote({ keys: ['e/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('E'))
+                ];
+                
+                VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
+            }
         } catch(e) {
             console.error("Helper render error:", e);
-            document.getElementById('helper-canvas-container').innerHTML = `<p style="color:red; font-size:12px; margin:0;">Error: ${e.message}</p>`;
         }
     }
 
@@ -469,6 +495,12 @@
             const stave = new VF.Stave(8, 5, 225);
             stave.addClef(config.clef);
             if(level === '2') stave.addTimeSignature("4/4");
+            
+            // For Level 1, physically push the note drawing origin to the center of the stave
+            if(level === '1') {
+                stave.setNoteStartX(115);
+            }
+            
             stave.setContext(context).draw();
 
             currentExpectedNotes = []; 
@@ -497,7 +529,11 @@
             }
 
             let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-            new VF.Formatter().joinVoices([voice]).format([voice], 165);
+            
+            // For Level 1, we compress the format width so it obeys the shifted starting X position
+            let formatWidth = level === '1' ? 40 : 165; 
+            new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
+            
             voice.draw(context, stave);
 
             currentExpectedNotes.forEach((_, idx) => {
