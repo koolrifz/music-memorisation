@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
-    <title>Note Quest - Piano & Circle Toggle</title>
+    <title>Note Quest - Perfected Helpers & Piano Toggle</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <style>
         :root {
@@ -86,7 +86,7 @@
             display: flex; 
             justify-content: center; 
             align-items: center; 
-            gap: 15px; 
+            gap: 5px; 
             width: 100%; 
             background: #fafbfc; 
             border-radius: 8px; 
@@ -227,7 +227,7 @@
         <h1>🎵 Note Quest</h1>
         <p>60-Second Challenge</p>
         
-        <select id="clef-select">
+        <select id="clef-select" onchange="renderHelperSheetGraphics()">
             <option value="treble">Treble Clef</option>
             <option value="bass">Bass Clef</option>
             <option value="alto">Alto Clef</option>
@@ -235,7 +235,6 @@
         </select>
         
         <select id="level-select">
-            <!-- Selected attribute moved to Level 1 -->
             <option value="1" selected>Level 1: Whole Notes (Single)</option>
             <option value="2">Level 2: Rhythms (Progressive 2 to 4 Notes)</option>
         </select>
@@ -352,7 +351,7 @@
             piano.style.display = 'none';
             wheel.style.display = 'block';
             btn.innerText = '🔄 Switch to Piano Keyboard';
-            positionWheelButtons(); // Recalculate positions just in case
+            positionWheelButtons(); 
         }
     }
 
@@ -381,7 +380,7 @@
         if(modal) {
             modal.classList.toggle('show');
             if(modal.classList.contains('show')) {
-                setTimeout(renderHelperSheetGraphics, 100);
+                setTimeout(renderHelperSheetGraphics, 50);
             }
         }
     }
@@ -393,29 +392,50 @@
         return anno;
     }
 
+    // Completely Refactored: Dynamically reads the selected clef and assigns the correct mnemonics
     function renderHelperSheetGraphics() {
         try {
             const VF = Vex.Flow;
+            const clefSelect = document.getElementById('clef-select');
+            const currentClef = clefSelect ? clefSelect.value : 'treble';
+
+            const HELPER_CONFIGS = {
+                "treble": {
+                    lines: { keys: ['e/4', 'g/4', 'b/4', 'd/5', 'f/5'], texts: ['Every', 'Good', 'Boy', 'Deserves', 'Fruit'] },
+                    spaces: { keys: ['f/4', 'a/4', 'c/5', 'e/5'], texts: ['F', 'A', 'C', 'E'] }
+                },
+                "bass": {
+                    lines: { keys: ['g/2', 'b/2', 'd/3', 'f/3', 'a/3'], texts: ['Good', 'Boys', 'Deserve', 'Fruit', 'Always'] },
+                    spaces: { keys: ['a/2', 'c/3', 'e/3', 'g/3'], texts: ['All', 'Cows', 'Eat', 'Grass'] }
+                },
+                "alto": {
+                    lines: { keys: ['f/3', 'a/3', 'c/4', 'e/4', 'g/4'], texts: ['Frogs', 'And', 'Cats', 'Eat', 'Grass'] },
+                    spaces: { keys: ['g/3', 'b/3', 'd/4', 'f/4'], texts: ['Good', 'Boys', 'Deserve', 'Fruit'] }
+                },
+                "tenor": {
+                    lines: { keys: ['d/3', 'f/3', 'a/3', 'c/4', 'e/4'], texts: ['Dogs', 'Face', 'All', 'Cats', 'Everywhere'] },
+                    spaces: { keys: ['e/3', 'g/3', 'b/3', 'd/4'], texts: ['Every', 'Good', 'Boy', 'Deserves'] }
+                }
+            };
+
+            const config = HELPER_CONFIGS[currentClef];
             
             // Render Block 1: Lines
             const linesDiv = document.getElementById('helper-lines-canvas');
             if (linesDiv) {
                 linesDiv.innerHTML = ''; 
                 const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG);
-                renLines.resize(230, 100);
+                renLines.resize(250, 100);
                 const ctxLines = renLines.getContext();
-                ctxLines.scale(0.70, 0.70);
+                ctxLines.scale(0.68, 0.68); // Scaled slightly to fit longer words
 
-                const stave1 = new VF.Stave(0, 5, 320);
-                stave1.addClef('treble').setContext(ctxLines).draw();
+                const stave1 = new VF.Stave(0, 5, 360);
+                stave1.addClef(currentClef).setContext(ctxLines).draw();
 
-                const lineNotes = [
-                    new VF.StaveNote({ keys: ['e/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Every')),
-                    new VF.StaveNote({ keys: ['g/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Good')),
-                    new VF.StaveNote({ keys: ['b/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Boy')),
-                    new VF.StaveNote({ keys: ['d/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Deserves')),
-                    new VF.StaveNote({ keys: ['f/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Fruit'))
-                ];
+                const lineNotes = config.lines.keys.map((key, i) => {
+                    return new VF.StaveNote({ clef: currentClef, keys: [key], duration: 'q', stem_direction: 1 })
+                        .addAnnotation(0, applyBottomAnnotation(config.lines.texts[i]));
+                });
                 
                 VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
             }
@@ -425,19 +445,17 @@
             if (spacesDiv) {
                 spacesDiv.innerHTML = '';
                 const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG);
-                renSpaces.resize(175, 100);
+                renSpaces.resize(190, 100);
                 const ctxSpaces = renSpaces.getContext();
-                ctxSpaces.scale(0.70, 0.70);
+                ctxSpaces.scale(0.68, 0.68);
 
-                const stave2 = new VF.Stave(0, 5, 245);
-                stave2.addClef('treble').setContext(ctxSpaces).draw();
+                const stave2 = new VF.Stave(0, 5, 275);
+                stave2.addClef(currentClef).setContext(ctxSpaces).draw();
 
-                const spaceNotes = [
-                    new VF.StaveNote({ keys: ['f/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('F')),
-                    new VF.StaveNote({ keys: ['a/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('A')),
-                    new VF.StaveNote({ keys: ['c/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('C')),
-                    new VF.StaveNote({ keys: ['e/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('E'))
-                ];
+                const spaceNotes = config.spaces.keys.map((key, i) => {
+                    return new VF.StaveNote({ clef: currentClef, keys: [key], duration: 'q', stem_direction: 1 })
+                        .addAnnotation(0, applyBottomAnnotation(config.spaces.texts[i]));
+                });
                 
                 VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
             }
