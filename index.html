@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
-    <title>Note Quest - Populated Helpers</title>
+    <title>Note Quest - Perfected Helpers</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <style>
         :root {
@@ -67,24 +67,25 @@
             max-width: 500px;
             background: #ffffff;
             border-radius: 16px;
-            padding: 10px;
+            padding: 8px;
             margin-bottom: 8px;
             display: none;
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
             border: 3px solid var(--accent-blue);
             box-sizing: border-box;
+            min-height: 120px; 
         }
         .helper-modal.show { display: block; }
         .helper-modal h3 { margin: 0 0 6px 0; font-size: 13px; color: #1a2634; text-align: center; font-weight: 900; }
         .helper-container { display: flex; justify-content: center; align-items: center; width: 100%; overflow: hidden; background: #fafbfc; border-radius: 8px; min-height: 90px; }
 
         /* Prominent Notation Card */
-        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 160px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; }
+        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 150px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; }
         .fade-out svg { opacity: 0; transition: opacity 0.8s ease-in-out; }
         .fade-in svg { opacity: 1; transition: opacity 0.2s ease-in-out; }
         
         #score-canvas { width: 100%; display: flex; justify-content: center; }
-        #score-canvas svg { width: 100%; height: 100%; max-height: 140px; }
+        #score-canvas svg { width: 100%; height: 100%; max-height: 130px; }
 
         /* Directly Aligned Input Boxes */
         .inputs-row { display: flex; width: 100%; max-width: 500px; justify-content: center; gap: 10px; margin-bottom: 8px; }
@@ -96,8 +97,8 @@
         /* Circular Color-Wheel Keypad */
         .wheel-container {
             position: relative;
-            width: 260px;
-            height: 260px;
+            width: 250px;
+            height: 250px;
             margin: 0 auto;
             background: radial-gradient(circle, rgba(36,52,71,0.8) 0%, rgba(26,38,52,0.95) 100%);
             border-radius: 50%;
@@ -107,11 +108,11 @@
 
         .wheel-btn {
             position: absolute;
-            width: 52px;
-            height: 52px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             border: none;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 900;
             color: #1a2634;
             cursor: pointer;
@@ -228,10 +229,10 @@
     function positionWheelButtons() {
         const buttons = document.querySelectorAll('.wheel-btn');
         const total = buttons.length;
-        const radius = 92; 
-        const centerX = 130; 
-        const centerY = 130; 
-        const btnSize = 52;
+        const radius = 88; 
+        const centerX = 125; 
+        const centerY = 125; 
+        const btnSize = 50;
 
         buttons.forEach((btn, index) => {
             const angle = (index * 2 * Math.PI) / total - Math.PI / 2;
@@ -250,63 +251,57 @@
         if(modal) {
             modal.classList.toggle('show');
             if(modal.classList.contains('show')) {
-                // Slight timeout to let CSS display block render dimensions before VexFlow draws
-                setTimeout(renderHelperSheetGraphics, 50);
+                setTimeout(renderHelperSheetGraphics, 100);
             }
         }
     }
 
+    // COMPLETELY REWRITTEN HELPER GENERATOR (Bulletproof Core API)
     function renderHelperSheetGraphics() {
         try {
             const VF = Vex.Flow;
             const container = document.getElementById('helper-canvas-container');
             if (!container) return;
             
-            container.innerHTML = '';
+            container.innerHTML = ''; 
 
             const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-            renderer.resize(480, 95);
+            renderer.resize(480, 110);
             const ctx = renderer.getContext();
-            ctx.scale(0.65, 0.65);
+            ctx.scale(0.70, 0.70);
 
-            // Bar 1: Lines (Every Good Boy Deserves Fruit) - 5 notes
-            const stave1 = new VF.Stave(10, 8, 230);
-            stave1.addClef('treble');
-            stave1.setContext(ctx).draw();
+            // Stave 1: Lines (Every Good Boy Deserves Fruit)
+            const stave1 = new VF.Stave(5, 10, 260);
+            stave1.addClef('treble').setContext(ctx).draw();
 
+            // Using pure addAnnotation + stem_direction: 1 (UP) to prevent text clipping
             const lineNotes = [
-                new VF.StaveNote({ clef: 'treble', keys: ['e/4'], duration: 'q' }).addText(0, 'Every', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['g/4'], duration: 'q' }).addText(0, 'Good', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: 'q' }).addText(0, 'Boy', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['d/5'], duration: 'q' }).addText(0, 'Deserves', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['f/5'], duration: 'q' }).addText(0, 'Fruit', 'below')
+                new VF.StaveNote({ keys: ['e/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Every')),
+                new VF.StaveNote({ keys: ['g/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Good')),
+                new VF.StaveNote({ keys: ['b/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Boy')),
+                new VF.StaveNote({ keys: ['d/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Deserves')),
+                new VF.StaveNote({ keys: ['f/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('Fruit'))
             ];
             
-            const voice1 = new VF.Voice({ num_beats: 5, beat_value: 4 }).addTickables(lineNotes);
-            new VF.Formatter().joinVoices([voice1]).format([voice1], 170);
-            voice1.draw(ctx, stave1);
+            // FormatAndDraw safely calculates total beats & spaces without Voice crashing
+            VF.Formatter.FormatAndDraw(ctx, stave1, lineNotes);
 
-            // Double Bar Line separating Bar 1 and Bar 2
-            stave1.setEndBarType(VF.Barline.DOUBLE);
-            stave1.drawBarlines(ctx);
-
-            // Bar 2: Spaces (FACE) - 4 notes
-            const stave2 = new VF.Stave(250, 8, 200);
+            // Stave 2: Spaces (FACE)
+            const stave2 = new VF.Stave(275, 10, 195);
             stave2.setContext(ctx).draw();
 
             const spaceNotes = [
-                new VF.StaveNote({ clef: 'treble', keys: ['f/4'], duration: 'q' }).addText(0, 'F', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['a/4'], duration: 'q' }).addText(0, 'A', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['c/5'], duration: 'q' }).addText(0, 'C', 'below'),
-                new VF.StaveNote({ clef: 'treble', keys: ['e/5'], duration: 'q' }).addText(0, 'E', 'below')
+                new VF.StaveNote({ keys: ['f/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('F')),
+                new VF.StaveNote({ keys: ['a/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('A')),
+                new VF.StaveNote({ keys: ['c/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('C')),
+                new VF.StaveNote({ keys: ['e/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, new VF.Annotation('E'))
             ];
-
-            const voice2 = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(spaceNotes);
-            new VF.Formatter().joinVoices([voice2]).format([voice2], 140);
-            voice2.draw(ctx, stave2);
+            
+            VF.Formatter.FormatAndDraw(ctx, stave2, spaceNotes);
 
         } catch(e) {
             console.error("Helper render error:", e);
+            document.getElementById('helper-canvas-container').innerHTML = `<p style="color:red; font-size:12px; margin:0;">Error: ${e.message}</p>`;
         }
     }
 
@@ -399,7 +394,7 @@
         if (helperModal) {
             if (mode === 'visible') {
                 helperModal.classList.add('show');
-                setTimeout(renderHelperSheetGraphics, 50);
+                setTimeout(renderHelperSheetGraphics, 100); 
             } else {
                 helperModal.classList.remove('show');
             }
