@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Note Name Quiz</title>
   <style>
-    /* Global Styles */
     body {
       background-color: #121f2d;
       color: #ffffff;
       font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -22,7 +21,34 @@
       max-width: 420px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
+    }
+
+    /* Top Clef Selector Menu */
+    .clef-selector {
+      display: flex;
+      justify-content: space-between;
+      background: #1e2d3d;
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+    }
+
+    .clef-btn {
+      flex: 1;
+      padding: 8px 0;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .clef-btn.active {
+      background: #0284c7;
+      color: #ffffff;
     }
 
     /* Helper Sheet Styles */
@@ -30,100 +56,99 @@
       background: #ffffff;
       color: #000000;
       border-radius: 16px;
-      padding: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      padding: 8px 12px;
     }
 
-    /* Fixed margin/padding to prevent clef clipping */
     .helper-staff-container {
       padding: 0 12px;
       overflow: hidden;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .helper-title {
+      color: #333;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 4px;
     }
 
     /* Main Quiz Staff Box */
     .quiz-card {
       background: #ffffff;
       border-radius: 16px;
-      padding: 20px 16px;
+      padding: 16px;
       display: flex;
       justify-content: center;
       align-items: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
 
-    /* Interface Container (Spans full width with padding/margin) */
-    #interface-container {
-      width: 100%;
-      margin-top: 10px;
-      display: flex;
-      justify-content: center;
-    }
-
-    /* --- PIANO KEYBOARD INTERFACE STYLES --- */
+    /* Piano Keyboard Styles */
     .keyboard-wrapper {
-      width: calc(100% - 24px); /* Provides left/right margins */
-      margin: 0 auto;
+      width: 100%;
       background: #1e2d3d;
-      padding: 12px 8px;
+      padding: 10px 6px;
       border-radius: 12px;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+      box-sizing: border-box;
     }
 
     .keyboard {
       position: relative;
       display: flex;
-      height: 160px;
+      height: 150px;
       width: 100%;
       user-select: none;
+      touch-action: manipulation;
     }
 
     .white-key {
       flex: 1;
-      background: #f8f9fa;
-      border: 1px solid #ccc;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
       border-bottom-left-radius: 6px;
       border-bottom-right-radius: 6px;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      padding-bottom: 12px;
-      color: #212529;
+      padding-bottom: 10px;
+      color: #0f172a;
       font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 1rem;
       cursor: pointer;
-      box-shadow: inset 0 -4px 0 #dedede;
       z-index: 1;
+      box-shadow: inset 0 -4px 0 #cbd5e1;
     }
 
-    .white-key:active {
-      background: #e2e6ea;
-      box-shadow: inset 0 -1px 0 #ccc;
+    .white-key:active, .white-key.pressed {
+      background: #e2e8f0;
+      box-shadow: inset 0 -1px 0 #94a3b8;
       transform: translateY(2px);
     }
 
-    /* Decorative non-clickable black keys */
+    /* Non-blocking Black Keys */
     .black-key {
       position: absolute;
       top: 0;
-      width: 8.5%;
-      height: 60%;
-      background: #212529;
+      width: 8.2%;
+      height: 58%;
+      background: #1e293b;
       border-bottom-left-radius: 4px;
       border-bottom-right-radius: 4px;
       z-index: 2;
-      pointer-events: none; /* Non-interactive */
+      pointer-events: none; /* Allows clicks to pass through to white keys underneath */
       box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
     }
 
-    /* Mode Toggle Button for Testing */
     .toggle-btn {
-      background: #2b3e50;
+      background: #334155;
       color: #fff;
-      border: 1px solid #4a637d;
-      padding: 8px 16px;
-      border-radius: 20px;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 16px;
       cursor: pointer;
-      margin-bottom: 8px;
+      font-size: 0.75rem;
       align-self: center;
     }
   </style>
@@ -131,74 +156,104 @@
 <body>
 
 <div class="app-container">
-  <button class="toggle-btn" onclick="toggleInterface()">Switch Interface Mode</button>
+  
+  <!-- Clef Selection Menu -->
+  <div class="clef-selector">
+    <button class="clef-btn active" onclick="selectClef('treble')">Treble</button>
+    <button class="clef-btn" onclick="selectClef('bass')">Bass</button>
+    <button class="clef-btn" onclick="selectClef('alto')">Alto</button>
+    <button class="clef-btn" onclick="selectClef('tenor')">Tenor</button>
+  </div>
 
-  <!-- Helper Sheet with fixed clef margin -->
+  <button class="toggle-btn" onclick="toggleInterface()">Toggle Input: Keyboard / Circle</button>
+
+  <!-- Helper Sheet -->
   <div class="helper-card">
+    <div class="helper-title" id="helper-title">Treble Clef Helpers</div>
     <div class="helper-staff-container" id="helper-display">
-      <!-- Helper content renders dynamically via JavaScript -->
+      <div id="helper-lines-text" style="font-size: 0.75rem; color: #444;"></div>
+      <div id="helper-spaces-text" style="font-size: 0.75rem; color: #444;"></div>
     </div>
   </div>
 
-  <!-- Main Display Box (No middle bar line) -->
+  <!-- Main Staff Box (No Centre Bar Line) -->
   <div class="quiz-card">
-    <svg id="main-staff" width="320" height="110" viewBox="0 0 320 110">
-      <!-- 5 Staff Lines -->
-      <line x1="10" y1="25" x2="310" y2="25" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="40" x2="310" y2="40" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="55" x2="310" y2="55" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="70" x2="310" y2="70" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="85" x2="310" y2="85" stroke="#000" stroke-width="1.5"/>
+    <svg id="main-staff" width="300" height="100" viewBox="0 0 300 100">
+      <line x1="10" y1="20" x2="290" y2="20" stroke="#000" stroke-width="1.5"/>
+      <line x1="10" y1="35" x2="290" y2="35" stroke="#000" stroke-width="1.5"/>
+      <line x1="10" y1="50" x2="290" y2="50" stroke="#000" stroke-width="1.5"/>
+      <line x1="10" y1="65" x2="290" y2="65" stroke="#000" stroke-width="1.5"/>
+      <line x1="10" y1="80" x2="290" y2="80" stroke="#000" stroke-width="1.5"/>
 
-      <!-- Treble Clef Symbol -->
-      <text x="15" y="78" font-family="Bravura, Academico, serif" font-size="52">𝄞</text>
+      <!-- Dynamic Clef Symbol -->
+      <text id="clef-symbol" x="15" y="72" font-family="Bravura, Academico, serif" font-size="48">𝄞</text>
 
-      <!-- Whole Note in the middle (No bar line) -->
-      <ellipse cx="165" cy="85" rx="9" ry="6.5" fill="none" stroke="#000" stroke-width="3.5" transform="rotate(-15 165 85)"/>
+      <!-- Whole Note -->
+      <ellipse cx="150" cy="80" rx="8" ry="5.5" fill="none" stroke="#000" stroke-width="3" transform="rotate(-15 150 80)"/>
     </svg>
   </div>
 
-  <!-- Dynamic Input Interface Container -->
+  <!-- Input Interface Container -->
   <div id="interface-container"></div>
 </div>
 
 <script>
-  // Clef Helper Data Store
+  let activeClef = 'treble';
+  let currentInterface = 'keyboard';
+
+  const clefSymbols = {
+    treble: '𝄞',
+    bass: '𝄢',
+    alto: '𝄡',
+    tenor: '𝄡'
+  };
+
   const helperData = {
     treble: {
-      lines: { notes: ["E", "G", "B", "D", "F"], words: ["Every", "Good", "Boy", "Deserves", "Fruit"] },
-      spaces: { notes: ["F", "A", "C", "E"], words: ["F", "A", "C", "E"] }
+      lines: "Lines: Every Good Boy Deserves Fruit",
+      spaces: "Spaces: F A C E"
     },
     bass: {
-      lines: { notes: ["G", "B", "D", "F", "A"], words: ["Good", "Boys", "Deserve", "Fruit", "Always"] },
-      spaces: { notes: ["A", "C", "E", "G"], words: ["All", "Cows", "Eat", "Grass"] }
+      lines: "Lines: Good Boys Deserve Fruit Always",
+      spaces: "Spaces: All Cows Eat Grass"
     },
     alto: {
-      lines: { notes: ["F", "A", "C", "E", "G"], words: ["Fat", "Alley", "Cats", "Eat", "Garbage"] },
-      spaces: { notes: ["G", "B", "D", "F"], words: ["Good", "Boys", "Deserve", "Fruit"] }
+      lines: "Lines: Fat Alley Cats Eat Garbage",
+      spaces: "Spaces: Good Boys Deserve Fruit"
     },
     tenor: {
-      lines: { notes: ["D", "F", "A", "C", "E"], words: ["Dogs", "Face", "A", "Cat's", "Eye"] },
-      spaces: { notes: ["E", "G", "B", "D"], words: ["Empty", "Garbage", "Before", "Dinner"] }
+      lines: "Lines: Dogs Face A Cat's Eye",
+      spaces: "Spaces: Empty Garbage Before Dinner"
     }
   };
 
-  let currentInterface = 'keyboard'; // Default: 'circle' or 'keyboard'
+  function selectClef(clef) {
+    activeClef = clef;
+    
+    // Update active button styling
+    document.querySelectorAll('.clef-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.innerText.toLowerCase() === clef);
+    });
 
-  function handleNoteSelection(note) {
-    console.log("Selected Note:", note);
-    // Answer validation logic goes here
+    // Update Clef Symbol on main staff
+    document.getElementById('clef-symbol').textContent = clefSymbols[clef];
+
+    // Update Helper Sheet
+    document.getElementById('helper-title').textContent = `${clef.charAt(0).toUpperCase() + clef.slice(1)} Clef Helpers`;
+    document.getElementById('helper-lines-text').textContent = helperData[clef].lines;
+    document.getElementById('helper-spaces-text').textContent = helperData[clef].spaces;
   }
 
-  // Render Function 1: Piano Keyboard Interface (A to A Octave)
+  function handleNoteSelection(note) {
+    alert(`Selected Note: ${note}`);
+    // Connect to scoring / answer validation logic here
+  }
+
   function renderKeyboardInterface() {
     const container = document.getElementById('interface-container');
-    
-    // 8 White keys: A, B, C, D, E, F, G, A
     const whiteKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'A'];
     
-    // Black key position offsets (percentages based on white key indexes)
-    // Black keys sit between: A-B, C-D, D-E, F-G, G-A
+    // Position black key overlays accurately between keys
     const blackKeyPositions = [8.2, 33.2, 45.7, 70.7, 83.2];
 
     let html = `
@@ -206,12 +261,10 @@
         <div class="keyboard">
     `;
 
-    // Render White Keys
     whiteKeys.forEach((note) => {
       html += `<div class="white-key" onclick="handleNoteSelection('${note}')">${note}</div>`;
     });
 
-    // Render Decorative Black Keys
     blackKeyPositions.forEach((pos) => {
       html += `<div class="black-key" style="left: ${pos}%;"></div>`;
     });
@@ -224,17 +277,11 @@
     container.innerHTML = html;
   }
 
-  // Render Function 2: Circle Button Interface
   function renderCircleInterface() {
     const container = document.getElementById('interface-container');
-    container.innerHTML = `
-      <div style="color: #aaa; text-align: center; padding: 20px;">
-        [ Circle Interface Rendered Here ]
-      </div>
-    `;
+    container.innerHTML = `<div style="color: #aaa; text-align: center; padding: 20px;">[ Circle Interface Active ]</div>`;
   }
 
-  // Switch between interfaces cleanly without breaking underlying code
   function updateInterface() {
     if (currentInterface === 'keyboard') {
       renderKeyboardInterface();
@@ -248,7 +295,8 @@
     updateInterface();
   }
 
-  // Initial setup call
+  // Initial Load
+  selectClef('treble');
   updateInterface();
 </script>
 
