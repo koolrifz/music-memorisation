@@ -235,8 +235,9 @@
         </select>
         
         <select id="level-select">
-            <option value="1">Level 1: Whole Notes (Single)</option>
-            <option value="2" selected>Level 2: Rhythms (Progressive 2 to 4 Notes)</option>
+            <!-- Selected attribute moved to Level 1 -->
+            <option value="1" selected>Level 1: Whole Notes (Single)</option>
+            <option value="2">Level 2: Rhythms (Progressive 2 to 4 Notes)</option>
         </select>
         
         <select id="memory-mode">
@@ -706,7 +707,6 @@
     }
 
     function handleKeypadInput(letter) {
-        // Absolutely NO alert() in this code. Inputs handle silently.
         if (secondsLeft <= 0) return;
         const input = document.getElementById(`box-${activeInputIndex}`);
         if (!input) return;
