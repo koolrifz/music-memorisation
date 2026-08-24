@@ -2,25 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Music Memorisation Engine - Gamified</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
+    <title>Note Quest - Populated Helpers</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <style>
         :root {
-            --bg-dark: #131f24;
-            --bg-panel: #202f36;
+            --bg-dark: #1a2634;
+            --bg-panel: #243447;
             --accent-green: #58cc02;
-            --accent-green-shadow: #58a700;
+            --accent-green-shadow: #46a302;
             --accent-red: #ff4b4b;
-            --accent-red-shadow: #ea2b2b;
+            --accent-red-shadow: #d82b2b;
             --accent-blue: #1cb0f6;
-            --accent-blue-shadow: #1899d6;
+            --accent-gold: #ffc800;
             --text-main: #ffffff;
-            --text-muted: #afbac0;
+            --text-muted: #8696a7;
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
             margin: 0;
@@ -33,60 +33,123 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 20px; box-sizing: border-box; }
-        .screen.active { display: flex; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 12px; box-sizing: border-box; position: absolute; top: 0; left: 0; pointer-events: none; opacity: 0; transition: opacity 0.15s ease-in-out; }
+        .screen.active { display: flex; pointer-events: auto; opacity: 1; z-index: 10; }
 
-        .setup-card { background: var(--bg-panel); padding: 24px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
-        .setup-card h1 { margin: 0 0 8px 0; font-size: 22px; color: var(--accent-blue); }
-        .setup-card p { margin: 0 0 20px 0; font-size: 14px; color: var(--text-muted); }
+        .setup-card { background: var(--bg-panel); padding: 24px; border-radius: 24px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid #324a64; z-index: 20; position: relative; }
+        .setup-card h1 { margin: 0 0 6px 0; font-size: 28px; color: var(--accent-gold); text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+        .setup-card p { margin: 0 0 20px 0; font-size: 15px; color: var(--text-muted); }
         
-        select { width: 100%; padding: 12px; margin-bottom: 12px; background: var(--bg-dark); color: white; border: 2px solid #37464f; border-radius: 12px; font-size: 16px; font-weight: bold; outline: none; }
+        select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; color: white; border: 3px solid #324a64; border-radius: 16px; font-size: 16px; font-weight: bold; outline: none; }
 
-        .btn { width: 100%; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 16px; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; color: white; transition: transform 0.1s; touch-action: manipulation; }
-        .btn-start { background: var(--accent-green); box-shadow: 0 4px 0 var(--accent-green-shadow); margin-top: 10px; }
-        .btn-start:active { transform: translateY(4px); box-shadow: 0 0 0 var(--accent-green-shadow); }
+        .btn { width: 100%; padding: 16px; font-size: 18px; font-weight: 800; border-radius: 18px; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; color: white; transition: transform 0.1s; touch-action: manipulation; position: relative; z-index: 30; }
+        .btn-start { background: var(--accent-green); box-shadow: 0 6px 0 var(--accent-green-shadow); margin-top: 10px; }
+        .btn-start:active { transform: translateY(6px); box-shadow: 0 0 0 var(--accent-green-shadow); }
 
-        .btn-secondary { background: #37464f; box-shadow: 0 4px 0 #263138; margin-top: 10px; font-size: 15px; padding: 12px; }
-        .btn-secondary:active { transform: translateY(4px); box-shadow: 0 0 0 #263138; }
+        .btn-secondary { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; margin-top: 10px; font-size: 15px; padding: 14px; }
+        .btn-secondary:active { transform: translateY(6px); box-shadow: 0 0 0 #2a3b4f; }
+
+        .btn-helper-toggle { background: var(--accent-blue); box-shadow: 0 4px 0 #1485bc; font-size: 13px; font-weight: 900; padding: 6px 14px; border-radius: 12px; border: none; color: white; cursor: pointer; }
+        .btn-helper-toggle:active { transform: translateY(3px); box-shadow: 0 0 0 #1485bc; }
         
-        #error-box { color: #ff4b4b; background: rgba(255,0,0,0.1); padding: 10px; margin-top: 15px; border-radius: 8px; font-size: 14px; display: none; font-weight: bold;}
+        #error-box { color: var(--accent-red); background: rgba(255,75,75,0.1); padding: 10px; margin-top: 15px; border-radius: 12px; font-size: 14px; display: none; font-weight: bold;}
 
-        /* Game Screen Elements */
-        .game-header { width: 100%; max-width: 500px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; margin-top: 20px; }
-        .progress-bar-container { flex: 1; height: 16px; background: #37464f; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--accent-green); width: 0%; border-radius: 10px; transition: width 0.3s ease-out; }
-        .streak-counter { font-size: 18px; font-weight: bold; color: #ff9600; display: flex; align-items: center; gap: 4px; }
-        .timer-badge { font-size: 14px; font-weight: bold; color: var(--accent-blue); transition: color 0.3s; }
+        /* Game Screen Header */
+        .game-header { width: 100%; max-width: 500px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+        .progress-bar-container { flex: 1; height: 20px; background: #1a2634; border-radius: 12px; overflow: hidden; border: 3px solid #324a64; position: relative; }
+        .progress-fill { height: 100%; background: var(--accent-green); width: 100%; border-radius: 8px; transition: width 1s linear, background-color 0.5s; }
+        .score-counter { font-size: 18px; font-weight: 900; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
+        .timer-badge { font-size: 14px; font-weight: 800; color: var(--accent-blue); text-align: center; margin-bottom: 2px; }
 
-        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 16px; padding: 15px 0; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; min-height: 130px; position: relative; }
+        /* Collapsible Graphical Helper Sheet Modal */
+        .helper-modal {
+            width: 100%;
+            max-width: 500px;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            border: 3px solid var(--accent-blue);
+            box-sizing: border-box;
+        }
+        .helper-modal.show { display: block; }
+        .helper-modal h3 { margin: 0 0 6px 0; font-size: 13px; color: #1a2634; text-align: center; font-weight: 900; }
+        .helper-container { display: flex; justify-content: center; align-items: center; width: 100%; overflow: hidden; background: #fafbfc; border-radius: 8px; min-height: 90px; }
+
+        /* Prominent Notation Card */
+        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 160px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; }
         .fade-out svg { opacity: 0; transition: opacity 0.8s ease-in-out; }
         .fade-in svg { opacity: 1; transition: opacity 0.2s ease-in-out; }
+        
+        #score-canvas { width: 100%; display: flex; justify-content: center; }
+        #score-canvas svg { width: 100%; height: 100%; max-height: 140px; }
 
-        .inputs-row { display: flex; width: 100%; max-width: 500px; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: auto; }
-        .input-cell input { width: 40px; height: 48px; text-align: center; font-size: 22px; font-weight: bold; text-transform: uppercase; border: 2px solid #37464f; border-radius: 12px; background: var(--bg-panel); color: white; transition: all 0.15s; }
-        .input-cell input.active-box { border-color: var(--accent-blue); background: rgba(28, 176, 246, 0.1); transform: scale(1.05); }
+        /* Directly Aligned Input Boxes */
+        .inputs-row { display: flex; width: 100%; max-width: 500px; justify-content: center; gap: 10px; margin-bottom: 8px; }
+        .input-cell input { width: 48px; height: 50px; text-align: center; font-size: 26px; font-weight: 900; text-transform: uppercase; border: 3px solid #324a64; border-radius: 14px; background: var(--bg-panel); color: white; transition: all 0.15s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+        .input-cell input.active-box { border-color: var(--accent-blue); background: rgba(28, 176, 246, 0.2); transform: scale(1.08); box-shadow: 0 0 15px rgba(28, 176, 246, 0.5); }
         .input-cell input.correct { background-color: var(--accent-green); border-color: var(--accent-green-shadow); color: white; animation: pop 0.3s ease-out; }
         .input-cell input.incorrect { background-color: var(--accent-red); border-color: var(--accent-red-shadow); color: white; animation: shake 0.4s; }
 
-        #note-keypad { width: 100%; max-width: 500px; background: var(--bg-dark); padding: 10px 0; padding-bottom: env(safe-area-inset-bottom, 20px); display: flex; justify-content: space-between; gap: 6px; }
-        .keypad-btn { background: var(--bg-panel); color: white; font-size: 20px; font-weight: bold; border: none; border-bottom: 4px solid #141e22; border-radius: 12px; flex: 1; height: 56px; cursor: pointer; touch-action: manipulation; }
-        .keypad-btn:active { border-bottom-width: 0px; transform: translateY(4px); background: var(--accent-blue); }
-        .keypad-btn.del-btn { background: #37464f; border-bottom-color: #263138; font-size: 16px; max-width: 50px; }
+        /* Circular Color-Wheel Keypad */
+        .wheel-container {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 0 auto;
+            background: radial-gradient(circle, rgba(36,52,71,0.8) 0%, rgba(26,38,52,0.95) 100%);
+            border-radius: 50%;
+            border: 4px solid #324a64;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+        }
 
-        .summary-card { background: var(--bg-panel); padding: 30px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
-        .summary-card h2 { color: #ffc800; font-size: 28px; margin: 0 0 10px 0; }
+        .wheel-btn {
+            position: absolute;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: none;
+            font-size: 22px;
+            font-weight: 900;
+            color: #1a2634;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.4);
+            transition: transform 0.08s;
+            touch-action: manipulation;
+            z-index: 25;
+        }
+        .wheel-btn:active {
+            transform: scale(0.92) translateY(3px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+        }
+
+        #btn-A { background: #ff4b4b; color: white; } 
+        #btn-B { background: #ff9600; color: white; } 
+        #btn-C { background: #ffc800; color: #1a2634; } 
+        #btn-D { background: #58cc02; color: white; } 
+        #btn-E { background: #1cb0f6; color: white; } 
+        #btn-F { background: #ce82ff; color: white; } 
+        #btn-G { background: #ff80bf; color: white; } 
+
+        .summary-card { background: var(--bg-panel); padding: 35px; border-radius: 24px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid #324a64; z-index: 20; position: relative; }
+        .summary-card h2 { color: var(--accent-gold); font-size: 36px; margin: 0 0 10px 0; }
         .summary-stat { font-size: 18px; margin-bottom: 15px; color: var(--text-muted); }
 
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
     </style>
 </head>
 <body>
 
 <div id="screen-setup" class="screen active">
     <div class="setup-card">
-        <h1>Music Memorisation</h1>
-        <p>Master your sight-reading speed.</p>
+        <h1>🎵 Note Quest</h1>
+        <p>60-Second Circular Wheel Challenge</p>
         
         <select id="clef-select">
             <option value="treble">Treble Clef</option>
@@ -96,17 +159,17 @@
         </select>
         
         <select id="level-select">
-            <option value="1">Level 1: Whole Notes</option>
-            <option value="2">Level 2: Rhythms</option>
+            <option value="1">Level 1: Whole Notes (Single)</option>
+            <option value="2" selected>Level 2: Rhythms (Progressive 2 to 4 Notes)</option>
         </select>
         
         <select id="memory-mode">
-            <option value="visible">Mode: Always Visible</option>
+            <option value="visible">Mode: Always Visible (Learning Mode)</option>
             <option value="fade-5">Mode: Memory (5s Fade)</option>
             <option value="fade-2">Mode: Blitz (2s Fade)</option>
         </select>
         
-        <button class="btn btn-start" id="start-btn">Start Round</button>
+        <button class="btn btn-start" id="start-btn" onclick="startGame()">Start 60s Round</button>
         <div id="error-box"></div>
     </div>
 </div>
@@ -114,63 +177,138 @@
 <div id="screen-game" class="screen">
     <div class="game-header">
         <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
-        <div class="streak-counter">🔥 <span id="streak-text">0</span></div>
+        <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleHelperModal()">💡 Helper Sheet</button>
+        <div class="score-counter">⭐ <span id="score-text">0</span></div>
     </div>
-    <div class="timer-badge" id="timer-badge">Stay focused!</div>
-    <div class="card-wrapper fade-in" id="card-canvas-wrapper"><div id="score-canvas"></div></div>
+    <div class="timer-badge" id="timer-badge">60s remaining</div>
+    
+    <!-- Collapsible Graphical Helper Sheet Modal -->
+    <div class="helper-modal" id="helper-sheet-modal">
+        <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
+        <div class="helper-container" id="helper-canvas-container"></div>
+    </div>
+
+    <div class="card-wrapper fade-in" id="card-canvas-wrapper">
+        <div id="score-canvas"></div>
+    </div>
+    
     <div class="inputs-row" id="inputs-container"></div>
-    <div id="note-keypad">
-        <button class="keypad-btn" data-key="A">A</button>
-        <button class="keypad-btn" data-key="B">B</button>
-        <button class="keypad-btn" data-key="C">C</button>
-        <button class="keypad-btn" data-key="D">D</button>
-        <button class="keypad-btn" data-key="E">E</button>
-        <button class="keypad-btn" data-key="F">F</button>
-        <button class="keypad-btn" data-key="G">G</button>
-        <button class="keypad-btn del-btn" id="del-btn">⌫</button>
+
+    <div class="wheel-container" id="wheel-container">
+        <button class="wheel-btn" id="btn-A" data-key="A" onclick="handleKeypadInput('A')">A</button>
+        <button class="wheel-btn" id="btn-B" data-key="B" onclick="handleKeypadInput('B')">B</button>
+        <button class="wheel-btn" id="btn-C" data-key="C" onclick="handleKeypadInput('C')">C</button>
+        <button class="wheel-btn" id="btn-D" data-key="D" onclick="handleKeypadInput('D')">D</button>
+        <button class="wheel-btn" id="btn-E" data-key="E" onclick="handleKeypadInput('E')">E</button>
+        <button class="wheel-btn" id="btn-F" data-key="F" onclick="handleKeypadInput('F')">F</button>
+        <button class="wheel-btn" id="btn-G" data-key="G" onclick="handleKeypadInput('G')">G</button>
     </div>
 </div>
 
 <div id="screen-summary" class="screen">
     <div class="summary-card">
-        <h2>Round Complete!</h2>
+        <h2>🎉 Time's Up!</h2>
+        <div class="summary-stat">Total Score: <span id="final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
         <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
-        <div class="summary-stat">Max Streak: 🔥 <span id="final-streak" style="color:#ff9600; font-weight:bold;">0</span></div>
-        <button class="btn btn-start" id="restart-btn">Play Again</button>
-        <button class="btn btn-secondary" id="setup-btn">Change Settings</button>
+        <button class="btn btn-start" id="restart-btn" onclick="startGame()">Play Again 🚀</button>
+        <button class="btn btn-secondary" id="setup-btn" onclick="switchScreen('screen-setup')">Change Settings</button>
     </div>
 </div>
 
 <script>
     window.onerror = function(msg, url, lineNo, columnNo, error) {
         const errBox = document.getElementById('error-box');
-        errBox.style.display = 'block';
-        errBox.innerText = `System Error: ${msg} (Line ${lineNo})`;
+        if(errBox) {
+            errBox.style.display = 'block';
+            errBox.innerText = `System Error: ${msg} (Line ${lineNo})`;
+        }
         return false;
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const startBtn = document.getElementById('start-btn');
-        const restartBtn = document.getElementById('restart-btn');
-        const setupBtn = document.getElementById('setup-btn');
+    function positionWheelButtons() {
+        const buttons = document.querySelectorAll('.wheel-btn');
+        const total = buttons.length;
+        const radius = 92; 
+        const centerX = 130; 
+        const centerY = 130; 
+        const btnSize = 52;
 
-        ['click', 'touchend'].forEach(evt => {
-            startBtn.addEventListener(evt, (e) => { e.preventDefault(); startGame(); });
-            restartBtn.addEventListener(evt, (e) => { e.preventDefault(); startGame(); });
-            setupBtn.addEventListener(evt, (e) => { e.preventDefault(); switchScreen('screen-setup'); });
+        buttons.forEach((btn, index) => {
+            const angle = (index * 2 * Math.PI) / total - Math.PI / 2;
+            const x = centerX + radius * Math.cos(angle) - btnSize / 2;
+            const y = centerY + radius * Math.sin(angle) - btnSize / 2;
+            btn.style.left = `${x}px`;
+            btn.style.top = `${y}px`;
         });
+    }
 
-        document.querySelectorAll('.keypad-btn[data-key]').forEach(btn => {
-            ['click', 'touchend'].forEach(evt => {
-                btn.addEventListener(evt, (e) => { e.preventDefault(); handleKeypadInput(btn.getAttribute('data-key')); });
-            });
-        });
+    window.addEventListener('DOMContentLoaded', positionWheelButtons);
+    window.addEventListener('resize', positionWheelButtons);
 
-        const delBtn = document.getElementById('del-btn');
-        ['click', 'touchend'].forEach(evt => {
-            delBtn.addEventListener(evt, (e) => { e.preventDefault(); handleKeypadDelete(); });
-        });
-    });
+    function toggleHelperModal() {
+        const modal = document.getElementById('helper-sheet-modal');
+        if(modal) {
+            modal.classList.toggle('show');
+            if(modal.classList.contains('show')) {
+                // Slight timeout to let CSS display block render dimensions before VexFlow draws
+                setTimeout(renderHelperSheetGraphics, 50);
+            }
+        }
+    }
+
+    function renderHelperSheetGraphics() {
+        try {
+            const VF = Vex.Flow;
+            const container = document.getElementById('helper-canvas-container');
+            if (!container) return;
+            
+            container.innerHTML = '';
+
+            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+            renderer.resize(480, 95);
+            const ctx = renderer.getContext();
+            ctx.scale(0.65, 0.65);
+
+            // Bar 1: Lines (Every Good Boy Deserves Fruit) - 5 notes
+            const stave1 = new VF.Stave(10, 8, 230);
+            stave1.addClef('treble');
+            stave1.setContext(ctx).draw();
+
+            const lineNotes = [
+                new VF.StaveNote({ clef: 'treble', keys: ['e/4'], duration: 'q' }).addText(0, 'Every', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['g/4'], duration: 'q' }).addText(0, 'Good', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: 'q' }).addText(0, 'Boy', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['d/5'], duration: 'q' }).addText(0, 'Deserves', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['f/5'], duration: 'q' }).addText(0, 'Fruit', 'below')
+            ];
+            
+            const voice1 = new VF.Voice({ num_beats: 5, beat_value: 4 }).addTickables(lineNotes);
+            new VF.Formatter().joinVoices([voice1]).format([voice1], 170);
+            voice1.draw(ctx, stave1);
+
+            // Double Bar Line separating Bar 1 and Bar 2
+            stave1.setEndBarType(VF.Barline.DOUBLE);
+            stave1.drawBarlines(ctx);
+
+            // Bar 2: Spaces (FACE) - 4 notes
+            const stave2 = new VF.Stave(250, 8, 200);
+            stave2.setContext(ctx).draw();
+
+            const spaceNotes = [
+                new VF.StaveNote({ clef: 'treble', keys: ['f/4'], duration: 'q' }).addText(0, 'F', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['a/4'], duration: 'q' }).addText(0, 'A', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['c/5'], duration: 'q' }).addText(0, 'C', 'below'),
+                new VF.StaveNote({ clef: 'treble', keys: ['e/5'], duration: 'q' }).addText(0, 'E', 'below')
+            ];
+
+            const voice2 = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(spaceNotes);
+            new VF.Formatter().joinVoices([voice2]).format([voice2], 140);
+            voice2.draw(ctx, stave2);
+
+        } catch(e) {
+            console.error("Helper render error:", e);
+        }
+    }
 
     let audioCtx = null;
     function initAudio() {
@@ -193,19 +331,17 @@
             gainNode.connect(audioCtx.destination);
             
             if (type === 'correct') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1); gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             } else if (type === 'wrong') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(140, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.2); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2);
             } else if (type === 'timeout') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.5); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+                osc.type = 'square'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.4); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4);
             } else if (type === 'complete') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.15); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8); osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.15); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.45); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); osc.start(); osc.stop(audioCtx.currentTime + 0.9);
             }
         } catch (e) { console.warn("Could not play sound.", e); }
     }
 
-    const LEVEL_2_PATTERNS = [ [ {dur: "q"}, {dur: "q"}, {dur: "q"}, {dur: "q"} ], [ {dur: "h"}, {dur: "h"} ], [ {dur: "h"}, {dur: "q"}, {dur: "q"} ], [ {dur: "q"}, {dur: "q"}, {dur: "h"} ], [ {dur: "w"} ] ];
-    
     const CLEF_CONFIGS = {
         "treble": { clef: "treble", lines: [["E","e/4"],["G","g/4"],["B","b/4"],["D","d/5"],["F","f/5"]], spaces: [["F","f/4"],["A","a/4"],["C","c/5"],["E","e/5"]] },
         "bass":   { clef: "bass",   lines: [["G","g/2"],["B","b/2"],["D","d/3"],["F","f/3"],["A","a/3"]], spaces: [["A","a/2"],["C","c/3"],["E","e/3"],["G","g/3"]] },
@@ -213,216 +349,268 @@
         "tenor":  { clef: "tenor",  lines: [["D","d/3"],["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"]], spaces: [["E","e/3"],["G","g/3"],["B","b/3"],["D","d/4"]] }
     };
 
-    const TOTAL_CARDS_PER_ROUND = 5;
-    let currentCardIndex = 0, activeInputIndex = 0, currentStreak = 0, maxStreak = 0, totalNotesAttempted = 0, correctNotesFirstTry = 0;
+    let gameTimer = null;
+    let secondsLeft = 60;
+    let score = 0;
+    let totalAttempts = 0;
+    let correctAttempts = 0;
     let currentExpectedNotes = [];
-    let currentNoteHasErrored = false;
+    let activeInputIndex = 0;
     let fadeTimer = null;
-    let recallTimer = null;
+    let breakOutTimer = null;
 
     function switchScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
-    }
-
-    function startGame() {
-        try {
-            const errBox = document.getElementById('error-box'); 
-            errBox.style.display = 'none';
-            
-            if (typeof Vex === 'undefined') {
-                errBox.style.display = 'block'; 
-                errBox.innerHTML = "❌ <b>VexFlow Blocked!</b> Active internet connection required to load VexFlow."; 
-                return;
-            }
-            
-            initAudio(); 
-            currentCardIndex = 0; currentStreak = 0; maxStreak = 0; totalNotesAttempted = 0; correctNotesFirstTry = 0;
-            updateProgressUI(); 
-            switchScreen('screen-game'); 
-            loadNextCard();
-        } catch (err) {
-            const errBox = document.getElementById('error-box');
-            errBox.style.display = 'block';
-            errBox.innerText = `Failed to start: ${err.message}`;
+        const targetScreen = document.getElementById(screenId);
+        if(targetScreen) {
+            targetScreen.classList.add('active');
+        }
+        if (screenId === 'screen-game') {
+            setTimeout(positionWheelButtons, 50);
         }
     }
 
-    function updateProgressUI() {
-        document.getElementById('progress-bar').style.width = `${(currentCardIndex / TOTAL_CARDS_PER_ROUND) * 100}%`;
-        document.getElementById('streak-text').innerText = currentStreak;
+    function startGame() {
+        const errBox = document.getElementById('error-box'); 
+        if(errBox) errBox.style.display = 'none';
+        
+        if (typeof Vex === 'undefined') {
+            if(errBox) {
+                errBox.style.display = 'block'; 
+                errBox.innerHTML = "❌ <b>VexFlow Blocked!</b> Active internet connection required."; 
+            }
+            return;
+        }
+
+        initAudio();
+        score = 0;
+        totalAttempts = 0;
+        correctAttempts = 0;
+        secondsLeft = 60;
+
+        const modeSelect = document.getElementById('memory-mode');
+        const mode = modeSelect ? modeSelect.value : 'visible';
+        const helperToggle = document.getElementById('helper-toggle-btn');
+        const helperModal = document.getElementById('helper-sheet-modal');
+        
+        if (helperToggle) {
+            helperToggle.style.display = (mode === 'visible') ? 'block' : 'none';
+        }
+        if (helperModal) {
+            if (mode === 'visible') {
+                helperModal.classList.add('show');
+                setTimeout(renderHelperSheetGraphics, 50);
+            } else {
+                helperModal.classList.remove('show');
+            }
+        }
+
+        const scoreText = document.getElementById('score-text');
+        if(scoreText) scoreText.innerText = score;
+        
+        switchScreen('screen-game');
+        start60SecondTimer();
+        loadNextCard();
+    }
+
+    function start60SecondTimer() {
+        if (gameTimer) clearInterval(gameTimer);
+        const fillBar = document.getElementById('progress-bar');
+        if(fillBar) {
+            fillBar.style.width = '100%';
+            fillBar.style.backgroundColor = 'var(--accent-green)';
+        }
+
+        gameTimer = setInterval(() => {
+            secondsLeft--;
+            const timerBadge = document.getElementById('timer-badge');
+            if(timerBadge) timerBadge.innerText = `${secondsLeft}s remaining`;
+            
+            const percent = (secondsLeft / 60) * 100;
+            if(fillBar) fillBar.style.width = `${percent}%`;
+
+            if (secondsLeft <= 20 && secondsLeft > 10) {
+                if(fillBar) fillBar.style.backgroundColor = '#ffc800'; 
+            } else if (secondsLeft <= 10) {
+                if(fillBar) fillBar.style.backgroundColor = 'var(--accent-red)'; 
+            }
+
+            if (secondsLeft <= 0) {
+                clearInterval(gameTimer);
+                finishRound();
+            }
+        }, 1000);
     }
 
     function loadNextCard() {
-        if (currentCardIndex >= TOTAL_CARDS_PER_ROUND) { finishRound(); return; }
+        if (secondsLeft <= 0) return;
         if (fadeTimer) clearTimeout(fadeTimer);
-        if (recallTimer) clearTimeout(recallTimer);
+        if (breakOutTimer) clearTimeout(breakOutTimer);
         
-        document.getElementById('card-canvas-wrapper').className = 'card-wrapper fade-in';
-        document.getElementById('timer-badge').style.color = "var(--accent-blue)";
+        const cardWrapper = document.getElementById('card-canvas-wrapper');
+        if(cardWrapper) cardWrapper.className = 'card-wrapper fade-in';
         generateFlashcard();
     }
 
     function generateFlashcard() {
         try {
             const VF = Vex.Flow;
-            const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
-            const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
+            const canvasContainer = document.getElementById('score-canvas'); 
+            if(canvasContainer) canvasContainer.innerHTML = '';
+            const inputsContainer = document.getElementById('inputs-container'); 
+            if(inputsContainer) inputsContainer.innerHTML = '';
             
-            const level = document.getElementById('level-select').value;
-            const config = CLEF_CONFIGS[document.getElementById('clef-select').value];
+            const levelSelect = document.getElementById('level-select');
+            const level = levelSelect ? levelSelect.value : '2';
+            const clefSelect = document.getElementById('clef-select');
+            const config = CLEF_CONFIGS[clefSelect ? clefSelect.value : 'treble'];
             const combinedPool = [...config.lines, ...config.spaces];
 
-            const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); renderer.resize(320, 100);
+            const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
+            renderer.resize(320, 130);
             const context = renderer.getContext();
-            const stave = new VF.Stave(0, 5, 320);
+            context.scale(1.3, 1.3);
+
+            const stave = new VF.Stave(8, 5, 225);
             stave.addClef(config.clef);
             if(level === '2') stave.addTimeSignature("4/4");
             stave.setContext(context).draw();
 
-            currentExpectedNotes = []; let staveNotes = []; let lastPitchKey = null;
+            currentExpectedNotes = []; 
+            let staveNotes = []; 
+            let lastPitchKey = null;
 
             if (level === '1') {
                 let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
                 let chosen = avail[Math.floor(Math.random() * avail.length)];
-                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: "w" })); currentExpectedNotes.push(chosen[0]);
+                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: "w" })); 
+                currentExpectedNotes.push(chosen[0]);
             } else {
-                let pattern = LEVEL_2_PATTERNS[Math.floor(Math.random() * LEVEL_2_PATTERNS.length)];
-                for (let item of pattern) {
+                let noteCount = 2; 
+                if (secondsLeft < 40 && secondsLeft >= 25) noteCount = 3; 
+                if (secondsLeft < 25) noteCount = 4; 
+
+                let durations = noteCount === 2 ? ["h", "h"] : (noteCount === 3 ? ["h", "q", "q"] : ["q", "q", "q", "q"]);
+
+                for (let dur of durations) {
                     let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
-                    let chosen = avail[Math.floor(Math.random() * avail.length)]; lastPitchKey = chosen[1];
-                    staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: item.dur })); currentExpectedNotes.push(chosen[0]);
+                    let chosen = avail[Math.floor(Math.random() * avail.length)]; 
+                    lastPitchKey = chosen[1];
+                    staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: dur })); 
+                    currentExpectedNotes.push(chosen[0]);
                 }
             }
 
             let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-            new VF.Formatter().joinVoices([voice]).format([voice], 250);
+            new VF.Formatter().joinVoices([voice]).format([voice], 165);
             voice.draw(context, stave);
 
             currentExpectedNotes.forEach((_, idx) => {
                 const cell = document.createElement('div'); cell.className = 'input-cell';
-                const input = document.createElement('input'); input.type = 'text'; input.readOnly = true; input.id = `box-${idx}`;
-                input.addEventListener('click', () => setActiveBox(idx));
-                cell.appendChild(input); inputsContainer.appendChild(cell);
+                const input = document.createElement('input'); 
+                input.type = 'text'; 
+                input.readOnly = true; 
+                input.id = `box-${idx}`;
+                cell.appendChild(input); 
+                if(inputsContainer) inputsContainer.appendChild(cell);
             });
 
-            activeInputIndex = 0; currentNoteHasErrored = false; setActiveBox(0);
+            activeInputIndex = 0; 
+            setActiveBox(0);
 
-            const mode = document.getElementById('memory-mode').value;
+            const modeSelect = document.getElementById('memory-mode');
+            const mode = modeSelect ? modeSelect.value : 'visible';
             if (mode === 'fade-5') {
-                startFadeCountdown(5);
+                startFadeCountdown(5, 4); 
             } else if (mode === 'fade-2') {
-                startFadeCountdown(2);
-            } else {
-                startRecallCountdown(12, true); 
+                startFadeCountdown(2, 4); 
             }
         } catch (err) { 
             console.error("Render Error:", err.message); 
-            document.getElementById('timer-badge').innerText = "Render Error: " + err.message;
         }
     }
 
-    function startFadeCountdown(seconds) {
-        let timeLeft = seconds;
-        document.getElementById('timer-badge').innerText = `Memorise! Fading in ${timeLeft}s`;
-        fadeTimer = setInterval(() => {
-            timeLeft--;
-            if (timeLeft > 0) { document.getElementById('timer-badge').innerText = `Memorise! Fading in ${timeLeft}s`; } 
-            else {
-                clearInterval(fadeTimer);
-                document.getElementById('card-canvas-wrapper').className = 'card-wrapper fade-out';
-                startRecallCountdown(6, false); 
-            }
-        }, 1000);
-    }
+    function startFadeCountdown(fadeSecs, breakOutSecs) {
+        fadeTimer = setTimeout(() => {
+            const cardWrapper = document.getElementById('card-canvas-wrapper');
+            if(cardWrapper) cardWrapper.className = 'card-wrapper fade-out';
+            
+            breakOutTimer = setTimeout(() => {
+                if (secondsLeft > 0) {
+                    playSound('timeout');
+                    currentExpectedNotes.forEach((val, idx) => {
+                        const box = document.getElementById(`box-${idx}`);
+                        if (box && !box.classList.contains('correct')) {
+                            box.value = val;
+                            box.style.color = 'var(--accent-red)';
+                        }
+                    });
+                    setTimeout(loadNextCard, 800);
+                }
+            }, breakOutSecs * 1000);
 
-    function startRecallCountdown(seconds, isVisible) {
-        let timeLeft = seconds;
-        document.getElementById('timer-badge').innerText = isVisible ? `Hurry! ${timeLeft}s left` : `Recall! ${timeLeft}s left`;
-        
-        recallTimer = setInterval(() => {
-            timeLeft--;
-            if (timeLeft > 0) {
-                document.getElementById('timer-badge').innerText = isVisible ? `Hurry! ${timeLeft}s left` : `Recall! ${timeLeft}s left`;
-            } else {
-                clearInterval(recallTimer);
-                handleTimeOut();
-            }
-        }, 1000);
-    }
-
-    function handleTimeOut() {
-        playSound('timeout');
-        document.getElementById('timer-badge').innerText = "Time's up! Let's keep moving!";
-        document.getElementById('timer-badge').style.color = "var(--accent-red)";
-        
-        document.querySelectorAll('.input-cell input').forEach((input, idx) => {
-            input.disabled = true;
-            if (!input.classList.contains('correct')) {
-                input.value = currentExpectedNotes[idx];
-                input.style.color = "var(--accent-red)";
-                input.style.borderColor = "var(--accent-red)";
-            }
-        });
-
-        currentStreak = 0; 
-        updateProgressUI();
-
-        setTimeout(() => {
-            currentCardIndex++; 
-            updateProgressUI(); 
-            loadNextCard(); 
-        }, 1800); 
+        }, fadeSecs * 1000);
     }
 
     function setActiveBox(idx) {
         document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
         const target = document.getElementById(`box-${idx}`);
-        if (target && !target.disabled) { activeInputIndex = idx; target.classList.add('active-box'); currentNoteHasErrored = false; }
+        if (target) { 
+            activeInputIndex = idx; 
+            target.classList.add('active-box'); 
+        }
     }
 
     function handleKeypadInput(letter) {
+        if (secondsLeft <= 0) return;
         const input = document.getElementById(`box-${activeInputIndex}`);
-        if (!input || input.disabled) return;
+        if (!input) return;
 
         input.value = letter;
         const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase();
+        totalAttempts++;
 
         if (letter === correctVal) {
             playSound('correct');
-            input.classList.remove('incorrect'); input.classList.add('correct');
-            if(!currentNoteHasErrored) { correctNotesFirstTry++; currentStreak++; if (currentStreak > maxStreak) maxStreak = currentStreak; }
-            totalNotesAttempted++; updateProgressUI();
+            input.classList.remove('incorrect'); 
+            input.classList.add('correct');
+            correctAttempts++;
 
             if (activeInputIndex < currentExpectedNotes.length - 1) { 
                 setActiveBox(activeInputIndex + 1); 
             } else { 
-                if (recallTimer) clearTimeout(recallTimer); 
+                score++;
+                const scoreText = document.getElementById('score-text');
+                if(scoreText) scoreText.innerText = score;
                 if (fadeTimer) clearTimeout(fadeTimer);
-                
-                currentCardIndex++; 
-                setTimeout(() => { updateProgressUI(); loadNextCard(); }, 400); 
+                if (breakOutTimer) clearTimeout(breakOutTimer);
+                setTimeout(loadNextCard, 300); 
             }
         } else {
             playSound('wrong');
-            input.classList.remove('correct'); input.classList.remove('incorrect'); void input.offsetWidth; input.classList.add('incorrect');
-            currentNoteHasErrored = true; currentStreak = 0; updateProgressUI();
-            setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 400);
+            input.classList.remove('correct'); 
+            input.classList.remove('incorrect'); 
+            void input.offsetWidth; 
+            input.classList.add('incorrect');
+            
+            setTimeout(() => {
+                input.value = '';
+                input.classList.remove('incorrect');
+            }, 300);
         }
     }
 
-    function handleKeypadDelete() {
-        if (activeInputIndex > 0 && !document.getElementById(`box-${activeInputIndex}`).value) { setActiveBox(activeInputIndex - 1); }
-        const input = document.getElementById(`box-${activeInputIndex}`);
-        if (input && !input.disabled) { input.value = ''; input.classList.remove('correct', 'incorrect'); }
-    }
-
     function finishRound() {
+        if (fadeTimer) clearTimeout(fadeTimer);
+        if (breakOutTimer) clearTimeout(breakOutTimer);
         playSound('complete');
         switchScreen('screen-summary');
-        let accuracy = totalNotesAttempted === 0 ? 0 : Math.round((correctNotesFirstTry / totalNotesAttempted) * 100);
-        document.getElementById('final-accuracy').innerText = `${accuracy}%`;
-        document.getElementById('final-streak').innerText = maxStreak;
+        
+        let accuracy = totalAttempts === 0 ? 0 : Math.round((correctAttempts / totalAttempts) * 100);
+        const finalScore = document.getElementById('final-score');
+        const finalAccuracy = document.getElementById('final-accuracy');
+        if(finalScore) finalScore.innerText = score;
+        if(finalAccuracy) finalAccuracy.innerText = `${accuracy}%`;
     }
 </script>
 
