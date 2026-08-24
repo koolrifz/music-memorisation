@@ -1,303 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Note Name Quiz</title>
-  <style>
-    body {
-      background-color: #121f2d;
-      color: #ffffff;
-      font-family: system-ui, -apple-system, sans-serif;
-      margin: 0;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
+    <title>Note Quest - Piano Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #1a2634;
+            --bg-panel: #243447;
+            --accent-green: #58cc02;
+            --accent-green-shadow: #46a302;
+            --accent-red: #ff4b4b;
+            --accent-red-shadow: #d82b2b;
+            --accent-blue: #1cb0f6;
+            --accent-gold: #ffc800;
+            --text-main: #ffffff;
+            --text-muted: #8696a7;
+        }
 
-    .app-container {
-      width: 100%;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+        body {
+            font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
 
-    /* Top Clef Selector Menu */
-    .clef-selector {
-      display: flex;
-      justify-content: space-between;
-      background: #1e2d3d;
-      padding: 4px;
-      border-radius: 12px;
-      gap: 4px;
-    }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 12px; box-sizing: border-box; position: absolute; top: 0; left: 0; pointer-events: none; opacity: 0; transition: opacity 0.15s ease-in-out; }
+        .screen.active { display: flex; pointer-events: auto; opacity: 1; z-index: 10; }
 
-    .clef-btn {
-      flex: 1;
-      padding: 8px 0;
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-weight: bold;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
+        .setup-card { background: var(--bg-panel); padding: 24px; border-radius: 24px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid #324a64; z-index: 20; position: relative; }
+        .setup-card h1 { margin: 0 0 6px 0; font-size: 28px; color: var(--accent-gold); text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+        .setup-card p { margin: 0 0 20px 0; font-size: 15px; color: var(--text-muted); }
+        
+        select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; color: white; border: 3px solid #324a64; border-radius: 16px; font-size: 16px; font-weight: bold; outline: none; }
 
-    .clef-btn.active {
-      background: #0284c7;
-      color: #ffffff;
-    }
+        .btn { width: 100%; padding: 16px; font-size: 18px; font-weight: 800; border-radius: 18px; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; color: white; transition: transform 0.1s; touch-action: manipulation; position: relative; z-index: 30; }
+        .btn-start { background: var(--accent-green); box-shadow: 0 6px 0 var(--accent-green-shadow); margin-top: 10px; }
+        .btn-start:active { transform: translateY(6px); box-shadow: 0 0 0 var(--accent-green-shadow); }
 
-    /* Helper Sheet Styles */
-    .helper-card {
-      background: #ffffff;
-      color: #000000;
-      border-radius: 16px;
-      padding: 8px 12px;
-    }
+        .btn-secondary { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; margin-top: 10px; font-size: 15px; padding: 14px; }
+        .btn-secondary:active { transform: translateY(6px); box-shadow: 0 0 0 #2a3b4f; }
 
-    .helper-staff-container {
-      padding: 0 12px;
-      overflow: hidden;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+        .btn-helper-toggle { background: var(--accent-blue); box-shadow: 0 4px 0 #1485bc; font-size: 13px; font-weight: 900; padding: 6px 14px; border-radius: 12px; border: none; color: white; cursor: pointer; }
+        .btn-helper-toggle:active { transform: translateY(3px); box-shadow: 0 0 0 #1485bc; }
+        
+        #error-box { color: var(--accent-red); background: rgba(255,75,75,0.1); padding: 10px; margin-top: 15px; border-radius: 12px; font-size: 14px; display: none; font-weight: bold;}
 
-    .helper-title {
-      color: #333;
-      font-size: 0.8rem;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 4px;
-    }
+        /* Game Screen Header */
+        .game-header { width: 100%; max-width: 500px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+        .progress-bar-container { flex: 1; height: 20px; background: #1a2634; border-radius: 12px; overflow: hidden; border: 3px solid #324a64; position: relative; }
+        .progress-fill { height: 100%; background: var(--accent-green); width: 100%; border-radius: 8px; transition: width 1s linear, background-color 0.5s; }
+        .score-counter { font-size: 18px; font-weight: 900; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
+        .timer-badge { font-size: 14px; font-weight: 800; color: var(--accent-blue); text-align: center; margin-bottom: 2px; }
 
-    /* Main Quiz Staff Box */
-    .quiz-card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 16px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+        /* Split Graphical Helper Sheet Modal */
+        .helper-modal {
+            width: 100%;
+            max-width: 500px;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 8px 4px;
+            margin-bottom: 8px;
+            display: none;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            border: 3px solid var(--accent-blue);
+            box-sizing: border-box;
+            min-height: 120px; 
+        }
+        .helper-modal.show { display: block; }
+        .helper-modal h3 { margin: 0 0 6px 0; font-size: 13px; color: #1a2634; text-align: center; font-weight: 900; }
+        
+        .helper-container { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 15px; 
+            width: 100%; 
+            background: #fafbfc; 
+            border-radius: 8px; 
+            min-height: 90px; 
+            padding-top: 5px;
+        }
 
-    /* Piano Keyboard Styles */
-    .keyboard-wrapper {
-      width: 100%;
-      background: #1e2d3d;
-      padding: 10px 6px;
-      border-radius: 12px;
-      box-sizing: border-box;
-    }
+        /* Prominent Notation Card */
+        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 150px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; }
+        .fade-out svg { opacity: 0; transition: opacity 0.8s ease-in-out; }
+        .fade-in svg { opacity: 1; transition: opacity 0.2s ease-in-out; }
+        
+        #score-canvas { width: 100%; display: flex; justify-content: center; }
+        #score-canvas svg { width: 100%; height: 100%; max-height: 130px; }
 
-    .keyboard {
-      position: relative;
-      display: flex;
-      height: 150px;
-      width: 100%;
-      user-select: none;
-      touch-action: manipulation;
-    }
+        /* Directly Aligned Input Boxes */
+        .inputs-row { display: flex; width: 100%; max-width: 500px; justify-content: center; gap: 10px; margin-bottom: 12px; }
+        .input-cell input { width: 48px; height: 50px; text-align: center; font-size: 26px; font-weight: 900; text-transform: uppercase; border: 3px solid #324a64; border-radius: 14px; background: var(--bg-panel); color: white; transition: all 0.15s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+        .input-cell input.active-box { border-color: var(--accent-blue); background: rgba(28, 176, 246, 0.2); transform: scale(1.08); box-shadow: 0 0 15px rgba(28, 176, 246, 0.5); }
+        .input-cell input.correct { background-color: var(--accent-green); border-color: var(--accent-green-shadow); color: white; animation: pop 0.3s ease-out; }
+        .input-cell input.incorrect { background-color: var(--accent-red); border-color: var(--accent-red-shadow); color: white; animation: shake 0.4s; }
 
-    .white-key {
-      flex: 1;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-bottom-left-radius: 6px;
-      border-bottom-right-radius: 6px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding-bottom: 10px;
-      color: #0f172a;
-      font-weight: bold;
-      font-size: 1rem;
-      cursor: pointer;
-      z-index: 1;
-      box-shadow: inset 0 -4px 0 #cbd5e1;
-    }
+        /* Modern Responsive Piano Keyboard */
+        .piano-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 460px;
+            height: 160px;
+            margin: 0 auto;
+            display: flex;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            border-radius: 8px 8px 14px 14px;
+            border: 4px solid #324a64;
+            background: #1a2634;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        
+        .white-key {
+            flex: 1;
+            background: #ffffff;
+            border-right: 2px solid #d0d9e2;
+            border-bottom: 6px solid #b5c2d1;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 15px;
+            font-size: 22px;
+            font-weight: 900;
+            color: #1a2634;
+            transition: all 0.05s ease-out;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        
+        .white-key:last-child {
+            border-right: none;
+        }
+        
+        .white-key:active {
+            background: #e6ecef;
+            border-bottom-width: 2px;
+            transform: translateY(4px);
+        }
 
-    .white-key:active, .white-key.pressed {
-      background: #e2e8f0;
-      box-shadow: inset 0 -1px 0 #94a3b8;
-      transform: translateY(2px);
-    }
+        .black-key {
+            position: absolute;
+            width: 8.5%;
+            height: 60%;
+            background: linear-gradient(to bottom, #4a5c6f, #1a2634);
+            border-radius: 0 0 6px 6px;
+            z-index: 2;
+            pointer-events: none; /* Touches pass through to the white keys! */
+            top: 0;
+            transform: translateX(-50%);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+            border-bottom: 3px solid #0d151e;
+        }
 
-    /* Non-blocking Black Keys */
-    .black-key {
-      position: absolute;
-      top: 0;
-      width: 8.2%;
-      height: 58%;
-      background: #1e293b;
-      border-bottom-left-radius: 4px;
-      border-bottom-right-radius: 4px;
-      z-index: 2;
-      pointer-events: none; /* Allows clicks to pass through to white keys underneath */
-      box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
-    }
+        .summary-card { background: var(--bg-panel); padding: 35px; border-radius: 24px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid #324a64; z-index: 20; position: relative; }
+        .summary-card h2 { color: var(--accent-gold); font-size: 36px; margin: 0 0 10px 0; }
+        .summary-stat { font-size: 18px; margin-bottom: 15px; color: var(--text-muted); }
 
-    .toggle-btn {
-      background: #334155;
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 16px;
-      cursor: pointer;
-      font-size: 0.75rem;
-      align-self: center;
-    }
-  </style>
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+    </style>
 </head>
 <body>
 
-<div class="app-container">
-  
-  <!-- Clef Selection Menu -->
-  <div class="clef-selector">
-    <button class="clef-btn active" onclick="selectClef('treble')">Treble</button>
-    <button class="clef-btn" onclick="selectClef('bass')">Bass</button>
-    <button class="clef-btn" onclick="selectClef('alto')">Alto</button>
-    <button class="clef-btn" onclick="selectClef('tenor')">Tenor</button>
-  </div>
-
-  <button class="toggle-btn" onclick="toggleInterface()">Toggle Input: Keyboard / Circle</button>
-
-  <!-- Helper Sheet -->
-  <div class="helper-card">
-    <div class="helper-title" id="helper-title">Treble Clef Helpers</div>
-    <div class="helper-staff-container" id="helper-display">
-      <div id="helper-lines-text" style="font-size: 0.75rem; color: #444;"></div>
-      <div id="helper-spaces-text" style="font-size: 0.75rem; color: #444;"></div>
+<div id="screen-setup" class="screen active">
+    <div class="setup-card">
+        <h1>🎵 Note Quest</h1>
+        <p>60-Second Piano Challenge</p>
+        
+        <select id="clef-select">
+            <option value="treble">Treble Clef</option>
+            <option value="bass">Bass Clef</option>
+            <option value="alto">Alto Clef</option>
+            <option value="tenor">Tenor Clef</option>
+        </select>
+        
+        <select id="level-select">
+            <option value="1">Level 1: Whole Notes (Single)</option>
+            <option value="2" selected>Level 2: Rhythms (Progressive 2 to 4 Notes)</option>
+        </select>
+        
+        <select id="memory-mode">
+            <option value="visible">Mode: Always Visible (Learning Mode)</option>
+            <option value="fade-5">Mode: Memory (5s Fade)</option>
+            <option value="fade-2">Mode: Blitz (2s Fade)</option>
+        </select>
+        
+        <button class="btn btn-start" id="start-btn" onclick="startGame()">Start 60s Round</button>
+        <div id="error-box"></div>
     </div>
-  </div>
+</div>
 
-  <!-- Main Staff Box (No Centre Bar Line) -->
-  <div class="quiz-card">
-    <svg id="main-staff" width="300" height="100" viewBox="0 0 300 100">
-      <line x1="10" y1="20" x2="290" y2="20" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="35" x2="290" y2="35" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="50" x2="290" y2="50" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="65" x2="290" y2="65" stroke="#000" stroke-width="1.5"/>
-      <line x1="10" y1="80" x2="290" y2="80" stroke="#000" stroke-width="1.5"/>
+<div id="screen-game" class="screen">
+    <div class="game-header">
+        <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
+        <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleHelperModal()">💡 Helper Sheet</button>
+        <div class="score-counter">⭐ <span id="score-text">0</span></div>
+    </div>
+    <div class="timer-badge" id="timer-badge">60s remaining</div>
+    
+    <!-- Collapsible Graphical Helper Sheet Modal -->
+    <div class="helper-modal" id="helper-sheet-modal">
+        <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
+        <div class="helper-container">
+            <div id="helper-lines-canvas"></div>
+            <div id="helper-spaces-canvas"></div>
+        </div>
+    </div>
 
-      <!-- Dynamic Clef Symbol -->
-      <text id="clef-symbol" x="15" y="72" font-family="Bravura, Academico, serif" font-size="48">𝄞</text>
+    <div class="card-wrapper fade-in" id="card-canvas-wrapper">
+        <div id="score-canvas"></div>
+    </div>
+    
+    <div class="inputs-row" id="inputs-container"></div>
 
-      <!-- Whole Note -->
-      <ellipse cx="150" cy="80" rx="8" ry="5.5" fill="none" stroke="#000" stroke-width="3" transform="rotate(-15 150 80)"/>
-    </svg>
-  </div>
+    <!-- 1 Octave Interactive Piano Interface -->
+    <div class="piano-wrapper" id="piano-container">
+        <div class="white-key" onclick="handleKeypadInput('C')">C</div>
+        <!-- C# position: between key 1 and 2 (12.5%) -->
+        <div class="black-key" style="left: 12.5%"></div>
+        
+        <div class="white-key" onclick="handleKeypadInput('D')">D</div>
+        <!-- D# position: between key 2 and 3 (25%) -->
+        <div class="black-key" style="left: 25%"></div>
+        
+        <div class="white-key" onclick="handleKeypadInput('E')">E</div>
+        
+        <div class="white-key" onclick="handleKeypadInput('F')">F</div>
+        <!-- F# position: between key 4 and 5 (50%) -->
+        <div class="black-key" style="left: 50%"></div>
+        
+        <div class="white-key" onclick="handleKeypadInput('G')">G</div>
+        <!-- G# position: between key 5 and 6 (62.5%) -->
+        <div class="black-key" style="left: 62.5%"></div>
+        
+        <div class="white-key" onclick="handleKeypadInput('A')">A</div>
+        <!-- A# position: between key 6 and 7 (75%) -->
+        <div class="black-key" style="left: 75%"></div>
+        
+        <div class="white-key" onclick="handleKeypadInput('B')">B</div>
+        <div class="white-key" onclick="handleKeypadInput('C')">C</div>
+    </div>
+</div>
 
-  <!-- Input Interface Container -->
-  <div id="interface-container"></div>
+<div id="screen-summary" class="screen">
+    <div class="summary-card">
+        <h2>🎉 Time's Up!</h2>
+        <div class="summary-stat">Total Score: <span id="final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+        <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
+        <button class="btn btn-start" id="restart-btn" onclick="startGame()">Play Again 🚀</button>
+        <button class="btn btn-secondary" id="setup-btn" onclick="switchScreen('screen-setup')">Change Settings</button>
+    </div>
 </div>
 
 <script>
-  let activeClef = 'treble';
-  let currentInterface = 'keyboard';
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+        const errBox = document.getElementById('error-box');
+        if(errBox) {
+            errBox.style.display = 'block';
+            errBox.innerText = `System Error: ${msg} (Line ${lineNo})`;
+        }
+        return false;
+    };
 
-  const clefSymbols = {
-    treble: '𝄞',
-    bass: '𝄢',
-    alto: '𝄡',
-    tenor: '𝄡'
-  };
-
-  const helperData = {
-    treble: {
-      lines: "Lines: Every Good Boy Deserves Fruit",
-      spaces: "Spaces: F A C E"
-    },
-    bass: {
-      lines: "Lines: Good Boys Deserve Fruit Always",
-      spaces: "Spaces: All Cows Eat Grass"
-    },
-    alto: {
-      lines: "Lines: Fat Alley Cats Eat Garbage",
-      spaces: "Spaces: Good Boys Deserve Fruit"
-    },
-    tenor: {
-      lines: "Lines: Dogs Face A Cat's Eye",
-      spaces: "Spaces: Empty Garbage Before Dinner"
+    function toggleHelperModal() {
+        const modal = document.getElementById('helper-sheet-modal');
+        if(modal) {
+            modal.classList.toggle('show');
+            if(modal.classList.contains('show')) {
+                setTimeout(renderHelperSheetGraphics, 100);
+            }
+        }
     }
-  };
 
-  function selectClef(clef) {
-    activeClef = clef;
-    
-    // Update active button styling
-    document.querySelectorAll('.clef-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.innerText.toLowerCase() === clef);
-    });
-
-    // Update Clef Symbol on main staff
-    document.getElementById('clef-symbol').textContent = clefSymbols[clef];
-
-    // Update Helper Sheet
-    document.getElementById('helper-title').textContent = `${clef.charAt(0).toUpperCase() + clef.slice(1)} Clef Helpers`;
-    document.getElementById('helper-lines-text').textContent = helperData[clef].lines;
-    document.getElementById('helper-spaces-text').textContent = helperData[clef].spaces;
-  }
-
-  function handleNoteSelection(note) {
-    alert(`Selected Note: ${note}`);
-    // Connect to scoring / answer validation logic here
-  }
-
-  function renderKeyboardInterface() {
-    const container = document.getElementById('interface-container');
-    const whiteKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'A'];
-    
-    // Position black key overlays accurately between keys
-    const blackKeyPositions = [8.2, 33.2, 45.7, 70.7, 83.2];
-
-    let html = `
-      <div class="keyboard-wrapper">
-        <div class="keyboard">
-    `;
-
-    whiteKeys.forEach((note) => {
-      html += `<div class="white-key" onclick="handleNoteSelection('${note}')">${note}</div>`;
-    });
-
-    blackKeyPositions.forEach((pos) => {
-      html += `<div class="black-key" style="left: ${pos}%;"></div>`;
-    });
-
-    html += `
-        </div>
-      </div>
-    `;
-
-    container.innerHTML = html;
-  }
-
-  function renderCircleInterface() {
-    const container = document.getElementById('interface-container');
-    container.innerHTML = `<div style="color: #aaa; text-align: center; padding: 20px;">[ Circle Interface Active ]</div>`;
-  }
-
-  function updateInterface() {
-    if (currentInterface === 'keyboard') {
-      renderKeyboardInterface();
-    } else {
-      renderCircleInterface();
+    // Safely applies bottom text annotation to notes to force text underneath the stave
+    function applyBottomAnnotation(text) {
+        const VF = Vex.Flow;
+        const anno = new VF.Annotation(text);
+        anno.setVerticalJustification(3); // 3 = BOTTOM in VexFlow 3.x
+        return anno;
     }
-  }
 
-  function toggleInterface() {
-    currentInterface = (currentInterface === 'keyboard') ? 'circle' : 'keyboard';
-    updateInterface();
-  }
+    function renderHelperSheetGraphics() {
+        try {
+            const VF = Vex.Flow;
+            
+            // Render Block 1: Lines (Every Good Boy Deserves Fruit)
+            const linesDiv = document.getElementById('helper-lines-canvas');
+            if (linesDiv) {
+                linesDiv.innerHTML = ''; 
+                const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG);
+                renLines.resize(230, 100);
+                const ctxLines = renLines.getContext();
+                ctxLines.scale(0.70, 0.70);
 
-  // Initial Load
-  selectClef('treble');
-  updateInterface();
+                const stave1 = new VF.Stave(0, 5, 320);
+                stave1.addClef('treble').setContext(ctxLines).draw();
+
+                const lineNotes = [
+                    new VF.StaveNote({ keys: ['e/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Every')),
+                    new VF.StaveNote({ keys: ['g/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Good')),
+                    new VF.StaveNote({ keys: ['b/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Boy')),
+                    new VF.StaveNote({ keys: ['d/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Deserves')),
+                    new VF.StaveNote({ keys: ['f/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('Fruit'))
+                ];
+                
+                VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
+            }
+
+            // Render Block 2: Spaces (FACE)
+            const spacesDiv = document.getElementById('helper-spaces-canvas');
+            if (spacesDiv) {
+                spacesDiv.innerHTML = '';
+                const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG);
+                renSpaces.resize(175, 100);
+                const ctxSpaces = renSpaces.getContext();
+                ctxSpaces.scale(0.70, 0.70);
+
+                const stave2 = new VF.Stave(0, 5, 245);
+                stave2.addClef('treble').setContext(ctxSpaces).draw();
+
+                const spaceNotes = [
+                    new VF.StaveNote({ keys: ['f/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('F')),
+                    new VF.StaveNote({ keys: ['a/4'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('A')),
+                    new VF.StaveNote({ keys: ['c/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('C')),
+                    new VF.StaveNote({ keys: ['e/5'], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation('E'))
+                ];
+                
+                VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
+            }
+        } catch(e) {
+            console.error("Helper render error:", e);
+        }
+    }
+
+    let audioCtx = null;
+    function initAudio() {
+        try {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) { console.warn("Audio blocked.", e); }
+    }
+
+    function playSound(type) {
+        if (!audioCtx) return;
+        try {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'correct') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(140, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.2); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'timeout') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.4); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            } else if (type === 'complete') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.15); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.45); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); osc.start(); osc.stop(audioCtx.currentTime + 0.9);
+            }
+        } catch (e) { console.warn("Could not play sound.", e); }
+    }
+
+    const CLEF_CONFIGS = {
+        "treble": { clef: "treble", lines: [["E","e/4"],["G","g/4"],["B","b/4"],["D","d/5"],["F","f/5"]], spaces: [["F","f/4"],["A","a/4"],["C","c/5"],["E","e/5"]] },
+        "bass":   { clef: "bass",   lines: [["G","g/2"],["B","b/2"],["D","d/3"],["F","f/3"],["A","a/3"]], spaces: [["A","a/2"],["C","c/3"],["E","e/3"],["G","g/3"]] },
+        "alto":   { clef: "alto",   lines: [["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"],["G","g/4"]] , spaces: [["G","g/3"],["B","b/3"],["D","d/4"],["F","f/4"]] },
+        "tenor":  { clef: "tenor",  lines: [["D","d/3"],["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"]], spaces: [["E","e/3"],["G","g/3"],["B","b/3"],["D","d/4"]] }
+    };
+
+    let gameTimer = null;
+    let secondsLeft = 60;
+    let score = 0;
+    let totalAttempts = 0;
+    let correctAttempts = 0;
+    let currentExpectedNotes = [];
+    let activeInputIndex = 0;
+    let fadeTimer = null;
+    let breakOutTimer = null;
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const targetScreen = document.getElementById(screenId);
+        if(targetScreen) {
+            targetScreen.classList.add('active');
+        }
+    }
+
+    function startGame() {
+        const errBox = document.getElementById('error-box'); 
+        if(errBox) errBox.style.display = 'none';
+        
+        if (typeof Vex === 'undefined') {
+            if(errBox) {
+                errBox.style.display = 'block'; 
+                errBox.innerHTML = "❌ <b>VexFlow Blocked!</b> Active internet connection required."; 
+            }
+            return;
+        }
+
+        initAudio();
+        score = 0;
+        totalAttempts = 0;
+        correctAttempts = 0;
+        secondsLeft = 60;
+
+        const modeSelect = document.getElementById('memory-mode');
+        const mode = modeSelect ? modeSelect.value : 'visible';
+        const helperToggle = document.getElementById('helper-toggle-btn');
+        const helperModal = document.getElementById('helper-sheet-modal');
+        
+        if (helperToggle) {
+            helperToggle.style.display = (mode === 'visible') ? 'block' : 'none';
+        }
+        if (helperModal) {
+            if (mode === 'visible') {
+                helperModal.classList.add('show');
+                setTimeout(renderHelperSheetGraphics, 100); 
+            } else {
+                helperModal.classList.remove('show');
+            }
+        }
+
+        const scoreText = document.getElementById('score-text');
+        if(scoreText) scoreText.innerText = score;
+        
+        switchScreen('screen-game');
+        start60SecondTimer();
+        loadNextCard();
+    }
+
+    function start60SecondTimer() {
+        if (gameTimer) clearInterval(gameTimer);
+        const fillBar = document.getElementById('progress-bar');
+        if(fillBar) {
+            fillBar.style.width = '100%';
+            fillBar.style.backgroundColor = 'var(--accent-green)';
+        }
+
+        gameTimer = setInterval(() => {
+            secondsLeft--;
+            const timerBadge = document.getElementById('timer-badge');
+            if(timerBadge) timerBadge.innerText = `${secondsLeft}s remaining`;
+            
+            const percent = (secondsLeft / 60) * 100;
+            if(fillBar) fillBar.style.width = `${percent}%`;
+
+            if (secondsLeft <= 20 && secondsLeft > 10) {
+                if(fillBar) fillBar.style.backgroundColor = '#ffc800'; 
+            } else if (secondsLeft <= 10) {
+                if(fillBar) fillBar.style.backgroundColor = 'var(--accent-red)'; 
+            }
+
+            if (secondsLeft <= 0) {
+                clearInterval(gameTimer);
+                finishRound();
+            }
+        }, 1000);
+    }
+
+    function loadNextCard() {
+        if (secondsLeft <= 0) return;
+        if (fadeTimer) clearTimeout(fadeTimer);
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        
+        const cardWrapper = document.getElementById('card-canvas-wrapper');
+        if(cardWrapper) cardWrapper.className = 'card-wrapper fade-in';
+        generateFlashcard();
+    }
+
+    function generateFlashcard() {
+        try {
+            const VF = Vex.Flow;
+            const canvasContainer = document.getElementById('score-canvas'); 
+            if(canvasContainer) canvasContainer.innerHTML = '';
+            const inputsContainer = document.getElementById('inputs-container'); 
+            if(inputsContainer) inputsContainer.innerHTML = '';
+            
+            const levelSelect = document.getElementById('level-select');
+            const level = levelSelect ? levelSelect.value : '2';
+            const clefSelect = document.getElementById('clef-select');
+            const config = CLEF_CONFIGS[clefSelect ? clefSelect.value : 'treble'];
+            const combinedPool = [...config.lines, ...config.spaces];
+
+            const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
+            renderer.resize(320, 130);
+            const context = renderer.getContext();
+            context.scale(1.3, 1.3);
+
+            const stave = new VF.Stave(8, 5, 225);
+            stave.addClef(config.clef);
+            if(level === '2') stave.addTimeSignature("4/4");
+            
+            // Mathematically centres the single whole note on the staff width
+            if(level === '1') {
+                stave.setNoteStartX(115); 
+            }
+            
+            stave.setContext(context).draw();
+
+            currentExpectedNotes = []; 
+            let staveNotes = []; 
+            let lastPitchKey = null;
+
+            if (level === '1') {
+                let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
+                let chosen = avail[Math.floor(Math.random() * avail.length)];
+                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: "w" })); 
+                currentExpectedNotes.push(chosen[0]);
+            } else {
+                let noteCount = 2; 
+                if (secondsLeft < 40 && secondsLeft >= 25) noteCount = 3; 
+                if (secondsLeft < 25) noteCount = 4; 
+
+                let durations = noteCount === 2 ? ["h", "h"] : (noteCount === 3 ? ["h", "q", "q"] : ["q", "q", "q", "q"]);
+
+                for (let dur of durations) {
+                    let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
+                    let chosen = avail[Math.floor(Math.random() * avail.length)]; 
+                    lastPitchKey = chosen[1];
+                    staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: dur })); 
+                    currentExpectedNotes.push(chosen[0]);
+                }
+            }
+
+            let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+            
+            let formatWidth = level === '1' ? 40 : 165; 
+            new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
+            
+            voice.draw(context, stave);
+
+            currentExpectedNotes.forEach((_, idx) => {
+                const cell = document.createElement('div'); cell.className = 'input-cell';
+                const input = document.createElement('input'); 
+                input.type = 'text'; 
+                input.readOnly = true; 
+                input.id = `box-${idx}`;
+                cell.appendChild(input); 
+                if(inputsContainer) inputsContainer.appendChild(cell);
+            });
+
+            activeInputIndex = 0; 
+            setActiveBox(0);
+
+            const modeSelect = document.getElementById('memory-mode');
+            const mode = modeSelect ? modeSelect.value : 'visible';
+            if (mode === 'fade-5') {
+                startFadeCountdown(5, 4); 
+            } else if (mode === 'fade-2') {
+                startFadeCountdown(2, 4); 
+            }
+        } catch (err) { 
+            console.error("Render Error:", err.message); 
+        }
+    }
+
+    function startFadeCountdown(fadeSecs, breakOutSecs) {
+        fadeTimer = setTimeout(() => {
+            const cardWrapper = document.getElementById('card-canvas-wrapper');
+            if(cardWrapper) cardWrapper.className = 'card-wrapper fade-out';
+            
+            breakOutTimer = setTimeout(() => {
+                if (secondsLeft > 0) {
+                    playSound('timeout');
+                    currentExpectedNotes.forEach((val, idx) => {
+                        const box = document.getElementById(`box-${idx}`);
+                        if (box && !box.classList.contains('correct')) {
+                            box.value = val;
+                            box.style.color = 'var(--accent-red)';
+                        }
+                    });
+                    setTimeout(loadNextCard, 800);
+                }
+            }, breakOutSecs * 1000);
+
+        }, fadeSecs * 1000);
+    }
+
+    function setActiveBox(idx) {
+        document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
+        const target = document.getElementById(`box-${idx}`);
+        if (target) { 
+            activeInputIndex = idx; 
+            target.classList.add('active-box'); 
+        }
+    }
+
+    function handleKeypadInput(letter) {
+        if (secondsLeft <= 0) return;
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (!input) return;
+
+        input.value = letter;
+        const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase();
+        totalAttempts++;
+
+        if (letter === correctVal) {
+            playSound('correct');
+            input.classList.remove('incorrect'); 
+            input.classList.add('correct');
+            correctAttempts++;
+
+            if (activeInputIndex < currentExpectedNotes.length - 1) { 
+                setActiveBox(activeInputIndex + 1); 
+            } else { 
+                score++;
+                const scoreText = document.getElementById('score-text');
+                if(scoreText) scoreText.innerText = score;
+                if (fadeTimer) clearTimeout(fadeTimer);
+                if (breakOutTimer) clearTimeout(breakOutTimer);
+                setTimeout(loadNextCard, 300); 
+            }
+        } else {
+            playSound('wrong');
+            input.classList.remove('correct'); 
+            input.classList.remove('incorrect'); 
+            void input.offsetWidth; 
+            input.classList.add('incorrect');
+            
+            setTimeout(() => {
+                input.value = '';
+                input.classList.remove('incorrect');
+            }, 300);
+        }
+    }
+
+    function finishRound() {
+        if (fadeTimer) clearTimeout(fadeTimer);
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        playSound('complete');
+        switchScreen('screen-summary');
+        
+        let accuracy = totalAttempts === 0 ? 0 : Math.round((correctAttempts / totalAttempts) * 100);
+        const finalScore = document.getElementById('final-score');
+        const finalAccuracy = document.getElementById('final-accuracy');
+        if(finalScore) finalScore.innerText = score;
+        if(finalAccuracy) finalAccuracy.innerText = `${accuracy}%`;
+    }
 </script>
 
 </body>
