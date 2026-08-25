@@ -1,1 +1,530 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Memorisation Engine - Levels 1, 2 & 3</title>
+    <!-- Rock-solid VexFlow 3 Stable Release -->
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px; 
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #2c3e50;
+        }
+
+        .header .subtitle {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .meta-fields {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        /* Control Panel */
+        .controls {
+            background: #eef2f7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            padding: 8px 14px;
+            font-size: 14px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #219150;
+        }
+
+        button.print-btn {
+            background-color: #2980b9;
+        }
+
+        button.print-btn:hover {
+            background-color: #1f6391;
+        }
+
+        /* Timer Display Badge */
+        #timer-display {
+            font-size: 16px;
+            font-weight: bold;
+            background: #e67e22;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            letter-spacing: 1px;
+            margin-left: auto;
+        }
+
+        /* Score Display Grid */
+        #score-canvas {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .system-row {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Perfectly aligned grid row underneath the stave with gutters */
+        .inputs-row {
+            display: flex;
+            padding-left: 55px; 
+            width: 100%;
+            max-width: 820px;
+            box-sizing: border-box;
+            margin-top: -8px;
+            margin-bottom: 20px;
+        }
+
+        .bar-container {
+            display: flex;
+            flex: 1;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 5px;
+        }
+
+        .input-cell {
+            text-align: center;
+        }
+
+        .input-cell input {
+            width: 32px;
+            height: 26px;
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 2px solid #95a5a6;
+            border-radius: 4px;
+            background: #fafafa;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .input-cell input:focus {
+            outline: none;
+            border-color: #2980b9;
+            background: #eaf2f8;
+            box-shadow: 0 0 5px rgba(41, 128, 185, 0.4);
+        }
+
+        .input-cell input:disabled {
+            background-color: #e9ecef;
+            color: #495057;
+            border-color: #ced4da;
+        }
+
+        /* Validation Colours */
+        .input-cell input.correct {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .input-cell input.incorrect {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        /* --- PRINT / PDF EXPORT OPTIMIZATIONS --- */
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
+        }
+
+        @media print {
+            body { 
+                background: white; 
+                padding: 0; 
+                margin: 0;
+            }
+            .container { 
+                box-shadow: none; 
+                padding: 10px; 
+                width: 100%; 
+                max-width: none; 
+            }
+            .controls { 
+                display: none; 
+            }
+            .system-row {
+                /* Prevents lines and inputs from breaking in half across pages */
+                page-break-inside: avoid;
+            }
+            .input-cell input { 
+                border: 1.5px solid #333; 
+                background: transparent; 
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>Music Memorisation Engine</h1>
+            <div class="subtitle" id="drill-subtitle">Level 1: Stave Core Drill | Treble Clef</div>
+        </div>
+        <div class="meta-fields">
+            <span>Name: ____________________</span>
+            <span>Time: <span id="recorded-time">_______</span></span>
+            <span>Score: <span id="live-score">0</span></span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label for="level-select"><strong>Level:</strong></label>
+        <select id="level-select" onchange="resetAndGenerate()">
+            <option value="1">Level 1: Whole Notes (Semibreves)</option>
+            <option value="2">Level 2: Rhythmic Values</option>
+            <option value="3">Level 3: Ledger Lines (Extended Range)</option>
+        </select>
+
+        <label for="clef-select"><strong>Clef:</strong></label>
+        <select id="clef-select" onchange="resetAndGenerate()">
+            <option value="treble">Treble Clef</option>
+            <option value="bass">Bass Clef</option>
+            <option value="alto">Alto Clef</option>
+            <option value="tenor">Tenor Clef</option>
+        </select>
+
+        <button onclick="resetAndGenerate()">🔄 Randomise New Sheet</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+        
+        <div id="timer-display">60s</div>
+    </div>
+
+    <div id="score-canvas"></div>
+</div>
+
+<script>
+    const LEVEL_2_PATTERNS = [
+        [ {dur: "q"}, {dur: "q"}, {dur: "q"}, {dur: "q"} ],
+        [ {dur: "h"}, {dur: "h"} ],
+        [ {dur: "h"}, {dur: "q"}, {dur: "q"} ],
+        [ {dur: "q"}, {dur: "q"}, {dur: "h"} ],
+        [ {dur: "w"} ]
+    ];
+
+    // Ledger line configurations up to 2 lines + spaces
+    const LEDGER_CONFIGS = {
+        "treble": { 
+            above: [["G","g/5"],["A","a/5"],["B","b/5"],["C","c/6"],["D","d/6"]], 
+            below: [["D","d/4"],["C","c/4"],["B","b/3"],["A","a/3"],["G","g/3"]] 
+        },
+        "bass": { 
+            above: [["B","b/3"],["C","c/4"],["D","d/4"],["E","e/4"],["F","f/4"]], 
+            below: [["F","f/2"],["E","e/2"],["D","d/2"],["C","c/2"],["B","b/1"]] 
+        },
+        "alto": { 
+            above: [["A","a/4"],["B","b/4"],["C","c/5"],["D","d/5"],["E","e/5"]], 
+            below: [["E","e/3"],["D","d/3"],["C","c/3"],["B","b/2"],["A","a/2"]] 
+        },
+        "tenor": { 
+            above: [["F","f/4"],["G","g/4"],["A","a/4"],["B","b/4"],["C","c/5"]], 
+            below: [["C","c/3"],["B","b/2"],["A","a/2"],["G","g/2"],["F","f/2"]] 
+        }
+    };
+
+    let timerInterval = null;
+    let baseTime = 60;
+    let timeLeft = 60;
+    let timerStarted = false;
+
+    function resetAndGenerate() {
+        stopTimer();
+        generateDrill();
+    }
+
+    function checkStartTimer() {
+        if (!timerStarted) {
+            timerStarted = true;
+            timeLeft = baseTime;
+            document.getElementById('recorded-time').innerText = `${baseTime}s (Active)`;
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer-display').innerText = timeLeft + 's';
+                
+                if (timeLeft <= 0) {
+                    stopTimer();
+                    lockInputs();
+                    document.getElementById('recorded-time').innerText = 'Time Up';
+                    alert("⏰ Time's up! Great effort. Check your final score above.");
+                }
+            }, 1000);
+        }
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        timerStarted = false;
+    }
+
+    function lockInputs() {
+        document.querySelectorAll('.input-cell input').forEach(input => {
+            input.disabled = true;
+        });
+    }
+
+    function updateScore() {
+        const correctCount = document.querySelectorAll('.input-cell input.correct').length;
+        document.getElementById('live-score').innerText = correctCount;
+    }
+
+    function generateDrill() {
+        try {
+            if (typeof Vex === 'undefined') {
+                alert("VexFlow engine failed to load.");
+                return;
+            }
+
+            const level = document.getElementById('level-select').value;
+            const clefKey = document.getElementById('clef-select').value;
+            const selectElem = document.getElementById('clef-select');
+            const clefLabel = selectElem.options[selectElem.selectedIndex].text;
+
+            // Give more time for Level 3 since it has 60 bars instead of 24
+            baseTime = level === '3' ? 150 : 60; 
+
+            stopTimer();
+            document.getElementById('timer-display').innerText = `${baseTime}s`;
+            document.getElementById('live-score').innerText = '0';
+            document.getElementById('recorded-time').innerText = '_______';
+
+            const VF = Vex.Flow;
+            const canvasContainer = document.getElementById('score-canvas');
+            canvasContainer.innerHTML = ''; 
+
+            let levelLabel = "Stave Core Drill";
+            if (level === '2') levelLabel = "Rhythmic Note-Name Identification";
+            if (level === '3') levelLabel = "Ledger Lines Mastery";
+            
+            document.getElementById('drill-subtitle').innerText = `Level ${level}: ${levelLabel} | ${clefLabel}`;
+
+            const CLEF_CONFIGS = {
+                "treble": { clef: "treble", lines: [["E","e/4"],["G","g/4"],["B","b/4"],["D","d/5"],["F","f/5"]], spaces: [["F","f/4"],["A","a/4"],["C","c/5"],["E","e/5"]] },
+                "bass":   { clef: "bass",   lines: [["G","g/2"],["B","b/2"],["D","d/3"],["F","f/3"],["A","a/3"]], spaces: [["A","a/2"],["C","c/3"],["E","e/3"],["G","g/3"]] },
+                "alto":   { clef: "alto",   lines: [["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"],["G","g/4"]] , spaces: [["G","g/3"],["B","b/3"],["D","d/4"],["F","f/4"]] },
+                "tenor":  { clef: "tenor",  lines: [["D","d/3"],["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"]], spaces: [["E","e/3"],["G","g/3"],["B","b/3"],["D","d/4"]] }
+            };
+
+            const config = CLEF_CONFIGS[clefKey];
+            const combinedPool = [...config.lines, ...config.spaces];
+            
+            // Level 3 logic constraints
+            const ledgerConfig = LEDGER_CONFIGS[clefKey];
+            const l3FirstBlockMode = Math.random() < 0.5 ? 'above' : 'below';
+
+            let globalInputCounter = 1;
+            let globalBarIndex = 1;
+
+            const numSystems = level === '3' ? 15 : 6; 
+            const barsPerLine = 4; 
+            const totalWidth = 820; 
+            const clefWidth = 55;
+            const usableWidth = totalWidth - clefWidth;
+            const measureWidth = usableWidth / barsPerLine;
+
+            let lastPitchKey = null;
+
+            for (let sys = 0; sys < numSystems; sys++) {
+                const sysWrapper = document.createElement('div');
+                sysWrapper.className = 'system-row';
+                
+                const svgDiv = document.createElement('div');
+                sysWrapper.appendChild(svgDiv);
+
+                const renderer = new VF.Renderer(svgDiv, VF.Renderer.Backends.SVG);
+                renderer.resize(totalWidth, 105);
+                const context = renderer.getContext();
+
+                const inputsRow = document.createElement('div');
+                inputsRow.className = 'inputs-row';
+
+                for (let b = 0; b < barsPerLine; b++) {
+                    const staveX = (b === 0) ? 0 : clefWidth + (b * measureWidth);
+                    const staveW = (b === 0) ? clefWidth + measureWidth : measureWidth;
+
+                    const stave = new VF.Stave(staveX, 10, staveW);
+                    if (b === 0) {
+                        stave.addClef(config.clef);
+                        stave.addTimeSignature("4/4");
+                    }
+                    stave.setContext(context).draw();
+
+                    let staveNotes = [];
+                    let barExpectedNotes = [];
+                    
+                    // Determine which pool of notes to pull from
+                    let currentPool = combinedPool;
+                    if (level === '3') {
+                        if (globalBarIndex <= 20) {
+                            currentPool = l3FirstBlockMode === 'above' ? ledgerConfig.above : ledgerConfig.below;
+                        } else if (globalBarIndex <= 40) {
+                            currentPool = l3FirstBlockMode === 'above' ? ledgerConfig.below : ledgerConfig.above;
+                        } else {
+                            currentPool = [...ledgerConfig.above, ...ledgerConfig.below];
+                        }
+                    }
+
+                    if (level === '1' || level === '3') {
+                        let avail = currentPool.filter(p => p[1] !== lastPitchKey);
+                        let chosen = avail[Math.floor(Math.random() * avail.length)];
+                        lastPitchKey = chosen[1];
+
+                        let note = new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: "w" });
+                        staveNotes.push(note);
+                        barExpectedNotes.push(chosen[0]);
+                    } else if (level === '2') {
+                        let pattern = LEVEL_2_PATTERNS[Math.floor(Math.random() * LEVEL_2_PATTERNS.length)];
+                        for (let item of pattern) {
+                            let avail = currentPool.filter(p => p[1] !== lastPitchKey);
+                            let chosen = avail[Math.floor(Math.random() * avail.length)];
+                            lastPitchKey = chosen[1];
+
+                            let note = new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: item.dur });
+                            staveNotes.push(note);
+                            barExpectedNotes.push(chosen[0]);
+                        }
+                    }
+
+                    let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+                    new VF.Formatter().joinVoices([voice]).format([voice], staveW - ((b === 0) ? clefWidth + 15 : 10));
+                    voice.draw(context, stave);
+
+                    let barContainer = document.createElement('div');
+                    barContainer.className = 'bar-container';
+
+                    barExpectedNotes.forEach((expectedNoteName) => {
+                        const cell = document.createElement('div');
+                        cell.className = 'input-cell';
+
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.maxLength = 1;
+                        input.dataset.correct = expectedNoteName;
+                        input.id = `input-${globalInputCounter}`;
+
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Backspace' && e.target.value === '') {
+                                const prevId = parseInt(e.target.id.replace('input-', '')) - 1;
+                                const prevInput = document.getElementById(`input-${prevId}`);
+                                if (prevInput) prevInput.focus();
+                            }
+                        });
+
+                        input.addEventListener('input', (e) => {
+                            checkStartTimer(); 
+                            const val = e.target.value.toUpperCase();
+                            e.target.value = val;
+                            const correctVal = e.target.dataset.correct.toUpperCase();
+
+                            if (val.length === 1) {
+                                if (val === correctVal) {
+                                    e.target.classList.remove('incorrect');
+                                    e.target.classList.add('correct');
+                                    updateScore();
+                                    
+                                    const nextId = parseInt(e.target.id.replace('input-', '')) + 1;
+                                    const nextInput = document.getElementById(`input-${nextId}`);
+                                    if (nextInput) nextInput.focus();
+                                    else e.target.blur();
+                                } else {
+                                    e.target.classList.remove('correct');
+                                    e.target.classList.add('incorrect');
+                                    updateScore();
+                                    setTimeout(() => {
+                                        e.target.value = '';
+                                        e.target.classList.remove('incorrect');
+                                        updateScore();
+                                    }, 400);
+                                }
+                            } else {
+                                e.target.classList.remove('correct', 'incorrect');
+                                updateScore();
+                            }
+                        });
+
+                        cell.appendChild(input);
+                        barContainer.appendChild(cell);
+                        globalInputCounter++;
+                    });
+
+                    inputsRow.appendChild(barContainer);
+                    globalBarIndex++;
+                }
+
+                sysWrapper.appendChild(inputsRow);
+                canvasContainer.appendChild(sysWrapper);
+            }
+        } catch (error) {
+            console.error("VexFlow Generation Error:", error);
+            alert("Generation Error: " + error.message);
+        }
+    }
+
+    window.onload = generateDrill;
+</script>
+
+</body>
+</html>
