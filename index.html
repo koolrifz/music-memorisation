@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
-    <title>Note Quest - SRS & Keyboard</title>
+    <title>Note Quest - 60s Sprint Progression</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <style>
         :root {
@@ -44,17 +44,20 @@
         .game-header { width: 100%; max-width: 500px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
         .progress-bar-container { flex: 1; height: 20px; background: #1a2634; border-radius: 12px; overflow: hidden; border: 3px solid #324a64; position: relative; }
         .progress-fill { height: 100%; background: var(--accent-green); width: 100%; border-radius: 8px; transition: width 1s linear, background-color 0.5s; }
-        .score-counter { font-size: 18px; font-weight: 900; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
+        .score-counter { font-size: 18px; font-weight: 900; color: var(--accent-gold); display: flex; flex-direction: column; align-items: flex-end; }
+        .score-row { display: flex; align-items: center; gap: 6px; }
+        .tier-tracker { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
         .timer-badge { font-size: 14px; font-weight: 800; color: var(--accent-blue); text-align: center; margin-bottom: 2px; }
+        .flash-timer { width: 100%; max-width: 500px; height: 4px; background: #324a64; margin-bottom: 4px; border-radius: 2px; overflow: hidden; }
+        .flash-timer-fill { height: 100%; background: var(--accent-red); width: 100%; transition: width linear; }
 
         .helper-modal { width: 100%; max-width: 500px; background: #ffffff; border-radius: 16px; padding: 8px 4px; margin-bottom: 8px; display: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: 3px solid var(--accent-blue); box-sizing: border-box; min-height: 120px; }
         .helper-modal.show { display: block; }
         .helper-modal h3 { margin: 0 0 6px 0; font-size: 13px; color: #1a2634; text-align: center; font-weight: 900; }
         .helper-container { display: flex; justify-content: center; align-items: center; gap: 5px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 90px; padding-top: 5px; }
 
-        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 140px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; }
-        .fade-out svg { opacity: 0; transition: opacity 0.8s ease-in-out; }
-        .fade-in svg { opacity: 1; transition: opacity 0.2s ease-in-out; }
+        .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 140px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; transition: opacity 0.2s; }
+        .card-wrapper.timeout { opacity: 0.5; border-color: var(--accent-red); }
         #score-canvas { width: 100%; display: flex; justify-content: center; }
         #score-canvas svg { width: 100%; height: 100%; max-height: 120px; }
 
@@ -90,7 +93,7 @@
 <div id="screen-setup" class="screen active">
     <div class="setup-card">
         <h1>🎵 Note Quest</h1>
-        <p>60-Second Challenge</p>
+        <p>60-Second Progressive Sprint</p>
         
         <select id="clef-select" onchange="renderHelperSheetGraphics()">
             <option value="treble">Treble Clef</option>
@@ -99,18 +102,7 @@
             <option value="tenor">Tenor Clef</option>
         </select>
         
-        <select id="level-select">
-            <option value="1" selected>Level 1: Whole Notes (Single)</option>
-            <option value="2">Level 2: Rhythms (Progressive 2 to 4 Notes)</option>
-        </select>
-        
-        <select id="memory-mode">
-            <option value="visible">Mode: Always Visible (Learning Mode)</option>
-            <option value="fade-5">Mode: Memory (5s Fade)</option>
-            <option value="fade-2">Mode: Blitz (2s Fade)</option>
-        </select>
-        
-        <button class="btn btn-start" id="start-btn" onclick="startGame()">Start 60s Round</button>
+        <button class="btn btn-start" id="start-btn" onclick="startGame()">Start Sprint Round</button>
         <div id="error-box"></div>
     </div>
 </div>
@@ -119,10 +111,16 @@
     <div class="game-header">
         <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
         <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleHelperModal()">💡 Helper Sheet</button>
-        <div class="score-counter">⭐ <span id="score-text">0</span></div>
+        <div class="score-counter">
+            <div class="score-row">⭐ <span id="score-text">0</span></div>
+            <div class="tier-tracker" id="tier-tracker-text">Tier 1 | Streak: 0/3</div>
+        </div>
     </div>
     <div class="timer-badge" id="timer-badge">60s remaining</div>
     
+    <!-- Micro Flashcard Timeout Bar -->
+    <div class="flash-timer"><div class="flash-timer-fill" id="flash-timer-fill"></div></div>
+
     <div class="helper-modal" id="helper-sheet-modal">
         <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
         <div class="helper-container">
@@ -131,7 +129,7 @@
         </div>
     </div>
 
-    <div class="card-wrapper fade-in" id="card-canvas-wrapper">
+    <div class="card-wrapper" id="card-canvas-wrapper">
         <div id="score-canvas"></div>
     </div>
     
@@ -168,10 +166,11 @@
 
 <div id="screen-summary" class="screen">
     <div class="summary-card">
-        <h2>🎉 Time's Up!</h2>
+        <h2>🎉 Sprint Complete!</h2>
         <div class="medal-display" id="final-medal">🥉</div>
         <div class="summary-stat">Total Score: <span id="final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
         <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
+        <div class="summary-stat">Highest Tier Reached: <span id="final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
         <button class="btn btn-start" id="restart-btn" onclick="startGame()">Play Again 🚀</button>
         <button class="btn btn-secondary" id="setup-btn" onclick="switchScreen('screen-setup')">Change Settings</button>
     </div>
@@ -181,13 +180,19 @@
     let isPianoInput = true;
     let activeErrorsQueue = []; 
     let isTestingErrorNote = false;
-    let currentFlashcardPitch = null; // e.g. "b/4"
+    let currentFlashcardPitch = null; 
 
-    // Listen for computer keyboard strokes
+    // SPRiNT ALGORITHM VARIABLES
+    let currentTier = 1;      // 1 to 4
+    let currentStreak = 0;    // Needs 3 to advance
+    let highestTierCompleted = 0; 
+    
+    // Limits: Tier 1=2s, Tier 2=3s, Tier 3=4s, Tier 4=5s
+    function getTimeLimitForTier(tier) { return tier + 1; }
+
     window.addEventListener('keydown', (e) => {
         const key = e.key.toUpperCase();
         if (['A','B','C','D','E','F','G'].includes(key)) {
-            // Visual feedback simulation
             if (isPianoInput) {
                 const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`);
                 if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); }
@@ -284,7 +289,7 @@
     };
 
     let gameTimer = null; let secondsLeft = 60; let score = 0; let totalAttempts = 0; let correctAttempts = 0;
-    let currentExpectedNotes = []; let activeInputIndex = 0; let fadeTimer = null; let breakOutTimer = null;
+    let currentExpectedNotes = []; let activeInputIndex = 0; let breakOutTimer = null;
 
     function switchScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -293,9 +298,20 @@
         if (screenId === 'screen-game') setTimeout(positionWheelButtons, 50);
     }
 
+    function updateTrackerUI() {
+        document.getElementById('tier-tracker-text').innerText = `Tier ${currentTier}/4 | Streak: ${currentStreak}/3`;
+        document.getElementById('score-text').innerText = score;
+    }
+
+    function resetStreak() {
+        currentStreak = 0;
+        updateTrackerUI();
+    }
+
     function startGame() {
         initAudio(); score = 0; totalAttempts = 0; correctAttempts = 0; secondsLeft = 60; activeErrorsQueue = [];
-        document.getElementById('score-text').innerText = score;
+        currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
+        updateTrackerUI();
         switchScreen('screen-game'); start60SecondTimer(); loadNextCard();
     }
 
@@ -316,8 +332,14 @@
 
     function loadNextCard() {
         if (secondsLeft <= 0) return;
-        if (fadeTimer) clearTimeout(fadeTimer); if (breakOutTimer) clearTimeout(breakOutTimer);
-        document.getElementById('card-canvas-wrapper').className = 'card-wrapper fade-in';
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        document.getElementById('card-canvas-wrapper').classList.remove('timeout');
+        
+        // Reset local timer UI
+        const flashFill = document.getElementById('flash-timer-fill');
+        flashFill.style.transition = 'none';
+        flashFill.style.width = '100%';
+        
         generateFlashcard();
     }
 
@@ -327,7 +349,6 @@
             const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
             const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
             
-            const level = document.getElementById('level-select').value;
             const config = CLEF_CONFIGS[document.getElementById('clef-select').value];
             const combinedPool = [...config.lines, ...config.spaces];
 
@@ -338,8 +359,8 @@
             const stave = new VF.Stave(8, 5, 225);
             stave.addClef(config.clef);
             
-            if(level === '1') { 
-                stave.options.left_bar = false; // Ditch the left barline for Level 1
+            if(currentTier === 1) { 
+                stave.options.left_bar = false; 
                 stave.setNoteStartX(115); 
             } else {
                 stave.addTimeSignature("4/4");
@@ -347,33 +368,38 @@
             stave.setContext(context).draw();
 
             currentExpectedNotes = []; let staveNotes = []; 
+            let durations = [];
+            let formatWidth = 165;
 
-            if (level === '1') {
+            // Algorithm dictates rhythm array
+            if (currentTier === 1) { durations = ["w"]; formatWidth = 40; }
+            else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
+            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; }
+            else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
+
+            let lastPitchKey = null;
+
+            for (let dur of durations) {
                 let chosenNote;
-                // SRS Error Interleave Logic
-                if (activeErrorsQueue.length > 0 && !isTestingErrorNote) {
+                // SRS Error Interleave applies only if we are generating a single note
+                if (durations.length === 1 && activeErrorsQueue.length > 0 && !isTestingErrorNote) {
                     chosenNote = [activeErrorsQueue[0].letter, activeErrorsQueue[0].pitch];
                     isTestingErrorNote = true;
                 } else {
-                    chosenNote = combinedPool[Math.floor(Math.random() * combinedPool.length)];
+                    let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
+                    chosenNote = avail[Math.floor(Math.random() * avail.length)]; 
                     isTestingErrorNote = false;
                 }
                 
-                currentFlashcardPitch = chosenNote[1];
-                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosenNote[1]], duration: "w" })); 
+                lastPitchKey = chosenNote[1];
+                if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
+                
+                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosenNote[1]], duration: dur })); 
                 currentExpectedNotes.push(chosenNote[0]);
-            } else {
-                // Multi-note logic remains unmodified for this test
-                let durations = ["q", "q", "q", "q"];
-                for (let dur of durations) {
-                    let chosen = combinedPool[Math.floor(Math.random() * combinedPool.length)]; 
-                    staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosen[1]], duration: dur })); 
-                    currentExpectedNotes.push(chosen[0]);
-                }
             }
 
             let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-            new VF.Formatter().joinVoices([voice]).format([voice], level === '1' ? 40 : 165);
+            new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
             voice.draw(context, stave);
 
             currentExpectedNotes.forEach((_, idx) => {
@@ -383,22 +409,38 @@
             });
             activeInputIndex = 0; setActiveBox(0);
 
-            const mode = document.getElementById('memory-mode').value;
-            if (mode === 'fade-5') startFadeCountdown(5, 4); 
-            else if (mode === 'fade-2') startFadeCountdown(2, 4); 
+            // Start the strict sprint timer
+            startFlashcardTimer(getTimeLimitForTier(currentTier));
+            
         } catch (err) { console.error(err); }
     }
 
-    function startFadeCountdown(fadeSecs, breakOutSecs) {
-        fadeTimer = setTimeout(() => {
-            document.getElementById('card-canvas-wrapper').className = 'card-wrapper fade-out';
-            breakOutTimer = setTimeout(() => {
-                if (secondsLeft > 0) {
-                    playSound('timeout');
-                    setTimeout(loadNextCard, 800);
-                }
-            }, breakOutSecs * 1000);
-        }, fadeSecs * 1000);
+    function startFlashcardTimer(seconds) {
+        const flashFill = document.getElementById('flash-timer-fill');
+        // Small delay to allow CSS reset to take effect, then animate down
+        setTimeout(() => {
+            flashFill.style.transition = `width ${seconds}s linear`;
+            flashFill.style.width = '0%';
+        }, 50);
+
+        breakOutTimer = setTimeout(() => {
+            if (secondsLeft > 0) {
+                playSound('timeout');
+                document.getElementById('card-canvas-wrapper').classList.add('timeout');
+                
+                // Penalty: Reset Streak
+                resetStreak();
+
+                // Show correct answers
+                currentExpectedNotes.forEach((val, idx) => {
+                    const box = document.getElementById(`box-${idx}`);
+                    if (box && !box.classList.contains('correct')) {
+                        box.value = val; box.style.color = 'var(--accent-red)';
+                    }
+                });
+                setTimeout(loadNextCard, 800);
+            }
+        }, seconds * 1000);
     }
 
     function setActiveBox(idx) {
@@ -421,8 +463,7 @@
             input.classList.remove('incorrect'); input.classList.add('correct');
             correctAttempts++;
 
-            // SRS Logic: Decrement error attempts if we were testing an error
-            if (isTestingErrorNote && document.getElementById('level-select').value === '1') {
+            if (isTestingErrorNote && currentTier === 1) {
                 activeErrorsQueue[0].remaining--;
                 if (activeErrorsQueue[0].remaining <= 0) activeErrorsQueue.shift(); 
             }
@@ -430,18 +471,34 @@
             if (activeInputIndex < currentExpectedNotes.length - 1) { 
                 setActiveBox(activeInputIndex + 1); 
             } else { 
-                score++; document.getElementById('score-text').innerText = score;
-                if (fadeTimer) clearTimeout(fadeTimer); if (breakOutTimer) clearTimeout(breakOutTimer);
-                setTimeout(loadNextCard, 300); 
+                // Fully correct card before timeout!
+                if (breakOutTimer) clearTimeout(breakOutTimer);
+                
+                score += currentTier; // Bonus points for harder tiers
+                currentStreak++;
+                
+                if (currentStreak >= 3) {
+                    highestTierCompleted = Math.max(highestTierCompleted, currentTier);
+                    if (currentTier < 4) {
+                        currentTier++;
+                        currentStreak = 0;
+                    } else {
+                        // Max tier completed. Keep them here to rack up high scores.
+                        currentStreak = 0; 
+                    }
+                }
+                
+                updateTrackerUI();
+                setTimeout(loadNextCard, 200); 
             }
         } else {
             playSound('wrong');
+            resetStreak(); // Penalty!
             
-            // SRS Logic: Register the error
-            if (document.getElementById('level-select').value === '1') {
+            if (currentTier === 1) {
                 let existingErr = activeErrorsQueue.find(e => e.pitch === currentFlashcardPitch);
                 if (!existingErr) activeErrorsQueue.push({ pitch: currentFlashcardPitch, letter: correctVal, remaining: 3 });
-                else existingErr.remaining = 3; // Reset requirement to 3 correct if they fumble again
+                else existingErr.remaining = 3; 
             }
 
             input.classList.remove('correct'); input.classList.remove('incorrect'); 
@@ -451,16 +508,18 @@
     }
 
     function finishRound() {
-        if (fadeTimer) clearTimeout(fadeTimer); if (breakOutTimer) clearTimeout(breakOutTimer);
+        if (breakOutTimer) clearTimeout(breakOutTimer);
         playSound('complete'); switchScreen('screen-summary');
         
         let accuracy = totalAttempts === 0 ? 0 : Math.round((correctAttempts / totalAttempts) * 100);
         document.getElementById('final-score').innerText = score;
         document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+        document.getElementById('final-tier').innerText = highestTierCompleted;
 
-        let medal = 'Bronze 🥉'; // Standard passing
-        if (accuracy >= 95 && score >= 20) medal = 'Gold 🥇'; // High speed, high accuracy
-        else if (accuracy >= 85 && score >= 12) medal = 'Silver 🥈'; 
+        let medal = 'Keep Practising! 💪'; 
+        if (highestTierCompleted === 4) medal = 'Gold 🥇';
+        else if (highestTierCompleted === 3) medal = 'Silver 🥈'; 
+        else if (highestTierCompleted === 2) medal = 'Bronze 🥉'; 
         
         document.getElementById('final-medal').innerText = medal;
     }
