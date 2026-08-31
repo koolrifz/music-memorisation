@@ -430,6 +430,14 @@
             view.classList.remove('active');
         });
         document.getElementById(targetViewId).classList.add('active');
+        
+        // Force quit NoteQuest if they return to the dashboard
+        if (targetViewId === 'view-dashboard') {
+            if (typeof gameTimer !== 'undefined' && gameTimer) clearInterval(gameTimer);
+            if (typeof breakOutTimer !== 'undefined' && breakOutTimer) clearTimeout(breakOutTimer);
+            if (typeof fadeTimer !== 'undefined' && fadeTimer) clearTimeout(fadeTimer);
+            if (typeof switchScreen === 'function') switchScreen('screen-setup'); // Reset NoteQuest UI
+        }
     }
 
     // Credits Modal Logic
