@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kool Riffs - SMASH Grid</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #1a2634;
+            --bg-panel: #243447;
+            --accent-green: #58cc02;
+            --accent-blue: #1cb0f6;
+            --accent-gold: #ffc800;
+            --accent-red: #ff4b4b;
+            --text-main: #ffffff;
+            --text-muted: #8696a7;
+        }
+
+        body {
+            font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100dvh;
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Top HUD Bar */
+        .top-hud {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-panel);
+            padding: 10px 15px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #324a64;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .stat-box { display: flex; flex-direction: column; align-items: center; font-size: 14px; color: var(--text-muted); }
+        .stat-value { font-size: 20px; color: var(--text-main); }
+        .score-value { color: var(--accent-gold); }
+
+        /* Progress & Timer */
+        .status-area {
+            width: 100%;
+            max-width: 400px;
+            padding: 0 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .timer-bar {
+            width: 100%;
+            height: 8px;
+            background: #324a64;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .timer-fill {
+            height: 100%;
+            width: 100%;
+            background: var(--accent-blue);
+        }
+
+        .streak-dots { display: flex; gap: 8px; margin-bottom: 10px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; background: #324a64; }
+        .dot.filled { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+
+        .tier-label { font-size: 14px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Main Instruction */
+        .instruction-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .master-clef { font-size: 45px; font-weight: bold; line-height: 1; }
+        
+        .instruction { 
+            font-size: 26px; 
+            font-weight: 900; 
+            text-transform: uppercase; 
+            transition: color 0.1s;
+        }
+        .instr-lines { color: var(--accent-gold); }
+        .instr-spaces { color: var(--accent-blue); }
+        .instr-ready { color: var(--accent-green); }
+
+        /* The SMASH Grid Container */
+        #smash-grid {
+            display: grid;
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+            padding: 0 15px;
+            box-sizing: border-box;
+            margin-bottom: 30px;
+            pointer-events: none; /* Disabled until round starts */
+        }
+        #smash-grid.active { pointer-events: auto; }
+
+        /* Dynamic Column Layouts */
+        .grid-1-col { grid-template-columns: 1fr; max-width: 200px !important; }
+        .grid-3-col { grid-template-columns: repeat(3, 1fr); }
+
+        /* The Cards */
+        .card {
+            background: #ffffff;
+            border: 4px solid #e0e6ed;
+            border-radius: 16px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s ease-out, border-color 0.1s, background-color 0.1s;
+            overflow: hidden; 
+            aspect-ratio: 1 / 1; 
+        }
+        
+        .card.smashed {
+            border-color: var(--accent-green);
+            background: rgba(88, 204, 2, 0.15);
+            transform: scale(0.92);
+        }
+        .card.wrong-smash {
+            border-color: var(--accent-red);
+            background: rgba(255, 75, 75, 0.15);
+            transform: scale(0.92);
+        }
+
+        .card svg { width: 100%; height: 100%; pointer-events: none; }
+
+        /* Start Button overlay */
+        #start-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(26,38,52,0.9);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 100;
+        }
+        .btn-start {
+            background: var(--accent-green);
+            color: white; border: none; padding: 15px 30px; font-size: 20px; font-weight: 900;
+            border-radius: 12px; box-shadow: 0 6px 0 #46a302; cursor: pointer; text-transform: uppercase;
+        }
+        .btn-start:active { transform: translateY(6px); box-shadow: 0 0 0 #46a302; }
+
+    </style>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <button class="btn-start" onclick="startGame()">Start Stage 1</button>
+    </div>
+
+    <div class="top-hud">
+        <div class="stat-box">Attempts <span class="stat-value" id="hud-attempts">0</span></div>
+        <div class="stat-box" style="font-size: 16px; color: white;">Stage 1: Line vs Space</div>
+        <div class="stat-box">Score <span class="stat-value score-value" id="hud-score">0</span></div>
+    </div>
+
+    <div class="status-area">
+        <div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+        <div class="streak-dots" id="streak-dots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="tier-label" id="tier-label">1 Card Grid</div>
+    </div>
+
+    <div class="instruction-area">
+        <div class="master-clef">𝄞</div> 
+        <div class="instruction instr-ready" id="instruction-text">GET READY!</div>
+    </div>
+
+    <div id="smash-grid"></div>
+
+    <script>
+        // --- AUDIO & SPEECH ENGINE ---
+        let audioCtx = null;
+
+        function initAudioAndSpeech() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                // Fire a silent speech utterance to unlock the Web Speech API on mobile
+                if ('speechSynthesis' in window) {
+                    let dummy = new SpeechSynthesisUtterance('');
+                    dummy.volume = 0;
+                    window.speechSynthesis.speak(dummy);
+                }
+            } catch (e) { console.error("Audio init failed", e); }
+        }
+
+        function speakPrompt(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+                let utterance = new SpeechSynthesisUtterance(text.toLowerCase());
+                utterance.rate = 1.3; 
+                utterance.pitch = 1.1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function playDing(currentStreak, currentTargetsSmashed) {
+            if (!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                let osc = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                // Rising pitch logic
+                let freq = 500 + (currentStreak * 100) + (currentTargetsSmashed * 80);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch (e) {}
+        }
+
+        function playBuzzer() {
+            if (!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                let osc = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch(e) {}
+        }
+
+        // --- GAME DATA & CONFIG ---
+        const tiers = [1, 2, 3, 6, 9, 12];
+        const linesPool = ["c/4", "e/4", "g/4", "b/4", "d/5", "f/5", "a/5"];
+        const spacesPool = ["d/4", "f/4", "a/4", "c/5", "e/5", "g/5"];
+        
+        let currentTierIndex = 0;
+        let score = 0;
+        let attempts = 0;
+        let streak = 0;
+        
+        let roundActive = false;
+        let roundTimer;
+        let currentTargetType = ""; // "LINES" or "SPACES"
+        let targetsOnScreen = 0;
+        let targetsSmashed = 0;
+        let wrongTaps = 0;
+
+        function getTimerDuration(cardCount) {
+            return cardCount <= 3 ? 2 : 4; 
+        }
+
+        function getTargetDensity(cardCount) {
+            if (cardCount === 1) return 1;
+            if (cardCount === 2 || cardCount === 3) return 1;
+            if (cardCount === 6) return 2;
+            if (cardCount === 9) return Math.random() > 0.5 ? 2 : 3;
+            if (cardCount === 12) return Math.random() > 0.5 ? 3 : 4;
+            return 1;
+        }
+
+        // --- GAME LOOP ---
+        function startGame() {
+            initAudioAndSpeech();
+            document.getElementById('start-overlay').style.display = 'none';
+            setTimeout(nextRound, 300); // slight delay to let audio unlock smoothly
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-attempts').innerText = attempts;
+            document.getElementById('hud-score').innerText = score;
+            document.getElementById('tier-label').innerText = `${tiers[currentTierIndex]} Card Grid`;
+            
+            const dots = document.getElementById('streak-dots').children;
+            for(let i=0; i<3; i++) {
+                if(i < streak) dots[i].classList.add('filled');
+                else dots[i].classList.remove('filled');
+            }
+        }
+
+        function nextRound() {
+            if(streak >= 3) {
+                streak = 0;
+                if(currentTierIndex < tiers.length - 1) currentTierIndex++;
+            }
+            updateHUD();
+
+            const cardCount = tiers[currentTierIndex];
+            currentTargetType = Math.random() > 0.5 ? "LINES" : "SPACES";
+            
+            // Visual and Audio Cues
+            const instrEl = document.getElementById('instruction-text');
+            instrEl.innerText = `SMASH ${currentTargetType}!`;
+            instrEl.className = 'instruction ' + (currentTargetType === 'LINES' ? 'instr-lines' : 'instr-spaces');
+            speakPrompt(currentTargetType);
+            
+            // Generate Targets & Duds
+            let isDud = (cardCount > 1 && Math.random() < 0.15); // 15% chance of dud round
+            targetsOnScreen = isDud ? 0 : getTargetDensity(cardCount);
+            targetsSmashed = 0;
+            wrongTaps = 0;
+
+            renderGrid(cardCount, targetsOnScreen, currentTargetType);
+            
+            // Start Timer
+            roundActive = true;
+            document.getElementById('smash-grid').classList.add('active');
+            
+            const duration = getTimerDuration(cardCount);
+            const fill = document.getElementById('timer-fill');
+            
+            fill.style.transition = 'none';
+            fill.style.width = '100%';
+            
+            setTimeout(() => {
+                fill.style.transition = `width ${duration}s linear`;
+                fill.style.width = '0%';
+            }, 50);
+
+            roundTimer = setTimeout(endRoundTimeout, duration * 1000);
+        }
+
+        function onCardTap(cardEl, isTarget) {
+            if(!roundActive || cardEl.classList.contains('smashed') || cardEl.classList.contains('wrong-smash')) return;
+
+            if(isTarget) {
+                playDing(streak, targetsSmashed);
+                cardEl.classList.add('smashed');
+                score++;
+                targetsSmashed++;
+                document.getElementById('hud-score').innerText = score;
+
+                if(targetsSmashed === targetsOnScreen) {
+                    winRound();
+                }
+            } else {
+                playBuzzer();
+                cardEl.classList.add('wrong-smash');
+                wrongTaps++;
+            }
+        }
+
+        function winRound() {
+            clearTimeout(roundTimer);
+            roundActive = false;
+            document.getElementById('smash-grid').classList.remove('active');
+            attempts++;
+            streak++;
+            setTimeout(nextRound, 500); 
+        }
+
+        function endRoundTimeout() {
+            roundActive = false;
+            document.getElementById('smash-grid').classList.remove('active');
+            attempts++;
+            
+            if (targetsOnScreen === 0 && wrongTaps === 0) {
+                // Survived a dud round perfectly
+                score++; 
+                streak++; 
+            } else {
+                // Failed to hit all targets before time ran out, or tapped wrong on a dud
+                streak = 0; 
+            }
+            setTimeout(nextRound, 500);
+        }
+
+
+        // --- RENDERING ENGINE ---
+        function renderGrid(cardCount, numTargets, targetType) {
+            const grid = document.getElementById('smash-grid');
+            grid.innerHTML = ''; 
+            
+            if (cardCount <= 2) grid.className = 'grid-1-col';
+            else grid.className = 'grid-3-col';
+
+            // Build array of notes for this round
+            let roundNotes = [];
+            let targetPool = targetType === "LINES" ? linesPool : spacesPool;
+            let distractorPool = targetType === "LINES" ? spacesPool : linesPool;
+
+            for(let i=0; i<numTargets; i++) {
+                roundNotes.push({ pitch: targetPool[Math.floor(Math.random() * targetPool.length)], isTarget: true });
+            }
+            for(let i=numTargets; i<cardCount; i++) {
+                roundNotes.push({ pitch: distractorPool[Math.floor(Math.random() * distractorPool.length)], isTarget: false });
+            }
+
+            // Shuffle array
+            roundNotes.sort(() => Math.random() - 0.5);
+
+            // Render Cards
+            for (let i = 0; i < cardCount; i++) {
+                const noteData = roundNotes[i];
+                
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => onCardTap(card, noteData.isTarget);
+                grid.appendChild(card);
+
+                const VF = Vex.Flow;
+                const renderer = new VF.Renderer(card, VF.Renderer.Backends.SVG);
+                renderer.resize(100, 100); 
+                const context = renderer.getContext();
+                
+                const svg = card.querySelector('svg');
+                svg.setAttribute('viewBox', '0 0 100 100');
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+                const stave = new VF.Stave(-10, -17, 120);
+                stave.setEndBarType(VF.Barline.type.NONE);
+                stave.setBegBarType(VF.Barline.type.NONE);
+                stave.options.left_bar = false;
+                stave.options.right_bar = false;
+                stave.setContext(context).draw();
+
+                const note = new VF.StaveNote({ clef: "treble", keys: [noteData.pitch], duration: "w" });
+                stave.setNoteStartX(48); 
+
+                const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+                new VF.Formatter().joinVoices([voice]).format([voice], 20);
+                voice.draw(context, stave);
+            }
+        }
+    </script>
+</body>
+</html>
