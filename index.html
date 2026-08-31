@@ -441,6 +441,353 @@
             modal.classList.remove('show');
         }
     }
+    let isPianoInput = true;
+    let activeErrorsQueue = []; 
+    let isTestingErrorNote = false;
+    let currentFlashcardPitch = null; 
+
+    // SPRiNT ALGORITHM VARIABLES
+    let currentTier = 1;      // 1 to 4
+    let currentStreak = 0;    // Needs 3 to advance
+    let highestTierCompleted = 0; 
+    
+    // Limits: Tier 1=2s, Tier 2=3s, Tier 3=4s, Tier 4=5s
+    function getTimeLimitForTier(tier) { return tier + 1; }
+
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toUpperCase();
+        if (['A','B','C','D','E','F','G'].includes(key)) {
+            if (isPianoInput) {
+                const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`);
+                if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); }
+            } else {
+                const cKey = document.getElementById(`btn-${key}`);
+                if (cKey) { cKey.classList.add('simulated-active'); setTimeout(() => cKey.classList.remove('simulated-active'), 100); }
+            }
+            handleKeypadInput(key);
+        }
+    });
+
+    function toggleInputMethod() {
+        isPianoInput = !isPianoInput;
+        const piano = document.getElementById('piano-container');
+        const wheel = document.getElementById('wheel-container');
+        const btn = document.getElementById('input-toggle-btn');
+        if (isPianoInput) { piano.style.display = 'flex'; wheel.style.display = 'none'; btn.innerText = '🔄 Switch to Circle Keypad';
+        } else { piano.style.display = 'none'; wheel.style.display = 'block'; btn.innerText = '🔄 Switch to Piano Keyboard'; positionWheelButtons(); }
+    }
+
+    function positionWheelButtons() {
+        const buttons = document.querySelectorAll('.wheel-btn');
+        const total = buttons.length; const radius = 85; const centerX = 120; const centerY = 120; const btnSize = 50;
+        buttons.forEach((btn, index) => {
+            const angle = (index * 2 * Math.PI) / total - Math.PI / 2;
+            btn.style.left = `${centerX + radius * Math.cos(angle) - btnSize / 2}px`;
+            btn.style.top = `${centerY + radius * Math.sin(angle) - btnSize / 2}px`;
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', positionWheelButtons);
+
+    function toggleHelperModal() {
+        const modal = document.getElementById('helper-sheet-modal');
+        if(modal) { modal.classList.toggle('show'); if(modal.classList.contains('show')) setTimeout(renderHelperSheetGraphics, 50); }
+    }
+
+    function applyBottomAnnotation(text) {
+        const VF = Vex.Flow; const anno = new VF.Annotation(text); anno.setVerticalJustification(3); return anno;
+    }
+
+    function renderHelperSheetGraphics() {
+        try {
+            const VF = Vex.Flow; const clefSelect = document.getElementById('clef-select'); const currentClef = clefSelect ? clefSelect.value : 'treble';
+            const HELPER_CONFIGS = {
+                "treble": { lines: { keys: ['e/4', 'g/4', 'b/4', 'd/5', 'f/5'], texts: ['Every', 'Good', 'Boy', 'Deserves', 'Fruit'] }, spaces: { keys: ['f/4', 'a/4', 'c/5', 'e/5'], texts: ['F', 'A', 'C', 'E'] } },
+                "bass": { lines: { keys: ['g/2', 'b/2', 'd/3', 'f/3', 'a/3'], texts: ['Good', 'Boys', 'Deserve', 'Fruit', 'Always'] }, spaces: { keys: ['a/2', 'c/3', 'e/3', 'g/3'], texts: ['All', 'Cows', 'Eat', 'Grass'] } },
+                "alto": { lines: { keys: ['f/3', 'a/3', 'c/4', 'e/4', 'g/4'], texts: ['Frogs', 'And', 'Cats', 'Eat', 'Grass'] }, spaces: { keys: ['g/3', 'b/3', 'd/4', 'f/4'], texts: ['Good', 'Boys', 'Deserve', 'Fruit'] } },
+                "tenor": { lines: { keys: ['d/3', 'f/3', 'a/3', 'c/4', 'e/4'], texts: ['Dogs', 'Face', 'All', 'Cats', 'Everywhere'] }, spaces: { keys: ['e/3', 'g/3', 'b/3', 'd/4'], texts: ['Every', 'Good', 'Boy', 'Deserves'] } }
+            };
+            const config = HELPER_CONFIGS[currentClef];
+            
+            const linesDiv = document.getElementById('helper-lines-canvas');
+            if (linesDiv) {
+                linesDiv.innerHTML = ''; const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG); renLines.resize(250, 100);
+                const ctxLines = renLines.getContext(); ctxLines.scale(0.68, 0.68); 
+                const stave1 = new VF.Stave(0, 5, 360).addClef(currentClef).setContext(ctxLines).draw();
+                const lineNotes = config.lines.keys.map((key, i) => new VF.StaveNote({ clef: currentClef, keys: [key], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(config.lines.texts[i])));
+                VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
+            }
+
+            const spacesDiv = document.getElementById('helper-spaces-canvas');
+            if (spacesDiv) {
+                spacesDiv.innerHTML = ''; const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG); renSpaces.resize(190, 100);
+                const ctxSpaces = renSpaces.getContext(); ctxSpaces.scale(0.68, 0.68);
+                const stave2 = new VF.Stave(0, 5, 275).addClef(currentClef).setContext(ctxSpaces).draw();
+                const spaceNotes = config.spaces.keys.map((key, i) => new VF.StaveNote({ clef: currentClef, keys: [key], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(config.spaces.texts[i])));
+                VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
+            }
+        } catch(e) {}
+    }
+
+    let audioCtx = null;
+    function initAudio() {
+        try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {}
+    }
+    function playSound(type) {
+        if (!audioCtx) return;
+        try {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+            if (type === 'correct') { osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
+            else if (type === 'wrong') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(140, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.2); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+            else if (type === 'timeout') { osc.type = 'square'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.4); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4); }
+            else if (type === 'complete') { osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.15); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.45); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); osc.start(); osc.stop(audioCtx.currentTime + 0.9); }
+        } catch (e) {}
+    }
+
+    const CLEF_CONFIGS = {
+        "treble": { clef: "treble", lines: [["E","e/4"],["G","g/4"],["B","b/4"],["D","d/5"],["F","f/5"]], spaces: [["F","f/4"],["A","a/4"],["C","c/5"],["E","e/5"]] },
+        "bass":   { clef: "bass",   lines: [["G","g/2"],["B","b/2"],["D","d/3"],["F","f/3"],["A","a/3"]], spaces: [["A","a/2"],["C","c/3"],["E","e/3"],["G","g/3"]] },
+        "alto":   { clef: "alto",   lines: [["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"],["G","g/4"]] , spaces: [["G","g/3"],["B","b/3"],["D","d/4"],["F","f/4"]] },
+        "tenor":  { clef: "tenor",  lines: [["D","d/3"],["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"]], spaces: [["E","e/3"],["G","g/3"],["B","b/3"],["D","d/4"]] }
+    };
+
+    let gameTimer = null; let secondsLeft = 60; let score = 0; let totalAttempts = 0; let correctAttempts = 0;
+    let currentExpectedNotes = []; let activeInputIndex = 0; let breakOutTimer = null;
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const targetScreen = document.getElementById(screenId);
+        if(targetScreen) targetScreen.classList.add('active');
+        if (screenId === 'screen-game') setTimeout(positionWheelButtons, 50);
+    }
+
+    function updateTrackerUI() {
+        document.getElementById('tier-tracker-text').innerText = `Tier ${currentTier}/4 | Streak: ${currentStreak}/3`;
+        document.getElementById('score-text').innerText = score;
+    }
+
+    function resetStreak() {
+        currentStreak = 0;
+        updateTrackerUI();
+    }
+
+    function startGame() {
+        initAudio(); score = 0; totalAttempts = 0; correctAttempts = 0; secondsLeft = 60; activeErrorsQueue = [];
+        currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
+        updateTrackerUI();
+        switchScreen('screen-game'); start60SecondTimer(); loadNextCard();
+    }
+
+    function start60SecondTimer() {
+        if (gameTimer) clearInterval(gameTimer);
+        const fillBar = document.getElementById('progress-bar');
+        if(fillBar) { fillBar.style.width = '100%'; fillBar.style.backgroundColor = 'var(--accent-green)'; }
+
+        gameTimer = setInterval(() => {
+            secondsLeft--;
+            document.getElementById('timer-badge').innerText = `${secondsLeft}s remaining`;
+            if(fillBar) fillBar.style.width = `${(secondsLeft / 60) * 100}%`;
+            if (secondsLeft <= 20 && secondsLeft > 10) fillBar.style.backgroundColor = '#ffc800'; 
+            else if (secondsLeft <= 10) fillBar.style.backgroundColor = 'var(--accent-red)'; 
+            if (secondsLeft <= 0) { clearInterval(gameTimer); finishRound(); }
+        }, 1000);
+    }
+
+    function loadNextCard() {
+        if (secondsLeft <= 0) return;
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        document.getElementById('card-canvas-wrapper').classList.remove('timeout');
+        
+        // Reset local timer UI
+        const flashFill = document.getElementById('flash-timer-fill');
+        flashFill.style.transition = 'none';
+        flashFill.style.width = '100%';
+        
+        generateFlashcard();
+    }
+
+    function generateFlashcard() {
+        try {
+            const VF = Vex.Flow;
+            const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
+            const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
+            
+            const config = CLEF_CONFIGS[document.getElementById('clef-select').value];
+            const combinedPool = [...config.lines, ...config.spaces];
+
+            const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
+            renderer.resize(320, 130);
+            const context = renderer.getContext(); context.scale(1.3, 1.3);
+
+            const stave = new VF.Stave(8, 5, 225);
+            stave.addClef(config.clef);
+            
+            if(currentTier === 1) { 
+                stave.options.left_bar = false; 
+                stave.setNoteStartX(115); 
+            } else {
+                stave.addTimeSignature("4/4");
+            }
+            stave.setContext(context).draw();
+
+            currentExpectedNotes = []; let staveNotes = []; 
+            let durations = [];
+            let formatWidth = 165;
+
+            // Algorithm dictates rhythm array
+            if (currentTier === 1) { durations = ["w"]; formatWidth = 40; }
+            else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
+            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; }
+            else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
+
+            let lastPitchKey = null;
+
+            for (let dur of durations) {
+                let chosenNote;
+                // SRS Error Interleave applies only if we are generating a single note
+                if (durations.length === 1 && activeErrorsQueue.length > 0 && !isTestingErrorNote) {
+                    chosenNote = [activeErrorsQueue[0].letter, activeErrorsQueue[0].pitch];
+                    isTestingErrorNote = true;
+                } else {
+                    let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
+                    chosenNote = avail[Math.floor(Math.random() * avail.length)]; 
+                    isTestingErrorNote = false;
+                }
+                
+                lastPitchKey = chosenNote[1];
+                if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
+                
+                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosenNote[1]], duration: dur })); 
+                currentExpectedNotes.push(chosenNote[0]);
+            }
+
+            let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+            new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
+            voice.draw(context, stave);
+
+            currentExpectedNotes.forEach((_, idx) => {
+                const cell = document.createElement('div'); cell.className = 'input-cell';
+                const input = document.createElement('input'); input.type = 'text'; input.readOnly = true; input.id = `box-${idx}`;
+                cell.appendChild(input); inputsContainer.appendChild(cell);
+            });
+            activeInputIndex = 0; setActiveBox(0);
+
+            // Start the strict sprint timer
+            startFlashcardTimer(getTimeLimitForTier(currentTier));
+            
+        } catch (err) { console.error(err); }
+    }
+
+    function startFlashcardTimer(seconds) {
+        const flashFill = document.getElementById('flash-timer-fill');
+        // Small delay to allow CSS reset to take effect, then animate down
+        setTimeout(() => {
+            flashFill.style.transition = `width ${seconds}s linear`;
+            flashFill.style.width = '0%';
+        }, 50);
+
+        breakOutTimer = setTimeout(() => {
+            if (secondsLeft > 0) {
+                playSound('timeout');
+                document.getElementById('card-canvas-wrapper').classList.add('timeout');
+                
+                // Penalty: Reset Streak
+                resetStreak();
+
+                // Show correct answers
+                currentExpectedNotes.forEach((val, idx) => {
+                    const box = document.getElementById(`box-${idx}`);
+                    if (box && !box.classList.contains('correct')) {
+                        box.value = val; box.style.color = 'var(--accent-red)';
+                    }
+                });
+                setTimeout(loadNextCard, 800);
+            }
+        }, seconds * 1000);
+    }
+
+    function setActiveBox(idx) {
+        document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
+        const target = document.getElementById(`box-${idx}`);
+        if (target) { activeInputIndex = idx; target.classList.add('active-box'); }
+    }
+
+    function handleKeypadInput(letter) {
+        if (secondsLeft <= 0) return;
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (!input) return;
+
+        input.value = letter;
+        const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase();
+        totalAttempts++;
+
+        if (letter === correctVal) {
+            playSound('correct');
+            input.classList.remove('incorrect'); input.classList.add('correct');
+            correctAttempts++;
+
+            if (isTestingErrorNote && currentTier === 1) {
+                activeErrorsQueue[0].remaining--;
+                if (activeErrorsQueue[0].remaining <= 0) activeErrorsQueue.shift(); 
+            }
+
+            if (activeInputIndex < currentExpectedNotes.length - 1) { 
+                setActiveBox(activeInputIndex + 1); 
+            } else { 
+                // Fully correct card before timeout!
+                if (breakOutTimer) clearTimeout(breakOutTimer);
+                
+                score += currentTier; // Bonus points for harder tiers
+                currentStreak++;
+                
+                if (currentStreak >= 3) {
+                    highestTierCompleted = Math.max(highestTierCompleted, currentTier);
+                    if (currentTier < 4) {
+                        currentTier++;
+                        currentStreak = 0;
+                    } else {
+                        // Max tier completed. Keep them here to rack up high scores.
+                        currentStreak = 0; 
+                    }
+                }
+                
+                updateTrackerUI();
+                setTimeout(loadNextCard, 200); 
+            }
+        } else {
+            playSound('wrong');
+            resetStreak(); // Penalty!
+            
+            if (currentTier === 1) {
+                let existingErr = activeErrorsQueue.find(e => e.pitch === currentFlashcardPitch);
+                if (!existingErr) activeErrorsQueue.push({ pitch: currentFlashcardPitch, letter: correctVal, remaining: 3 });
+                else existingErr.remaining = 3; 
+            }
+
+            input.classList.remove('correct'); input.classList.remove('incorrect'); 
+            void input.offsetWidth; input.classList.add('incorrect');
+            setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 300);
+        }
+    }
+
+    function finishRound() {
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        playSound('complete'); switchScreen('screen-summary');
+        
+        let accuracy = totalAttempts === 0 ? 0 : Math.round((correctAttempts / totalAttempts) * 100);
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+        document.getElementById('final-tier').innerText = highestTierCompleted;
+
+        let medal = 'Keep Practising! 💪'; 
+        if (highestTierCompleted === 4) medal = 'Gold 🥇';
+        else if (highestTierCompleted === 3) medal = 'Silver 🥈'; 
+        else if (highestTierCompleted === 2) medal = 'Bronze 🥉'; 
+        
+        document.getElementById('final-medal').innerText = medal;
+    }
+
 </script>
 
 </body>
