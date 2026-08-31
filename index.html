@@ -334,6 +334,34 @@
                 <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
             </div>
         </div>
+        <div id="screen-setup" class="screen active">
+    <div class="setup-card">
+        <h1>🎵 Note Quest</h1>
+        <p>60-Second Progressive Sprint</p>
+        
+        <select id="clef-select" onchange="renderHelperSheetGraphics()">
+            <option value="treble">Treble Clef</option>
+            <option value="bass">Bass Clef</option>
+            <option value="alto">Alto Clef</option>
+            <option value="tenor">Tenor Clef</option>
+        </select>
+        
+        <button class="btn btn-start" id="start-btn" onclick="startGame()">Start Sprint Round</button>
+        <div id="error-box"></div>
+    </div>
+</div>
+
+<div id="screen-game" class="screen">
+    <div class="game-header">
+        <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
+        <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleHelperModal()">💡 Helper Sheet</button>
+        <div class="score-counter">
+            <div class="score-row">⭐ <span id="score-text">0</span></div>
+            <div class="tier-tracker" id="tier-tracker-text">Tier 1 | Streak: 0/3</div>
+        </div>
+    </div>
+    <div class="timer-badge" id="timer-badge">60s remaining</div>
+
     </div>
 
     <div class="footer">
