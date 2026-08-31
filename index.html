@@ -362,6 +362,17 @@
     </div>
     <div class="timer-badge" id="timer-badge">60s remaining</div>
 
+    <div id="screen-summary" class="screen">
+    <div class="summary-card">
+        <h2>🎉 Sprint Complete!</h2>
+        <div class="medal-display" id="final-medal">🥉</div>
+        <div class="summary-stat">Total Score: <span id="final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+        <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
+        <div class="summary-stat">Highest Tier Reached: <span id="final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+        <button class="btn btn-start" id="restart-btn" onclick="startGame()">Play Again 🚀</button>
+        <button class="btn btn-secondary" id="setup-btn" onclick="switchScreen('screen-setup')">Change Settings</button>
+    </div>
+</div>
     </div>
 
     <div class="footer">
