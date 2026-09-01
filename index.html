@@ -711,11 +711,11 @@
             g1CurrentType = isLine ? 'line' : 'space';
 
             const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-            renderer.resize(320, 140);
-            const context = renderer.getContext(); context.scale(1.25, 1.25);
+            renderer.resize(320, 160);
+            const context = renderer.getContext(); context.scale(1.15, 1.15);
 
             // Shift stave upward slightly (y = 12) so bottom ledger notes (low G) fit comfortably inside the bounding box without clipping
-            const stave = new VF.Stave(10, 12, 220);
+            const stave = new VF.Stave(5, 12, 220);
             stave.setEndBarType(VF.Barline.type.NONE);
             stave.setBegBarType(VF.Barline.type.NONE);
             stave.options.left_bar = false;
