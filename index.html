@@ -411,7 +411,20 @@
     
     function getTimeLimitForTier(tier) { return tier + 1; }
 
-    window.addEventListener('keydown', (e) => {
+   window.addEventListener('keydown', (e) => {
+        // Game 1 Hotkeys: L for Line, S for Space
+        const g1GameScreen = document.getElementById('g1-screen-game');
+        if (g1GameScreen && g1GameScreen.classList.contains('active')) {
+            const key = e.key.toUpperCase();
+            if (key === 'L') {
+                handleG1Input('line');
+            } else if (key === 'S') {
+                handleG1Input('space');
+            }
+            return; // Prevent bleed-through to other games
+        }
+
+        // NoteQuest Hotkeys (Existing A-G logic)
         if (!document.getElementById('screen-game').classList.contains('active')) return;
         
         const key = e.key.toUpperCase();
