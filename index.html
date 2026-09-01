@@ -821,8 +821,9 @@
         
         document.getElementById('final-medal').innerText = medal;
     }
-/* =========================================
-       GAME 1: LINE & SPACE SMASH ENGINE
+
+   /* =========================================
+       GAME 1: CLEF-FREE LINE & SPACE SMASH ENGINE
        ========================================= */
     let g1Timer = null;
     let g1SecondsLeft = 60;
@@ -831,23 +832,25 @@
     let g1CorrectAttempts = 0;
     let g1CurrentType = ''; // 'line' or 'space'
 
-    const G1_CONFIGS = {
-        "treble": { clef: "treble", 
-            lines: ["e/4", "g/4", "b/4", "d/5", "f/5"], 
-            spaces: ["f/4", "a/4", "c/5", "e/5"]
-        },
-        "bass": { clef: "bass",   
-            lines: ["g/2", "b/2", "d/3", "f/3", "a/3"], 
-            spaces: ["a/2", "c/3", "e/3", "g/3"]
-        },
-        "alto": { clef: "alto",   
-            lines: ["f/3", "a/3", "c/4", "e/4", "g/4"], 
-            spaces: ["g/3", "b/3", "d/4", "f/4"]
-        },
-        "tenor": { clef: "tenor",  
-            lines: ["d/3", "f/3", "a/3", "c/4", "e/4"], 
-            spaces: ["e/3", "g/3", "b/3", "d/4"]
-        }
+    // Universal pool: Staff lines/spaces + 1 ledger line above & below
+    const G1_UNIVERSAL_POOL = {
+        lines: [
+            "d/4", // 1st ledger line below
+            "e/4", // 1st line
+            "g/4", // 2nd line
+            "b/4", // 3rd line
+            "d/5", // 4th line
+            "f/5", // 5th line
+            "a/5"  // 1st ledger line above
+        ],
+        spaces: [
+            "c/4", // Space below 1st ledger line / or space under staff
+            "f/4", // 1st space
+            "a/4", // 2nd space
+            "c/5", // 3rd space
+            "e/5", // 4th space
+            "g/5"  // Space above 5th line / 1st ledger space
+        ]
     };
 
     function switchG1Screen(screenId) {
@@ -900,13 +903,10 @@
             const container = document.getElementById('g1-score-canvas');
             container.innerHTML = '';
 
-            const clefName = document.getElementById('g1-clef-select').value;
-            const config = G1_CONFIGS[clefName];
-
             // Randomly choose between a line note or a space note
             const isLine = Math.random() < 0.5;
             g1CurrentType = isLine ? 'line' : 'space';
-            const pool = isLine ? config.lines : config.spaces;
+            const pool = isLine ? G1_UNIVERSAL_POOL.lines : G1_UNIVERSAL_POOL.spaces;
             const chosenPitch = pool[Math.floor(Math.random() * pool.length)];
 
             const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
@@ -914,8 +914,8 @@
             const context = renderer.getContext();
             context.scale(1.3, 1.3);
 
+            // Render a clean stave with NO clef
             const stave = new VF.Stave(8, 5, 225);
-            stave.addClef(config.clef);
             stave.setEndBarType(VF.Barline.type.NONE);
             stave.setBegBarType(VF.Barline.type.NONE);
             stave.options.left_bar = false;
@@ -923,7 +923,8 @@
             stave.setNoteStartX(115);
             stave.setContext(context).draw();
 
-            const note = new VF.StaveNote({ clef: config.clef, keys: [chosenPitch], duration: "w" });
+            // Note without clef context defaults to treble spacing internally for crisp rendering
+            const note = new VF.StaveNote({ clef: "treble", keys: [chosenPitch], duration: "w" });
             const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
             new VF.Formatter().joinVoices([voice]).format([voice], 40);
             voice.draw(context, stave);
