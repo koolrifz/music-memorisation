@@ -200,9 +200,53 @@
     <div class="game-nav">
         <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
     </div>
-    <div style="text-align: center; margin-top: 80px;">
-        <h2 style="color: var(--accent-purple);">Line & Space Smash Engine Goes Here</h2>
-        <p>Grid logic and mechanics will be injected into this container.</p>
+
+    <!-- Game 1 Setup Screen -->
+    <div id="g1-screen-setup" class="screen active" style="position:relative; opacity:1; display:flex; pointer-events:auto;">
+        <div class="setup-card">
+            <h1>🎯 Line & Space Smash</h1>
+            <p>Test your visual reflexes!</p>
+            
+            <select id="g1-clef-select">
+                <option value="treble">Treble Clef</option>
+                <option value="bass">Bass Clef</option>
+                <option value="alto">Alto Clef</option>
+                <option value="tenor">Tenor Clef</option>
+            </select>
+            
+            <button class="btn btn-start" onclick="startG1Game()">Start 60s Smash</button>
+        </div>
+    </div>
+
+    <!-- Game 1 Active Play Screen -->
+    <div id="g1-screen-game" class="screen" style="position:relative; opacity:0; display:none;">
+        <div class="game-header">
+            <div class="progress-bar-container"><div class="progress-fill" id="g1-progress-bar"></div></div>
+            <div class="score-counter">⭐ <span id="g1-score-text">0</span></div>
+        </div>
+        <div class="timer-badge" id="g1-timer-badge">60s remaining</div>
+
+        <div class="card-wrapper" id="g1-card-wrapper">
+            <div id="g1-score-canvas"></div>
+        </div>
+
+        <!-- Smash Action Buttons -->
+        <div style="display: flex; width: 100%; max-width: 500px; gap: 15px; margin-top: 10px;">
+            <button class="btn" style="background: var(--accent-blue); box-shadow: 0 6px 0 var(--accent-blue-shadow);" onclick="handleG1Input('line')">LINE 📏</button>
+            <button class="btn" style="background: var(--accent-purple); box-shadow: 0 6px 0 var(--accent-purple-shadow);" onclick="handleG1Input('space')">SPACE 🔲</button>
+        </div>
+    </div>
+
+    <!-- Game 1 Summary Screen -->
+    <div id="g1-screen-summary" class="screen" style="position:relative; opacity:0; display:none;">
+        <div class="summary-card">
+            <h2>🎉 Smash Complete!</h2>
+            <div class="medal-display" id="g1-final-medal">🏆</div>
+            <div class="summary-stat">Total Score: <span id="g1-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+            <div class="summary-stat">Accuracy: <span id="g1-final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
+            <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
+            <button class="btn btn-secondary" onclick="switchG1Screen('g1-screen-setup')">Change Clef</button>
+        </div>
     </div>
 </div>
 
@@ -763,6 +807,152 @@
         }
         
         document.getElementById('final-medal').innerText = medal;
+    }
+/* =========================================
+       GAME 1: LINE & SPACE SMASH ENGINE
+       ========================================= */
+    let g1Timer = null;
+    let g1SecondsLeft = 60;
+    let g1Score = 0;
+    let g1TotalAttempts = 0;
+    let g1CorrectAttempts = 0;
+    let g1CurrentType = ''; // 'line' or 'space'
+
+    const G1_CONFIGS = {
+        "treble": { clef: "treble", 
+            lines: ["e/4", "g/4", "b/4", "d/5", "f/5"], 
+            spaces: ["f/4", "a/4", "c/5", "e/5"]
+        },
+        "bass": { clef: "bass",   
+            lines: ["g/2", "b/2", "d/3", "f/3", "a/3"], 
+            spaces: ["a/2", "c/3", "e/3", "g/3"]
+        },
+        "alto": { clef: "alto",   
+            lines: ["f/3", "a/3", "c/4", "e/4", "g/4"], 
+            spaces: ["g/3", "b/3", "d/4", "f/4"]
+        },
+        "tenor": { clef: "tenor",  
+            lines: ["d/3", "f/3", "a/3", "c/4", "e/4"], 
+            spaces: ["e/3", "g/3", "b/3", "d/4"]
+        }
+    };
+
+    function switchG1Screen(screenId) {
+        ['g1-screen-setup', 'g1-screen-game', 'g1-screen-summary'].forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.remove('active');
+            el.style.opacity = '0';
+            el.style.display = 'none';
+        });
+        const target = document.getElementById(screenId);
+        target.style.display = 'flex';
+        setTimeout(() => {
+            target.classList.add('active');
+            target.style.opacity = '1';
+        }, 10);
+    }
+
+    function startG1Game() {
+        initAudio();
+        g1Score = 0;
+        g1TotalAttempts = 0;
+        g1CorrectAttempts = 0;
+        g1SecondsLeft = 60;
+        document.getElementById('g1-score-text').innerText = g1Score;
+        switchG1Screen('g1-screen-game');
+        startG1Timer();
+        loadG1Card();
+    }
+
+    function startG1Timer() {
+        if (g1Timer) clearInterval(g1Timer);
+        const fillBar = document.getElementById('g1-progress-bar');
+        if(fillBar) { fillBar.style.width = '100%'; fillBar.style.backgroundColor = 'var(--accent-green)'; }
+
+        g1Timer = setInterval(() => {
+            g1SecondsLeft--;
+            document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s remaining`;
+            if(fillBar) fillBar.style.width = `${(g1SecondsLeft / 60) * 100}%`;
+            if (g1SecondsLeft <= 0) {
+                clearInterval(g1Timer);
+                finishG1Game();
+            }
+        }, 1000);
+    }
+
+    function loadG1Card() {
+        if (g1SecondsLeft <= 0) return;
+        try {
+            const VF = Vex.Flow;
+            const container = document.getElementById('g1-score-canvas');
+            container.innerHTML = '';
+
+            const clefName = document.getElementById('g1-clef-select').value;
+            const config = G1_CONFIGS[clefName];
+
+            // Randomly choose between a line note or a space note
+            const isLine = Math.random() < 0.5;
+            g1CurrentType = isLine ? 'line' : 'space';
+            const pool = isLine ? config.lines : config.spaces;
+            const chosenPitch = pool[Math.floor(Math.random() * pool.length)];
+
+            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+            renderer.resize(320, 130);
+            const context = renderer.getContext();
+            context.scale(1.3, 1.3);
+
+            const stave = new VF.Stave(8, 5, 225);
+            stave.addClef(config.clef);
+            stave.setEndBarType(VF.Barline.type.NONE);
+            stave.setBegBarType(VF.Barline.type.NONE);
+            stave.options.left_bar = false;
+            stave.options.right_bar = false;
+            stave.setNoteStartX(115);
+            stave.setContext(context).draw();
+
+            const note = new VF.StaveNote({ clef: config.clef, keys: [chosenPitch], duration: "w" });
+            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+            new VF.Formatter().joinVoices([voice]).format([voice], 40);
+            voice.draw(context, stave);
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function handleG1Input(selectedType) {
+        if (g1SecondsLeft <= 0) return;
+        g1TotalAttempts++;
+
+        if (selectedType === g1CurrentType) {
+            playSound('correct');
+            g1Score++;
+            g1CorrectAttempts++;
+            document.getElementById('g1-score-text').innerText = g1Score;
+            loadG1Card();
+        } else {
+            playSound('wrong');
+            const wrapper = document.getElementById('g1-card-wrapper');
+            wrapper.style.borderColor = 'var(--accent-red)';
+            setTimeout(() => { wrapper.style.borderColor = '#e0e6ed'; }, 300);
+            loadG1Card();
+        }
+    }
+
+    function finishG1Game() {
+        if (g1Timer) clearInterval(g1Timer);
+        playSound('complete');
+        switchG1Screen('g1-screen-summary');
+
+        let accuracy = g1TotalAttempts === 0 ? 0 : Math.round((g1CorrectAttempts / g1TotalAttempts) * 100);
+        document.getElementById('g1-final-score').innerText = g1Score;
+        document.getElementById('g1-final-accuracy').innerText = `${accuracy}%`;
+
+        let medal = 'Bronze 🥉';
+        if (accuracy >= 95 && g1Score >= 25) medal = 'Gold 🥇';
+        else if (accuracy >= 85 && g1Score >= 15) medal = 'Silver 🥈';
+
+        document.getElementById('g1-final-medal').innerText = medal;
     }
 </script>
 </body>
