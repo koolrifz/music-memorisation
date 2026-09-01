@@ -170,4 +170,600 @@
             <div class="game-icon icon-purple">1</div>
             <div class="game-details">
                 <h2>Line & Space Smash</h2>
-                <p>Train your visual reflexes. Distinguish lines from spaces instantly
+                <p>Train your visual reflexes. Distinguish lines from spaces instantly.</p>
+            </div>
+        </div>
+
+        <div class="game-card blue" onclick="launchGame('view-game2')">
+            <div class="game-icon icon-blue">2</div>
+            <div class="game-details">
+                <h2>Note Name Smash</h2>
+                <p>Find the right note fast. Features dynamic mnemonic helpers.</p>
+            </div>
+        </div>
+
+        <div class="game-card green" onclick="launchGame('view-game3')">
+            <div class="game-icon icon-green">3</div>
+            <div class="game-details">
+                <h2>NoteQuest</h2>
+                <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <button class="btn-text" onclick="toggleCredits(true)">About Kool Riffs</button>
+    </div>
+</div>
+
+<div id="view-game1" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
+    </div>
+    <div style="text-align: center; margin-top: 80px;">
+        <h2 style="color: var(--accent-purple);">Line & Space Smash Engine Goes Here</h2>
+        <p>Grid logic and mechanics will be injected into this container.</p>
+    </div>
+</div>
+
+<div id="view-game2" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
+    </div>
+    <div style="text-align: center; margin-top: 80px;">
+        <h2 style="color: var(--accent-blue);">Note Name Smash Engine Goes Here</h2>
+        <p>Grid logic with clef selection and helper sheet will be injected here.</p>
+    </div>
+</div>
+
+<div id="view-game3" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
+    </div>
+    
+    <div id="screen-setup" class="screen active">
+        <div class="setup-card">
+            <h1>🎵 Note Quest</h1>
+            
+            <select id="clef-select" onchange="renderHelperSheetGraphics()">
+                <option value="treble">Treble Clef</option>
+                <option value="bass">Bass Clef</option>
+                <option value="alto">Alto Clef</option>
+                <option value="tenor">Tenor Clef</option>
+            </select>
+            
+            <select id="level-select">
+                <option value="1">Level 1: Staff Notes Only</option>
+                <option value="2">Level 2: Extended Ledger Lines</option>
+                <option value="3">Level 3: Instrument Playing (Mic Soon)</option>
+            </select>
+
+            <select id="mode-select" onchange="handleModeChange()">
+                <option value="drill-lines">Drill Round: Lines Only</option>
+                <option value="drill-spaces">Drill Round: Spaces Only</option>
+                <option value="drill-both">Drill Round: Lines & Spaces</option>
+                <option value="speed">Speed Round: Progressive Sprint</option>
+            </select>
+            
+            <button class="btn btn-start" id="start-btn" onclick="startGame()">Start Round</button>
+        </div>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div class="game-header">
+            <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
+            <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleHelperModal()">💡 Helper Sheet</button>
+            <div class="score-counter">
+                <div class="score-row">⭐ <span id="score-text">0</span></div>
+                <div class="tier-tracker" id="tier-tracker-text">Drill Mode</div>
+            </div>
+        </div>
+        <div class="timer-badge" id="timer-badge">60s remaining</div>
+        
+        <div class="flash-timer" id="flash-timer-bar"><div class="flash-timer-fill" id="flash-timer-fill"></div></div>
+
+        <div class="helper-modal" id="helper-sheet-modal">
+            <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
+            <div class="helper-container">
+                <div id="helper-lines-canvas"></div>
+                <div id="helper-spaces-canvas"></div>
+            </div>
+        </div>
+
+        <div class="card-wrapper" id="card-canvas-wrapper">
+            <div id="score-canvas"></div>
+        </div>
+        
+        <button class="btn-input-toggle" id="input-toggle-btn" onclick="toggleInputMethod()">🔄 Switch to Circle Keypad</button>
+
+        <div class="inputs-row" id="inputs-container"></div>
+
+        <div class="piano-wrapper" id="piano-container">
+            <div class="white-key" id="key-C1" onclick="handleKeypadInput('C')">C</div>
+            <div class="black-key" style="left: 12.5%"></div>
+            <div class="white-key" id="key-D" onclick="handleKeypadInput('D')">D</div>
+            <div class="black-key" style="left: 25%"></div>
+            <div class="white-key" id="key-E" onclick="handleKeypadInput('E')">E</div>
+            <div class="white-key" id="key-F" onclick="handleKeypadInput('F')">F</div>
+            <div class="black-key" style="left: 50%"></div>
+            <div class="white-key" id="key-G" onclick="handleKeypadInput('G')">G</div>
+            <div class="black-key" style="left: 62.5%"></div>
+            <div class="white-key" id="key-A" onclick="handleKeypadInput('A')">A</div>
+            <div class="black-key" style="left: 75%"></div>
+            <div class="white-key" id="key-B" onclick="handleKeypadInput('B')">B</div>
+            <div class="white-key" id="key-C2" onclick="handleKeypadInput('C')">C</div>
+        </div>
+
+        <div class="wheel-container" id="wheel-container">
+            <button class="wheel-btn" id="btn-A" onclick="handleKeypadInput('A')">A</button>
+            <button class="wheel-btn" id="btn-B" onclick="handleKeypadInput('B')">B</button>
+            <button class="wheel-btn" id="btn-C" onclick="handleKeypadInput('C')">C</button>
+            <button class="wheel-btn" id="btn-D" onclick="handleKeypadInput('D')">D</button>
+            <button class="wheel-btn" id="btn-E" onclick="handleKeypadInput('E')">E</button>
+            <button class="wheel-btn" id="btn-F" onclick="handleKeypadInput('F')">F</button>
+            <button class="wheel-btn" id="btn-G" onclick="handleKeypadInput('G')">G</button>
+        </div>
+    </div>
+
+    <div id="screen-summary" class="screen">
+        <div class="summary-card">
+            <h2>🎉 Round Complete!</h2>
+            <div class="medal-display" id="final-medal">🏆</div>
+            <div class="summary-stat">Total Score: <span id="final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+            <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
+            <div class="summary-stat" id="tier-result">Highest Tier Reached: <span id="final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+            <div class="graduation-message" id="graduation-msg">🌟 Amazing work! You've mastered the Drills. Try the progressive Speed Round next!</div>
+            <button class="btn btn-start" id="restart-btn" onclick="startGame()">Play Again 🚀</button>
+            <button class="btn btn-secondary" id="setup-btn" onclick="switchScreen('screen-setup')">Change Settings</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-credits">
+    <div class="credits-box">
+        <h3>🎷 Kool Riffs</h3>
+        <p>Designed and developed by<br><strong>Rob Glaesemann</strong></p>
+        <p style="font-size: 13px; color: var(--text-muted);">Building better musical reflexes through focused, gamified repetition.</p>
+        <button class="btn-close" onclick="toggleCredits(false)">Close</button>
+    </div>
+</div>
+
+<script>
+    /* =========================================
+       KOOL RIFFS SPA NAVIGATION LOGIC
+       ========================================= */
+    function launchGame(targetViewId) {
+        document.querySelectorAll('.view').forEach(view => {
+            view.classList.remove('active');
+        });
+        document.getElementById(targetViewId).classList.add('active');
+        
+        // Force quit NoteQuest timers if returning to Dashboard
+        if (targetViewId === 'view-dashboard') {
+            if (typeof gameTimer !== 'undefined' && gameTimer) clearInterval(gameTimer);
+            if (typeof breakOutTimer !== 'undefined' && breakOutTimer) clearTimeout(breakOutTimer);
+            if (typeof fadeTimer !== 'undefined' && fadeTimer) clearTimeout(fadeTimer);
+            if (typeof switchScreen === 'function') switchScreen('screen-setup');
+        }
+    }
+
+    function toggleCredits(show) {
+        const modal = document.getElementById('modal-credits');
+        if (show) modal.classList.add('show');
+        else modal.classList.remove('show');
+    }
+
+    /* =========================================
+       NOTEQUEST ENGINE LOGIC
+       ========================================= */
+    let isPianoInput = true;
+    let watchListQueue = []; 
+    let currentFlashcardPitch = null; 
+    let currentMode = 'drill-both';
+
+    let currentTier = 1;      
+    let currentStreak = 0;    
+    let highestTierCompleted = 0; 
+    
+    function getTimeLimitForTier(tier) { return tier + 1; }
+
+    window.addEventListener('keydown', (e) => {
+        if (!document.getElementById('screen-game').classList.contains('active')) return;
+        
+        const key = e.key.toUpperCase();
+        if (['A','B','C','D','E','F','G'].includes(key)) {
+            if (isPianoInput) {
+                const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`);
+                if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); }
+            } else {
+                const cKey = document.getElementById(`btn-${key}`);
+                if (cKey) { cKey.classList.add('simulated-active'); setTimeout(() => cKey.classList.remove('simulated-active'), 100); }
+            }
+            handleKeypadInput(key);
+        }
+    });
+
+    function handleModeChange() {
+        const mode = document.getElementById('mode-select').value;
+        if(mode === 'speed') {
+            document.getElementById('mode-select').options[3].text = "Speed Round: Lines & Spaces (Forced)";
+        } else {
+            document.getElementById('mode-select').options[3].text = "Speed Round: Progressive Sprint";
+        }
+    }
+
+    function toggleInputMethod() {
+        isPianoInput = !isPianoInput;
+        const piano = document.getElementById('piano-container');
+        const wheel = document.getElementById('wheel-container');
+        const btn = document.getElementById('input-toggle-btn');
+        if (isPianoInput) { piano.style.display = 'flex'; wheel.style.display = 'none'; btn.innerText = '🔄 Switch to Circle Keypad';
+        } else { piano.style.display = 'none'; wheel.style.display = 'block'; btn.innerText = '🔄 Switch to Piano Keyboard'; positionWheelButtons(); }
+    }
+
+    function positionWheelButtons() {
+        const buttons = document.querySelectorAll('.wheel-btn');
+        const total = buttons.length; const radius = 85; const centerX = 120; const centerY = 120; const btnSize = 50;
+        buttons.forEach((btn, index) => {
+            const angle = (index * 2 * Math.PI) / total - Math.PI / 2;
+            btn.style.left = `${centerX + radius * Math.cos(angle) - btnSize / 2}px`;
+            btn.style.top = `${centerY + radius * Math.sin(angle) - btnSize / 2}px`;
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', positionWheelButtons);
+
+    function toggleHelperModal() {
+        const modal = document.getElementById('helper-sheet-modal');
+        if(modal) { modal.classList.toggle('show'); if(modal.classList.contains('show')) setTimeout(renderHelperSheetGraphics, 50); }
+    }
+
+    function applyBottomAnnotation(text) {
+        const VF = Vex.Flow; const anno = new VF.Annotation(text); anno.setVerticalJustification(3); return anno;
+    }
+
+    function renderHelperSheetGraphics() {
+        try {
+            const VF = Vex.Flow; const clefSelect = document.getElementById('clef-select'); const currentClef = clefSelect ? clefSelect.value : 'treble';
+            const HELPER_CONFIGS = {
+                "treble": { lines: { keys: ['e/4', 'g/4', 'b/4', 'd/5', 'f/5'], texts: ['Every', 'Good', 'Boy', 'Deserves', 'Fruit'] }, spaces: { keys: ['f/4', 'a/4', 'c/5', 'e/5'], texts: ['F', 'A', 'C', 'E'] } },
+                "bass": { lines: { keys: ['g/2', 'b/2', 'd/3', 'f/3', 'a/3'], texts: ['Good', 'Boys', 'Deserve', 'Fruit', 'Always'] }, spaces: { keys: ['a/2', 'c/3', 'e/3', 'g/3'], texts: ['All', 'Cows', 'Eat', 'Grass'] } },
+                "alto": { lines: { keys: ['f/3', 'a/3', 'c/4', 'e/4', 'g/4'], texts: ['Frogs', 'And', 'Cats', 'Eat', 'Grass'] }, spaces: { keys: ['g/3', 'b/3', 'd/4', 'f/4'], texts: ['Good', 'Boys', 'Deserve', 'Fruit'] } },
+                "tenor": { lines: { keys: ['d/3', 'f/3', 'a/3', 'c/4', 'e/4'], texts: ['Dogs', 'Face', 'All', 'Cats', 'Everywhere'] }, spaces: { keys: ['e/3', 'g/3', 'b/3', 'd/4'], texts: ['Every', 'Good', 'Boy', 'Deserves'] } }
+            };
+            const config = HELPER_CONFIGS[currentClef];
+            
+            const linesDiv = document.getElementById('helper-lines-canvas');
+            if (linesDiv) {
+                linesDiv.innerHTML = ''; const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG); renLines.resize(250, 100);
+                const ctxLines = renLines.getContext(); ctxLines.scale(0.68, 0.68); 
+                const stave1 = new VF.Stave(0, 5, 360).addClef(currentClef).setContext(ctxLines).draw();
+                const lineNotes = config.lines.keys.map((key, i) => new VF.StaveNote({ clef: currentClef, keys: [key], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(config.lines.texts[i])));
+                VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
+            }
+
+            const spacesDiv = document.getElementById('helper-spaces-canvas');
+            if (spacesDiv) {
+                spacesDiv.innerHTML = ''; const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG); renSpaces.resize(190, 100);
+                const ctxSpaces = renSpaces.getContext(); ctxSpaces.scale(0.68, 0.68);
+                const stave2 = new VF.Stave(0, 5, 275).addClef(currentClef).setContext(ctxSpaces).draw();
+                const spaceNotes = config.spaces.keys.map((key, i) => new VF.StaveNote({ clef: currentClef, keys: [key], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(config.spaces.texts[i])));
+                VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
+            }
+        } catch(e) {}
+    }
+
+    let audioCtx = null;
+    function initAudio() {
+        try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {}
+    }
+    function playSound(type) {
+        if (!audioCtx) return;
+        try {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+            if (type === 'correct') { osc.type = 'sine'; osc.frequency.setValueAtTime(600, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); osc.start(); osc.stop(audioCtx.currentTime + 0.3); }
+            else if (type === 'wrong') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(140, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.2); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+            else if (type === 'timeout') { osc.type = 'square'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.4); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4); }
+            else if (type === 'complete') { osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.15); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.45); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); osc.start(); osc.stop(audioCtx.currentTime + 0.9); }
+        } catch (e) {}
+    }
+
+    const NOTE_CONFIGS = {
+        "treble": { clef: "treble", 
+            staffLines: [["E","e/4"],["G","g/4"],["B","b/4"],["D","d/5"],["F","f/5"]], 
+            staffSpaces: [["F","f/4"],["A","a/4"],["C","c/5"],["E","e/5"]],
+            ledgerLines: [["C","c/4"],["A","a/3"],["A","a/5"],["C","c/6"]],
+            ledgerSpaces: [["D","d/4"],["B","b/3"],["G","g/3"],["G","g/5"],["B","b/5"],["D","d/6"]]
+        },
+        "bass": { clef: "bass",   
+            staffLines: [["G","g/2"],["B","b/2"],["D","d/3"],["F","f/3"],["A","a/3"]], 
+            staffSpaces: [["A","a/2"],["C","c/3"],["E","e/3"],["G","g/3"]],
+            ledgerLines: [["E","e/2"],["C","c/2"],["C","c/4"],["E","e/4"]],
+            ledgerSpaces: [["F","f/2"],["D","d/2"],["B","b/1"],["B","b/3"],["D","d/4"],["F","f/4"]]
+        },
+        "alto": { clef: "alto",   
+            staffLines: [["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"],["G","g/4"]], 
+            staffSpaces: [["G","g/3"],["B","b/3"],["D","d/4"],["F","f/4"]],
+            ledgerLines: [["D","d/3"],["B","b/2"],["B","b/4"],["D","d/5"]],
+            ledgerSpaces: [["E","e/3"],["C","c/3"],["A","a/2"],["A","a/4"],["C","c/5"],["E","e/5"]]
+        },
+        "tenor": { clef: "tenor",  
+            staffLines: [["D","d/3"],["F","f/3"],["A","a/3"],["C","c/4"],["E","e/4"]], 
+            staffSpaces: [["E","e/3"],["G","g/3"],["B","b/3"],["D","d/4"]],
+            ledgerLines: [["B","b/2"],["G","g/2"],["G","g/4"],["B","b/4"]],
+            ledgerSpaces: [["C","c/3"],["A","a/2"],["F","f/2"],["F","f/4"],["A","a/4"],["C","c/5"]]
+        }
+    };
+
+    let gameTimer = null; let secondsLeft = 60; let score = 0; let totalAttempts = 0; let correctAttempts = 0;
+    let currentExpectedNotes = []; let activeInputIndex = 0; let breakOutTimer = null;
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const targetScreen = document.getElementById(screenId);
+        if(targetScreen) targetScreen.classList.add('active');
+        if (screenId === 'screen-game') setTimeout(positionWheelButtons, 50);
+    }
+
+    function updateTrackerUI() {
+        if(currentMode === 'speed') {
+            document.getElementById('tier-tracker-text').innerText = `Tier ${currentTier}/4 | Streak: ${currentStreak}/3`;
+            document.getElementById('flash-timer-bar').style.display = 'block';
+        } else {
+            document.getElementById('tier-tracker-text').innerText = `Drill Mode | Target: 30pts`;
+            document.getElementById('flash-timer-bar').style.display = 'none';
+        }
+        document.getElementById('score-text').innerText = score;
+    }
+
+    function resetStreak() {
+        currentStreak = 0;
+        updateTrackerUI();
+    }
+
+    function startGame() {
+        initAudio(); score = 0; totalAttempts = 0; correctAttempts = 0; secondsLeft = 60; watchListQueue = [];
+        currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
+        currentMode = document.getElementById('mode-select').value;
+        
+        updateTrackerUI();
+        switchScreen('screen-game'); start60SecondTimer(); loadNextCard();
+    }
+
+    function start60SecondTimer() {
+        if (gameTimer) clearInterval(gameTimer);
+        const fillBar = document.getElementById('progress-bar');
+        if(fillBar) { fillBar.style.width = '100%'; fillBar.style.backgroundColor = 'var(--accent-green)'; }
+
+        gameTimer = setInterval(() => {
+            secondsLeft--;
+            document.getElementById('timer-badge').innerText = `${secondsLeft}s remaining`;
+            if(fillBar) fillBar.style.width = `${(secondsLeft / 60) * 100}%`;
+            if (secondsLeft <= 20 && secondsLeft > 10) fillBar.style.backgroundColor = '#ffc800'; 
+            else if (secondsLeft <= 10) fillBar.style.backgroundColor = 'var(--accent-red)'; 
+            if (secondsLeft <= 0) { clearInterval(gameTimer); finishRound(); }
+        }, 1000);
+    }
+
+    function loadNextCard() {
+        if (secondsLeft <= 0) return;
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        document.getElementById('card-canvas-wrapper').classList.remove('timeout');
+        
+        if(currentMode === 'speed') {
+            const flashFill = document.getElementById('flash-timer-fill');
+            flashFill.style.transition = 'none'; flashFill.style.width = '100%';
+        }
+        
+        generateFlashcard();
+    }
+
+    function generateFlashcard() {
+        try {
+            const VF = Vex.Flow;
+            const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
+            const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
+            
+            const clefName = document.getElementById('clef-select').value;
+            const config = NOTE_CONFIGS[clefName];
+            const level = document.getElementById('level-select').value;
+            
+            let combinedPool = [];
+            
+            if (currentMode === 'speed') {
+                combinedPool = [...config.staffLines, ...config.staffSpaces];
+                if(level >= 2) combinedPool = combinedPool.concat([...config.ledgerLines, ...config.ledgerSpaces]);
+            } else {
+                if(currentMode === 'drill-lines' || currentMode === 'drill-both') {
+                    combinedPool = combinedPool.concat(config.staffLines);
+                    if(level >= 2) combinedPool = combinedPool.concat(config.ledgerLines);
+                }
+                if(currentMode === 'drill-spaces' || currentMode === 'drill-both') {
+                    combinedPool = combinedPool.concat(config.staffSpaces);
+                    if(level >= 2) combinedPool = combinedPool.concat(config.ledgerSpaces);
+                }
+            }
+
+            const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
+            renderer.resize(320, 130);
+            const context = renderer.getContext(); context.scale(1.3, 1.3);
+
+            const stave = new VF.Stave(8, 5, 225);
+            stave.addClef(config.clef);
+            
+            if(currentMode.includes('drill') || currentTier === 1) { 
+                stave.setEndBarType(VF.Barline.type.NONE);
+                stave.setBegBarType(VF.Barline.type.NONE);
+                stave.options.left_bar = false;
+                stave.options.right_bar = false;
+                stave.setNoteStartX(115); 
+            } else {
+                stave.addTimeSignature("4/4");
+            }
+            stave.setContext(context).draw();
+
+            currentExpectedNotes = []; let staveNotes = []; 
+            let durations = [];
+            let formatWidth = 165;
+
+            if(currentMode.includes('drill')) {
+                durations = ["w"]; formatWidth = 40;
+            } else {
+                if (currentTier === 1) { durations = ["w"]; formatWidth = 40; }
+                else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
+                else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; }
+                else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
+            }
+
+            let lastPitchKey = null;
+
+            for (let dur of durations) {
+                let chosenNote;
+                
+                if (currentMode.includes('drill') && watchListQueue.length > 0 && Math.random() < 0.4) {
+                    chosenNote = watchListQueue[0];
+                } else {
+                    let avail = combinedPool.filter(p => p[1] !== lastPitchKey);
+                    chosenNote = avail[Math.floor(Math.random() * avail.length)]; 
+                }
+                
+                lastPitchKey = chosenNote[1];
+                if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
+                
+                staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosenNote[1]], duration: dur })); 
+                currentExpectedNotes.push(chosenNote[0]);
+            }
+
+            let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+            new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
+            voice.draw(context, stave);
+
+            currentExpectedNotes.forEach((_, idx) => {
+                const cell = document.createElement('div'); cell.className = 'input-cell';
+                const input = document.createElement('input'); input.type = 'text'; input.readOnly = true; input.id = `box-${idx}`;
+                cell.appendChild(input); inputsContainer.appendChild(cell);
+            });
+            activeInputIndex = 0; setActiveBox(0);
+
+            if(currentMode === 'speed') {
+                startFlashcardTimer(getTimeLimitForTier(currentTier));
+            }
+            
+        } catch (err) { console.error(err); }
+    }
+
+    function startFlashcardTimer(seconds) {
+        const flashFill = document.getElementById('flash-timer-fill');
+        setTimeout(() => {
+            flashFill.style.transition = `width ${seconds}s linear`;
+            flashFill.style.width = '0%';
+        }, 50);
+
+        breakOutTimer = setTimeout(() => {
+            if (secondsLeft > 0) {
+                playSound('timeout');
+                document.getElementById('card-canvas-wrapper').classList.add('timeout');
+                resetStreak(); 
+                currentExpectedNotes.forEach((val, idx) => {
+                    const box = document.getElementById(`box-${idx}`);
+                    if (box && !box.classList.contains('correct')) {
+                        box.value = val; box.style.color = 'var(--accent-red)';
+                    }
+                });
+                setTimeout(loadNextCard, 800);
+            }
+        }, seconds * 1000);
+    }
+
+    function setActiveBox(idx) {
+        document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
+        const target = document.getElementById(`box-${idx}`);
+        if (target) { activeInputIndex = idx; target.classList.add('active-box'); }
+    }
+
+    function handleKeypadInput(letter) {
+        if (secondsLeft <= 0) return;
+        const input = document.getElementById(`box-${activeInputIndex}`);
+        if (!input) return;
+
+        input.value = letter;
+        const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase();
+        totalAttempts++;
+
+        if (letter === correctVal) {
+            playSound('correct');
+            input.classList.remove('incorrect'); input.classList.add('correct');
+            correctAttempts++;
+
+            if (currentMode.includes('drill') && watchListQueue.length > 0 && watchListQueue[0][1] === currentFlashcardPitch) {
+                watchListQueue.shift(); 
+            }
+
+            if (activeInputIndex < currentExpectedNotes.length - 1) { 
+                setActiveBox(activeInputIndex + 1); 
+            } else { 
+                if (breakOutTimer) clearTimeout(breakOutTimer);
+                score += currentTier; 
+                
+                if (currentMode === 'speed') {
+                    currentStreak++;
+                    if (currentStreak >= 3) {
+                        highestTierCompleted = Math.max(highestTierCompleted, currentTier);
+                        if (currentTier < 4) { currentTier++; currentStreak = 0; } 
+                        else { currentStreak = 0; }
+                    }
+                }
+                
+                updateTrackerUI();
+                setTimeout(loadNextCard, 200); 
+            }
+        } else {
+            playSound('wrong');
+            
+            if (currentMode === 'speed') {
+                resetStreak(); 
+            } else {
+                let existingErr = watchListQueue.find(e => e[1] === currentFlashcardPitch);
+                if (!existingErr) watchListQueue.push([correctVal, currentFlashcardPitch]);
+            }
+
+            input.classList.remove('correct'); input.classList.remove('incorrect'); 
+            void input.offsetWidth; input.classList.add('incorrect');
+            setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 300);
+        }
+    }
+
+    function finishRound() {
+        if (breakOutTimer) clearTimeout(breakOutTimer);
+        playSound('complete'); switchScreen('screen-summary');
+        
+        let accuracy = totalAttempts === 0 ? 0 : Math.round((correctAttempts / totalAttempts) * 100);
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+        
+        let medal = 'Keep Practising! 💪'; 
+        
+        if (currentMode === 'speed') {
+            document.getElementById('tier-result').style.display = 'block';
+            document.getElementById('graduation-msg').style.display = 'none';
+            document.getElementById('final-tier').innerText = highestTierCompleted;
+            if (highestTierCompleted === 4) medal = 'Gold 🥇';
+            else if (highestTierCompleted === 3) medal = 'Silver 🥈'; 
+            else if (highestTierCompleted === 2) medal = 'Bronze 🥉'; 
+        } else {
+            document.getElementById('tier-result').style.display = 'none';
+            if (accuracy >= 95 && score >= 30) {
+                medal = 'Perfect Drill! 🌟';
+                document.getElementById('graduation-msg').style.display = 'block';
+            } else {
+                document.getElementById('graduation-msg').style.display = 'none';
+                medal = 'Good Practice! 👍';
+            }
+        }
+        
+        document.getElementById('final-medal').innerText = medal;
+    }
+</script>
+</body>
+</html>
