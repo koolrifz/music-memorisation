@@ -101,7 +101,7 @@
         .btn-secondary { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; margin-top: 10px; font-size: 15px; padding: 14px; }
         .btn-secondary:active { transform: translateY(6px); box-shadow: 0 0 0 #2a3b4f; }
         
-        .btn-helper-toggle { background: var(--accent-blue); box-shadow: 0 4px 0 #1485bc; font-size: 13px; font-weight: 900; padding: 6px 14px; border-radius: 12px; border: none; color: white; cursor: pointer; }
+        .btn-helper-toggle { background: var(--accent-blue); box-shadow: 0 4px 0 #1485bc; font-size: 13px; font-weight: 900; padding: 6px 14px; border-radius: 12px; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
         .btn-helper-toggle:active { transform: translateY(3px); box-shadow: 0 0 0 #1485bc; }
         .btn-input-toggle { background: #2c3e50; border: 2px solid #4a627a; font-size: 13px; font-weight: 800; padding: 8px 16px; border-radius: 14px; color: #a1b4c7; cursor: pointer; margin-bottom: 10px; transition: all 0.1s; }
         .btn-input-toggle:active { background: #1a2634; transform: translateY(2px); }
@@ -113,7 +113,9 @@
         .score-row { display: flex; align-items: center; gap: 6px; }
         .tier-tracker { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
         .timer-badge { font-size: 14px; font-weight: 800; color: var(--accent-blue); text-align: center; margin-bottom: 2px; }
-        .flash-timer { width: 100%; max-width: 500px; height: 4px; background: #324a64; margin-bottom: 4px; border-radius: 2px; overflow: hidden; display: none; }
+        
+        /* Unified Flash Timer styling */
+        .flash-timer { width: 100%; max-width: 500px; height: 6px; background: #324a64; margin-bottom: 8px; border-radius: 3px; overflow: hidden; display: none; }
         .flash-timer-fill { height: 100%; background: var(--accent-red); width: 100%; transition: width linear; }
 
         .helper-modal { width: 100%; max-width: 500px; background: #ffffff; border-radius: 16px; padding: 8px 4px; margin-bottom: 8px; display: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: 3px solid var(--accent-blue); box-sizing: border-box; min-height: 120px; }
@@ -127,6 +129,9 @@
         #score-canvas svg, #g1-score-canvas svg { width: 100%; height: 100%; max-height: 120px; }
 
         /* SMASH Grid specific CSS (Game 2) */
+        #g2-clef-display { width: 100%; max-width: 500px; height: 60px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 10px; }
+        #g2-clef-display svg { max-height: 50px; }
+        
         #g2-grid-container { width: 100%; max-width: 500px; display: grid; gap: 10px; margin-bottom: 10px; }
         .smash-card { background: #ffffff; border-radius: 12px; border: 3px solid #e0e6ed; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.1s, border-color 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); overflow: hidden; position: relative; min-height: 90px; }
         .smash-card:active { transform: scale(0.95); }
@@ -134,6 +139,12 @@
         .smash-card.correct::after { content: '✔'; position: absolute; top: 5px; right: 8px; color: var(--accent-green); font-weight: 900; font-size: 18px; }
         .smash-card.incorrect { border-color: var(--accent-red); background: rgba(255,75,75,0.1); }
         .smash-card svg { width: 100%; height: 100%; max-height: 90px; pointer-events: none; }
+        
+        /* Modal for Watchlist */
+        .watchlist-box { background: var(--bg-panel); padding: 24px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center; border: 3px solid var(--accent-red); box-shadow: 0 10px 30px rgba(0,0,0,0.6); color: white; }
+        .watchlist-box h3 { margin: 0 0 10px 0; color: var(--accent-red); }
+        .watchlist-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
+        .watchlist-item { background: #324a64; padding: 6px 12px; border-radius: 8px; font-weight: 900; font-size: 18px; color: var(--accent-gold); }
 
         .inputs-row { display: flex; width: 100%; max-width: 500px; justify-content: center; gap: 10px; margin-bottom: 6px; }
         .input-cell input { width: 44px; height: 46px; text-align: center; font-size: 24px; font-weight: 900; text-transform: uppercase; border: 3px solid #324a64; border-radius: 14px; background: var(--bg-panel); color: white; transition: all 0.15s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
@@ -265,13 +276,20 @@
     <div id="g2-screen-setup" class="screen active" style="position:relative; opacity:1; display:flex; pointer-events:auto;">
         <div class="setup-card">
             <h1>💥 Note Name Smash</h1>
-            <p>Find the right note fast.</p>
+            <p>Find the right note fast in the grid.</p>
             
             <select id="g2-clef-select" onchange="renderHelperSheetGraphics()">
                 <option value="treble">Treble Clef</option>
                 <option value="bass">Bass Clef</option>
                 <option value="alto">Alto Clef</option>
                 <option value="tenor">Tenor Clef</option>
+            </select>
+
+            <select id="g2-round-select">
+                <option value="1">Round 1: Lines Only</option>
+                <option value="2">Round 2: Spaces Only</option>
+                <option value="3">Round 3: Staff Mixed</option>
+                <option value="4">Round 4: Add Ledgers</option>
             </select>
             
             <button class="btn btn-start" onclick="startG2Game()">Start Smash</button>
@@ -280,26 +298,34 @@
 
     <!-- Game 2 Active Play Screen -->
     <div id="g2-screen-game" class="screen" style="position:relative; opacity:0; display:none;">
-        <div class="game-header" style="margin-top: 10px;">
-            <div class="score-counter" style="align-items: flex-start;">
+        <div class="game-header" style="margin-top: 25px; align-items: flex-start;">
+            <div class="score-counter" style="align-items: flex-start; flex: 1;">
                 <div class="score-row">⭐ <span id="g2-score-text">0</span></div>
                 <div class="tier-tracker" id="g2-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
+                <div class="tier-tracker" id="g2-attempts-text">Attempts: 0</div>
             </div>
-            <button class="btn-helper-toggle" onclick="toggleHelperModal()">💡 Helpers</button>
-            <div style="color: var(--accent-gold); font-weight: 900; font-size: 22px;">Find <span id="g2-target-note">C</span></div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; flex: 1;">
+                <div style="color: var(--accent-gold); font-weight: 900; font-size: 32px; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g2-target-note-display">FIND C</div>
+                <div class="flash-timer" id="g2-flash-timer-bar" style="display:block; width: 100%; max-width: 200px;"><div class="flash-timer-fill" id="g2-flash-timer-fill"></div></div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end; flex: 1;">
+                <button class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
+                <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
+            </div>
         </div>
         
-        <div class="flash-timer" id="g2-flash-timer-bar" style="display:block;"><div class="flash-timer-fill" id="g2-flash-timer-fill"></div></div>
-
         <!-- Reusing Helper Modal UI -->
         <div class="helper-modal" id="g2-helper-modal">
-            <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
+            <h3>📖 Note Name Helpers</h3>
             <div class="helper-container">
                 <div id="g2-helper-lines-canvas"></div>
                 <div id="g2-helper-spaces-canvas"></div>
             </div>
         </div>
 
+        <div id="g2-clef-display"></div>
         <div id="g2-grid-container"></div>
     </div>
 
@@ -308,9 +334,10 @@
         <div class="summary-card">
             <h2>🎉 Smash Complete!</h2>
             <div class="summary-stat">Total Score: <span id="g2-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+            <div class="summary-stat">Total Attempts: <span id="g2-final-attempts" style="color:white; font-weight:bold;">0</span></div>
             <div class="summary-stat">Highest Grid Reached: <span id="g2-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
             <button class="btn btn-start" onclick="startG2Game()">Play Again 🚀</button>
-            <button class="btn btn-secondary" onclick="switchG2Screen('g2-screen-setup')">Change Clef</button>
+            <button class="btn btn-secondary" onclick="switchG2Screen('g2-screen-setup')">Change Setup</button>
         </div>
     </div>
 </div>
@@ -388,7 +415,7 @@
             <div class="white-key" id="key-C2" onclick="handleKeypadInput('C')">C</div>
         </div>
 
-        <!-- NEW Two-Thumb Stacks implementation -->
+        <!-- Two-Thumb Stacks -->
         <div class="thumb-stacks" id="thumb-stacks-container">
             <div class="thumb-col">
                 <button class="thumb-btn" id="btn-A" onclick="handleKeypadInput('A')">A</button>
@@ -428,9 +455,19 @@
     </div>
 </div>
 
+<!-- WATCHLIST MODAL (Game 2) -->
+<div class="modal-overlay" id="modal-watchlist">
+    <div class="watchlist-box">
+        <h3>⚠️ Active Watchlist</h3>
+        <p style="font-size: 14px; margin-top: 0;">These notes need 3 flawless catches to clear.</p>
+        <div class="watchlist-list" id="watchlist-display-list"></div>
+        <button class="btn-close" onclick="hideG2Watchlist()">Continue</button>
+    </div>
+</div>
+
 <script>
     /* =========================================
-       AUDIO ENGINE
+       AUDIO & SPEECH ENGINE
        ========================================= */
     let audioCtx = null;
     function initAudio() {
@@ -446,6 +483,15 @@
             else if (type === 'timeout') { osc.type = 'square'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.4); gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4); }
             else if (type === 'complete') { osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.15); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.45); gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); osc.start(); osc.stop(audioCtx.currentTime + 0.9); }
         } catch (e) {}
+    }
+    
+    function speakInstruction(letter) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            let utterance = new SpeechSynthesisUtterance("Find " + letter);
+            utterance.rate = 1.2;
+            window.speechSynthesis.speak(utterance);
+        }
     }
 
     /* =========================================
@@ -540,6 +586,7 @@
     let g1Spaces = [];
 
     function initG1Pool() {
+        // Deriving from NOTE_CONFIGS to ensure correctness (C4 on line, D4 on space)
         const config = NOTE_CONFIGS.treble;
         g1Lines = [...config.staffLines, ...config.ledgerLines].map(n => n[1]);
         g1Spaces = [...config.staffSpaces, ...config.ledgerSpaces].map(n => n[1]);
@@ -587,7 +634,7 @@
 
         g1FlashTimer = setTimeout(() => {
             if (g1SecondsLeft > 0) {
-                // Timeout miss (no penalty)
+                // Timeout miss: no penalty to score, just move on
                 document.getElementById('g1-card-wrapper').classList.add('timeout');
                 setTimeout(loadG1Card, 300);
             }
@@ -614,6 +661,7 @@
             renderer.resize(320, 130);
             const context = renderer.getContext(); context.scale(1.3, 1.3);
 
+            // Clean neutral stave with NO clef
             const stave = new VF.Stave(8, 5, 225);
             stave.setEndBarType(VF.Barline.type.NONE);
             stave.setBegBarType(VF.Barline.type.NONE);
@@ -669,19 +717,22 @@
     }
 
     /* =========================================
-       GAME 2: NOTE NAME SMASH
+       GAME 2: NOTE NAME SMASH (Grid Design)
        ========================================= */
     let g2Timer = null;
     let g2FlashTimer = null;
     let g2SecondsLeft = 60;
     let g2Score = 0;
+    let g2TotalAttempts = 0;
     let g2TierIndex = 0;
     const g2Tiers = [1, 2, 3, 6, 9, 12];
     let g2Streak = 0;
     let g2DudStreak = 0;
     let g2TargetsPresent = 0;
     let g2TargetsFound = 0;
+    let g2WrongTapsThisScreen = 0;
     let g2TargetNote = '';
+    let g2Watchlist = {}; // { 'C': 3 } means C needs 3 flawless catches to clear
 
     function switchG2Screen(screenId) {
         ['g2-screen-setup', 'g2-screen-game', 'g2-screen-summary'].forEach(id => {
@@ -692,22 +743,100 @@
         if(target) { target.style.display = 'flex'; setTimeout(() => { target.classList.add('active'); target.style.opacity = '1'; }, 10); }
     }
 
+    function toggleG2HelperModal() {
+        const modal = document.getElementById('g2-helper-modal');
+        if(modal) { modal.classList.toggle('show'); }
+    }
+
+    function showG2Watchlist() {
+        const modal = document.getElementById('modal-watchlist');
+        const list = document.getElementById('watchlist-display-list');
+        list.innerHTML = '';
+        
+        const items = Object.keys(g2Watchlist);
+        if(items.length === 0) {
+            list.innerHTML = '<div style="color:var(--text-muted); font-size:14px;">Watchlist is empty.</div>';
+        } else {
+            items.forEach(note => {
+                const badge = document.createElement('div');
+                badge.className = 'watchlist-item';
+                badge.innerText = `${note} (${g2Watchlist[note]} left)`;
+                list.appendChild(badge);
+            });
+        }
+        modal.classList.add('show');
+    }
+
+    function hideG2Watchlist() {
+        document.getElementById('modal-watchlist').classList.remove('show');
+    }
+
+    function updateG2WatchlistBadge() {
+        const count = Object.keys(g2Watchlist).length;
+        document.getElementById('g2-watchlist-count').innerText = count;
+    }
+
+    function setupG2Helpers(round) {
+        const helperModal = document.getElementById('g2-helper-modal');
+        const linesCanvas = document.getElementById('g2-helper-lines-canvas');
+        const spacesCanvas = document.getElementById('g2-helper-spaces-canvas');
+
+        linesCanvas.style.display = 'none';
+        spacesCanvas.style.display = 'none';
+
+        if(round === '1') {
+            helperModal.classList.add('show');
+            linesCanvas.style.display = 'block';
+        } else if (round === '2') {
+            helperModal.classList.add('show');
+            spacesCanvas.style.display = 'block';
+        } else {
+            helperModal.classList.remove('show');
+            linesCanvas.style.display = 'block';
+            spacesCanvas.style.display = 'block';
+        }
+    }
+
     function startG2Game() {
         initAudio();
+        const round = document.getElementById('g2-round-select').value;
+        setupG2Helpers(round);
+
         g2Score = 0;
+        g2TotalAttempts = 0;
         g2TierIndex = 0;
         g2Streak = 0;
         g2DudStreak = 0;
         g2SecondsLeft = 60;
+        g2Watchlist = {};
+        updateG2WatchlistBadge();
         updateG2TrackerUI();
+        
         switchG2Screen('g2-screen-game');
         startG2Timer();
+        
+        // Render single clef icon once above grid
+        renderG2ClefDisplay();
+        
         loadG2Grid();
+    }
+
+    function renderG2ClefDisplay() {
+        const VF = Vex.Flow;
+        const clefName = document.getElementById('g2-clef-select').value;
+        const container = document.getElementById('g2-clef-display');
+        container.innerHTML = '';
+        
+        const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+        renderer.resize(80, 60);
+        const ctx = renderer.getContext(); ctx.scale(0.8, 0.8);
+        new VF.Stave(0, 5, 80).addClef(clefName).setContext(ctx).draw();
     }
 
     function updateG2TrackerUI() {
         document.getElementById('g2-tier-tracker-text').innerText = `Grid: ${g2Tiers[g2TierIndex]} | Streak: ${g2Streak}/3`;
         document.getElementById('g2-score-text').innerText = g2Score;
+        document.getElementById('g2-attempts-text').innerText = `Attempts: ${g2TotalAttempts}`;
     }
 
     function startG2Timer() {
@@ -725,21 +854,57 @@
 
         g2FlashTimer = setTimeout(() => {
             if (g2SecondsLeft > 0) {
-                // Time up check
-                if (g2TargetsFound < g2TargetsPresent) {
-                    g2Streak = 0; // Missed targets breaks streak
-                    updateG2TrackerUI();
-                } else if (g2TargetsPresent === 0) {
-                    g2DudStreak++;
-                    if (g2DudStreak >= 3) { g2Score++; g2DudStreak = 0; }
-                }
-                loadG2Grid();
+                resolveG2Screen(false); // Time up -> resolved as incomplete
             }
         }, 3000);
     }
 
+    function resolveG2Screen(cleared) {
+        if (cleared) {
+            // Full clear achieved before timeout
+            if (g2TargetsPresent > 0) {
+                g2Streak++;
+                // Watchlist management
+                if (g2Watchlist[g2TargetNote]) {
+                    g2Watchlist[g2TargetNote]--;
+                    if(g2Watchlist[g2TargetNote] <= 0) delete g2Watchlist[g2TargetNote];
+                    updateG2WatchlistBadge();
+                }
+                
+                // Tier progression
+                if (g2Streak >= 3) {
+                    g2Streak = 0;
+                    if (g2TierIndex < g2Tiers.length - 1) g2TierIndex++;
+                }
+            }
+        } else {
+            // Screen resolved via timeout
+            let missed = g2TargetsPresent - g2TargetsFound;
+            if (missed > 0) {
+                // Missed targets -> breaks streak, adds to watchlist
+                g2Streak = 0;
+                g2Watchlist[g2TargetNote] = 3; 
+                updateG2WatchlistBadge();
+                g2DudStreak = 0;
+            } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen === 0) {
+                // Successful dud (no targets, no wrong taps)
+                g2DudStreak++;
+                if (g2DudStreak >= 3) { g2Score++; g2DudStreak = 0; }
+            } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen > 0) {
+                // Dud screen but they tapped something wrongly
+                g2DudStreak = 0;
+            }
+        }
+        
+        updateG2TrackerUI();
+        setTimeout(loadG2Grid, 300);
+    }
+
     function loadG2Grid() {
         if (g2SecondsLeft <= 0) return;
+        g2TotalAttempts++;
+        g2WrongTapsThisScreen = 0;
+        
         const VF = Vex.Flow;
         const container = document.getElementById('g2-grid-container');
         container.innerHTML = '';
@@ -751,12 +916,26 @@
         container.style.gridTemplateColumns = cardCount <= 2 ? '1fr' : 'repeat(3, 1fr)';
 
         const clefName = document.getElementById('g2-clef-select').value;
+        const round = document.getElementById('g2-round-select').value;
         const config = NOTE_CONFIGS[clefName];
-        let pool = [...config.staffLines, ...config.staffSpaces, ...config.ledgerLines, ...config.ledgerSpaces];
         
-        const targetLetters = ['A','B','C','D','E','F','G'];
+        let pool = [];
+        if (round === '1') pool = [...config.staffLines];
+        else if (round === '2') pool = [...config.staffSpaces];
+        else if (round === '3') pool = [...config.staffLines, ...config.staffSpaces];
+        else if (round === '4') {
+            pool = [...config.staffLines, ...config.staffSpaces];
+            // Block ledger introduction if watchlist is active
+            if(Object.keys(g2Watchlist).length === 0) {
+                pool = pool.concat([...config.ledgerLines, ...config.ledgerSpaces]);
+            }
+        }
+        
+        const targetLetters = [...new Set(pool.map(n => n[0].toUpperCase()))];
         g2TargetNote = targetLetters[Math.floor(Math.random() * targetLetters.length)];
-        document.getElementById('g2-target-note').innerText = g2TargetNote;
+        
+        document.getElementById('g2-target-note-display').innerText = `FIND ${g2TargetNote}`;
+        speakInstruction(g2TargetNote);
         
         let isDud = Math.random() < 0.15;
         g2TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount >= 9 ? Math.floor(Math.random() * 2) + 2 : 1);
@@ -765,6 +944,9 @@
         g2TargetsFound = 0;
         let targetPool = pool.filter(n => n[0].toUpperCase() === g2TargetNote);
         let distractorPool = pool.filter(n => n[0].toUpperCase() !== g2TargetNote);
+        
+        // Failsafe if targetPool is empty (edge cases)
+        if(targetPool.length === 0) { g2TargetsPresent = 0; isDud = true; }
 
         let gridNotes = [];
         for(let i=0; i<g2TargetsPresent; i++) {
@@ -786,10 +968,17 @@
             const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
             renderer.resize(100, 90);
             const ctx = renderer.getContext(); ctx.scale(0.8, 0.8);
-            const stave = new VF.Stave(10, 5, 80).addClef(config.clef).setContext(ctx).draw();
+            
+            // Render plain stave, NO clef (saves space)
+            const stave = new VF.Stave(10, 5, 80);
+            stave.setContext(ctx).draw();
+            
             const note = new VF.StaveNote({ clef: config.clef, keys: [n[1]], duration: "w" });
             const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
             new VF.Formatter().joinVoices([voice]).format([voice], 20);
+            
+            // Adjust starting X slightly to centre the note without clef
+            stave.setNoteStartX(35);
             voice.draw(ctx, stave);
         });
 
@@ -806,18 +995,14 @@
             g2TargetsFound++;
             updateG2TrackerUI();
             
+            // Full clear check
             if (g2TargetsFound >= g2TargetsPresent) {
                 if (g2FlashTimer) clearTimeout(g2FlashTimer);
-                g2Streak++;
-                if (g2Streak >= 3) {
-                    g2Streak = 0;
-                    if (g2TierIndex < g2Tiers.length - 1) g2TierIndex++;
-                }
-                updateG2TrackerUI();
-                setTimeout(loadG2Grid, 300);
+                resolveG2Screen(true);
             }
         } else {
-            // Incorrect tap visual cue only, no penalty score
+            playSound('wrong');
+            g2WrongTapsThisScreen++;
             cardElement.classList.remove('incorrect');
             void cardElement.offsetWidth;
             cardElement.classList.add('incorrect');
@@ -831,6 +1016,7 @@
         playSound('complete');
         switchG2Screen('g2-screen-summary');
         document.getElementById('g2-final-score').innerText = g2Score;
+        document.getElementById('g2-final-attempts').innerText = g2TotalAttempts;
         document.getElementById('g2-final-tier').innerText = g2Tiers[g2TierIndex];
     }
 
