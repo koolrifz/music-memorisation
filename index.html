@@ -96,6 +96,7 @@
         
         .setup-card { background: var(--bg-panel); padding: 24px; border-radius: 24px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid #324a64; z-index: 20; position: relative; }
         .setup-card h1 { margin: 0 0 6px 0; font-size: 28px; color: var(--accent-gold); text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+        .setup-card p { margin: 0 0 20px 0; font-size: 15px; color: var(--text-muted); }
         
         select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; color: white; border: 3px solid #324a64; border-radius: 16px; font-size: 16px; font-weight: bold; outline: none; }
         .btn { width: 100%; padding: 16px; font-size: 18px; font-weight: 800; border-radius: 18px; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; color: white; transition: transform 0.1s; touch-action: manipulation; position: relative; z-index: 30; }
@@ -126,8 +127,8 @@
 
         .card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 10px 8px; display: flex; justify-content: center; align-items: center; min-height: 140px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 8px; box-sizing: border-box; transition: opacity 0.2s; }
         .card-wrapper.timeout { opacity: 0.5; border-color: var(--accent-red); }
-        #score-canvas { width: 100%; display: flex; justify-content: center; }
-        #score-canvas svg { width: 100%; height: 100%; max-height: 120px; }
+        #score-canvas, #g1-score-canvas { width: 100%; display: flex; justify-content: center; }
+        #score-canvas svg, #g1-score-canvas svg { width: 100%; height: 100%; max-height: 120px; }
 
         .inputs-row { display: flex; width: 100%; max-width: 500px; justify-content: center; gap: 10px; margin-bottom: 6px; }
         .input-cell input { width: 44px; height: 46px; text-align: center; font-size: 24px; font-weight: 900; text-transform: uppercase; border: 3px solid #324a64; border-radius: 14px; background: var(--bg-panel); color: white; transition: all 0.15s; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
@@ -159,6 +160,7 @@
 </head>
 <body>
 
+<!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
     <div class="header">
         <h1>🎷 Kool Riffs</h1>
@@ -166,6 +168,7 @@
     </div>
 
     <div class="menu-container">
+        <!-- Game 1 -->
         <div class="game-card purple" onclick="launchGame('view-game1')">
             <div class="game-icon icon-purple">1</div>
             <div class="game-details">
@@ -174,6 +177,7 @@
             </div>
         </div>
 
+        <!-- Game 2 -->
         <div class="game-card blue" onclick="launchGame('view-game2')">
             <div class="game-icon icon-blue">2</div>
             <div class="game-details">
@@ -182,6 +186,7 @@
             </div>
         </div>
 
+        <!-- Game 3 (NoteQuest) -->
         <div class="game-card green" onclick="launchGame('view-game3')">
             <div class="game-icon icon-green">3</div>
             <div class="game-details">
@@ -196,6 +201,7 @@
     </div>
 </div>
 
+<!-- GAME 1 VIEW (Line & Space Smash - Clef Free) -->
 <div id="view-game1" class="view">
     <div class="game-nav">
         <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
@@ -205,22 +211,14 @@
     <div id="g1-screen-setup" class="screen active" style="position:relative; opacity:1; display:flex; pointer-events:auto;">
         <div class="setup-card">
             <h1>🎯 Line & Space Smash</h1>
-            <p>Test your visual reflexes!</p>
-            
-            <select id="g1-clef-select">
-                <option value="treble">Treble Clef</option>
-                <option value="bass">Bass Clef</option>
-                <option value="alto">Alto Clef</option>
-                <option value="tenor">Tenor Clef</option>
-            </select>
-            
+            <p>Pure visual reflex: Is it a Line or a Space?</p>
             <button class="btn btn-start" onclick="startG1Game()">Start 60s Smash</button>
         </div>
     </div>
 
     <!-- Game 1 Active Play Screen -->
     <div id="g1-screen-game" class="screen" style="position:relative; opacity:0; display:none;">
-        <div class="game-header">
+        <div class="game-header" style="margin-top: 10px;">
             <div class="progress-bar-container"><div class="progress-fill" id="g1-progress-bar"></div></div>
             <div class="score-counter">⭐ <span id="g1-score-text">0</span></div>
         </div>
@@ -230,10 +228,10 @@
             <div id="g1-score-canvas"></div>
         </div>
 
-        <!-- Smash Action Buttons (Line Left, Space Right) -->
+        <!-- Smash Action Buttons: Space [S] Left, Line [L] Right -->
         <div style="display: flex; width: 100%; max-width: 500px; gap: 15px; margin-top: 10px;">
-            <button class="btn" style="background: var(--accent-blue); box-shadow: 0 6px 0 var(--accent-blue-shadow);" onclick="handleG1Input('line')">LINE [L] 📏</button>
             <button class="btn" style="background: var(--accent-purple); box-shadow: 0 6px 0 var(--accent-purple-shadow);" onclick="handleG1Input('space')">SPACE [S] 🔲</button>
+            <button class="btn" style="background: var(--accent-blue); box-shadow: 0 6px 0 var(--accent-blue-shadow);" onclick="handleG1Input('line')">LINE [L] 📏</button>
         </div>
     </div>
 
@@ -245,11 +243,12 @@
             <div class="summary-stat">Total Score: <span id="g1-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
             <div class="summary-stat">Accuracy: <span id="g1-final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
             <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
-            <button class="btn btn-secondary" onclick="switchG1Screen('g1-screen-setup')">Change Clef</button>
+            <button class="btn btn-secondary" onclick="switchG1Screen('g1-screen-setup')">Back to Setup</button>
         </div>
     </div>
 </div>
 
+<!-- GAME 2 VIEW PLACEHOLDER -->
 <div id="view-game2" class="view">
     <div class="game-nav">
         <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
@@ -260,11 +259,13 @@
     </div>
 </div>
 
+<!-- GAME 3 VIEW (NoteQuest) -->
 <div id="view-game3" class="view">
     <div class="game-nav">
         <button class="btn-back" onclick="launchGame('view-dashboard')">⬅ Back to Menu</button>
     </div>
     
+    <!-- NoteQuest Setup Screen -->
     <div id="screen-setup" class="screen active">
         <div class="setup-card">
             <h1>🎵 Note Quest</h1>
@@ -293,6 +294,7 @@
         </div>
     </div>
 
+    <!-- NoteQuest Game Screen -->
     <div id="screen-game" class="screen">
         <div class="game-header">
             <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
@@ -349,6 +351,7 @@
         </div>
     </div>
 
+    <!-- NoteQuest Summary Screen -->
     <div id="screen-summary" class="screen">
         <div class="summary-card">
             <h2>🎉 Round Complete!</h2>
@@ -363,6 +366,7 @@
     </div>
 </div>
 
+<!-- CREDITS MODAL -->
 <div class="modal-overlay" id="modal-credits">
     <div class="credits-box">
         <h3>🎷 Kool Riffs</h3>
@@ -382,12 +386,14 @@
         });
         document.getElementById(targetViewId).classList.add('active');
         
-        // Force quit NoteQuest timers if returning to Dashboard
+        // Force quit timers if returning to Dashboard
         if (targetViewId === 'view-dashboard') {
+            if (typeof g1Timer !== 'undefined' && g1Timer) clearInterval(g1Timer);
             if (typeof gameTimer !== 'undefined' && gameTimer) clearInterval(gameTimer);
             if (typeof breakOutTimer !== 'undefined' && breakOutTimer) clearTimeout(breakOutTimer);
             if (typeof fadeTimer !== 'undefined' && fadeTimer) clearTimeout(fadeTimer);
             if (typeof switchScreen === 'function') switchScreen('screen-setup');
+            if (typeof switchG1Screen === 'function') switchG1Screen('g1-screen-setup');
         }
     }
 
@@ -398,36 +404,25 @@
     }
 
     /* =========================================
-       NOTEQUEST ENGINE LOGIC
+       GLOBAL KEYBOARD LISTENER (HOTKEYS)
        ========================================= */
-    let isPianoInput = true;
-    let watchListQueue = []; 
-    let currentFlashcardPitch = null; 
-    let currentMode = 'drill-both';
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toUpperCase();
 
-    let currentTier = 1;      
-    let currentStreak = 0;    
-    let highestTierCompleted = 0; 
-    
-    function getTimeLimitForTier(tier) { return tier + 1; }
-
-   window.addEventListener('keydown', (e) => {
-        // Game 1 Hotkeys: L for Line, S for Space
+        // Game 1 Hotkeys: S for Space, L for Line
         const g1GameScreen = document.getElementById('g1-screen-game');
         if (g1GameScreen && g1GameScreen.classList.contains('active')) {
-            const key = e.key.toUpperCase();
-            if (key === 'L') {
-                handleG1Input('line');
-            } else if (key === 'S') {
+            if (key === 'S') {
                 handleG1Input('space');
+            } else if (key === 'L') {
+                handleG1Input('line');
             }
-            return; // Prevent bleed-through to other games
+            return;
         }
 
-        // NoteQuest Hotkeys (Existing A-G logic)
-        if (!document.getElementById('screen-game').classList.contains('active')) return;
+        // NoteQuest Hotkeys (A-G logic)
+        if (!document.getElementById('screen-game') || !document.getElementById('screen-game').classList.contains('active')) return;
         
-        const key = e.key.toUpperCase();
         if (['A','B','C','D','E','F','G'].includes(key)) {
             if (isPianoInput) {
                 const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`);
@@ -439,6 +434,168 @@
             handleKeypadInput(key);
         }
     });
+
+    /* =========================================
+       GAME 1: CLEF-FREE LINE & SPACE SMASH ENGINE
+       ========================================= */
+    let g1Timer = null;
+    let g1SecondsLeft = 60;
+    let g1Score = 0;
+    let g1TotalAttempts = 0;
+    let g1CorrectAttempts = 0;
+    let g1CurrentType = ''; // 'line' or 'space'
+
+    const G1_UNIVERSAL_POOL = {
+        lines: [
+            "d/4", // 1st ledger line below
+            "e/4", // 1st line
+            "g/4", // 2nd line
+            "b/4", // 3rd line
+            "d/5", // 4th line
+            "f/5", // 5th line
+            "a/5"  // 1st ledger line above
+        ],
+        spaces: [
+            "c/4", // Space below 1st ledger line
+            "f/4", // 1st space
+            "a/4", // 2nd space
+            "c/5", // 3rd space
+            "e/5", // 4th space
+            "g/5"  // Space above 5th line
+        ]
+    };
+
+    function switchG1Screen(screenId) {
+        ['g1-screen-setup', 'g1-screen-game', 'g1-screen-summary'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.classList.remove('active');
+                el.style.opacity = '0';
+                el.style.display = 'none';
+            }
+        });
+        const target = document.getElementById(screenId);
+        if(target) {
+            target.style.display = 'flex';
+            setTimeout(() => {
+                target.classList.add('active');
+                target.style.opacity = '1';
+            }, 10);
+        }
+    }
+
+    function startG1Game() {
+        initAudio();
+        g1Score = 0;
+        g1TotalAttempts = 0;
+        g1CorrectAttempts = 0;
+        g1SecondsLeft = 60;
+        document.getElementById('g1-score-text').innerText = g1Score;
+        switchG1Screen('g1-screen-game');
+        startG1Timer();
+        loadG1Card();
+    }
+
+    function startG1Timer() {
+        if (g1Timer) clearInterval(g1Timer);
+        const fillBar = document.getElementById('g1-progress-bar');
+        if(fillBar) { fillBar.style.width = '100%'; fillBar.style.backgroundColor = 'var(--accent-green)'; }
+
+        g1Timer = setInterval(() => {
+            g1SecondsLeft--;
+            document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s remaining`;
+            if(fillBar) fillBar.style.width = `${(g1SecondsLeft / 60) * 100}%`;
+            if (g1SecondsLeft <= 0) {
+                clearInterval(g1Timer);
+                finishG1Game();
+            }
+        }, 1000);
+    }
+
+    function loadG1Card() {
+        if (g1SecondsLeft <= 0) return;
+        try {
+            const VF = Vex.Flow;
+            const container = document.getElementById('g1-score-canvas');
+            container.innerHTML = '';
+
+            const isLine = Math.random() < 0.5;
+            g1CurrentType = isLine ? 'line' : 'space';
+            const pool = isLine ? G1_UNIVERSAL_POOL.lines : G1_UNIVERSAL_POOL.spaces;
+            const chosenPitch = pool[Math.floor(Math.random() * pool.length)];
+
+            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+            renderer.resize(320, 130);
+            const context = renderer.getContext();
+            context.scale(1.3, 1.3);
+
+            // Clean neutral stave with NO clef
+            const stave = new VF.Stave(8, 5, 225);
+            stave.setEndBarType(VF.Barline.type.NONE);
+            stave.setBegBarType(VF.Barline.type.NONE);
+            stave.options.left_bar = false;
+            stave.options.right_bar = false;
+            stave.setNoteStartX(115);
+            stave.setContext(context).draw();
+
+            const note = new VF.StaveNote({ clef: "treble", keys: [chosenPitch], duration: "w" });
+            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+            new VF.Formatter().joinVoices([voice]).format([voice], 40);
+            voice.draw(context, stave);
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function handleG1Input(selectedType) {
+        if (g1SecondsLeft <= 0) return;
+        g1TotalAttempts++;
+
+        if (selectedType === g1CurrentType) {
+            playSound('correct');
+            g1Score++;
+            g1CorrectAttempts++;
+            document.getElementById('g1-score-text').innerText = g1Score;
+            loadG1Card();
+        } else {
+            playSound('wrong');
+            const wrapper = document.getElementById('g1-card-wrapper');
+            wrapper.style.borderColor = 'var(--accent-red)';
+            setTimeout(() => { wrapper.style.borderColor = '#e0e6ed'; }, 300);
+            loadG1Card();
+        }
+    }
+
+    function finishG1Game() {
+        if (g1Timer) clearInterval(g1Timer);
+        playSound('complete');
+        switchG1Screen('g1-screen-summary');
+
+        let accuracy = g1TotalAttempts === 0 ? 0 : Math.round((g1CorrectAttempts / g1TotalAttempts) * 100);
+        document.getElementById('g1-final-score').innerText = g1Score;
+        document.getElementById('g1-final-accuracy').innerText = `${accuracy}%`;
+
+        let medal = 'Bronze 🥉';
+        if (accuracy >= 95 && g1Score >= 25) medal = 'Gold 🥇';
+        else if (accuracy >= 85 && g1Score >= 15) medal = 'Silver 🥈';
+
+        document.getElementById('g1-final-medal').innerText = medal;
+    }
+
+    /* =========================================
+       NOTEQUEST ENGINE LOGIC (GAME 3)
+       ========================================= */
+    let isPianoInput = true;
+    let watchListQueue = []; 
+    let currentFlashcardPitch = null; 
+    let currentMode = 'drill-both';
+
+    let currentTier = 1;      
+    let currentStreak = 0;    
+    let highestTierCompleted = 0; 
+    
+    function getTimeLimitForTier(tier) { return tier + 1; }
 
     function handleModeChange() {
         const mode = document.getElementById('mode-select').value;
@@ -820,153 +977,6 @@
         }
         
         document.getElementById('final-medal').innerText = medal;
-    }
-
-   /* =========================================
-       GAME 1: CLEF-FREE LINE & SPACE SMASH ENGINE
-       ========================================= */
-    let g1Timer = null;
-    let g1SecondsLeft = 60;
-    let g1Score = 0;
-    let g1TotalAttempts = 0;
-    let g1CorrectAttempts = 0;
-    let g1CurrentType = ''; // 'line' or 'space'
-
-    // Universal pool: Staff lines/spaces + 1 ledger line above & below
-    const G1_UNIVERSAL_POOL = {
-        lines: [
-            "d/4", // 1st ledger line below
-            "e/4", // 1st line
-            "g/4", // 2nd line
-            "b/4", // 3rd line
-            "d/5", // 4th line
-            "f/5", // 5th line
-            "a/5"  // 1st ledger line above
-        ],
-        spaces: [
-            "c/4", // Space below 1st ledger line / or space under staff
-            "f/4", // 1st space
-            "a/4", // 2nd space
-            "c/5", // 3rd space
-            "e/5", // 4th space
-            "g/5"  // Space above 5th line / 1st ledger space
-        ]
-    };
-
-    function switchG1Screen(screenId) {
-        ['g1-screen-setup', 'g1-screen-game', 'g1-screen-summary'].forEach(id => {
-            const el = document.getElementById(id);
-            el.classList.remove('active');
-            el.style.opacity = '0';
-            el.style.display = 'none';
-        });
-        const target = document.getElementById(screenId);
-        target.style.display = 'flex';
-        setTimeout(() => {
-            target.classList.add('active');
-            target.style.opacity = '1';
-        }, 10);
-    }
-
-    function startG1Game() {
-        initAudio();
-        g1Score = 0;
-        g1TotalAttempts = 0;
-        g1CorrectAttempts = 0;
-        g1SecondsLeft = 60;
-        document.getElementById('g1-score-text').innerText = g1Score;
-        switchG1Screen('g1-screen-game');
-        startG1Timer();
-        loadG1Card();
-    }
-
-    function startG1Timer() {
-        if (g1Timer) clearInterval(g1Timer);
-        const fillBar = document.getElementById('g1-progress-bar');
-        if(fillBar) { fillBar.style.width = '100%'; fillBar.style.backgroundColor = 'var(--accent-green)'; }
-
-        g1Timer = setInterval(() => {
-            g1SecondsLeft--;
-            document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s remaining`;
-            if(fillBar) fillBar.style.width = `${(g1SecondsLeft / 60) * 100}%`;
-            if (g1SecondsLeft <= 0) {
-                clearInterval(g1Timer);
-                finishG1Game();
-            }
-        }, 1000);
-    }
-
-    function loadG1Card() {
-        if (g1SecondsLeft <= 0) return;
-        try {
-            const VF = Vex.Flow;
-            const container = document.getElementById('g1-score-canvas');
-            container.innerHTML = '';
-
-            // Randomly choose between a line note or a space note
-            const isLine = Math.random() < 0.5;
-            g1CurrentType = isLine ? 'line' : 'space';
-            const pool = isLine ? G1_UNIVERSAL_POOL.lines : G1_UNIVERSAL_POOL.spaces;
-            const chosenPitch = pool[Math.floor(Math.random() * pool.length)];
-
-            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-            renderer.resize(320, 130);
-            const context = renderer.getContext();
-            context.scale(1.3, 1.3);
-
-            // Render a clean stave with NO clef
-            const stave = new VF.Stave(8, 5, 225);
-            stave.setEndBarType(VF.Barline.type.NONE);
-            stave.setBegBarType(VF.Barline.type.NONE);
-            stave.options.left_bar = false;
-            stave.options.right_bar = false;
-            stave.setNoteStartX(115);
-            stave.setContext(context).draw();
-
-            // Note without clef context defaults to treble spacing internally for crisp rendering
-            const note = new VF.StaveNote({ clef: "treble", keys: [chosenPitch], duration: "w" });
-            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
-            new VF.Formatter().joinVoices([voice]).format([voice], 40);
-            voice.draw(context, stave);
-
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    function handleG1Input(selectedType) {
-        if (g1SecondsLeft <= 0) return;
-        g1TotalAttempts++;
-
-        if (selectedType === g1CurrentType) {
-            playSound('correct');
-            g1Score++;
-            g1CorrectAttempts++;
-            document.getElementById('g1-score-text').innerText = g1Score;
-            loadG1Card();
-        } else {
-            playSound('wrong');
-            const wrapper = document.getElementById('g1-card-wrapper');
-            wrapper.style.borderColor = 'var(--accent-red)';
-            setTimeout(() => { wrapper.style.borderColor = '#e0e6ed'; }, 300);
-            loadG1Card();
-        }
-    }
-
-    function finishG1Game() {
-        if (g1Timer) clearInterval(g1Timer);
-        playSound('complete');
-        switchG1Screen('g1-screen-summary');
-
-        let accuracy = g1TotalAttempts === 0 ? 0 : Math.round((g1CorrectAttempts / g1TotalAttempts) * 100);
-        document.getElementById('g1-final-score').innerText = g1Score;
-        document.getElementById('g1-final-accuracy').innerText = `${accuracy}%`;
-
-        let medal = 'Bronze 🥉';
-        if (accuracy >= 95 && g1Score >= 25) medal = 'Gold 🥇';
-        else if (accuracy >= 85 && g1Score >= 15) medal = 'Silver 🥈';
-
-        document.getElementById('g1-final-medal').innerText = medal;
     }
 </script>
 </body>
