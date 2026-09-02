@@ -132,8 +132,21 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .helper-container { display: flex; justify-content: center; align-items: center; gap: 5px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 70px; padding-top: 2px; }
 
 /* SMASH Grid Mechanics (Games 1 & 2) */
-#g1-clef-display, #g2-clef-display { width: 100%; max-width: 500px; height: 50px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 6px; }
-#g1-clef-display svg, #g2-clef-display svg { max-height: none; }
+#g1-clef-display, #g2-clef-display { 
+    width: 100%; 
+    max-width: 500px; 
+    height: 70px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 10px; 
+    /* Removed background and border-radius so the clef floats cleanly */
+}
+
+#g1-clef-display svg, #g2-clef-display svg { 
+    height: 100%; 
+    overflow: visible; 
+}
 
 .smash-grid-layout { width: 100%; max-width: 500px; display: grid; gap: 8px; margin-bottom: 6px; }
 .smash-card { background: #ffffff; border-radius: 12px; border: 3px solid #e0e6ed; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.1s, border-color 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); overflow: hidden; position: relative; min-height: 80px; }
