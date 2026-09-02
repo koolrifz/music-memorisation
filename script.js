@@ -204,6 +204,31 @@ function autoCenterVexFlowCanvas(containerDiv, innerDiv) {
 }
 
 /* =========================================
+   FLOATING CLEF SIGNPOST
+   ========================================= */
+function renderFloatingClef(containerId, clefName) {
+    const VF = Vex.Flow;
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+    renderer.resize(80, 80);
+    const ctx = renderer.getContext(); 
+    
+    // Scale it up and make it white
+    ctx.scale(1.5, 1.5); 
+    ctx.setFillStyle('#ffffff'); 
+    ctx.setStrokeStyle('#ffffff');
+    
+    const stave = new VF.Stave(15, -15, 50);
+    // Hide the 5 staff lines so ONLY the clef renders
+    stave.setConfigForLines([
+        {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
+    ]);
+    stave.addClef(clefName).setContext(ctx).draw();
+}
+
+/* =========================================
    GAME 1: LINE & SPACE SMASH (Grid Rebuild)
    ========================================= */
 let g1Score = 0;
