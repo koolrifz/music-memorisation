@@ -169,10 +169,28 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 }
 
 /* NoteQuest Mechanics (Game 3) */
-.card-wrapper { width: 100%; max-width: 500px; background: #ffffff; border-radius: 20px; padding: 8px; display: flex; justify-content: center; align-items: center; min-height: 150px; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.4); border: 4px solid #e0e6ed; margin-bottom: 6px; box-sizing: border-box; transition: opacity 0.2s, border-color 0.2s; }
+/* Update these specific classes for Game 3 */
+.card-wrapper { 
+    width: 100%; 
+    max-width: 500px; 
+    background: #ffffff; 
+    border-radius: 20px; 
+    padding: 15px; /* Increased padding */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 180px; /* Increased from 150px to make room for ledgers */
+    position: relative; 
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4); 
+    border: 4px solid #e0e6ed; 
+    margin-bottom: 6px; 
+    box-sizing: border-box; 
+    transition: opacity 0.2s, border-color 0.2s; 
+}
+
 .card-wrapper.timeout { opacity: 0.5; border-color: var(--accent-red); }
 #score-canvas { width: 100%; display: flex; justify-content: center; }
-#score-canvas svg { width: 100%; height: 100%; max-height: 130px; }
+#score-canvas svg { width: 100%; height: 100%; max-height: 160px; }
 
 .btn-input-toggle { background: #2c3e50; border: 2px solid #4a627a; font-size: 13px; font-weight: 800; padding: 8px 16px; border-radius: 14px; color: #a1b4c7; cursor: pointer; margin-bottom: 8px; transition: all 0.1s; }
 .btn-input-toggle:active { background: #1a2634; transform: translateY(2px); }
