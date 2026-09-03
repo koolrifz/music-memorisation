@@ -130,7 +130,7 @@ function resumeGame(gameId) {
 
     if (gameId === 'game1') {
         startG1Timer();
-        startG1FlashTimer(); // Restart from top of the 3-second cycle per instructions
+        startG1FlashTimer(); // Restart from top of the 3-second cycle
     } else if (gameId === 'game2') {
         startG2Timer();
         startG2FlashTimer();
@@ -189,7 +189,7 @@ function toggleCredits(show) {
 }
 
 /* =========================================
-   VEXFLOW CENTERING UTILITY
+   VEXFLOW CENTRING & CLEF SIGNPOST
    ========================================= */
 function autoCenterVexFlowCanvas(containerDiv, innerDiv) {
     const svg = innerDiv.querySelector('svg');
@@ -203,25 +203,21 @@ function autoCenterVexFlowCanvas(containerDiv, innerDiv) {
     svg.setAttribute('viewBox', viewBox);
 }
 
-/* =========================================
-   FLOATING CLEF SIGNPOST
-   ========================================= */
 function renderFloatingClef(containerId, clefName) {
     const VF = Vex.Flow;
     const container = document.getElementById(containerId);
+    if (!container) return;
     container.innerHTML = '';
     
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
     renderer.resize(80, 80);
     const ctx = renderer.getContext(); 
     
-    // Scale it up and make it white
     ctx.scale(1.5, 1.5); 
     ctx.setFillStyle('#ffffff'); 
     ctx.setStrokeStyle('#ffffff');
     
     const stave = new VF.Stave(15, -15, 50);
-    // Hide the 5 staff lines so ONLY the clef renders
     stave.setConfigForLines([
         {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
     ]);
@@ -241,7 +237,7 @@ let g1BonusDuds = 0;
 let g1TargetsPresent = 0;
 let g1TargetsFound = 0;
 let g1WrongTapsThisScreen = 0;
-let g1TargetType = ''; // "line" or "space"
+let g1TargetType = ''; 
 let g1Watchlist = {}; 
 let g1IsTransitioning = false;
 
@@ -270,13 +266,8 @@ function startG1Game() {
     
     switchScreenState('game1', 'g1-screen-game');
     
-    // Draw empty clef 
-    const VF = Vex.Flow;
-    const container = document.getElementById('g1-clef-display'); container.innerHTML = '';
-    const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(100, 50);
-    const ctx = renderer.getContext(); ctx.scale(1.1, 1.1); ctx.setFillStyle('#ffffff'); ctx.setStrokeStyle('#ffffff');
-    new VF.Stave(0, -10, 80).addClef("treble").setContext(ctx).draw();
+    const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
+    renderFloatingClef('g1-clef-display', clefName);
 
     startG1Timer();
     loadG1Grid();
@@ -316,14 +307,12 @@ function resolveG1Screen(cleared) {
     if (cleared) {
         if (g1TargetsPresent > 0) {
             g1Streak++;
-            // Note: Line/Space game watchlist isn't target specific, it tracks missed notes.
             if (g1Streak >= 3) { g1Streak = 0; if (g1TierIndex < g1Tiers.length - 1) g1TierIndex++; }
         }
     } else {
         let missed = g1TargetsPresent - g1TargetsFound;
         if (missed > 0) {
             g1Streak = 0; g1DudStreak = 0;
-            // Add missed notes to watchlist handled in click/timeout logic natively below.
         } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen === 0) {
             g1DudStreak++;
             if (g1DudStreak >= 3) { g1BonusDuds++; g1Score++; g1DudStreak = 0; }
@@ -347,7 +336,9 @@ function loadG1Grid() {
     let cardCount = g1Tiers[g1TierIndex];
     container.style.gridTemplateColumns = cardCount <= 2 ? '1fr' : 'repeat(3, 1fr)';
 
-    const config = NOTE_CONFIGS.treble; // 2 ledger lines above/below built into treble config above
+    const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
+    const config = NOTE_CONFIGS[clefName];
+    
     let poolLines = [...config.staffLines, ...config.ledgerLines];
     let poolSpaces = [...config.staffSpaces, ...config.ledgerSpaces];
     
@@ -378,13 +369,13 @@ function loadG1Grid() {
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
         
         const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
-        renderer.resize(100, 100); // Temporary size, viewBox handles centering
+        renderer.resize(100, 100); 
         const ctx = renderer.getContext();
         
         const stave = new VF.Stave(0, 20, 80);
         stave.setContext(ctx).draw();
         
-        const note = new VF.StaveNote({ clef: "treble", keys: [n[1]], duration: "w" });
+        const note = new VF.StaveNote({ clef: clefName, keys: [n[1]], duration: "w" });
         const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
         new VF.Formatter().joinVoices([voice]).format([voice], 40);
         stave.setNoteStartX(30);
@@ -480,13 +471,8 @@ function startG2Game() {
     
     switchScreenState('game2', 'g2-screen-game');
     
-    const VF = Vex.Flow;
     const clefName = document.getElementById('g2-clef-select').value;
-    const container = document.getElementById('g2-clef-display'); container.innerHTML = '';
-    const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(100, 50);
-    const ctx = renderer.getContext(); ctx.scale(1.1, 1.1); ctx.setFillStyle('#ffffff'); ctx.setStrokeStyle('#ffffff');
-    new VF.Stave(0, -10, 80).addClef(clefName).setContext(ctx).draw();
+    renderFloatingClef('g2-clef-display', clefName);
 
     startG2Timer(); loadG2Grid();
 }
@@ -533,7 +519,7 @@ function resolveG2Screen(cleared) {
             if (g2Streak >= 3) {
                 g2Streak = 0;
                 if (g2TierIndex < g2Tiers.length - 1) g2TierIndex++;
-                else { finishG2Game(true); return; } // Graduated
+                else { finishG2Game(true); return; } 
             }
         }
     } else {
@@ -581,7 +567,7 @@ function loadG2Grid() {
     speakLetter(g2TargetNote);
     
     let isDud = Math.random() < 0.15;
-    g2TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount >= 9 ? (Math.floor(Math.random() * 2) + 3) : 1); // Up to 3-4 for 12 cards
+    g2TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount >= 9 ? (Math.floor(Math.random() * 2) + 3) : 1); 
     if (g2TargetsPresent > cardCount) g2TargetsPresent = cardCount;
     g2TargetsFound = 0;
     
@@ -874,7 +860,7 @@ function handleKeypadInput(letter) {
                 currentStreak++;
                 if (currentStreak >= 3) { highestTierCompleted = Math.max(highestTierCompleted, currentTier); if (currentTier < 4) { currentTier++; currentStreak = 0; } else { currentStreak = 0; } }
             } else if (currentMode.includes('drill') && score >= 30 && (correctAttempts/totalAttempts >= 0.95)) {
-                finishG3Round(true); return; // Auto graduate if thresholds hit mid-round
+                finishG3Round(true); return; 
             }
             updateG3TrackerUI(); setTimeout(loadNextCard, 200); 
         }
