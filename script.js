@@ -771,7 +771,7 @@ function loadNextCard() {
         const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
         renderer.resize(320, 130); const context = renderer.getContext(); context.scale(1.3, 1.3);
 
-        const stave = new VF.Stave(8, 5, 225); stave.addClef(config.clef);
+        const stave = new VF.Stave(8, 35, 225); stave.addClef(config.clef);
         if(currentMode.includes('drill') || currentTier === 1) { 
             stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(115); 
         } else { stave.addTimeSignature("4/4"); }
@@ -791,7 +791,14 @@ function loadNextCard() {
             else { let avail = combinedPool.filter(p => p[1] !== lastPitchKey); chosenNote = avail[Math.floor(Math.random() * avail.length)]; }
             lastPitchKey = chosenNote[1];
             if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
-            staveNotes.push(new VF.StaveNote({ clef: config.clef, keys: [chosenNote[1]], duration: dur })); currentExpectedNotes.push(chosenNote[0]);
+            // 3. Add auto_stem: true so VexFlow handles standard stem directions
+            staveNotes.push(new VF.StaveNote({ 
+                clef: config.clef, 
+                keys: [chosenNote[1]], 
+                duration: dur, 
+                auto_stem: true 
+            })); 
+            currentExpectedNotes.push(chosenNote[0]);
         }
 
         let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
