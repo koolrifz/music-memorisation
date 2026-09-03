@@ -363,7 +363,7 @@ function loadG1Grid() {
         renderer.resize(160, 110); 
         const ctx = renderer.getContext();
         
-        const stave = new VF.Stave(15, 22, 130);
+        const stave = new VF.Stave(15, 28, 130);
         stave.setContext(ctx).draw();
         
         const note = new VF.StaveNote({ clef: clefName, keys: [n[1]], duration: "w" });
