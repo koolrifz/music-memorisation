@@ -360,28 +360,32 @@ function loadG1Grid() {
     gridNotes.sort(() => Math.random() - 0.5);
 
     gridNotes.forEach((n) => {
-        const isTargetNote = (g1TargetType === 'line' && poolLines.includes(n)) || (g1TargetType === 'space' && poolSpaces.includes(n));
+        const isTargetNote = /* keep whatever your target check is for G1 or G2 */;
         
         const card = document.createElement('div');
         card.className = 'smash-card ' + (cardCount <= 2 ? 'large-card' : 'small-card');
-        card.onclick = () => handleG1Click(card, isTargetNote, n[0]);
+        card.onclick = () => handleG1Click(card, isTargetNote, n[0]); // (or handleG2Click for game 2)
         
-        const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
+        const innerDiv = document.createElement('div'); 
+        card.appendChild(innerDiv); 
+        container.appendChild(card);
         
+        // Use a stable, wider renderer size so the full 5 lines and side margins fit natively
         const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
-        renderer.resize(100, 100); 
+        renderer.resize(160, 110); 
         const ctx = renderer.getContext();
         
-        const stave = new VF.Stave(0, 20, 80);
+        // Stave parameters: (X position, Y position, Stave Width)
+        // X = 15 leaves a clean left margin; Width = 130 ensures the 5 lines span nicely across the card
+        const stave = new VF.Stave(15, 22, 130);
         stave.setContext(ctx).draw();
         
         const note = new VF.StaveNote({ clef: clefName, keys: [n[1]], duration: "w" });
         const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
-        new VF.Formatter().joinVoices([voice]).format([voice], 40);
-        stave.setNoteStartX(30);
+        new VF.Formatter().joinVoices([voice]).format([voice], 80);
+        
+        stave.setNoteStartX(70); // Centers the note right in the middle of the 130px stave
         voice.draw(ctx, stave);
-
-        autoCenterVexFlowCanvas(container, innerDiv);
     });
     startG1FlashTimer();
 }
