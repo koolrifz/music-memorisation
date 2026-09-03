@@ -47,7 +47,7 @@ function speakLetter(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         let utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.85; 
+        utterance.rate = 1.06; 
         
         let voices = window.speechSynthesis.getVoices();
         let preferredVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium')))) 
