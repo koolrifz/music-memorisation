@@ -198,20 +198,23 @@ function renderFloatingClef(containerId, clefName) {
     container.innerHTML = '';
     
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(80, 80);
+    renderer.resize(80, 70);
     const ctx = renderer.getContext(); 
     
-    ctx.scale(1.5, 1.5); 
+    ctx.scale(1.3, 1.3); 
     ctx.setFillStyle('#ffffff'); 
     ctx.setStrokeStyle('#ffffff');
     
-    const stave = new VF.Stave(15, -15, 50);
+    const stave = new VF.Stave(10, -5, 50);
     stave.setConfigForLines([
         {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
     ]);
+    stave.setBegBarType(VF.Barline.type.NONE);
+    stave.setEndBarType(VF.Barline.type.NONE);
+    stave.options.left_bar = false;
+    stave.options.right_bar = false;
     stave.addClef(clefName).setContext(ctx).draw();
 }
-
 /* =========================================
    GAME 1: LINE & SPACE SMASH (Fixed Width Stave)
    ========================================= */
