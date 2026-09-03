@@ -130,7 +130,7 @@ function resumeGame(gameId) {
 
     if (gameId === 'game1') {
         startG1Timer();
-        startG1FlashTimer(); // Restart from top of the 3-second cycle
+        startG1FlashTimer(); 
     } else if (gameId === 'game2') {
         startG2Timer();
         startG2FlashTimer();
@@ -189,20 +189,8 @@ function toggleCredits(show) {
 }
 
 /* =========================================
-   VEXFLOW CENTRING & CLEF SIGNPOST
+   CLEF SIGNPOST UTILITY
    ========================================= */
-function autoCenterVexFlowCanvas(containerDiv, innerDiv) {
-    const svg = innerDiv.querySelector('svg');
-    if (!svg) return;
-    const group = svg.querySelector('g');
-    if (!group) return;
-    
-    const bbox = group.getBBox();
-    const padding = 10;
-    const viewBox = `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + (padding*2)} ${bbox.height + (padding*2)}`;
-    svg.setAttribute('viewBox', viewBox);
-}
-
 function renderFloatingClef(containerId, clefName) {
     const VF = Vex.Flow;
     const container = document.getElementById(containerId);
@@ -225,7 +213,7 @@ function renderFloatingClef(containerId, clefName) {
 }
 
 /* =========================================
-   GAME 1: LINE & SPACE SMASH (Grid Rebuild)
+   GAME 1: LINE & SPACE SMASH (Fixed Width Stave)
    ========================================= */
 let g1Score = 0;
 let g1TotalAttempts = 0;
@@ -360,31 +348,25 @@ function loadG1Grid() {
     gridNotes.sort(() => Math.random() - 0.5);
 
     gridNotes.forEach((n) => {
-        const isTargetNote = /* keep whatever your target check is for G1 or G2 */;
+        const isTargetNote = (g1TargetType === 'line' && poolLines.includes(n)) || (g1TargetType === 'space' && poolSpaces.includes(n));
         
         const card = document.createElement('div');
         card.className = 'smash-card ' + (cardCount <= 2 ? 'large-card' : 'small-card');
-        card.onclick = () => handleG1Click(card, isTargetNote, n[0]); // (or handleG2Click for game 2)
+        card.onclick = () => handleG1Click(card, isTargetNote, n[0]);
         
-        const innerDiv = document.createElement('div'); 
-        card.appendChild(innerDiv); 
-        container.appendChild(card);
+        const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
         
-        // Use a stable, wider renderer size so the full 5 lines and side margins fit natively
         const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
         renderer.resize(160, 110); 
         const ctx = renderer.getContext();
         
-        // Stave parameters: (X position, Y position, Stave Width)
-        // X = 15 leaves a clean left margin; Width = 130 ensures the 5 lines span nicely across the card
         const stave = new VF.Stave(15, 22, 130);
         stave.setContext(ctx).draw();
         
         const note = new VF.StaveNote({ clef: clefName, keys: [n[1]], duration: "w" });
         const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
         new VF.Formatter().joinVoices([voice]).format([voice], 80);
-        
-        stave.setNoteStartX(70); // Centers the note right in the middle of the 130px stave
+        stave.setNoteStartX(70);
         voice.draw(ctx, stave);
     });
     startG1FlashTimer();
@@ -424,7 +406,7 @@ function finishG1Game() {
 }
 
 /* =========================================
-   GAME 2: NOTE NAME SMASH
+   GAME 2: NOTE NAME SMASH (Fixed Width Stave)
    ========================================= */
 let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [1, 2, 3, 6, 9, 12];
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
@@ -592,19 +574,17 @@ function loadG2Grid() {
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
         
         const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
-        renderer.resize(100, 100); 
+        renderer.resize(160, 110); 
         const ctx = renderer.getContext();
         
-        const stave = new VF.Stave(0, 20, 80);
+        const stave = new VF.Stave(15, 22, 130);
         stave.setContext(ctx).draw();
         
         const note = new VF.StaveNote({ clef: config.clef, keys: [n[1]], duration: "w" });
         const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
-        new VF.Formatter().joinVoices([voice]).format([voice], 40);
-        stave.setNoteStartX(30);
+        new VF.Formatter().joinVoices([voice]).format([voice], 80);
+        stave.setNoteStartX(70);
         voice.draw(ctx, stave);
-
-        autoCenterVexFlowCanvas(container, innerDiv);
     });
     startG2FlashTimer();
 }
