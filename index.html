@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
+    <title>Kool Riffs - Music Mastery</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- DASHBOARD VIEW -->
+<div id="view-dashboard" class="view active">
+    <div class="header">
+        <h1>🎷 Kool Riffs</h1>
+        <p>Essential Music Mastery</p>
+    </div>
+
+    <div class="menu-container">
+        <div class="game-card purple" onclick="launchGame('view-game1')">
+            <div class="game-icon icon-purple">1</div>
+            <div class="game-details">
+                <h2>Line & Space Smash</h2>
+                <p>Train your visual reflexes. Distinguish lines from spaces instantly.</p>
+            </div>
+        </div>
+        <div class="game-card blue" onclick="launchGame('view-game2')">
+            <div class="game-icon icon-blue">2</div>
+            <div class="game-details">
+                <h2>Note Name Smash</h2>
+                <p>Find the right note fast. Progressive grid logic.</p>
+            </div>
+        </div>
+        <div class="game-card green" onclick="launchGame('view-game3')">
+            <div class="game-icon icon-green">3</div>
+            <div class="game-details">
+                <h2>NoteQuest</h2>
+                <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <button class="btn-text" onclick="toggleCredits(true)">About Kool Riffs</button>
+    </div>
+</div>
+
+<!-- GAME 1 VIEW (Line & Space Smash - SMASH Grid Rebuild) -->
+<div id="view-game1" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleBackButton('game1')">⬅ Back</button>
+    </div>
+
+    <div id="g1-screen-setup" class="screen active">
+        <div class="setup-card">
+            <h1>🎯 Line & Space Smash</h1>
+            <p>Pure visual reflex: Smash the correct cards as the grid grows.</p>
+            <button class="btn btn-start" onclick="startG1Game()">Start 20s Sprint</button>
+        </div>
+    </div>
+
+    <div id="g1-screen-game" class="screen">
+        <div class="hud">
+            <button class="pause-btn" onclick="pauseCurrentGame('game1')">🛑 Pause</button>
+            <span class="timer-badge" id="g1-timer-badge">20s</span>
+        </div>
+        
+        <div class="game-header">
+            <div class="score-counter" style="align-items: flex-start; flex: 1;">
+                <div class="score-row">⭐ <span id="g1-score-text">0</span></div>
+                <div class="tier-tracker" id="g1-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
+                <div class="tier-tracker" id="g1-attempts-text">Attempts: 0</div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; flex: 2;">
+                <div style="color: var(--accent-purple); font-weight: 900; font-size: 24px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g1-target-instruction-display">SMASH LINES</div>
+                <div class="flash-timer" id="g1-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g1-flash-timer-fill"></div></div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
+                 <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG1Watchlist()">⚠️ <span id="g1-watchlist-count">0</span></button>
+            </div>
+        </div>
+
+        <div id="g1-clef-display"></div>
+        <div id="g1-grid-container" class="smash-grid-layout"></div>
+
+        <div id="pause-overlay-game1" class="pause-overlay">
+            <h2>Paused</h2>
+            <div class="pause-controls">
+                <button class="btn btn-start" onclick="resumeGame('game1')">Resume</button>
+                <button class="btn btn-secondary" onclick="handleBackButton('game1')">Exit to Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="g1-screen-summary" class="screen">
+        <div class="summary-card">
+            <h2>🎉 Sprint Complete!</h2>
+            <div class="summary-stat">Total Score: <span id="g1-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+            <div class="summary-stat">Highest Grid Reached: <span id="g1-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+            <div class="summary-stat">Bonus Points (Duds): <span id="g1-final-bonus" style="color:var(--accent-green); font-weight:bold;">0</span></div>
+            <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
+            <button class="btn btn-secondary" onclick="switchScreenState('game1', 'g1-screen-setup')">Back to Setup</button>
+        </div>
+    </div>
+</div>
+
+<!-- GAME 2 VIEW (Note Name Smash) -->
+<div id="view-game2" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleBackButton('game2')">⬅ Back</button>
+    </div>
+
+    <div id="g2-screen-setup" class="screen active">
+        <div class="setup-card">
+            <h1>💥 Note Name Smash</h1>
+            <p>Find the right note fast in the grid.</p>
+            <select id="g2-clef-select" onchange="renderHelperSheetGraphics()">
+                <option value="treble">Treble Clef</option>
+                <option value="bass">Bass Clef</option>
+                <option value="alto">Alto Clef</option>
+                <option value="tenor">Tenor Clef</option>
+            </select>
+            <select id="g2-round-select">
+                <option value="1">Round 1: Lines Only</option>
+                <option value="2">Round 2: Spaces Only</option>
+                <option value="3">Round 3: Staff Mixed</option>
+                <option value="4">Round 4: Add Ledgers</option>
+            </select>
+            <button class="btn btn-start" onclick="startG2Game()">Start Smash</button>
+        </div>
+    </div>
+
+    <div id="g2-screen-game" class="screen">
+        <div class="hud">
+            <button class="pause-btn" onclick="pauseCurrentGame('game2')">🛑 Pause</button>
+            <span class="timer-badge" id="g2-timer-badge">60s</span>
+        </div>
+        
+        <div class="game-header">
+            <div class="score-counter" style="align-items: flex-start; flex: 1;">
+                <div class="score-row">⭐ <span id="g2-score-text">0</span></div>
+                <div class="tier-tracker" id="g2-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
+                <div class="tier-tracker" id="g2-attempts-text">Attempts: 0</div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; flex: 1;">
+                <div style="color: var(--accent-gold); font-weight: 900; font-size: 28px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g2-target-note-display">C</div>
+                <div class="flash-timer" id="g2-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g2-flash-timer-fill"></div></div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
+                <button class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
+                <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
+            </div>
+        </div>
+        
+        <div class="helper-modal" id="g2-helper-modal">
+            <h3>📖 Note Name Helpers</h3>
+            <div class="helper-container">
+                <div id="g2-helper-lines-canvas"></div>
+                <div id="g2-helper-spaces-canvas"></div>
+            </div>
+        </div>
+
+        <div id="g2-clef-display"></div>
+        <div id="g2-grid-container" class="smash-grid-layout"></div>
+
+        <div id="pause-overlay-game2" class="pause-overlay">
+            <h2>Paused</h2>
+            <div class="pause-controls">
+                <button class="btn btn-start" onclick="resumeGame('game2')">Resume</button>
+                <button class="btn btn-secondary" onclick="handleBackButton('game2')">Exit to Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="g2-screen-summary" class="screen">
+        <div class="summary-card">
+            <h2 id="g2-summary-title">🎉 Smash Complete!</h2>
+            <div class="summary-stat">Total Score: <span id="g2-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+            <div class="summary-stat">Total Attempts: <span id="g2-final-attempts" style="color:white; font-weight:bold;">0</span></div>
+            <div class="summary-stat">Highest Grid Reached: <span id="g2-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+            <div class="summary-stat">Personal Best: <span id="g2-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
+            
+            <div id="g2-auto-progress-container" style="display:none; margin-top: 15px;">
+                <button class="btn btn-start" onclick="advanceG2Round()">Continue to Next Round ➡️</button>
+            </div>
+            
+            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG2Game()">Replay Same Round</button>
+            <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="switchScreenState('game2', 'g2-screen-setup')">Change Setup</button>
+        </div>
+    </div>
+</div>
+
+<!-- GAME 3 VIEW (NoteQuest) -->
+<div id="view-game3" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleBackButton('game3')">⬅ Back</button>
+    </div>
+    
+    <div id="g3-screen-setup" class="screen active">
+        <div class="setup-card">
+            <h1>🎵 Note Quest</h1>
+            <select id="clef-select" onchange="renderHelperSheetGraphics()">
+                <option value="treble">Treble Clef</option>
+                <option value="bass">Bass Clef</option>
+                <option value="alto">Alto Clef</option>
+                <option value="tenor">Tenor Clef</option>
+            </select>
+            <select id="level-select">
+                <option value="1">Level 1: Staff Notes Only</option>
+                <option value="2">Level 2: Extended Ledger Lines</option>
+                <option value="3">Level 3: Instrument Playing (Mic Soon)</option>
+            </select>
+            <select id="mode-select" onchange="handleModeChange()">
+                <option value="drill-lines">Drill Round: Lines Only</option>
+                <option value="drill-spaces">Drill Round: Spaces Only</option>
+                <option value="drill-both">Drill Round: Lines & Spaces</option>
+                <option value="speed">Speed Round: Progressive Sprint</option>
+            </select>
+            <button class="btn btn-start" id="start-btn" onclick="startG3Game()">Start Round</button>
+        </div>
+    </div>
+
+    <div id="g3-screen-game" class="screen">
+        <div class="hud">
+            <button class="pause-btn" onclick="pauseCurrentGame('game3')">🛑 Pause</button>
+            <span class="timer-badge" id="g3-timer-badge">60s</span>
+        </div>
+        
+        <div class="game-header">
+            <div class="progress-bar-container" style="flex:2;"><div class="progress-fill" id="progress-bar"></div></div>
+            <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleG3HelperModal()">💡 Helpers</button>
+            <div class="score-counter" style="flex:1;">
+                <div class="score-row">⭐ <span id="score-text">0</span></div>
+                <div class="tier-tracker" id="tier-tracker-text">Drill Mode</div>
+            </div>
+        </div>
+        
+        <div class="flash-timer" id="flash-timer-bar"><div class="flash-timer-fill" id="flash-timer-fill"></div></div>
+
+        <div class="helper-modal" id="helper-sheet-modal">
+            <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
+            <div class="helper-container">
+                <div id="helper-lines-canvas"></div>
+                <div id="helper-spaces-canvas"></div>
+            </div>
+        </div>
+
+        <div class="card-wrapper" id="card-canvas-wrapper">
+            <div id="score-canvas"></div>
+        </div>
+        
+        <button class="btn-input-toggle" id="input-toggle-btn" onclick="toggleInputMethod()">🔄 Switch to Thumb Stacks</button>
+        <div class="inputs-row" id="inputs-container"></div>
+
+        <div class="piano-wrapper" id="piano-container">
+            <div class="white-key" id="key-C1" onclick="handleKeypadInput('C')">C</div>
+            <div class="black-key" style="left: 12.5%"></div>
+            <div class="white-key" id="key-D" onclick="handleKeypadInput('D')">D</div>
+            <div class="black-key" style="left: 25%"></div>
+            <div class="white-key" id="key-E" onclick="handleKeypadInput('E')">E</div>
+            <div class="white-key" id="key-F" onclick="handleKeypadInput('F')">F</div>
+            <div class="black-key" style="left: 50%"></div>
+            <div class="white-key" id="key-G" onclick="handleKeypadInput('G')">G</div>
+            <div class="black-key" style="left: 62.5%"></div>
+            <div class="white-key" id="key-A" onclick="handleKeypadInput('A')">A</div>
+            <div class="black-key" style="left: 75%"></div>
+            <div class="white-key" id="key-B" onclick="handleKeypadInput('B')">B</div>
+            <div class="white-key" id="key-C2" onclick="handleKeypadInput('C')">C</div>
+        </div>
+
+        <div class="thumb-stacks" id="thumb-stacks-container">
+            <div class="thumb-col">
+                <button class="thumb-btn" id="btn-D" onclick="handleKeypadInput('D')">D</button>
+                <button class="thumb-btn" id="btn-C" onclick="handleKeypadInput('C')">C</button>
+                <button class="thumb-btn" id="btn-B" onclick="handleKeypadInput('B')">B</button>
+                <button class="thumb-btn" id="btn-A1" onclick="handleKeypadInput('A')">A</button>
+            </div>
+            <div class="thumb-col">
+                <button class="thumb-btn" id="btn-A2" onclick="handleKeypadInput('A')">A</button>
+                <button class="thumb-btn" id="btn-G" onclick="handleKeypadInput('G')">G</button>
+                <button class="thumb-btn" id="btn-F" onclick="handleKeypadInput('F')">F</button>
+                <button class="thumb-btn" id="btn-E" onclick="handleKeypadInput('E')">E</button>
+            </div>
+        </div>
+
+        <div id="pause-overlay-game3" class="pause-overlay">
+            <h2>Paused</h2>
+            <div class="pause-controls">
+                <button class="btn btn-start" onclick="resumeGame('game3')">Resume</button>
+                <button class="btn btn-secondary" onclick="handleBackButton('game3')">Exit to Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="g3-screen-summary" class="screen">
+        <div class="summary-card">
+            <h2 id="g3-summary-title">🎉 Round Complete!</h2>
+            <div class="medal-display" id="final-medal">🏆</div>
+            <div class="summary-stat">Total Score: <span id="final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
+            <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
+            <div class="summary-stat" id="tier-result">Highest Tier Reached: <span id="final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+            <div class="summary-stat">Personal Best: <span id="g3-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
+            
+            <div id="g3-auto-progress-container" style="display:none; margin-top: 15px;">
+                <button class="btn btn-start" onclick="advanceG3Round()">Continue to Next Round ➡️</button>
+            </div>
+            
+            <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG3Game()">Replay Same Round</button>
+            <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="switchScreenState('game3', 'g3-screen-setup')">Change Settings</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-credits">
+    <div class="credits-box">
+        <h3>🎷 Kool Riffs</h3>
+        <p>Building better musical reflexes through focused, gamified repetition.</p>
+        <button class="btn-close" onclick="toggleCredits(false)">Close</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-watchlist-g1">
+    <div class="watchlist-box">
+        <h3>⚠️ Active Watchlist (Line/Space)</h3>
+        <div class="watchlist-list" id="watchlist-display-list-g1"></div>
+        <button class="btn-close" onclick="hideG1Watchlist()">Continue</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-watchlist-g2">
+    <div class="watchlist-box">
+        <h3>⚠️ Active Watchlist (Notes)</h3>
+        <div class="watchlist-list" id="watchlist-display-list-g2"></div>
+        <button class="btn-close" onclick="hideG2Watchlist()">Continue</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
