@@ -191,21 +191,22 @@ function toggleCredits(show) {
 /* =========================================
    CLEF SIGNPOST UTILITY
    ========================================= */
-function renderFloatingClef(containerId, clefName) {
+function function renderFloatingClef(containerId, clefName) {
     const VF = Vex.Flow;
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     
+    // Much smaller canvas
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(80, 70);
+    renderer.resize(42, 48);               // was 80×70
     const ctx = renderer.getContext(); 
     
-    ctx.scale(1.3, 1.3); 
+    ctx.scale(0.85, 0.85);                 // was 1.3  → now smaller
     ctx.setFillStyle('#ffffff'); 
     ctx.setStrokeStyle('#ffffff');
     
-    const stave = new VF.Stave(10, -5, 50);
+    const stave = new VF.Stave(2, -8, 38);  // tighter positioning
     stave.setConfigForLines([
         {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
     ]);

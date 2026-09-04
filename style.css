@@ -132,8 +132,31 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .helper-container { display: flex; justify-content: center; align-items: center; gap: 5px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 70px; padding-top: 2px; }
 
 /* SMASH Grid Mechanics (Games 1 & 2) */
-#g1-clef-display, #g2-clef-display { width: 100%; max-width: 500px; height: 70px; display: flex; justify-content: center; align-items: center; margin-bottom: 10px; }
-#g1-clef-display svg, #g2-clef-display svg { height: 100%; overflow: visible; }
+#g1-clef-display, #g2-clef-display { 
+    width: auto;                 /* stop forcing 50% */
+    max-width: none;
+    height: 36px;                /* much smaller */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 6px; 
+    
+    /* tighter vertical spacing */
+    opacity: 0.85;               /* slightly softer so it feels like an icon */
+}
+
+#g1-clef-display svg, #g2-clef-display svg { 
+   
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.12
+   
+    height: 100%; 
+    width: auto;
+    overflow: visible; 
+}
+
 
 .smash-grid-layout { width: 100%; max-width: 500px; display: grid; gap: 8px; margin-bottom: 6px; }
 
@@ -145,12 +168,17 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     justify-content: center; 
     align-items: center; 
     cursor: pointer; 
-    transition: transform 0.1s, border-color 0.1s; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+    transition: transform 0.1s,
+    border-color 0.1s; 
+    box-shadow: 0 4px 10px
+    rgba(0,0,0,0.2);         
+    
+     /* less padding = music feels bigger */
+    overflow: hidden;
     overflow: hidden; 
     position: relative; 
-    min-height: 100px;
-    padding: 10px; 
+    min-height: 90px;
+    padding: 6px 4px; 
 }
 .smash-card:active { transform: scale(0.95); }
 .smash-card.correct { border-color: var(--accent-green); background: rgba(88,204,2,0.1); pointer-events: none; }
@@ -159,13 +187,17 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .smash-card.flash-red { border-color: var(--accent-red); background-color: rgba(255,75,75,0.2); }
 
 .smash-card.small-card { min-height: 95px; }
-.smash-card.large-card { min-height: 140px; }
+.smash-card.large-card { 
+    min-height: 125px; 
+    padding: 8px 6px;
+}
 
 .smash-card svg { 
     width: 100%; 
-    height: 100%; 
-    max-height: 110px; 
-    pointer-events: none; 
+    height: auto; 
+    max-height: 120px; 
+    pointer-events: none;
+    display: block; 
 }
 
 /* NoteQuest Mechanics (Game 3) */
