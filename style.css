@@ -146,12 +146,10 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 }
 
 #g1-clef-display svg, #g2-clef-display svg { 
-   
     background: rgba(255,255,255,0.08);
     border-radius: 12px;
     padding: 4px 10px;
-    border: 1px solid rgba(255,255,255,0.12
-   
+    border: 1px solid rgba(255,255,255,0.12);
     height: 100%; 
     width: auto;
     overflow: visible; 
