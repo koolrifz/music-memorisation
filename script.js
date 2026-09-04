@@ -43,7 +43,18 @@ function playSound(type) {
     } catch (e) {}
 }
 
+// Set true only while a round is actually active, false the instant a round
+// ends, is paused, or is exited. speakLetter checks this before ever
+// speaking, as a second line of defence alongside speechSynthesis.cancel() -
+// on some mobile browsers, calling cancel() immediately after speak() can
+// silently fail to interrupt the utterance, which is the likely cause of
+// speech lingering after a round finishes. This flag stops a new utterance
+// from ever starting once a round is over, regardless of whether cancel()
+// took effect in time.
+let speechRoundActive = false;
+
 function speakLetter(text) {
+    if (!speechRoundActive) return;
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         let utterance = new SpeechSynthesisUtterance(text);
@@ -88,6 +99,61 @@ const NOTE_CONFIGS = {
     }
 };
 
+/* =========================================
+   SHARED SMASH-CARD RENDERER (Games 1 & 2)
+   Renders one mini-staff note into a card, then measures what was actually
+   drawn (notehead, ledger lines, stem - whatever VexFlow adds) and shifts it
+   to be horizontally centred in the card. This replaces fixed, hand-tuned
+   pixel offsets, which don't work correctly for every pitch/ledger-line
+   combination and were the source of the centering/clipping bugs. Vertical
+   position is left alone deliberately - it's meant to vary by pitch (that's
+   the whole point of the game) - but the canvas is sized with enough
+   headroom above and below the staff that up to 2 ledger lines each side
+   never get clipped.
+   ========================================= */
+function renderSmashCard(containerEl, clefName, pitchKey) {
+    const VF = Vex.Flow;
+    const canvasWidth = 160, canvasHeight = 150;
+
+    const renderer = new VF.Renderer(containerEl, VF.Renderer.Backends.SVG);
+    renderer.resize(canvasWidth, canvasHeight);
+    const ctx = renderer.getContext();
+    const svg = containerEl.querySelector('svg');
+    svg.setAttribute('viewBox', `0 0 ${canvasWidth} ${canvasHeight}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+    // Stave vertically centred with generous margin both directions - the
+    // 5 staff lines take up 40px; 55px above and 55px below leaves room for
+    // 2 ledger lines (20px) plus notehead radius on either side without
+    // clipping.
+    const stave = new VF.Stave(10, 55, 140);
+    stave.setContext(ctx).draw();
+
+    const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w" });
+    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+    new VF.Formatter().joinVoices([voice]).format([voice], 90);
+
+    // Snapshot what's in the SVG before drawing the note, so anything new
+    // added by voice.draw() - notehead, ledger lines, stem, whatever else -
+    // can be grouped and measured together, regardless of VexFlow's
+    // internal class names.
+    const childrenBefore = new Set(Array.from(svg.children));
+    voice.draw(ctx, stave);
+    const newChildren = Array.from(svg.children).filter(el => !childrenBefore.has(el));
+
+    if (newChildren.length > 0) {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        newChildren.forEach(el => g.appendChild(el));
+        svg.appendChild(g);
+
+        const bbox = g.getBBox();
+        const targetCenterX = canvasWidth / 2;
+        const currentCenterX = bbox.x + bbox.width / 2;
+        const offsetX = targetCenterX - currentCenterX;
+        g.setAttribute('transform', `translate(${offsetX}, 0)`);
+    }
+}
+
 let personalBests = {
     game2: { round1: 0, round2: 0, round3: 0, round4: 0 },
     game3: { 'drill-lines': 0, 'drill-spaces': 0, 'drill-both': 0, 'speed': 0 }
@@ -100,6 +166,7 @@ let g1Timer, g1FlashTimer, g2Timer, g2FlashTimer, gameTimer, breakOutTimer;
 let g1SecondsLeft = 20, g2SecondsLeft = 60, secondsLeft = 60;
 
 function stopAllGames() {
+    speechRoundActive = false;
     if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'running') {
         audioCtx.suspend();
     }
@@ -122,6 +189,7 @@ function pauseCurrentGame(gameId) {
 }
 
 function resumeGame(gameId) {
+    if (gameId === 'game1' || gameId === 'game2') speechRoundActive = true;
     if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
@@ -191,22 +259,24 @@ function toggleCredits(show) {
 /* =========================================
    CLEF SIGNPOST UTILITY
    ========================================= */
-function function renderFloatingClef(containerId, clefName) {
+function renderFloatingClef(containerId, clefName) {
     const VF = Vex.Flow;
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     
-    // Much smaller canvas
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(42, 48);               // was 80×70
+    renderer.resize(80, 100); 
     const ctx = renderer.getContext(); 
     
-    ctx.scale(0.85, 0.85);                 // was 1.3  → now smaller
+    const svg = container.querySelector('svg');
+    svg.setAttribute('viewBox', '0 0 80 100');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
     ctx.setFillStyle('#ffffff'); 
     ctx.setStrokeStyle('#ffffff');
     
-    const stave = new VF.Stave(2, -8, 38);  // tighter positioning
+    const stave = new VF.Stave(15, 10, 50); 
     stave.setConfigForLines([
         {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
     ]);
@@ -257,6 +327,7 @@ function startG1Game() {
     updateG1WatchlistBadge(); updateG1TrackerUI();
     
     switchScreenState('game1', 'g1-screen-game');
+    speechRoundActive = true;
     
     const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
     renderFloatingClef('g1-clef-display', clefName);
@@ -339,7 +410,8 @@ function loadG1Grid() {
     speakLetter(`Smash ${g1TargetType}s`);
     
     let isDud = Math.random() < 0.15;
-    g1TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount >= 9 ? Math.floor(Math.random() * 2) + 2 : 1);
+    // Target density per grid size: 1->1, 2->1, 3->1, 6->2, 9->2-3, 12->3-4
+    g1TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : cardCount === 12 ? (Math.floor(Math.random() * 2) + 3) : 1);
     if (g1TargetsPresent > cardCount) g1TargetsPresent = cardCount;
     g1TargetsFound = 0;
     
@@ -359,19 +431,7 @@ function loadG1Grid() {
         card.onclick = () => handleG1Click(card, isTargetNote, n[0]);
         
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
-        
-        const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
-        renderer.resize(160, 110); 
-        const ctx = renderer.getContext();
-        
-        const stave = new VF.Stave(15, 28, 130);
-        stave.setContext(ctx).draw();
-        
-        const note = new VF.StaveNote({ clef: clefName, keys: [n[1]], duration: "w" });
-        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
-        new VF.Formatter().joinVoices([voice]).format([voice], 80);
-        stave.setNoteStartX(70);
-        voice.draw(ctx, stave);
+        renderSmashCard(innerDiv, clefName, n[1]);
     });
     startG1FlashTimer();
 }
@@ -418,7 +478,14 @@ let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false;
 
 function toggleG2HelperModal() {
     const modal = document.getElementById('g2-helper-modal');
-    if(modal) { modal.classList.toggle('show'); if(modal.classList.contains('show')) setTimeout(renderHelperSheetGraphics, 50); }
+    if(modal) { 
+        modal.classList.toggle('show'); 
+        if(modal.classList.contains('show')) {
+            document.getElementById('g2-helper-lines-canvas').style.display = 'block';
+            document.getElementById('g2-helper-spaces-canvas').style.display = 'block';
+            setTimeout(renderHelperSheetGraphics, 50); 
+        }
+    }
 }
 
 function showG2Watchlist() {
@@ -460,7 +527,8 @@ function startG2Game() {
     updateG2WatchlistBadge(); updateG2TrackerUI();
     
     switchScreenState('game2', 'g2-screen-game');
-    
+    speechRoundActive = true;
+
     const clefName = document.getElementById('g2-clef-select').value;
     renderFloatingClef('g2-clef-display', clefName);
 
@@ -557,7 +625,8 @@ function loadG2Grid() {
     speakLetter(g2TargetNote);
     
     let isDud = Math.random() < 0.15;
-    g2TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount >= 9 ? (Math.floor(Math.random() * 2) + 3) : 1); 
+    // Target density per grid size: 1->1, 2->1, 3->1, 6->2, 9->2-3, 12->3-4
+    g2TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : cardCount === 12 ? (Math.floor(Math.random() * 2) + 3) : 1);
     if (g2TargetsPresent > cardCount) g2TargetsPresent = cardCount;
     g2TargetsFound = 0;
     
@@ -576,19 +645,7 @@ function loadG2Grid() {
         card.onclick = () => handleG2Click(card, n[0].toUpperCase());
         
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
-        
-        const renderer = new VF.Renderer(innerDiv, VF.Renderer.Backends.SVG);
-        renderer.resize(160, 110); 
-        const ctx = renderer.getContext();
-        
-        const stave = new VF.Stave(15, 22, 130);
-        stave.setContext(ctx).draw();
-        
-        const note = new VF.StaveNote({ clef: config.clef, keys: [n[1]], duration: "w" });
-        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
-        new VF.Formatter().joinVoices([voice]).format([voice], 80);
-        stave.setNoteStartX(70);
-        voice.draw(ctx, stave);
+        renderSmashCard(innerDiv, config.clef, n[1]);
     });
     startG2FlashTimer();
 }
@@ -718,7 +775,7 @@ function startG3Game() {
     currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
     currentMode = document.getElementById('mode-select').value;
     updateG3TrackerUI();
-    switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); loadNextCard();
+    switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); speechRoundActive = true; loadNextCard();
 }
 
 function start60SecondTimer() {
@@ -770,19 +827,24 @@ function loadNextCard() {
         }
 
         const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
-        renderer.resize(320, 130); const context = renderer.getContext(); context.scale(1.3, 1.3);
+        renderer.resize(360, 160); 
+        const context = renderer.getContext(); 
+        
+        const svg = canvasContainer.querySelector('svg');
+        svg.setAttribute('viewBox', '0 0 360 160');
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
-        const stave = new VF.Stave(8, 35, 225); stave.addClef(config.clef);
+        const stave = new VF.Stave(20, 45, 320); stave.addClef(config.clef);
         if(currentMode.includes('drill') || currentTier === 1) { 
-            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(115); 
+            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(140); 
         } else { stave.addTimeSignature("4/4"); }
         stave.setContext(context).draw();
 
-        currentExpectedNotes = []; let staveNotes = []; let durations = []; let formatWidth = 165;
-        if(currentMode.includes('drill')) { durations = ["w"]; formatWidth = 40; } 
+        currentExpectedNotes = []; let staveNotes = []; let durations = []; let formatWidth = 240;
+        if(currentMode.includes('drill')) { durations = ["w"]; formatWidth = 80; } 
         else {
-            if (currentTier === 1) { durations = ["w"]; formatWidth = 40; } else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
-            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
+            if (currentTier === 1) { durations = ["w"]; formatWidth = 80; } else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 140; }
+            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 200; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 260; }
         }
 
         let lastPitchKey = null;
@@ -792,7 +854,7 @@ function loadNextCard() {
             else { let avail = combinedPool.filter(p => p[1] !== lastPitchKey); chosenNote = avail[Math.floor(Math.random() * avail.length)]; }
             lastPitchKey = chosenNote[1];
             if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
-            // 3. Add auto_stem: true so VexFlow handles standard stem directions
+            
             staveNotes.push(new VF.StaveNote({ 
                 clef: config.clef, 
                 keys: [chosenNote[1]], 
