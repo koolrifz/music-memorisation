@@ -124,7 +124,8 @@ const NOTE_CONFIGS = {
    ========================================= */
 function renderSmashCard(containerEl, clefName, pitchKey) {
     const VF = Vex.Flow;
-    const canvasWidth = 160, canvasHeight = 150;
+    // Slightly taller canvas so ledger lines still have room after we centre
+    const canvasWidth = 160, canvasHeight = 160;
 
     const renderer = new VF.Renderer(containerEl, VF.Renderer.Backends.SVG);
     renderer.resize(canvasWidth, canvasHeight);
@@ -133,36 +134,38 @@ function renderSmashCard(containerEl, clefName, pitchKey) {
     svg.setAttribute('viewBox', `0 0 ${canvasWidth} ${canvasHeight}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
-    // Stave vertically centred with generous margin both directions - the
-    // 5 staff lines take up 40px; 55px above and 55px below leaves room for
-    // 2 ledger lines (20px) plus notehead radius on either side without
-    // clipping.
-    const stave = new VF.Stave(10, 55, 140);
+    // Place the stave roughly in the middle of the canvas. We will later
+    // measure the true bounding box of everything drawn and shift the whole
+    // group so it is perfectly centred both horizontally and vertically.
+    const stave = new VF.Stave(10, 50, 140);
     stave.setContext(ctx).draw();
 
     const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w" });
     const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
     new VF.Formatter().joinVoices([voice]).format([voice], 90);
 
-    // Snapshot what's in the SVG before drawing the note, so anything new
-    // added by voice.draw() - notehead, ledger lines, stem, whatever else -
-    // can be grouped and measured together, regardless of VexFlow's
-    // internal class names.
+    // Snapshot existing SVG children (the stave) so we can group *everything*
+    // – stave + notehead + ledger lines – and centre the whole unit.
     const childrenBefore = new Set(Array.from(svg.children));
     voice.draw(ctx, stave);
-    const newChildren = Array.from(svg.children).filter(el => !childrenBefore.has(el));
 
-    if (newChildren.length > 0) {
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        newChildren.forEach(el => g.appendChild(el));
-        svg.appendChild(g);
+    // Collect every element that belongs to this card (stave lines + note)
+    const allContent = Array.from(svg.children);
+    if (allContent.length === 0) return;
 
-        const bbox = g.getBBox();
-        const targetCenterX = canvasWidth / 2;
-        const currentCenterX = bbox.x + bbox.width / 2;
-        const offsetX = targetCenterX - currentCenterX;
-        g.setAttribute('transform', `translate(${offsetX}, 0)`);
-    }
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    allContent.forEach(el => g.appendChild(el));
+    svg.appendChild(g);
+
+    // Centre the combined bounding box in the middle of the canvas
+    const bbox = g.getBBox();
+    const targetCenterX = canvasWidth / 2;
+    const targetCenterY = canvasHeight / 2;
+    const currentCenterX = bbox.x + bbox.width / 2;
+    const currentCenterY = bbox.y + bbox.height / 2;
+    const offsetX = targetCenterX - currentCenterX;
+    const offsetY = targetCenterY - currentCenterY;
+    g.setAttribute('transform', `translate(${offsetX}, ${offsetY})`);
 }
 
 let personalBests = {
