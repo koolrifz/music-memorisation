@@ -133,30 +133,87 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 /* SMASH Grid Mechanics (Games 1 & 2) */
 #g1-clef-display, #g2-clef-display { 
-    width: auto;                 /* stop forcing 50% */
+    width: auto;
     max-width: none;
-    height: 36px;                /* much smaller */
+    height: 48px;
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    margin-bottom: 6px; 
-    
-    /* tighter vertical spacing */
-    opacity: 0.85;               /* slightly softer so it feels like an icon */
+    margin: 8px 0 14px 0;
+    opacity: 0.95;
 }
 
 #g1-clef-display svg, #g2-clef-display svg { 
     background: rgba(255,255,255,0.08);
     border-radius: 12px;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border: 1px solid rgba(255,255,255,0.12);
     height: 100%; 
     width: auto;
     overflow: visible; 
 }
 
+/* Game 1 specific HUD */
+.g1-header {
+    margin-bottom: 2px;
+}
+.g1-center-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 2;
+    gap: 4px;
+}
+.g1-streak-dots {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+.g1-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #324a64;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+.g1-dot.filled {
+    background: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+}
+.g1-instruction {
+    color: var(--accent-purple);
+    font-weight: 900;
+    font-size: 22px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.5px;
+}
+.g1-instruction.instr-lines { color: var(--accent-gold); }
+.g1-instruction.instr-spaces { color: var(--accent-blue); }
 
-.smash-grid-layout { width: 100%; max-width: 500px; display: grid; gap: 8px; margin-bottom: 6px; }
+.g1-bonus-toast {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.6);
+    background: var(--accent-green);
+    color: white;
+    font-weight: 900;
+    font-size: 28px;
+    padding: 12px 28px;
+    border-radius: 18px;
+    box-shadow: 0 8px 0 var(--accent-green-shadow), 0 12px 30px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 60;
+    transition: opacity 0.2s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.g1-bonus-toast.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.smash-grid-layout { width: 100%; max-width: 500px; display: grid; gap: 10px; margin-bottom: 6px; margin-top: 4px; }
 
 .smash-card { 
     background: #ffffff; 
@@ -166,34 +223,30 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     justify-content: center; 
     align-items: center; 
     cursor: pointer; 
-    transition: transform 0.1s,
-    border-color 0.1s; 
-    box-shadow: 0 4px 10px
-    rgba(0,0,0,0.2);         
-    
-     /* less padding = music feels bigger */
-    overflow: hidden;
+    transition: transform 0.1s, border-color 0.1s, background-color 0.1s; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);         
     overflow: hidden; 
     position: relative; 
-    min-height: 90px;
-    padding: 6px 4px; 
+    min-height: 100px;
+    padding: 4px 2px; 
+    aspect-ratio: 1 / 1;
 }
 .smash-card:active { transform: scale(0.95); }
-.smash-card.correct { border-color: var(--accent-green); background: rgba(88,204,2,0.1); pointer-events: none; }
+.smash-card.correct { border-color: var(--accent-green); background: rgba(88,204,2,0.12); pointer-events: none; }
 .smash-card.correct::after { content: '✔'; position: absolute; top: 4px; right: 6px; color: var(--accent-green); font-weight: 900; font-size: 16px; }
-.smash-card.incorrect { border-color: var(--accent-red); background: rgba(255,75,75,0.1); }
+.smash-card.incorrect { border-color: var(--accent-red); background: rgba(255,75,75,0.12); }
 .smash-card.flash-red { border-color: var(--accent-red); background-color: rgba(255,75,75,0.2); }
 
 .smash-card.small-card { min-height: 95px; }
 .smash-card.large-card { 
-    min-height: 125px; 
-    padding: 8px 6px;
+    min-height: 130px; 
+    padding: 6px 4px;
 }
 
 .smash-card svg { 
     width: 100%; 
-    height: auto; 
-    max-height: 120px; 
+    height: 100%; 
+    max-height: 140px; 
     pointer-events: none;
     display: block; 
 }

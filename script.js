@@ -40,6 +40,16 @@ function playSound(type) {
             gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); 
             osc.start(); osc.stop(audioCtx.currentTime + 0.9); 
         }
+        else if (type === 'bonus') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.2);
+            osc.frequency.setValueAtTime(1047, audioCtx.currentTime + 0.32);
+            gainNode.gain.setValueAtTime(0.35, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.55);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.55);
+        }
     } catch (e) {}
 }
 
@@ -53,12 +63,13 @@ function playSound(type) {
 // took effect in time.
 let speechRoundActive = false;
 
-function speakLetter(text) {
+function speakLetter(text, fast = false) {
     if (!speechRoundActive) return;
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         let utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.06; 
+        utterance.rate = fast ? 1.35 : 1.06;
+        utterance.pitch = fast ? 1.1 : 1.0;
         
         let voices = window.speechSynthesis.getVoices();
         let preferredVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium')))) 
@@ -163,7 +174,7 @@ let personalBests = {
    GLOBAL PAUSE / RESUME / ROUTING
    ========================================= */
 let g1Timer, g1FlashTimer, g2Timer, g2FlashTimer, gameTimer, breakOutTimer;
-let g1SecondsLeft = 20, g2SecondsLeft = 60, secondsLeft = 60;
+let g1SecondsLeft = 30, g2SecondsLeft = 60, secondsLeft = 60;
 
 function stopAllGames() {
     speechRoundActive = false;
@@ -266,17 +277,14 @@ function renderFloatingClef(containerId, clefName) {
     container.innerHTML = '';
     
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(80, 100); 
+    renderer.resize(52, 56);
     const ctx = renderer.getContext(); 
     
-    const svg = container.querySelector('svg');
-    svg.setAttribute('viewBox', '0 0 80 100');
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-
+    ctx.scale(1.0, 1.0);
     ctx.setFillStyle('#ffffff'); 
     ctx.setStrokeStyle('#ffffff');
     
-    const stave = new VF.Stave(15, 10, 50); 
+    const stave = new VF.Stave(2, -6, 46);
     stave.setConfigForLines([
         {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
     ]);
@@ -287,21 +295,37 @@ function renderFloatingClef(containerId, clefName) {
     stave.addClef(clefName).setContext(ctx).draw();
 }
 /* =========================================
-   GAME 1: LINE & SPACE SMASH (Fixed Width Stave)
+   GAME 1: LINE & SPACE SMASH
+   Tiers: 3 → 6 → 9 → 12
+   30s main clock, no duds, no repeated notes
+   Rule of 3 → advance tier + +3s bonus
    ========================================= */
 let g1Score = 0;
 let g1TotalAttempts = 0;
 let g1TierIndex = 0;
-const g1Tiers = [1, 2, 3, 6, 9, 12];
+const g1Tiers = [3, 6, 9, 12];
 let g1Streak = 0;
-let g1DudStreak = 0;
-let g1BonusDuds = 0;
+let g1TimeBonuses = 0;
 let g1TargetsPresent = 0;
 let g1TargetsFound = 0;
 let g1WrongTapsThisScreen = 0;
 let g1TargetType = ''; 
 let g1Watchlist = {}; 
 let g1IsTransitioning = false;
+
+function getG1FlashDuration(cardCount) {
+    if (cardCount <= 3) return 3;
+    if (cardCount === 6) return 4;
+    if (cardCount === 9) return 5;
+    return 6; // 12
+}
+
+function getG1TargetDensity(cardCount) {
+    if (cardCount === 3) return 1;
+    if (cardCount === 6) return 2;
+    if (cardCount === 9) return Math.random() < 0.5 ? 2 : 3;
+    return Math.random() < 0.5 ? 3 : 4; // 12
+}
 
 function showG1Watchlist() {
     const modal = document.getElementById('modal-watchlist-g1');
@@ -320,14 +344,29 @@ function showG1Watchlist() {
 function hideG1Watchlist() { document.getElementById('modal-watchlist-g1').classList.remove('show'); }
 function updateG1WatchlistBadge() { document.getElementById('g1-watchlist-count').innerText = Object.keys(g1Watchlist).length; }
 
+function updateG1StreakDots() {
+    const dots = document.querySelectorAll('#g1-streak-dots .g1-dot');
+    dots.forEach((dot, i) => {
+        if (i < g1Streak) dot.classList.add('filled');
+        else dot.classList.remove('filled');
+    });
+}
+
+function showG1BonusToast() {
+    const toast = document.getElementById('g1-bonus-toast');
+    if (!toast) return;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 900);
+}
+
 function startG1Game() {
     initAudio();
-    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
-    g1SecondsLeft = 20; g1Watchlist = {}; g1IsTransitioning = false;
+    speechRoundActive = true;
+    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1TimeBonuses = 0;
+    g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false;
     updateG1WatchlistBadge(); updateG1TrackerUI();
     
     switchScreenState('game1', 'g1-screen-game');
-    speechRoundActive = true;
     
     const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
     renderFloatingClef('g1-clef-display', clefName);
@@ -337,9 +376,10 @@ function startG1Game() {
 }
 
 function updateG1TrackerUI() {
-    document.getElementById('g1-tier-tracker-text').innerText = `Grid: ${g1Tiers[g1TierIndex]} | Streak: ${g1Streak}/3`;
+    document.getElementById('g1-tier-tracker-text').innerText = `${g1Tiers[g1TierIndex]} Card Grid`;
     document.getElementById('g1-score-text').innerText = g1Score;
     document.getElementById('g1-attempts-text').innerText = `Attempts: ${g1TotalAttempts}`;
+    updateG1StreakDots();
 }
 
 function startG1Timer() {
@@ -354,8 +394,12 @@ function startG1Timer() {
 
 function startG1FlashTimer() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
+    const duration = getG1FlashDuration(g1Tiers[g1TierIndex]);
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    setTimeout(() => { flashFill.style.transition = `width 3s linear`; flashFill.style.width = '0%'; }, 50);
+    setTimeout(() => { 
+        flashFill.style.transition = `width ${duration}s linear`; 
+        flashFill.style.width = '0%'; 
+    }, 50);
 
     g1FlashTimer = setTimeout(() => {
         if (g1SecondsLeft > 0) {
@@ -363,74 +407,107 @@ function startG1FlashTimer() {
             document.querySelectorAll('#g1-grid-container .smash-card').forEach(c => c.classList.add('flash-red'));
             setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(false); }, 300);
         }
-    }, 3000);
+    }, duration * 1000);
 }
 
 function resolveG1Screen(cleared) {
     if (cleared) {
-        if (g1TargetsPresent > 0) {
-            g1Streak++;
-            if (g1Streak >= 3) { g1Streak = 0; if (g1TierIndex < g1Tiers.length - 1) g1TierIndex++; }
+        g1Streak++;
+        if (g1Streak >= 3) {
+            g1Streak = 0;
+            // Award +3s time bonus and advance tier (if not already max)
+            g1SecondsLeft += 3;
+            g1TimeBonuses++;
+            document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s`;
+            playSound('bonus');
+            showG1BonusToast();
+            if (g1TierIndex < g1Tiers.length - 1) {
+                g1TierIndex++;
+            }
         }
     } else {
-        let missed = g1TargetsPresent - g1TargetsFound;
-        if (missed > 0) {
-            g1Streak = 0; g1DudStreak = 0;
-        } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen === 0) {
-            g1DudStreak++;
-            if (g1DudStreak >= 3) { g1BonusDuds++; g1Score++; g1DudStreak = 0; }
-        } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen > 0) {
-            g1DudStreak = 0;
-        }
+        // Missed targets or timed out → streak resets
+        g1Streak = 0;
     }
     updateG1TrackerUI();
-    setTimeout(loadG1Grid, 200);
+    setTimeout(loadG1Grid, 220);
 }
 
 function loadG1Grid() {
     if (g1SecondsLeft <= 0) return;
     g1TotalAttempts++; g1WrongTapsThisScreen = 0;
     
-    const VF = Vex.Flow;
-    const container = document.getElementById('g1-grid-container'); container.innerHTML = '';
+    const container = document.getElementById('g1-grid-container'); 
+    container.innerHTML = '';
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    flashFill.style.transition = 'none'; flashFill.style.width = '100%';
+    flashFill.style.transition = 'none'; 
+    flashFill.style.width = '100%';
 
     let cardCount = g1Tiers[g1TierIndex];
-    container.style.gridTemplateColumns = cardCount <= 2 ? '1fr' : 'repeat(3, 1fr)';
+    // Always 3-column layout once we are at 3+ cards
+    container.style.gridTemplateColumns = 'repeat(3, 1fr)';
 
     const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
     const config = NOTE_CONFIGS[clefName];
     
+    // Staff + ledger notes
     let poolLines = [...config.staffLines, ...config.ledgerLines];
     let poolSpaces = [...config.staffSpaces, ...config.ledgerSpaces];
     
     g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
-    document.getElementById('g1-target-instruction-display').innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
-    speakLetter(`Smash ${g1TargetType}s`);
     
-    let isDud = Math.random() < 0.15;
-    // Target density per grid size: 1->1, 2->1, 3->1, 6->2, 9->2-3, 12->3-4
-    g1TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : cardCount === 12 ? (Math.floor(Math.random() * 2) + 3) : 1);
+    const instrEl = document.getElementById('g1-target-instruction-display');
+    instrEl.innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
+    instrEl.className = 'g1-instruction ' + (g1TargetType === 'line' ? 'instr-lines' : 'instr-spaces');
+    
+    // Fast, short speech like stage-1 prototype
+    speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces', true);
+    
+    // No duds – always have at least one target
+    g1TargetsPresent = getG1TargetDensity(cardCount);
     if (g1TargetsPresent > cardCount) g1TargetsPresent = cardCount;
     g1TargetsFound = 0;
     
     let targetPool = g1TargetType === 'line' ? poolLines : poolSpaces;
     let distractorPool = g1TargetType === 'line' ? poolSpaces : poolLines;
 
+    // Build unique notes (no repeats within the grid)
+    const usedKeys = new Set();
     let gridNotes = [];
-    for(let i=0; i<g1TargetsPresent; i++) gridNotes.push(targetPool[Math.floor(Math.random() * targetPool.length)]);
-    for(let i=g1TargetsPresent; i<cardCount; i++) gridNotes.push(distractorPool[Math.floor(Math.random() * distractorPool.length)]);
+
+    // Helper: pick a random unused note from a pool
+    function pickUnique(pool) {
+        const available = pool.filter(n => !usedKeys.has(n[1]));
+        if (available.length === 0) return null;
+        const chosen = available[Math.floor(Math.random() * available.length)];
+        usedKeys.add(chosen[1]);
+        return chosen;
+    }
+
+    for (let i = 0; i < g1TargetsPresent; i++) {
+        const n = pickUnique(targetPool);
+        if (n) gridNotes.push(n);
+    }
+    // Fill remaining with distractors
+    while (gridNotes.length < cardCount) {
+        const n = pickUnique(distractorPool);
+        if (n) gridNotes.push(n);
+        else break; // safety
+    }
+    // Shuffle
     gridNotes.sort(() => Math.random() - 0.5);
 
     gridNotes.forEach((n) => {
-        const isTargetNote = (g1TargetType === 'line' && poolLines.includes(n)) || (g1TargetType === 'space' && poolSpaces.includes(n));
+        const isTargetNote = (g1TargetType === 'line' && poolLines.some(p => p[1] === n[1])) 
+                          || (g1TargetType === 'space' && poolSpaces.some(p => p[1] === n[1]));
         
         const card = document.createElement('div');
-        card.className = 'smash-card ' + (cardCount <= 2 ? 'large-card' : 'small-card');
+        card.className = 'smash-card ' + (cardCount <= 3 ? 'large-card' : 'small-card');
         card.onclick = () => handleG1Click(card, isTargetNote, n[0]);
         
-        const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
+        const innerDiv = document.createElement('div'); 
+        card.appendChild(innerDiv); 
+        container.appendChild(card);
         renderSmashCard(innerDiv, clefName, n[1]);
     });
     startG1FlashTimer();
@@ -440,33 +517,42 @@ function handleG1Click(cardElement, isTarget, pitchName) {
     if (g1SecondsLeft <= 0 || g1IsTransitioning || cardElement.classList.contains('correct')) return;
     
     if (isTarget) {
-        playSound('correct'); cardElement.classList.add('correct');
-        g1Score++; g1TargetsFound++; updateG1TrackerUI();
+        playSound('correct'); 
+        cardElement.classList.add('correct');
+        g1Score++; 
+        g1TargetsFound++; 
+        updateG1TrackerUI();
         
         if (g1Watchlist[pitchName]) {
             g1Watchlist[pitchName]--;
-            if(g1Watchlist[pitchName] <= 0) delete g1Watchlist[pitchName];
+            if (g1Watchlist[pitchName] <= 0) delete g1Watchlist[pitchName];
             updateG1WatchlistBadge();
         }
 
         if (g1TargetsFound >= g1TargetsPresent) {
             if (g1FlashTimer) clearTimeout(g1FlashTimer);
             g1IsTransitioning = true;
-            setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(true); }, 150);
+            setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(true); }, 160);
         }
     } else {
-        playSound('wrong'); g1WrongTapsThisScreen++;
-        g1Watchlist[pitchName] = 3; updateG1WatchlistBadge();
-        cardElement.classList.remove('incorrect'); void cardElement.offsetWidth; cardElement.classList.add('incorrect');
+        playSound('wrong'); 
+        g1WrongTapsThisScreen++;
+        g1Watchlist[pitchName] = 3; 
+        updateG1WatchlistBadge();
+        cardElement.classList.remove('incorrect'); 
+        void cardElement.offsetWidth; 
+        cardElement.classList.add('incorrect');
         setTimeout(() => cardElement.classList.remove('incorrect'), 300);
     }
 }
 
 function finishG1Game() {
-    stopAllGames(); playSound('complete'); switchScreenState('game1', 'g1-screen-summary');
+    stopAllGames(); 
+    playSound('complete'); 
+    switchScreenState('game1', 'g1-screen-summary');
     document.getElementById('g1-final-score').innerText = g1Score;
     document.getElementById('g1-final-tier').innerText = g1Tiers[g1TierIndex];
-    document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
+    document.getElementById('g1-final-bonus').innerText = g1TimeBonuses;
 }
 
 /* =========================================
@@ -478,14 +564,7 @@ let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false;
 
 function toggleG2HelperModal() {
     const modal = document.getElementById('g2-helper-modal');
-    if(modal) { 
-        modal.classList.toggle('show'); 
-        if(modal.classList.contains('show')) {
-            document.getElementById('g2-helper-lines-canvas').style.display = 'block';
-            document.getElementById('g2-helper-spaces-canvas').style.display = 'block';
-            setTimeout(renderHelperSheetGraphics, 50); 
-        }
-    }
+    if(modal) { modal.classList.toggle('show'); if(modal.classList.contains('show')) setTimeout(renderHelperSheetGraphics, 50); }
 }
 
 function showG2Watchlist() {
@@ -519,6 +598,7 @@ function setupG2Helpers(round) {
 
 function startG2Game() {
     initAudio();
+    speechRoundActive = true;
     const round = document.getElementById('g2-round-select').value;
     setupG2Helpers(round);
 
@@ -527,8 +607,7 @@ function startG2Game() {
     updateG2WatchlistBadge(); updateG2TrackerUI();
     
     switchScreenState('game2', 'g2-screen-game');
-    speechRoundActive = true;
-
+    
     const clefName = document.getElementById('g2-clef-select').value;
     renderFloatingClef('g2-clef-display', clefName);
 
@@ -775,7 +854,7 @@ function startG3Game() {
     currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
     currentMode = document.getElementById('mode-select').value;
     updateG3TrackerUI();
-    switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); speechRoundActive = true; loadNextCard();
+    switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); loadNextCard();
 }
 
 function start60SecondTimer() {
@@ -827,24 +906,19 @@ function loadNextCard() {
         }
 
         const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
-        renderer.resize(360, 160); 
-        const context = renderer.getContext(); 
-        
-        const svg = canvasContainer.querySelector('svg');
-        svg.setAttribute('viewBox', '0 0 360 160');
-        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        renderer.resize(320, 130); const context = renderer.getContext(); context.scale(1.3, 1.3);
 
-        const stave = new VF.Stave(20, 45, 320); stave.addClef(config.clef);
+        const stave = new VF.Stave(8, 35, 225); stave.addClef(config.clef);
         if(currentMode.includes('drill') || currentTier === 1) { 
-            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(140); 
+            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(115); 
         } else { stave.addTimeSignature("4/4"); }
         stave.setContext(context).draw();
 
-        currentExpectedNotes = []; let staveNotes = []; let durations = []; let formatWidth = 240;
-        if(currentMode.includes('drill')) { durations = ["w"]; formatWidth = 80; } 
+        currentExpectedNotes = []; let staveNotes = []; let durations = []; let formatWidth = 165;
+        if(currentMode.includes('drill')) { durations = ["w"]; formatWidth = 40; } 
         else {
-            if (currentTier === 1) { durations = ["w"]; formatWidth = 80; } else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 140; }
-            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 200; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 260; }
+            if (currentTier === 1) { durations = ["w"]; formatWidth = 40; } else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
+            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
         }
 
         let lastPitchKey = null;
@@ -854,7 +928,7 @@ function loadNextCard() {
             else { let avail = combinedPool.filter(p => p[1] !== lastPitchKey); chosenNote = avail[Math.floor(Math.random() * avail.length)]; }
             lastPitchKey = chosenNote[1];
             if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
-            
+            // 3. Add auto_stem: true so VexFlow handles standard stem directions
             staveNotes.push(new VF.StaveNote({ 
                 clef: config.clef, 
                 keys: [chosenNote[1]], 
