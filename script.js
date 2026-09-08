@@ -303,7 +303,7 @@ let g1IsTransitioning = false;
 let g1LastRolledTotal = 0;
 let g1TierMin = 1;
 let g1TierMax = 2;
-let g1NextFlashBonus = 0;
+let g1RoundStartedAt = 0;
 
 function showG1Watchlist() {
     if (g1Timer) clearInterval(g1Timer);
@@ -333,7 +333,7 @@ function updateG1WatchlistBadge() { document.getElementById('g1-watchlist-count'
 function startG1Game() {
     initAudio();
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
-    g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false; g1NextFlashBonus = 0;
+    g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false; g1RoundStartedAt = 0;
     updateG1WatchlistBadge(); updateG1TrackerUI();
     
     switchScreenState('game1', 'g1-screen-game');
@@ -369,8 +369,7 @@ function startG1Timer() {
 function startG1FlashTimer() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    const flashSeconds = 3 + g1NextFlashBonus;
-    g1NextFlashBonus = 0;
+    const flashSeconds = g1Tiers[g1TierIndex] / 3 + 2;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     g1FlashTimer = setTimeout(() => {
@@ -394,10 +393,22 @@ function triggerG1TimeBonus(amount) {
     setTimeout(() => badge.classList.remove('flash-green'), 400);
 }
 
+function awardG1RoundBonuses() {
+    const cardsInPlay = g1Tiers[g1TierIndex];
+    const elapsedSeconds = (performance.now() - g1RoundStartedAt) / 1000;
+    const speedThreshold = cardsInPlay / 3 + 1;
+
+    if (g1WrongTapsThisScreen === 0 && cardsInPlay <= 6) {
+        triggerG1TimeBonus(cardsInPlay === 3 ? 0.5 : 0.75);
+    }
+    if (elapsedSeconds <= speedThreshold) {
+        triggerG1TimeBonus(0.5);
+    }
+}
+
 function awardG1TierBonus(completedCards) {
     const mainClockBonus = completedCards <= 6 ? 2 : 3;
     triggerG1TimeBonus(mainClockBonus);
-    if (completedCards < 12) g1NextFlashBonus += 1;
 }
 
 function advanceG1Streak() {
@@ -418,7 +429,9 @@ function markG1DudSuccess() {
     });
     playSound('correct');
     g1Score++;
-    triggerG1TimeBonus(0.5);
+    g1BonusDuds++;
+    const dudTimeRefund = g1Tiers[g1TierIndex] / 3 + 2;
+    triggerG1TimeBonus(dudTimeRefund + 0.5);
     g1Streak++;
     return advanceG1Streak();
 }
@@ -430,6 +443,7 @@ function resolveG1Screen(cleared) {
         if (g1TargetsPresent > 0) {
             g1Streak++;
             triggerG1TimeBonus(0.5);
+            awardG1RoundBonuses();
             finished = advanceG1Streak();
         } else {
             finished = markG1DudSuccess();
@@ -462,6 +476,7 @@ function resolveG1Screen(cleared) {
 function loadG1Grid() {
     if (g1SecondsLeft <= 0) return;
     g1TotalAttempts++; g1WrongTapsThisScreen = 0;
+    g1RoundStartedAt = performance.now();
     
     const VF = Vex.Flow;
     const container = document.getElementById('g1-grid-container'); 
