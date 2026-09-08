@@ -96,6 +96,15 @@ body {
 .setup-card h1 { margin: 0 0 6px 0; font-size: 28px; color: var(--accent-gold); text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
 .setup-card p { margin: 0 0 20px 0; font-size: 15px; color: var(--text-muted); }
 .summary-card h2 { color: var(--accent-gold); font-size: 32px; margin: 0 0 10px 0; }
+.g1-victory-banner { color: var(--accent-gold); font-size: 24px; letter-spacing: 12px; margin: -2px 0 12px; opacity: 0.35; }
+.g1-victory .g1-victory-banner { opacity: 1; animation: victoryStars 0.8s ease-in-out infinite alternate; }
+.g1-victory { border-color: var(--accent-gold); box-shadow: 0 0 0 5px rgba(255,200,0,0.18), 0 0 35px rgba(255,200,0,0.65), 0 10px 30px rgba(0,0,0,0.5); animation: victoryCard 0.7s ease-out, victoryGlow 1.4s ease-in-out 0.7s infinite alternate; }
+.g1-victory h2 { font-size: 38px; color: var(--accent-gold); text-shadow: 0 0 14px rgba(255,200,0,0.8), 0 3px 0 #b88700; animation: victoryTitle 0.8s ease-out; }
+.g1-victory #g1-final-score { font-size: 42px !important; text-shadow: 0 0 12px rgba(255,200,0,0.8); }
+@keyframes victoryCard { 0% { transform: scale(0.7) rotate(-2deg); opacity: 0; } 65% { transform: scale(1.06) rotate(1deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+@keyframes victoryTitle { 0% { transform: translateY(14px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes victoryGlow { from { box-shadow: 0 0 0 5px rgba(255,200,0,0.18), 0 0 28px rgba(255,200,0,0.45), 0 10px 30px rgba(0,0,0,0.5); } to { box-shadow: 0 0 0 8px rgba(255,200,0,0.26), 0 0 55px rgba(255,200,0,0.85), 0 10px 30px rgba(0,0,0,0.5); } }
+@keyframes victoryStars { from { transform: scale(1); } to { transform: scale(1.16); } }
 .summary-stat { font-size: 17px; margin-bottom: 12px; color: var(--text-muted); }
 .medal-display { font-size: 36px; margin: 8px 0; }
 

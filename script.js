@@ -634,8 +634,17 @@ function handleG1Click(cardElement, isTarget, pitchName) {
 }
 
 function finishG1Game(isOfficialSmash = false) {
-    stopAllGames(); playSound('complete'); switchScreenState('game1', 'g1-screen-summary');
-    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 Official Smasher!' : '🎉 Sprint Complete!';
+    stopAllGames();
+    const summaryCard = document.getElementById('g1-summary-card');
+    summaryCard.classList.toggle('g1-victory', isOfficialSmash);
+    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 OFFICIAL SMASHER!' : '🎉 Sprint Complete!';
+    switchScreenState('game1', 'g1-screen-summary');
+    if (isOfficialSmash) {
+        initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        playSound('complete');
+        setTimeout(() => playSound('complete'), 450);
+    }
     document.getElementById('g1-final-score').innerText = g1Score;
     document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
