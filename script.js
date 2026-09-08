@@ -139,7 +139,7 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
     stave.setEndBarType(VF.Barline.type.NONE);
     
     if (drawNote && pitchKey) {
-        stave.setNoteStartX(60); // Centred note position
+        stave.setNoteStartX(stave.getX() + (stave.getWidth() / 2) - 5);
         stave.setContext(ctx).draw();
 
         const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w" });
