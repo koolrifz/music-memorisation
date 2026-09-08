@@ -116,6 +116,13 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .score-counter { font-size: 16px; font-weight: 900; color: var(--accent-gold); display: flex; flex-direction: column; }
 .score-row { display: flex; align-items: center; gap: 6px; }
 .tier-tracker { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
+.streak-divider { margin: 0 3px; }
+.streak-dots { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.streak-dot { width: 7px; height: 7px; display: inline-block; border: 1px solid var(--accent-gold); border-radius: 50%; background: transparent; box-sizing: border-box; }
+.streak-dot.active { background: var(--accent-gold); box-shadow: 0 0 4px var(--accent-gold); }
+#g1-tier-tracker-text .streak-dots { gap: 8px; margin-left: 4px; }
+#g1-tier-tracker-text .streak-dot { width: 16px; height: 16px; border-width: 2px; border-color: var(--accent-gold); }
+#g1-tier-tracker-text .streak-dot.active { background: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold); }
 
 .flash-timer { width: 100%; max-width: 500px; height: 6px; background: #324a64; margin-bottom: 6px; border-radius: 3px; overflow: hidden; display: none; }
 .flash-timer-fill { height: 100%; background: var(--accent-red); width: 100%; transition: width linear; }
@@ -133,126 +140,63 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 /* SMASH Grid Mechanics (Games 1 & 2) */
 #g1-clef-display, #g2-clef-display { 
-    width: auto;
+    width: auto;                 /* stop forcing 50% */
     max-width: none;
-    height: 48px;
+    height: 36px;                /* much smaller */
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    margin: 8px 0 14px 0;
-    opacity: 0.95;
+    margin-bottom: 6px; 
+    
+    /* tighter vertical spacing */
+    opacity: 0.85;               /* slightly softer so it feels like an icon */
 }
 
 #g1-clef-display svg, #g2-clef-display svg { 
+   
     background: rgba(255,255,255,0.08);
     border-radius: 12px;
-    padding: 4px 12px;
+    padding: 4px 10px;
     border: 1px solid rgba(255,255,255,0.12);
     height: 100%; 
     width: auto;
     overflow: visible; 
 }
 
-/* Game 1 specific HUD */
-.g1-header {
-    margin-bottom: 2px;
-}
-.g1-center-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex: 2;
-    gap: 4px;
-}
-.g1-streak-dots {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 2px;
-}
-.g1-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #324a64;
-    transition: background 0.15s, box-shadow 0.15s;
-}
-.g1-dot.filled {
-    background: var(--accent-green);
-    box-shadow: 0 0 8px var(--accent-green);
-}
-.g1-instruction {
-    color: var(--accent-purple);
-    font-weight: 900;
-    font-size: 22px;
-    text-transform: uppercase;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    letter-spacing: 0.5px;
-}
-.g1-instruction.instr-lines { color: var(--accent-gold); }
-.g1-instruction.instr-spaces { color: var(--accent-blue); }
 
-.g1-bonus-toast {
-    position: absolute;
-    top: 45%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.6);
-    background: var(--accent-green);
-    color: white;
-    font-weight: 900;
-    font-size: 28px;
-    padding: 12px 28px;
-    border-radius: 18px;
-    box-shadow: 0 8px 0 var(--accent-green-shadow), 0 12px 30px rgba(0,0,0,0.4);
-    opacity: 0;
-    pointer-events: none;
-    z-index: 60;
-    transition: opacity 0.2s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.g1-bonus-toast.show {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.smash-grid-layout { width: 100%; max-width: 500px; display: grid; gap: 10px; margin-bottom: 6px; margin-top: 4px; }
+.smash-grid-layout { width: 100%; max-width: 500px; display: grid; gap: 8px; margin-bottom: 6px; }
 
 .smash-card { 
     background: #ffffff; 
     border-radius: 16px; 
-    border: 3px solid #e0e6ed; 
+    border: none; 
     display: flex; 
     justify-content: center; 
     align-items: center; 
     cursor: pointer; 
-    transition: transform 0.1s, border-color 0.1s, background-color 0.1s; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);         
+    transition: transform 0.1s, background-color 0.1s; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);         
     overflow: hidden; 
     position: relative; 
-    min-height: 100px;
-    padding: 0;
-    aspect-ratio: 1 / 1;
+    min-height: 90px;
+    padding: 6px 4px; 
 }
 .smash-card:active { transform: scale(0.95); }
-.smash-card.correct { border-color: var(--accent-green); background: rgba(88,204,2,0.12); pointer-events: none; }
-.smash-card.correct::after { content: '✔'; position: absolute; top: 4px; right: 6px; color: var(--accent-green); font-weight: 900; font-size: 16px; z-index: 2; }
-.smash-card.incorrect { border-color: var(--accent-red); background: rgba(255,75,75,0.12); }
+.smash-card.correct { border-color: var(--accent-green); background: rgba(88,204,2,0.1); pointer-events: none; }
+.smash-card.correct::after { content: '✔'; position: absolute; top: 4px; right: 6px; color: var(--accent-green); font-weight: 900; font-size: 16px; }
+.smash-card.incorrect { border-color: var(--accent-red); background: rgba(255,75,75,0.1); }
 .smash-card.flash-red { border-color: var(--accent-red); background-color: rgba(255,75,75,0.2); }
 
 .smash-card.small-card { min-height: 95px; }
 .smash-card.large-card { 
-    min-height: 130px; 
-}
-
-.smash-card > div {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    min-height: 125px; 
+    padding: 8px 6px;
 }
 
 .smash-card svg { 
     width: 100%; 
-    height: 100%; 
+    height: auto; 
+    max-height: 120px; 
     pointer-events: none;
     display: block; 
 }
@@ -321,3 +265,98 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+
+/* Game 1 Cumulative Grid & Row Locked States */
+.g1-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; transition: opacity 0.3s ease, filter 0.3s ease; }
+.g1-row.locked { opacity: 0.35; filter: grayscale(0.8); pointer-events: none; }
+.g1-row.locked .smash-card { background: rgba(255,255,255,0.05); box-shadow: none; border: 2px dashed rgba(255,255,255,0.15); }
+.g1-row.locked svg { opacity: 0.15; }
+.g1-row.unlock-pulse { animation: rowUnlockPulse 0.6s ease-out; }
+@keyframes rowUnlockPulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.02); filter: brightness(1.4); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Transform playing area into a white sheet music board */
+#g1-clef-display, #g2-clef-display {
+    background-color: #ffffff;
+    width: 100%;
+    max-width: 500px;
+    height: 72px;
+    min-height: 72px;
+    padding-top: 0;
+    border-radius: 24px 24px 0 0;
+    margin-bottom: 0;
+    box-sizing: border-box;
+    opacity: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    position: relative;
+    z-index: 2;
+    overflow: visible;
+}
+
+#g1-clef-display svg, #g2-clef-display svg {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    height: 72px !important; 
+    width: 60px !important;
+    overflow: visible !important; 
+    position: relative;
+    z-index: 3;
+}
+
+#g1-clef-display {
+    display: none;
+}
+
+#g1-grid-container, #g2-grid-container {
+    background-color: #ffffff;
+    width: 100%;
+    max-width: 500px;
+    padding: 0 20px 30px 20px;
+    border-radius: 0 0 24px 24px;
+    box-sizing: border-box;
+}
+
+/* 3 columns per row layout */
+.g1-row { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 8px; 
+    width: 100%; 
+    transition: opacity 0.3s ease, filter 0.3s ease; 
+}
+
+/* Strip individual card borders and backgrounds */
+.smash-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 90px;
+    position: relative;
+    overflow: visible !important; /* Prevents ledger lines from being clipped */
+}
+
+.smash-card svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible !important; /* Fixes ledger lines getting hidden */
+}
+
+/* Locked ghost rows styling */
+.g1-row.locked {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+.g1-row.locked svg {
+    opacity: 0.55;
+}

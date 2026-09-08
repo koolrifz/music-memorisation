@@ -62,23 +62,18 @@
     <div id="g1-screen-game" class="screen">
         <div class="hud">
             <button class="pause-btn" onclick="pauseCurrentGame('game1')">🛑 Pause</button>
-            <span class="timer-badge" id="g1-timer-badge">30s</span>
+            <span class="timer-badge" id="g1-timer-badge">20s</span>
         </div>
         
-        <div class="game-header g1-header">
+        <div class="game-header">
             <div class="score-counter" style="align-items: flex-start; flex: 1;">
                 <div class="score-row">⭐ <span id="g1-score-text">0</span></div>
-                <div class="tier-tracker" id="g1-tier-tracker-text">3 Card Grid</div>
+                <div class="tier-tracker" id="g1-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
                 <div class="tier-tracker" id="g1-attempts-text">Attempts: 0</div>
             </div>
             
-            <div class="g1-center-col">
-                <div class="g1-streak-dots" id="g1-streak-dots">
-                    <div class="g1-dot"></div>
-                    <div class="g1-dot"></div>
-                    <div class="g1-dot"></div>
-                </div>
-                <div id="g1-target-instruction-display" class="g1-instruction">SMASH LINES</div>
+            <div style="display:flex; flex-direction:column; align-items:center; flex: 2;">
+                <div style="color: var(--accent-purple); font-weight: 900; font-size: 24px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g1-target-instruction-display">SMASH LINES</div>
                 <div class="flash-timer" id="g1-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g1-flash-timer-fill"></div></div>
             </div>
             
@@ -89,8 +84,6 @@
 
         <div id="g1-clef-display"></div>
         <div id="g1-grid-container" class="smash-grid-layout"></div>
-
-        <div id="g1-bonus-toast" class="g1-bonus-toast">+3s 🎉</div>
 
         <div id="pause-overlay-game1" class="pause-overlay">
             <h2>Paused</h2>
@@ -105,8 +98,8 @@
         <div class="summary-card">
             <h2>🎉 Sprint Complete!</h2>
             <div class="summary-stat">Total Score: <span id="g1-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
-            <div class="summary-stat">Highest Grid Reached: <span id="g1-final-tier" style="color:var(--accent-blue); font-weight:bold;">3</span></div>
-            <div class="summary-stat">Time Bonuses Earned: <span id="g1-final-bonus" style="color:var(--accent-green); font-weight:bold;">0</span></div>
+            <div class="summary-stat">Highest Grid Reached: <span id="g1-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+            <div class="summary-stat">Bonus Points (Duds): <span id="g1-final-bonus" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
             <button class="btn btn-secondary" onclick="switchScreenState('game1', 'g1-screen-setup')">Back to Setup</button>
         </div>

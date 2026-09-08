@@ -40,16 +40,6 @@ function playSound(type) {
             gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); 
             osc.start(); osc.stop(audioCtx.currentTime + 0.9); 
         }
-        else if (type === 'bonus') {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(523, audioCtx.currentTime);
-            osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1);
-            osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.2);
-            osc.frequency.setValueAtTime(1047, audioCtx.currentTime + 0.32);
-            gainNode.gain.setValueAtTime(0.35, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.55);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.55);
-        }
     } catch (e) {}
 }
 
@@ -63,20 +53,22 @@ function playSound(type) {
 // took effect in time.
 let speechRoundActive = false;
 
-function speakLetter(text, fast = false) {
+function speakLetter(text) {
     if (!speechRoundActive) return;
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        let utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = fast ? 1.35 : 1.06;
-        utterance.pitch = fast ? 1.1 : 1.0;
-        
-        let voices = window.speechSynthesis.getVoices();
-        let preferredVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium')))) 
-                             || voices.find(v => v.lang === 'en-AU' || v.lang === 'en-GB');
-        
-        if (preferredVoice) utterance.voice = preferredVoice;
-        window.speechSynthesis.speak(utterance);
+        setTimeout(() => {
+            if (!speechRoundActive) return;
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.4; // 40% faster
+            
+            let voices = window.speechSynthesis.getVoices();
+            let preferredVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium')))) 
+                                 || voices.find(v => v.lang === 'en-AU' || v.lang === 'en-GB');
+            
+            if (preferredVoice) utterance.voice = preferredVoice;
+            window.speechSynthesis.speak(utterance);
+        }, 80); // Small delay ensures browser audio queue is active post-transition
     }
 }
 
@@ -122,50 +114,42 @@ const NOTE_CONFIGS = {
    headroom above and below the staff that up to 2 ledger lines each side
    never get clipped.
    ========================================= */
-function renderSmashCard(containerEl, clefName, pitchKey) {
+function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
     const VF = Vex.Flow;
-    // Slightly taller canvas so ledger lines still have room after we centre
-    const canvasWidth = 160, canvasHeight = 160;
+    containerEl.innerHTML = '';
+    
+    const canvasWidth = 120;
+    const canvasHeight = 110;
 
     const renderer = new VF.Renderer(containerEl, VF.Renderer.Backends.SVG);
     renderer.resize(canvasWidth, canvasHeight);
     const ctx = renderer.getContext();
+    
+    ctx.setFillStyle('#000000');
+    ctx.setStrokeStyle('#000000');
+
     const svg = containerEl.querySelector('svg');
     svg.setAttribute('viewBox', `0 0 ${canvasWidth} ${canvasHeight}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.style.overflow = 'visible';
 
-    // Place the stave roughly in the middle of the canvas. We will later
-    // measure the true bounding box of everything drawn and shift the whole
-    // group so it is perfectly centred both horizontally and vertically.
-    const stave = new VF.Stave(10, 50, 140);
-    stave.setContext(ctx).draw();
+    // Stave positioned precisely in the vertical middle of the card space
+    const stave = new VF.Stave(10, 18, 100);
+    stave.setBegBarType(VF.Barline.type.NONE);
+    stave.setEndBarType(VF.Barline.type.NONE);
+    
+    if (drawNote && pitchKey) {
+        stave.setNoteStartX(60); // Centred note position
+        stave.setContext(ctx).draw();
 
-    const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w" });
-    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
-    new VF.Formatter().joinVoices([voice]).format([voice], 90);
-
-    // Snapshot existing SVG children (the stave) so we can group *everything*
-    // – stave + notehead + ledger lines – and centre the whole unit.
-    const childrenBefore = new Set(Array.from(svg.children));
-    voice.draw(ctx, stave);
-
-    // Collect every element that belongs to this card (stave lines + note)
-    const allContent = Array.from(svg.children);
-    if (allContent.length === 0) return;
-
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    allContent.forEach(el => g.appendChild(el));
-    svg.appendChild(g);
-
-    // Centre the combined bounding box in the middle of the canvas
-    const bbox = g.getBBox();
-    const targetCenterX = canvasWidth / 2;
-    const targetCenterY = canvasHeight / 2;
-    const currentCenterX = bbox.x + bbox.width / 2;
-    const currentCenterY = bbox.y + bbox.height / 2;
-    const offsetX = targetCenterX - currentCenterX;
-    const offsetY = targetCenterY - currentCenterY;
-    g.setAttribute('transform', `translate(${offsetX}, ${offsetY})`);
+        const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w" });
+        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+        
+        new VF.Formatter().joinVoices([voice]).format([voice], 0);
+        voice.draw(ctx, stave);
+    } else {
+        stave.setContext(ctx).draw();
+    }
 }
 
 let personalBests = {
@@ -280,14 +264,16 @@ function renderFloatingClef(containerId, clefName) {
     container.innerHTML = '';
     
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(52, 56);
+    const clefWidth = 60;
+    const clefHeight = 72;
+    renderer.resize(clefWidth, clefHeight);
     const ctx = renderer.getContext(); 
     
-    ctx.scale(1.0, 1.0);
-    ctx.setFillStyle('#ffffff'); 
-    ctx.setStrokeStyle('#ffffff');
+    ctx.scale(0.9, 0.9);                 
+    ctx.setFillStyle('#000000'); // Changed to black ink
+    ctx.setStrokeStyle('#000000');
     
-    const stave = new VF.Stave(2, -6, 46);
+    const stave = new VF.Stave(8, 8, 38);  
     stave.setConfigForLines([
         {visible: false}, {visible: false}, {visible: false}, {visible: false}, {visible: false}
     ]);
@@ -297,38 +283,26 @@ function renderFloatingClef(containerId, clefName) {
     stave.options.right_bar = false;
     stave.addClef(clefName).setContext(ctx).draw();
 }
+
 /* =========================================
-   GAME 1: LINE & SPACE SMASH
-   Tiers: 3 → 6 → 9 → 12
-   30s main clock, no duds, no repeated notes
-   Rule of 3 → advance tier + +3s bonus
+   GAME 1: LINE & SPACE SMASH (v2 Cumulative Reveal & Micro-Reward Redesign)
    ========================================= */
 let g1Score = 0;
 let g1TotalAttempts = 0;
 let g1TierIndex = 0;
-const g1Tiers = [3, 6, 9, 12];
+const g1Tiers = [3, 6, 9, 12]; // 1 row (3), 2 rows (6), 3 rows (9), 4 rows (12)
 let g1Streak = 0;
-let g1TimeBonuses = 0;
+let g1DudStreak = 0;
+let g1BonusDuds = 0;
 let g1TargetsPresent = 0;
 let g1TargetsFound = 0;
 let g1WrongTapsThisScreen = 0;
 let g1TargetType = ''; 
 let g1Watchlist = {}; 
 let g1IsTransitioning = false;
-
-function getG1FlashDuration(cardCount) {
-    if (cardCount <= 3) return 3;
-    if (cardCount === 6) return 4;
-    if (cardCount === 9) return 5;
-    return 6; // 12
-}
-
-function getG1TargetDensity(cardCount) {
-    if (cardCount === 3) return 1;
-    if (cardCount === 6) return 2;
-    if (cardCount === 9) return Math.random() < 0.5 ? 2 : 3;
-    return Math.random() < 0.5 ? 3 : 4; // 12
-}
+let g1LastRolledTotal = 0;
+let g1TierMin = 1;
+let g1TierMax = 2;
 
 function showG1Watchlist() {
     const modal = document.getElementById('modal-watchlist-g1');
@@ -347,42 +321,30 @@ function showG1Watchlist() {
 function hideG1Watchlist() { document.getElementById('modal-watchlist-g1').classList.remove('show'); }
 function updateG1WatchlistBadge() { document.getElementById('g1-watchlist-count').innerText = Object.keys(g1Watchlist).length; }
 
-function updateG1StreakDots() {
-    const dots = document.querySelectorAll('#g1-streak-dots .g1-dot');
-    dots.forEach((dot, i) => {
-        if (i < g1Streak) dot.classList.add('filled');
-        else dot.classList.remove('filled');
-    });
-}
-
-function showG1BonusToast() {
-    const toast = document.getElementById('g1-bonus-toast');
-    if (!toast) return;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 900);
-}
-
 function startG1Game() {
     initAudio();
-    speechRoundActive = true;
-    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1TimeBonuses = 0;
+    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
     g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false;
     updateG1WatchlistBadge(); updateG1TrackerUI();
     
     switchScreenState('game1', 'g1-screen-game');
+    speechRoundActive = true;
     
-    const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
-    renderFloatingClef('g1-clef-display', clefName);
-
     startG1Timer();
     loadG1Grid();
 }
 
 function updateG1TrackerUI() {
-    document.getElementById('g1-tier-tracker-text').innerText = `${g1Tiers[g1TierIndex]} Card Grid`;
+    const activeCardsCount = g1Tiers[g1TierIndex];
+    const rowCount = activeCardsCount / 3;
+    
+        const streakDots = [0, 1, 2].map(index =>
+            `<span class="streak-dot${index < g1Streak ? ' active' : ''}" aria-hidden="true"></span>`
+        ).join('');
+
+        document.getElementById('g1-tier-tracker-text').innerHTML = `Rows: ${rowCount}/4 <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
     document.getElementById('g1-score-text').innerText = g1Score;
     document.getElementById('g1-attempts-text').innerText = `Attempts: ${g1TotalAttempts}`;
-    updateG1StreakDots();
 }
 
 function startG1Timer() {
@@ -397,122 +359,207 @@ function startG1Timer() {
 
 function startG1FlashTimer() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
-    const duration = getG1FlashDuration(g1Tiers[g1TierIndex]);
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    setTimeout(() => { 
-        flashFill.style.transition = `width ${duration}s linear`; 
-        flashFill.style.width = '0%'; 
-    }, 50);
+    setTimeout(() => { flashFill.style.transition = `width 3s linear`; flashFill.style.width = '0%'; }, 50);
 
     g1FlashTimer = setTimeout(() => {
         if (g1SecondsLeft > 0) {
             g1IsTransitioning = true;
-            document.querySelectorAll('#g1-grid-container .smash-card').forEach(c => c.classList.add('flash-red'));
+            document.querySelectorAll('#g1-grid-container .smash-card').forEach(c => {
+                if (c.closest('.g1-row') && !c.closest('.g1-row').classList.contains('locked')) {
+                    c.classList.add('flash-red');
+                }
+            });
             setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(false); }, 300);
         }
-    }, duration * 1000);
+    }, 3000);
+}
+
+function triggerG1TimeBonus(amount) {
+    g1SecondsLeft += amount;
+    document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s`;
+    const badge = document.getElementById('g1-timer-badge');
+    badge.classList.add('flash-green');
+    setTimeout(() => badge.classList.remove('flash-green'), 400);
+}
+
+function awardG1TierBonus(completedCards) {
+    triggerG1TimeBonus(completedCards <= 6 ? 0.5 : 1.0);
 }
 
 function resolveG1Screen(cleared) {
+    let oldTierIndex = g1TierIndex;
     if (cleared) {
-        g1Streak++;
-        if (g1Streak >= 3) {
-            g1Streak = 0;
-            // Award +3s time bonus and advance tier (if not already max)
-            g1SecondsLeft += 3;
-            g1TimeBonuses++;
-            document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s`;
-            playSound('bonus');
-            showG1BonusToast();
-            if (g1TierIndex < g1Tiers.length - 1) {
-                g1TierIndex++;
+        if (g1TargetsPresent > 0) {
+            g1Streak++;
+
+            if (g1Streak >= 3) { 
+                g1Streak = 0; 
+                awardG1TierBonus(g1Tiers[g1TierIndex]);
+                if (g1TierIndex < g1Tiers.length - 1) {
+                    g1TierIndex++;
+                }
+            }
+        } else {
+            // Dud handled correctly -> counts as score +1 AND counts as a joker streak success per v2 brief section 4
+            g1Score++;
+            g1Streak++;
+            if (g1Streak >= 3) {
+                g1Streak = 0;
+                awardG1TierBonus(g1Tiers[g1TierIndex]);
+                if (g1TierIndex < g1Tiers.length - 1) {
+                    g1TierIndex++;
+                }
             }
         }
     } else {
-        // Missed targets or timed out → streak resets
-        g1Streak = 0;
+        let missed = g1TargetsPresent - g1TargetsFound;
+        if (missed > 0 || g1TargetsPresent > 0) {
+            g1Streak = 0; g1DudStreak = 0;
+        } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen > 0) {
+            g1DudStreak = 0;
+        }
     }
     updateG1TrackerUI();
-    setTimeout(loadG1Grid, 220);
+    
+    // Check if a row unlocked
+    if (g1TierIndex > oldTierIndex) {
+        playSound('complete');
+    }
+    
+    setTimeout(loadG1Grid, 200);
 }
 
 function loadG1Grid() {
     if (g1SecondsLeft <= 0) return;
     g1TotalAttempts++; g1WrongTapsThisScreen = 0;
     
+    const VF = Vex.Flow;
     const container = document.getElementById('g1-grid-container'); 
     container.innerHTML = '';
-    const flashFill = document.getElementById('g1-flash-timer-fill');
-    flashFill.style.transition = 'none'; 
-    flashFill.style.width = '100%';
+    container.className = 'smash-grid-layout';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '8px';
 
-    let cardCount = g1Tiers[g1TierIndex];
-    // Always 3-column layout once we are at 3+ cards
-    container.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    const flashFill = document.getElementById('g1-flash-timer-fill');
+    flashFill.style.transition = 'none'; flashFill.style.width = '100%';
+
+    const activeCardsCount = g1Tiers[g1TierIndex]; // 3, 6, 9, or 12
+    const activeRowsCount = activeCardsCount / 3;
+
+    // Define density bands per tier:
+    // 3 cards (1 row): min 1, max 2
+    // 6 cards (2 rows): min 2, max 4
+    // 9 cards (3 rows): min 2, max 3
+    // 12 cards (4 rows): min 3, max 4
+    if (activeCardsCount === 3) { g1TierMin = 1; g1TierMax = 2; }
+    else if (activeCardsCount === 6) { g1TierMin = 2; g1TierMax = 4; }
+    else if (activeCardsCount === 9) { g1TierMin = 2; g1TierMax = 3; }
+    else { g1TierMin = 3; g1TierMax = 4; }
 
     const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
     const config = NOTE_CONFIGS[clefName];
     
-    // Staff + ledger notes
     let poolLines = [...config.staffLines, ...config.ledgerLines];
     let poolSpaces = [...config.staffSpaces, ...config.ledgerSpaces];
     
-    g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
+   g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
+    document.getElementById('g1-target-instruction-display').innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
     
-    const instrEl = document.getElementById('g1-target-instruction-display');
-    instrEl.innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
-    instrEl.className = 'g1-instruction ' + (g1TargetType === 'line' ? 'instr-lines' : 'instr-spaces');
+    // Fires instantly the moment the grid renders, saying just "lines" or "spaces" at 1.4x speed
+    speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces');
     
-    // Fast, short speech like stage-1 prototype
-    speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces', true);
+    let isDud = Math.random() < 0.15;
     
-    // No duds – always have at least one target
-    g1TargetsPresent = getG1TargetDensity(cardCount);
-    if (g1TargetsPresent > cardCount) g1TargetsPresent = cardCount;
+    // Row allocation algorithm per v2 brief:
+    let totalBudget = 0;
+    if (isDud) {
+        g1LastRolledTotal = 0;
+        g1TargetsPresent = 0;
+    } else {
+        g1LastRolledTotal = Math.random() < 0.5 ? g1TierMin : g1TierMax; 
+        g1TargetsPresent = g1LastRolledTotal;
+    }
+
+    let rowTargets = [0, 0, 0, 0];
+    if (!isDud && g1TargetsPresent > 0) {
+        let activeRowIndices = [];
+        for(let r=0; r<activeRowsCount; r++) activeRowIndices.push(r);
+        
+        activeRowIndices.sort(() => Math.random() - 0.5);
+        
+        let remaining = g1TargetsPresent;
+        for (let i = 0; i < activeRowIndices.length; i++) {
+            let rIdx = activeRowIndices[i];
+            if (i === activeRowIndices.length - 1) {
+                rowTargets[rIdx] = Math.min(2, remaining);
+            } else {
+                let maxPossible = Math.min(2, remaining);
+                let assigned = Math.floor(Math.random() * (maxPossible + 1));
+                rowTargets[rIdx] = assigned;
+                remaining -= assigned;
+            }
+        }
+        let safety = 0;
+        while (remaining > 0 && safety < 10) {
+            for (let rIdx of activeRowIndices) {
+                if (rowTargets[rIdx] < 2 && remaining > 0) {
+                    rowTargets[rIdx]++;
+                    remaining--;
+                }
+            }
+            safety++;
+        }
+        g1TargetsPresent = rowTargets.reduce((a, b) => a + b, 0);
+        g1LastRolledTotal = g1TargetsPresent;
+    }
     g1TargetsFound = 0;
-    
+
     let targetPool = g1TargetType === 'line' ? poolLines : poolSpaces;
     let distractorPool = g1TargetType === 'line' ? poolSpaces : poolLines;
 
-    // Build unique notes (no repeats within the grid)
-    const usedKeys = new Set();
-    let gridNotes = [];
-
-    // Helper: pick a random unused note from a pool
-    function pickUnique(pool) {
-        const available = pool.filter(n => !usedKeys.has(n[1]));
-        if (available.length === 0) return null;
-        const chosen = available[Math.floor(Math.random() * available.length)];
-        usedKeys.add(chosen[1]);
-        return chosen;
-    }
-
-    for (let i = 0; i < g1TargetsPresent; i++) {
-        const n = pickUnique(targetPool);
-        if (n) gridNotes.push(n);
-    }
-    // Fill remaining with distractors
-    while (gridNotes.length < cardCount) {
-        const n = pickUnique(distractorPool);
-        if (n) gridNotes.push(n);
-        else break; // safety
-    }
-    // Shuffle
-    gridNotes.sort(() => Math.random() - 0.5);
-
-    gridNotes.forEach((n) => {
-        const isTargetNote = (g1TargetType === 'line' && poolLines.some(p => p[1] === n[1])) 
-                          || (g1TargetType === 'space' && poolSpaces.some(p => p[1] === n[1]));
+    // Build all 4 rows (12 cards total) for cumulative reveal inside loadG1Grid
+    for (let r = 0; r < 4; r++) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'g1-row';
         
-        const card = document.createElement('div');
-        card.className = 'smash-card ' + (cardCount <= 3 ? 'large-card' : 'small-card');
-        card.onclick = () => handleG1Click(card, isTargetNote, n[0]);
+        const isRowActive = (r < activeRowsCount);
         
-        const innerDiv = document.createElement('div'); 
-        card.appendChild(innerDiv); 
-        container.appendChild(card);
-        renderSmashCard(innerDiv, clefName, n[1]);
-    });
+        if (!isRowActive) {
+            rowEl.classList.add('locked');
+        } else if (r === activeRowsCount - 1 && g1TierIndex > 0) {
+            rowEl.classList.add('unlock-pulse');
+        }
+
+        let numTargetsInRow = rowTargets[r];
+        let rowNotes = [];
+        for (let i = 0; i < numTargetsInRow; i++) {
+            rowNotes.push({ note: targetPool[Math.floor(Math.random() * targetPool.length)], isTarget: true });
+        }
+        for (let i = numTargetsInRow; i < 3; i++) {
+            rowNotes.push({ note: distractorPool[Math.floor(Math.random() * distractorPool.length)], isTarget: false });
+        }
+        rowNotes.sort(() => Math.random() - 0.5);
+
+        rowNotes.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'smash-card small-card';
+            
+            if (isRowActive) {
+                card.onclick = () => handleG1Click(card, item.isTarget, item.note[0]);
+            }
+            
+            const innerDiv = document.createElement('div');
+            card.appendChild(innerDiv);
+            rowEl.appendChild(card);
+            
+            renderSmashCard(innerDiv, clefName, item.note[1], isRowActive);
+        });
+
+        container.appendChild(rowEl);
+    }
+
     startG1FlashTimer();
 }
 
@@ -520,43 +567,35 @@ function handleG1Click(cardElement, isTarget, pitchName) {
     if (g1SecondsLeft <= 0 || g1IsTransitioning || cardElement.classList.contains('correct')) return;
     
     if (isTarget) {
-        playSound('correct'); 
-        cardElement.classList.add('correct');
-        g1Score++; 
-        g1TargetsFound++; 
-        updateG1TrackerUI();
+        playSound('correct'); cardElement.classList.add('correct');
+        g1Score++; g1TargetsFound++; updateG1TrackerUI();
         
         if (g1Watchlist[pitchName]) {
             g1Watchlist[pitchName]--;
-            if (g1Watchlist[pitchName] <= 0) delete g1Watchlist[pitchName];
+            if(g1Watchlist[pitchName] <= 0) delete g1Watchlist[pitchName];
             updateG1WatchlistBadge();
         }
 
         if (g1TargetsFound >= g1TargetsPresent) {
             if (g1FlashTimer) clearTimeout(g1FlashTimer);
             g1IsTransitioning = true;
-            setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(true); }, 160);
+            setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(true); }, 150);
         }
     } else {
-        playSound('wrong'); 
-        g1WrongTapsThisScreen++;
-        g1Watchlist[pitchName] = 3; 
-        updateG1WatchlistBadge();
-        cardElement.classList.remove('incorrect'); 
-        void cardElement.offsetWidth; 
-        cardElement.classList.add('incorrect');
+        playSound('wrong'); g1WrongTapsThisScreen++;
+        g1Watchlist[pitchName] = 3; updateG1WatchlistBadge();
+        cardElement.classList.remove('incorrect'); void cardElement.offsetWidth; cardElement.classList.add('incorrect');
         setTimeout(() => cardElement.classList.remove('incorrect'), 300);
     }
 }
 
 function finishG1Game() {
-    stopAllGames(); 
-    playSound('complete'); 
-    switchScreenState('game1', 'g1-screen-summary');
+    stopAllGames(); playSound('complete'); switchScreenState('game1', 'g1-screen-summary');
     document.getElementById('g1-final-score').innerText = g1Score;
-    document.getElementById('g1-final-tier').innerText = g1Tiers[g1TierIndex];
-    document.getElementById('g1-final-bonus').innerText = g1TimeBonuses;
+    document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
+    document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
 }
+
 
 /* =========================================
    GAME 2: NOTE NAME SMASH (Fixed Width Stave)
@@ -601,7 +640,6 @@ function setupG2Helpers(round) {
 
 function startG2Game() {
     initAudio();
-    speechRoundActive = true;
     const round = document.getElementById('g2-round-select').value;
     setupG2Helpers(round);
 
@@ -610,6 +648,7 @@ function startG2Game() {
     updateG2WatchlistBadge(); updateG2TrackerUI();
     
     switchScreenState('game2', 'g2-screen-game');
+    speechRoundActive = true;
     
     const clefName = document.getElementById('g2-clef-select').value;
     renderFloatingClef('g2-clef-display', clefName);
@@ -622,7 +661,10 @@ function updateG2TrackerUI() {
     document.getElementById('g2-score-text').innerText = g2Score;
     document.getElementById('g2-attempts-text').innerText = `Attempts: ${g2TotalAttempts}`;
 }
-
+        const streakDots = [0, 1, 2].map(index =>
+            `<span class="streak-dot${index < g2Streak ? ' active' : ''}" aria-hidden="true"></span>`
+        ).join('');
+        document.getElementById('g2-tier-tracker-text').innerHTML += ` | Streak: <span class="streak-dots">${streakDots}</span>`;
 function startG2Timer() {
     if (g2Timer) clearInterval(g2Timer);
     document.getElementById('g2-timer-badge').innerText = `${g2SecondsLeft}s`;
