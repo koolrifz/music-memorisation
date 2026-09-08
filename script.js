@@ -60,7 +60,7 @@ function speakLetter(text) {
         setTimeout(() => {
             if (!speechRoundActive) return;
             let utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.4; // 40% faster
+            utterance.rate = 1.19; // 15% slower than the previous rate
             
             let voices = window.speechSynthesis.getVoices();
             let preferredVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Premium')))) 
@@ -303,8 +303,12 @@ let g1IsTransitioning = false;
 let g1LastRolledTotal = 0;
 let g1TierMin = 1;
 let g1TierMax = 2;
+let g1NextFlashBonus = 0;
 
 function showG1Watchlist() {
+    if (g1Timer) clearInterval(g1Timer);
+    if (g1FlashTimer) clearTimeout(g1FlashTimer);
+    g1IsTransitioning = true;
     const modal = document.getElementById('modal-watchlist-g1');
     const list = document.getElementById('watchlist-display-list-g1');
     list.innerHTML = '';
@@ -318,13 +322,18 @@ function showG1Watchlist() {
     }
     modal.classList.add('show');
 }
-function hideG1Watchlist() { document.getElementById('modal-watchlist-g1').classList.remove('show'); }
+function hideG1Watchlist() {
+    document.getElementById('modal-watchlist-g1').classList.remove('show');
+    g1IsTransitioning = false;
+    startG1Timer();
+    startG1FlashTimer();
+}
 function updateG1WatchlistBadge() { document.getElementById('g1-watchlist-count').innerText = Object.keys(g1Watchlist).length; }
 
 function startG1Game() {
     initAudio();
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
-    g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false;
+    g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false; g1NextFlashBonus = 0;
     updateG1WatchlistBadge(); updateG1TrackerUI();
     
     switchScreenState('game1', 'g1-screen-game');
@@ -360,7 +369,9 @@ function startG1Timer() {
 function startG1FlashTimer() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    setTimeout(() => { flashFill.style.transition = `width 3s linear`; flashFill.style.width = '0%'; }, 50);
+    const flashSeconds = 3 + g1NextFlashBonus;
+    g1NextFlashBonus = 0;
+    setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     g1FlashTimer = setTimeout(() => {
         if (g1SecondsLeft > 0) {
@@ -372,7 +383,7 @@ function startG1FlashTimer() {
             });
             setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(false); }, 300);
         }
-    }, 3000);
+    }, flashSeconds * 1000);
 }
 
 function triggerG1TimeBonus(amount) {
@@ -384,33 +395,44 @@ function triggerG1TimeBonus(amount) {
 }
 
 function awardG1TierBonus(completedCards) {
-    triggerG1TimeBonus(completedCards <= 6 ? 0.5 : 1.0);
+    const mainClockBonus = completedCards <= 6 ? 2 : 3;
+    triggerG1TimeBonus(mainClockBonus);
+    if (completedCards < 12) g1NextFlashBonus += 1;
+}
+
+function advanceG1Streak() {
+    if (g1Streak < 3) return false;
+
+    g1Streak = 0;
+    awardG1TierBonus(g1Tiers[g1TierIndex]);
+    if (g1TierIndex < g1Tiers.length - 1) {
+        g1TierIndex++;
+        return false;
+    }
+    return true;
+}
+
+function markG1DudSuccess() {
+    document.querySelectorAll('#g1-grid-container .g1-row:not(.locked) .smash-card').forEach(card => {
+        card.classList.add('dud-correct');
+    });
+    playSound('correct');
+    g1Score++;
+    triggerG1TimeBonus(0.5);
+    g1Streak++;
+    return advanceG1Streak();
 }
 
 function resolveG1Screen(cleared) {
     let oldTierIndex = g1TierIndex;
+    let finished = false;
     if (cleared) {
         if (g1TargetsPresent > 0) {
             g1Streak++;
-
-            if (g1Streak >= 3) { 
-                g1Streak = 0; 
-                awardG1TierBonus(g1Tiers[g1TierIndex]);
-                if (g1TierIndex < g1Tiers.length - 1) {
-                    g1TierIndex++;
-                }
-            }
+            triggerG1TimeBonus(0.5);
+            finished = advanceG1Streak();
         } else {
-            // Dud handled correctly -> counts as score +1 AND counts as a joker streak success per v2 brief section 4
-            g1Score++;
-            g1Streak++;
-            if (g1Streak >= 3) {
-                g1Streak = 0;
-                awardG1TierBonus(g1Tiers[g1TierIndex]);
-                if (g1TierIndex < g1Tiers.length - 1) {
-                    g1TierIndex++;
-                }
-            }
+            finished = markG1DudSuccess();
         }
     } else {
         let missed = g1TargetsPresent - g1TargetsFound;
@@ -418,6 +440,8 @@ function resolveG1Screen(cleared) {
             g1Streak = 0; g1DudStreak = 0;
         } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen > 0) {
             g1DudStreak = 0;
+        } else if (g1TargetsPresent === 0) {
+            finished = markG1DudSuccess();
         }
     }
     updateG1TrackerUI();
@@ -425,6 +449,11 @@ function resolveG1Screen(cleared) {
     // Check if a row unlocked
     if (g1TierIndex > oldTierIndex) {
         playSound('complete');
+    }
+
+    if (finished) {
+        finishG1Game(true);
+        return;
     }
     
     setTimeout(loadG1Grid, 200);
@@ -589,8 +618,9 @@ function handleG1Click(cardElement, isTarget, pitchName) {
     }
 }
 
-function finishG1Game() {
+function finishG1Game(isOfficialSmash = false) {
     stopAllGames(); playSound('complete'); switchScreenState('game1', 'g1-screen-summary');
+    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 Official Smasher!' : '🎉 Sprint Complete!';
     document.getElementById('g1-final-score').innerText = g1Score;
     document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
