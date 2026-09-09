@@ -15,7 +15,11 @@ if ('speechSynthesis' in window) {
 }
 
 function playSound(type) {
-    if (!audioCtx || audioCtx.state === 'suspended') return;
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => playSound(type)).catch(() => {});
+        return;
+    }
     try {
         const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); 
         osc.connect(gainNode); gainNode.connect(audioCtx.destination);
@@ -79,8 +83,8 @@ const NOTE_CONFIGS = {
     "treble": { clef: "treble", 
         staffLines: [["E","e/4"],["G","g/4"],["B","b/4"],["D","d/5"],["F","f/5"]], 
         staffSpaces: [["F","f/4"],["A","a/4"],["C","c/5"],["E","e/5"]],
-        ledgerLines: [["C","c/4"],["A","a/3"],["A","a/5"],["C","c/6"],["E","e/6"]],
-        ledgerSpaces: [["D","d/4"],["B","b/3"],["G","g/3"],["G","g/5"],["B","b/5"],["D","d/6"]]
+        ledgerLines: [["C","c/4"],["A","a/3"],["F","f/3"],["A","a/5"],["C","c/6"],["E","e/6"]],
+        ledgerSpaces: [["D","d/4"],["B","b/3"],["G","g/3"],["E","e/3"],["G","g/5"],["B","b/5"],["D","d/6"],["F","f/6"]]
     },
     "bass": { clef: "bass",   
         staffLines: [["G","g/2"],["B","b/2"],["D","d/3"],["F","f/3"],["A","a/3"]], 
@@ -291,6 +295,34 @@ let g1Score = 0;
 let g1TotalAttempts = 0;
 let g1TierIndex = 0;
 const g1Tiers = [3, 6, 9, 12]; // 1 row (3), 2 rows (6), 3 rows (9), 4 rows (12)
+const g1Level2PhaseNames = ['Lines', 'Spaces', 'Mixed Line & Spaces', 'Mixed Staff Numbers'];
+let g1Level = 'level2';
+// Reserved for the future Game 2 ledger-naming stage; not used by the current Game 1 course.
+let g1OrientationRoundIndex = 0;
+let g1AnchoredPositions = [];
+const g1OrientationRounds = [
+    { label: 'Line 1', type: 'line', index: 0 },
+    { label: 'Line 2', type: 'line', index: 1 },
+    { label: 'Line 3', type: 'line', index: 2 },
+    { label: 'Line 4', type: 'line', index: 3 },
+    { label: 'Line 5', type: 'line', index: 4 },
+    { label: 'Space 1', type: 'space', index: 0 },
+    { label: 'Space 2', type: 'space', index: 1 },
+    { label: 'Space 3', type: 'space', index: 2 },
+    { label: 'Space 4', type: 'space', index: 3 },
+    { label: 'Ledger Line 1 Below', type: 'ledger' },
+    { label: 'Ledger Space 1 Below', type: 'ledger' },
+    { label: 'Ledger Line 2 Below', type: 'ledger' },
+    { label: 'Ledger Space 2 Below', type: 'ledger' },
+    { label: 'Ledger Line 3 Below', type: 'ledger' },
+    { label: 'Ledger Space 3 Below', type: 'ledger' },
+    { label: 'Ledger Line 1 Above', type: 'ledger' },
+    { label: 'Ledger Space 1 Above', type: 'ledger' },
+    { label: 'Ledger Line 2 Above', type: 'ledger' },
+    { label: 'Ledger Space 2 Above', type: 'ledger' },
+    { label: 'Ledger Line 3 Above', type: 'ledger' },
+    { label: 'Ledger Space 3 Above', type: 'ledger' }
+];
 let g1Streak = 0;
 let g1DudStreak = 0;
 let g1BonusDuds = 0;
@@ -298,45 +330,89 @@ let g1TargetsPresent = 0;
 let g1TargetsFound = 0;
 let g1WrongTapsThisScreen = 0;
 let g1TargetType = ''; 
-let g1Watchlist = {}; 
 let g1IsTransitioning = false;
+let g1CurrentPromptLabel = '';
+let g1Level2Phase = 0;
+let g1LastScreenWasDud = false;
+let g1PendingStageAdvance = false;
+let g1CarriedStageTime = 0;
 let g1LastRolledTotal = 0;
 let g1TierMin = 1;
 let g1TierMax = 2;
 let g1RoundStartedAt = 0;
 
-function showG1Watchlist() {
-    if (g1Timer) clearInterval(g1Timer);
-    if (g1FlashTimer) clearTimeout(g1FlashTimer);
-    g1IsTransitioning = true;
-    const modal = document.getElementById('modal-watchlist-g1');
-    const list = document.getElementById('watchlist-display-list-g1');
-    list.innerHTML = '';
-    const items = Object.keys(g1Watchlist);
-    if(items.length === 0) list.innerHTML = '<div style="color:var(--text-muted); font-size:14px;">Watchlist is empty.</div>';
-    else {
-        items.forEach(note => {
-            const badge = document.createElement('div'); badge.className = 'watchlist-item';
-            badge.innerText = `${note} (${g1Watchlist[note]} left)`; list.appendChild(badge);
-        });
-    }
-    modal.classList.add('show');
+// Reserved for the future Game 2 ledger-naming stage; keep this position model available.
+function getG1OrientationPositions(config) {
+    const makePosition = (note, type, index, label, height) => ({
+        note,
+        type,
+        index,
+        label,
+        height
+    });
+    const positions = [];
+    config.staffLines.forEach((note, index) => positions.push(makePosition(note, 'line', index, `Line ${index + 1}`, index * 2 + 8)));
+    config.staffSpaces.forEach((note, index) => positions.push(makePosition(note, 'space', index, `Space ${index + 1}`, index * 2 + 9)));
+    const ledgerPositions = [
+        ['space', 'E', 'e/3', 'Ledger Space 3 Below', 1], ['line', 'F', 'f/3', 'Ledger Line 3 Below', 2],
+        ['space', 'G', 'g/3', 'Ledger Space 2 Below', 3], ['line', 'A', 'a/3', 'Ledger Line 2 Below', 4],
+        ['space', 'B', 'b/3', 'Ledger Space 1 Below', 5], ['line', 'C', 'c/4', 'Ledger Line 1 Below', 6],
+        ['line', 'A', 'a/5', 'Ledger Line 1 Above', 10], ['space', 'B', 'b/5', 'Ledger Space 1 Above', 11],
+        ['line', 'C', 'c/6', 'Ledger Line 2 Above', 12], ['space', 'D', 'd/6', 'Ledger Space 2 Above', 13],
+        ['line', 'E', 'e/6', 'Ledger Line 3 Above', 14], ['space', 'F', 'f/6', 'Ledger Space 3 Above', 15]
+    ];
+    ledgerPositions.forEach(([type, name, key, label, height], index) => {
+        positions.push(makePosition([name, key], type, index, label, height));
+    });
+    return positions;
 }
-function hideG1Watchlist() {
-    document.getElementById('modal-watchlist-g1').classList.remove('show');
-    g1IsTransitioning = false;
-    startG1Timer();
-    startG1FlashTimer();
+
+function getG1Level2LinePositions() {
+    const config = NOTE_CONFIGS.treble;
+    return config.staffLines.map((note, index) => ({ note, type: 'line', index, label: `Line ${index + 1}`, height: index * 2 + 8 }))
+        .concat(config.staffSpaces.map((note, index) => ({ note, type: 'space', index, label: `Space ${index + 1}`, height: index * 2 + 9 })));
 }
-function updateG1WatchlistBadge() { document.getElementById('g1-watchlist-count').innerText = Object.keys(g1Watchlist).length; }
+
+function getG1Level2PhasePositions(config) {
+    const lines = config.staffLines.map((note, index) => ({ note, type: 'line', index, label: `Line ${index + 1}`, height: index * 2 + 8 }));
+    const spaces = config.staffSpaces.map((note, index) => ({ note, type: 'space', index, label: `Space ${index + 1}`, height: index * 2 + 9 }));
+    if (g1Level2Phase === 0) return lines;
+    if (g1Level2Phase === 1) return spaces;
+    return [...lines, ...spaces];
+}
+
+function getG1Level2StaffPositions(config) {
+    const lines = config.staffLines.map((note, index) => ({ note, type: 'line', index, label: `Line ${index + 1}`, height: index * 2 + 8 }));
+    const spaces = config.staffSpaces.map((note, index) => ({ note, type: 'space', index, label: `Space ${index + 1}`, height: index * 2 + 9 }));
+    return [...lines, ...spaces];
+}
+
+function getG1OrientationRound() {
+    return g1OrientationRounds[g1OrientationRoundIndex];
+}
+
+function chooseG1OrientationTarget(config) {
+    const round = getG1OrientationRound();
+    const positions = getG1OrientationPositions(config);
+    return positions.find(position => position.label === round.label);
+}
+
+function getG1OrientationDistractors(target, positions) {
+    return positions
+    .filter(position => position.type !== target.type)
+        .sort((a, b) => Math.abs(a.height - target.height) - Math.abs(b.height - target.height));
+}
 
 function startG1Game() {
     initAudio();
-    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
-    g1SecondsLeft = 30; g1Watchlist = {}; g1IsTransitioning = false; g1RoundStartedAt = 0;
-    updateG1WatchlistBadge(); updateG1TrackerUI();
+    g1Level = 'level2';
+    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
+    g1Level2Phase = 0;
+    g1SecondsLeft = 30; g1IsTransitioning = false; g1RoundStartedAt = 0; g1LastScreenWasDud = false; g1PendingStageAdvance = false; g1CarriedStageTime = 0;
+    updateG1TrackerUI();
     
     switchScreenState('game1', 'g1-screen-game');
+    initAudio();
     speechRoundActive = true;
     
     startG1Timer();
@@ -351,7 +427,10 @@ function updateG1TrackerUI() {
             `<span class="streak-dot${index < g1Streak ? ' active' : ''}" aria-hidden="true"></span>`
         ).join('');
 
-        document.getElementById('g1-tier-tracker-text').innerHTML = `Rows: ${rowCount}/4 <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
+        const roundLabel = g1Level === 'level2'
+            ? `${g1Level2PhaseNames[g1Level2Phase]} | Grid: ${activeCardsCount}`
+            : `Rows: ${rowCount}/4`;
+        document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
     document.getElementById('g1-score-text').innerText = g1Score;
     document.getElementById('g1-attempts-text').innerText = `Attempts: ${g1TotalAttempts}`;
 }
@@ -412,12 +491,36 @@ function awardG1TierBonus(completedCards) {
 }
 
 function advanceG1Streak() {
+    if (g1Level === 'level2') {
+        if (g1Streak < 3) return false;
+        g1Streak = 0;
+        awardG1TierBonus(g1Tiers[g1TierIndex]);
+        if (g1TierIndex < g1Tiers.length - 1) {
+            g1TierIndex++;
+            return false;
+        }
+        if (g1Level2Phase < 3) {
+            g1Level2Phase++;
+            g1TierIndex = 0;
+            showG1StageComplete();
+            return false;
+        }
+        return true;
+    }
     if (g1Streak < 3) return false;
 
     g1Streak = 0;
     awardG1TierBonus(g1Tiers[g1TierIndex]);
     if (g1TierIndex < g1Tiers.length - 1) {
         g1TierIndex++;
+        return false;
+    }
+    if (g1Level === 'level2' && g1OrientationRoundIndex < g1OrientationRounds.length - 1) {
+        g1TierIndex = 0;
+        g1OrientationRoundIndex++;
+        g1Streak = 0;
+        g1SecondsLeft = 30;
+        document.getElementById('g1-timer-badge').innerText = '30s';
         return false;
     }
     return true;
@@ -440,6 +543,7 @@ function resolveG1Screen(cleared) {
     let oldTierIndex = g1TierIndex;
     let finished = false;
     if (cleared) {
+        g1LastScreenWasDud = false;
         if (g1TargetsPresent > 0) {
             g1Streak++;
             triggerG1TimeBonus(0.5);
@@ -469,8 +573,37 @@ function resolveG1Screen(cleared) {
         finishG1Game(true);
         return;
     }
+    if (g1PendingStageAdvance) return;
     
     setTimeout(loadG1Grid, 200);
+}
+
+function showG1StageComplete() {
+    g1PendingStageAdvance = true;
+    g1CarriedStageTime = Math.max(0, Math.floor(g1SecondsLeft));
+    stopAllGames();
+    g1IsTransitioning = true;
+    const nextStage = g1Level2PhaseNames[g1Level2Phase];
+    document.getElementById('g1-stage-complete-title').innerText = `${g1Level2PhaseNames[g1Level2Phase - 1]} smashed!`;
+    document.getElementById('g1-stage-complete-next').innerText = `Next up: ${nextStage}`;
+    document.getElementById('g1-stage-score').innerText = g1Score;
+    document.getElementById('g1-stage-bonus').innerText = g1BonusDuds;
+    document.getElementById('g1-stage-time').innerText = `${g1CarriedStageTime}s`;
+    document.getElementById('modal-g1-stage-complete').classList.add('show');
+    playSound('complete');
+}
+
+function continueG1Stage() {
+    document.getElementById('modal-g1-stage-complete').classList.remove('show');
+    g1PendingStageAdvance = false;
+    g1IsTransitioning = false;
+    g1SecondsLeft = 30 + g1CarriedStageTime;
+    g1CarriedStageTime = 0;
+    document.getElementById('g1-timer-badge').innerText = `${g1SecondsLeft}s`;
+    initAudio();
+    speechRoundActive = true;
+    startG1Timer();
+    loadG1Grid();
 }
 
 function loadG1Grid() {
@@ -489,7 +622,7 @@ function loadG1Grid() {
     const flashFill = document.getElementById('g1-flash-timer-fill');
     flashFill.style.transition = 'none'; flashFill.style.width = '100%';
 
-    const activeCardsCount = g1Tiers[g1TierIndex]; // 3, 6, 9, or 12
+    const activeCardsCount = g1Tiers[g1TierIndex];
     const activeRowsCount = activeCardsCount / 3;
 
     // Define density bands per tier:
@@ -508,13 +641,49 @@ function loadG1Grid() {
     let poolLines = [...config.staffLines, ...config.ledgerLines];
     let poolSpaces = [...config.staffSpaces, ...config.ledgerSpaces];
     
-   g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
-    document.getElementById('g1-target-instruction-display').innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
+    let targetPool;
+    let distractorPool;
+    let orientationTarget = null;
+    let orientationTargets = [];
+    let orientationDistractors = [];
+    if (g1Level === 'level2') {
+        const orientationPositions = getG1Level2PhasePositions(config);
+        const allStaffPositions = getG1Level2StaffPositions(config);
+        const numberedPhase = g1Level2Phase === 3;
+        const typePhase = g1Level2Phase < 3;
+        let targetType = null;
+        if (g1Level2Phase === 0) targetType = 'line';
+        else if (g1Level2Phase === 1) targetType = 'space';
+        else if (typePhase) targetType = Math.random() < 0.5 ? 'line' : 'space';
+
+        const targetPool = targetType
+            ? allStaffPositions.filter(position => position.type === targetType)
+            : orientationPositions;
+        orientationTarget = targetPool[Math.floor(Math.random() * targetPool.length)];
+        orientationTargets = numberedPhase ? [orientationTarget] : targetPool;
+        const distractorTargets = orientationTargets.length > 0 ? orientationTargets : [orientationTarget];
+        orientationDistractors = distractorTargets.flatMap(target => getG1OrientationDistractors(target, allStaffPositions));
+        orientationDistractors = orientationDistractors.filter((position, index, positions) =>
+            positions.findIndex(candidate => candidate.label === position.label) === index
+        );
+        const targetLabels = new Set(orientationTargets.map(position => position.label));
+        const randomFill = orientationPositions
+            .filter(position => !targetLabels.has(position.label) && !orientationDistractors.some(candidate => candidate.label === position.label))
+            .sort(() => Math.random() - 0.5);
+        orientationDistractors.push(...randomFill);
+        const prompt = numberedPhase ? `SMASH ${orientationTarget.label}` : `SMASH A ${targetType.toUpperCase()}`;
+        g1CurrentPromptLabel = prompt;
+        document.getElementById('g1-target-instruction-display').innerText = prompt.toUpperCase();
+        speakLetter(numberedPhase ? orientationTarget.label : `a ${targetType}`);
+        updateG1TrackerUI();
+    } else {
+        g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
+        document.getElementById('g1-target-instruction-display').innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
+        speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces');
+    }
     
-    // Fires instantly the moment the grid renders, saying just "lines" or "spaces" at 1.4x speed
-    speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces');
-    
-    let isDud = Math.random() < 0.15;
+    let isDud = !g1LastScreenWasDud && Math.random() < 0.15;
+    g1LastScreenWasDud = isDud;
     
     // Row allocation algorithm per v2 brief:
     let totalBudget = 0;
@@ -560,8 +729,10 @@ function loadG1Grid() {
     }
     g1TargetsFound = 0;
 
-    let targetPool = g1TargetType === 'line' ? poolLines : poolSpaces;
-    let distractorPool = g1TargetType === 'line' ? poolSpaces : poolLines;
+    if (g1Level !== 'level2') {
+        targetPool = g1TargetType === 'line' ? poolLines : poolSpaces;
+        distractorPool = g1TargetType === 'line' ? poolSpaces : poolLines;
+    }
 
     // Build all 4 rows (12 cards total) for cumulative reveal inside loadG1Grid
     for (let r = 0; r < 4; r++) {
@@ -579,10 +750,24 @@ function loadG1Grid() {
         let numTargetsInRow = rowTargets[r];
         let rowNotes = [];
         for (let i = 0; i < numTargetsInRow; i++) {
-            rowNotes.push({ note: targetPool[Math.floor(Math.random() * targetPool.length)], isTarget: true });
+            const selectedTarget = g1Level === 'level2'
+                ? orientationTargets[i % orientationTargets.length]
+                : null;
+            const targetNote = g1Level === 'level2' ? selectedTarget.note : targetPool[Math.floor(Math.random() * targetPool.length)];
+            const targetLabel = g1Level === 'level2' ? selectedTarget.label : targetNote[0];
+            rowNotes.push({ note: targetNote, label: targetLabel, isTarget: true });
         }
+        let distractorIndex = 0;
         for (let i = numTargetsInRow; i < 3; i++) {
-            rowNotes.push({ note: distractorPool[Math.floor(Math.random() * distractorPool.length)], isTarget: false });
+            let distractor;
+            if (g1Level === 'level2') {
+                distractor = orientationDistractors[distractorIndex % orientationDistractors.length];
+                distractorIndex++;
+                rowNotes.push({ note: distractor.note, label: distractor.label, isTarget: false });
+            } else {
+                distractor = distractorPool[Math.floor(Math.random() * distractorPool.length)];
+                rowNotes.push({ note: distractor, label: distractor[0], isTarget: false });
+            }
         }
         rowNotes.sort(() => Math.random() - 0.5);
 
@@ -591,7 +776,7 @@ function loadG1Grid() {
             card.className = 'smash-card small-card';
             
             if (isRowActive) {
-                card.onclick = () => handleG1Click(card, item.isTarget, item.note[0]);
+                card.onclick = () => handleG1Click(card, item.isTarget, item.label);
             }
             
             const innerDiv = document.createElement('div');
@@ -614,12 +799,6 @@ function handleG1Click(cardElement, isTarget, pitchName) {
         playSound('correct'); cardElement.classList.add('correct');
         g1Score++; g1TargetsFound++; updateG1TrackerUI();
         
-        if (g1Watchlist[pitchName]) {
-            g1Watchlist[pitchName]--;
-            if(g1Watchlist[pitchName] <= 0) delete g1Watchlist[pitchName];
-            updateG1WatchlistBadge();
-        }
-
         if (g1TargetsFound >= g1TargetsPresent) {
             if (g1FlashTimer) clearTimeout(g1FlashTimer);
             g1IsTransitioning = true;
@@ -627,7 +806,6 @@ function handleG1Click(cardElement, isTarget, pitchName) {
         }
     } else {
         playSound('wrong'); g1WrongTapsThisScreen++;
-        g1Watchlist[pitchName] = 3; updateG1WatchlistBadge();
         cardElement.classList.remove('incorrect'); void cardElement.offsetWidth; cardElement.classList.add('incorrect');
         setTimeout(() => cardElement.classList.remove('incorrect'), 300);
     }
@@ -637,7 +815,7 @@ function finishG1Game(isOfficialSmash = false) {
     stopAllGames();
     const summaryCard = document.getElementById('g1-summary-card');
     summaryCard.classList.toggle('g1-victory', isOfficialSmash);
-    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 OFFICIAL SMASHER!' : '🎉 Sprint Complete!';
+    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 YOU SMASHED IT!' : '🎉 YOU SMASHED!';
     switchScreenState('game1', 'g1-screen-summary');
     if (isOfficialSmash) {
         initAudio();
@@ -646,7 +824,26 @@ function finishG1Game(isOfficialSmash = false) {
         setTimeout(() => playSound('complete'), 450);
     }
     document.getElementById('g1-final-score').innerText = g1Score;
-    document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
+    if (g1Level === 'level2') {
+        document.getElementById('g1-final-tier-label').innerText = 'Staff Numbering Progress';
+        const pathwaySteps = [...document.querySelectorAll('#g1-pathway .g1-pathway-step')];
+        pathwaySteps.forEach((step, index) => {
+            step.classList.remove('completed', 'current', 'locked');
+            if (isOfficialSmash || index < g1Level2Phase) step.classList.add('completed');
+            else if (index === g1Level2Phase) step.classList.add('current');
+            else step.classList.add('locked');
+        });
+        document.getElementById('g1-summary-progress-title').innerText = isOfficialSmash
+            ? 'Staff Numbering pathway complete!'
+            : `${g1Level2PhaseNames[g1Level2Phase]} is next to master`;
+        document.getElementById('g1-final-tier').innerText = isOfficialSmash
+            ? '4/4 stages complete'
+            : `${g1Level2Phase}/4 stages complete`;
+    } else {
+        document.getElementById('g1-summary-progress-title').innerText = 'Your Smash progress';
+        document.getElementById('g1-final-tier-label').innerText = 'Highest Grid Reached';
+        document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
+    }
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
 }
 
@@ -654,13 +851,28 @@ function finishG1Game(isOfficialSmash = false) {
 /* =========================================
    GAME 2: NOTE NAME SMASH (Fixed Width Stave)
    ========================================= */
-let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [1, 2, 3, 6, 9, 12];
+let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [3, 6, 9, 12];
+const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
+let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
-let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false;
+let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false; let g2RoundStartedAt = 0;
 
 function toggleG2HelperModal() {
     const modal = document.getElementById('g2-helper-modal');
-    if(modal) { modal.classList.toggle('show'); if(modal.classList.contains('show')) setTimeout(renderHelperSheetGraphics, 50); }
+    if (!modal) return;
+    const isOpening = !modal.classList.contains('show');
+    if (isOpening) {
+        stopAllGames();
+        g2IsTransitioning = true;
+        modal.classList.add('show');
+        setTimeout(renderHelperSheetGraphics, 50);
+    } else {
+        modal.classList.remove('show');
+        g2IsTransitioning = false;
+        speechRoundActive = true;
+        startG2Timer();
+        startG2FlashTimer();
+    }
 }
 
 function showG2Watchlist() {
@@ -686,19 +898,20 @@ function setupG2Helpers(round) {
     const spacesCanvas = document.getElementById('g2-helper-spaces-canvas');
 
     linesCanvas.style.display = 'none'; spacesCanvas.style.display = 'none';
-    if(round === '1') { helperModal.classList.add('show'); linesCanvas.style.display = 'block'; } 
-    else if (round === '2') { helperModal.classList.add('show'); spacesCanvas.style.display = 'block'; } 
-    else { helperModal.classList.remove('show'); }
+    const helperToggle = document.getElementById('g2-helper-toggle');
+    if(round === '1') { linesCanvas.style.display = 'block'; helperToggle.style.display = 'flex'; } 
+    else if (round === '2') { spacesCanvas.style.display = 'block'; helperToggle.style.display = 'flex'; }
+    else { helperToggle.style.display = 'none'; }
+    helperModal.classList.remove('show');
     setTimeout(renderHelperSheetGraphics, 50);
 }
 
 function startG2Game() {
     initAudio();
-    const round = document.getElementById('g2-round-select').value;
-    setupG2Helpers(round);
+    setupG2Helpers('1');
 
-    g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Streak = 0; g2DudStreak = 0;
-    g2SecondsLeft = 60; g2Watchlist = {}; g2IsTransitioning = false;
+    g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Phase = 0; g2Streak = 0; g2DudStreak = 0;
+    g2SecondsLeft = 60; g2Watchlist = {}; g2IsTransitioning = false; g2LastScreenWasDud = false; g2PendingStageAdvance = false; g2CarriedStageTime = 0;
     updateG2WatchlistBadge(); updateG2TrackerUI();
     
     switchScreenState('game2', 'g2-screen-game');
@@ -711,7 +924,7 @@ function startG2Game() {
 }
 
 function updateG2TrackerUI() {
-    document.getElementById('g2-tier-tracker-text').innerText = `Grid: ${g2Tiers[g2TierIndex]} | Streak: ${g2Streak}/3`;
+    document.getElementById('g2-tier-tracker-text').innerText = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]} | Streak: ${g2Streak}/3`;
     document.getElementById('g2-score-text').innerText = g2Score;
     document.getElementById('g2-attempts-text').innerText = `Attempts: ${g2TotalAttempts}`;
 }
@@ -732,7 +945,8 @@ function startG2Timer() {
 function startG2FlashTimer() {
     if (g2FlashTimer) clearTimeout(g2FlashTimer);
     const flashFill = document.getElementById('g2-flash-timer-fill');
-    setTimeout(() => { flashFill.style.transition = `width 3s linear`; flashFill.style.width = '0%'; }, 50);
+    const flashSeconds = g2Tiers[g2TierIndex] / 3 + 2;
+    setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     g2FlashTimer = setTimeout(() => {
         if (g2SecondsLeft > 0) {
@@ -740,13 +954,57 @@ function startG2FlashTimer() {
             document.querySelectorAll('#g2-grid-container .smash-card').forEach(c => c.classList.add('flash-red'));
             setTimeout(() => { g2IsTransitioning = false; resolveG2Screen(false); }, 300);
         }
-    }, 3000);
+    }, flashSeconds * 1000);
+}
+
+function triggerG2TimeBonus(amount) {
+    g2SecondsLeft += amount;
+    document.getElementById('g2-timer-badge').innerText = `${g2SecondsLeft}s`;
+    const badge = document.getElementById('g2-timer-badge');
+    badge.classList.add('flash-green');
+    setTimeout(() => badge.classList.remove('flash-green'), 400);
+}
+
+function awardG2ScreenBonuses() {
+    const cardsInPlay = g2Tiers[g2TierIndex];
+    if (g2WrongTapsThisScreen === 0 && cardsInPlay <= 6) triggerG2TimeBonus(cardsInPlay === 3 ? 0.5 : 0.75);
+    if (g2RoundStartedAt && (performance.now() - g2RoundStartedAt) / 1000 <= cardsInPlay / 3 + 1) triggerG2TimeBonus(0.5);
+}
+
+function awardG2TierBonus() {
+    triggerG2TimeBonus(g2Tiers[g2TierIndex] <= 6 ? 2 : 3);
+}
+
+function showG2StageComplete() {
+    g2PendingStageAdvance = true;
+    g2CarriedStageTime = Math.max(0, Math.floor(g2SecondsLeft));
+    stopAllGames();
+    g2IsTransitioning = true;
+    document.getElementById('g2-stage-complete-title').innerText = `${g2PhaseNames[g2Phase]} smashed!`;
+    document.getElementById('g2-stage-complete-next').innerText = `Next up: ${g2PhaseNames[g2Phase + 1]}`;
+    document.getElementById('g2-stage-score').innerText = g2Score;
+    document.getElementById('g2-stage-bonus').innerText = `${g2Tiers[g2TierIndex] <= 6 ? 2 : 3}s`;
+    document.getElementById('g2-stage-time').innerText = `${g2CarriedStageTime}s`;
+    document.getElementById('modal-g2-stage-complete').classList.add('show');
+    playSound('complete');
+}
+
+function continueG2Stage() {
+    document.getElementById('modal-g2-stage-complete').classList.remove('show');
+    g2PendingStageAdvance = false; g2IsTransitioning = false;
+    g2SecondsLeft = 60 + g2CarriedStageTime; g2CarriedStageTime = 0;
+    g2TierIndex = 0; g2SecondsLeft = Math.max(g2SecondsLeft, 30);
+    document.getElementById('g2-timer-badge').innerText = `${g2SecondsLeft}s`;
+    setupG2Helpers(g2Phase === 0 ? '1' : g2Phase === 1 ? '2' : '3');
+    initAudio(); speechRoundActive = true; updateG2TrackerUI(); startG2Timer(); loadG2Grid();
 }
 
 function resolveG2Screen(cleared) {
     if (cleared) {
         if (g2TargetsPresent > 0) {
             g2Streak++;
+            awardG2ScreenBonuses();
+            g2LastScreenWasDud = false;
             if (g2Watchlist[g2TargetNote]) {
                 g2Watchlist[g2TargetNote]--;
                 if(g2Watchlist[g2TargetNote] <= 0) delete g2Watchlist[g2TargetNote];
@@ -754,26 +1012,33 @@ function resolveG2Screen(cleared) {
             }
             if (g2Streak >= 3) {
                 g2Streak = 0;
+                awardG2TierBonus();
                 if (g2TierIndex < g2Tiers.length - 1) g2TierIndex++;
-                else { finishG2Game(true); return; } 
+                else if (g2Phase < g2PhaseNames.length - 1) { g2Phase++; g2TierIndex = 0; showG2StageComplete(); return; }
+                else { finishG2Game(true); return; }
             }
         }
     } else {
         let missed = g2TargetsPresent - g2TargetsFound;
         if (missed > 0) {
-            g2Streak = 0; g2Watchlist[g2TargetNote] = 3; updateG2WatchlistBadge(); g2DudStreak = 0;
+            g2Streak = 0; g2LastScreenWasDud = false; g2Watchlist[g2TargetNote] = 3; updateG2WatchlistBadge(); g2DudStreak = 0;
         } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen === 0) {
-            g2DudStreak++; if (g2DudStreak >= 3) { g2Score++; g2DudStreak = 0; }
+            document.querySelectorAll('#g2-grid-container .smash-card').forEach(card => {
+                card.classList.add('dud-correct', 'screen-complete');
+            });
+            playSound('correct');
+            g2DudStreak++; g2Score++; triggerG2TimeBonus(g2Tiers[g2TierIndex] / 3 + 2); g2LastScreenWasDud = true;
         } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen > 0) {
             g2DudStreak = 0;
         }
     }
-    updateG2TrackerUI(); setTimeout(loadG2Grid, 200);
+    updateG2TrackerUI(); if (!g2PendingStageAdvance) setTimeout(loadG2Grid, 350);
 }
 
 function loadG2Grid() {
     if (g2SecondsLeft <= 0) return;
     g2TotalAttempts++; g2WrongTapsThisScreen = 0;
+    g2RoundStartedAt = performance.now();
     
     const VF = Vex.Flow;
     const container = document.getElementById('g2-grid-container'); container.innerHTML = '';
@@ -781,30 +1046,25 @@ function loadG2Grid() {
     flashFill.style.transition = 'none'; flashFill.style.width = '100%';
 
     let cardCount = g2Tiers[g2TierIndex];
-    container.style.gridTemplateColumns = cardCount <= 2 ? '1fr' : 'repeat(3, 1fr)';
+    container.style.gridTemplateColumns = 'repeat(3, 1fr)';
 
     const clefName = document.getElementById('g2-clef-select').value;
-    const round = document.getElementById('g2-round-select').value;
     const config = NOTE_CONFIGS[clefName];
     
     let pool = [];
-    if (round === '1') pool = [...config.staffLines];
-    else if (round === '2') pool = [...config.staffSpaces];
-    else if (round === '3') pool = [...config.staffLines, ...config.staffSpaces];
-    else if (round === '4') {
-        pool = [...config.staffLines, ...config.staffSpaces];
-        if(Object.keys(g2Watchlist).length === 0) pool = pool.concat([...config.ledgerLines, ...config.ledgerSpaces]);
-    }
+    if (g2Phase === 0) pool = [...config.staffLines];
+    else if (g2Phase === 1) pool = [...config.staffSpaces];
+    else if (g2Phase === 2) pool = [...config.staffLines, ...config.staffSpaces];
+    else pool = [...config.staffLines, ...config.staffSpaces, ...config.ledgerLines, ...config.ledgerSpaces];
     
     const targetLetters = [...new Set(pool.map(n => n[0].toUpperCase()))];
     g2TargetNote = targetLetters[Math.floor(Math.random() * targetLetters.length)];
     
-    document.getElementById('g2-target-note-display').innerText = `FIND ${g2TargetNote}`;
+    document.getElementById('g2-target-note-display').innerText = `SMASH ${g2TargetNote}`;
     speakLetter(g2TargetNote);
     
-    let isDud = Math.random() < 0.15;
-    // Target density per grid size: 1->1, 2->1, 3->1, 6->2, 9->2-3, 12->3-4
-    g2TargetsPresent = isDud ? 0 : (cardCount === 1 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : cardCount === 12 ? (Math.floor(Math.random() * 2) + 3) : 1);
+    let isDud = !g2LastScreenWasDud && Math.random() < 0.15;
+    g2TargetsPresent = isDud ? 0 : (cardCount === 3 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : Math.floor(Math.random() * 2) + 3);
     if (g2TargetsPresent > cardCount) g2TargetsPresent = cardCount;
     g2TargetsFound = 0;
     
@@ -819,7 +1079,7 @@ function loadG2Grid() {
 
     gridNotes.forEach((n) => {
         const card = document.createElement('div');
-        card.className = 'smash-card ' + (cardCount <= 2 ? 'large-card' : 'small-card');
+        card.className = 'smash-card small-card';
         card.onclick = () => handleG2Click(card, n[0].toUpperCase());
         
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
@@ -836,8 +1096,9 @@ function handleG2Click(cardElement, letter) {
         g2Score++; g2TargetsFound++; updateG2TrackerUI();
         if (g2TargetsFound >= g2TargetsPresent) {
             if (g2FlashTimer) clearTimeout(g2FlashTimer);
+            document.querySelectorAll('#g2-grid-container .smash-card').forEach(card => card.classList.add('screen-complete'));
             g2IsTransitioning = true;
-            setTimeout(() => { g2IsTransitioning = false; resolveG2Screen(true); }, 150);
+            setTimeout(() => { g2IsTransitioning = false; resolveG2Screen(true); }, 350);
         }
     } else {
         playSound('wrong'); g2WrongTapsThisScreen++;
@@ -849,32 +1110,26 @@ function handleG2Click(cardElement, letter) {
 
 function finishG2Game(isGraduation) {
     stopAllGames(); playSound('complete'); switchScreenState('game2', 'g2-screen-summary');
-    
-    const currentRound = document.getElementById('g2-round-select').value;
-    const pbKey = 'round' + currentRound;
+    const pbKey = 'round' + (g2Phase + 1);
     let isNewPb = false;
     if (g2Score > personalBests.game2[pbKey]) { personalBests.game2[pbKey] = g2Score; isNewPb = true; }
     
     document.getElementById('g2-final-score').innerText = g2Score;
     document.getElementById('g2-final-attempts').innerText = g2TotalAttempts;
-    document.getElementById('g2-final-tier').innerText = g2Tiers[g2TierIndex];
+    const pathwaySteps = [...document.querySelectorAll('#g2-pathway .g1-pathway-step')];
+    pathwaySteps.forEach((step, index) => {
+        step.classList.remove('completed', 'current', 'locked');
+        if (isGraduation || index < g2Phase) step.classList.add('completed');
+        else if (index === g2Phase) step.classList.add('current');
+        else step.classList.add('locked');
+    });
+    document.getElementById('g2-summary-progress-title').innerText = isGraduation ? 'Note Name pathway complete!' : `${g2PhaseNames[g2Phase]} is next to master`;
+    document.getElementById('g2-final-tier').innerText = isGraduation ? '4/4 stages complete' : `${g2Phase}/4 stages complete`;
     document.getElementById('g2-personal-best').innerText = `${personalBests.game2[pbKey]} ${isNewPb ? '(New PB! 🎉)' : ''}`;
 
-    const autoProgContainer = document.getElementById('g2-auto-progress-container');
     const title = document.getElementById('g2-summary-title');
 
-    if (isGraduation && currentRound < '4') {
-        title.innerText = "You Crushed It! 🌟";
-        autoProgContainer.style.display = 'block';
-    } else {
-        title.innerText = "Smash Complete!";
-        autoProgContainer.style.display = 'none';
-    }
-}
-
-function advanceG2Round() {
-    const select = document.getElementById('g2-round-select');
-    if (select.value < '4') { select.value = (parseInt(select.value) + 1).toString(); startG2Game(); }
+    title.innerText = isGraduation ? '🏆 YOU SMASHED IT!' : '🎉 YOU SMASHED!';
 }
 
 /* =========================================
@@ -921,6 +1176,7 @@ function renderHelperSheetGraphics() {
                 const stave1 = new VF.Stave(0, 5, 360).addClef(currentClef).setContext(ctxLines).draw();
                 const lineNotes = config.staffLines.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
                 VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
+                linesDiv.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
             }
         });
 
@@ -932,6 +1188,7 @@ function renderHelperSheetGraphics() {
                 const stave2 = new VF.Stave(0, 5, 275).addClef(currentClef).setContext(ctxSpaces).draw();
                 const spaceNotes = config.staffSpaces.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
                 VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
+                spacesDiv.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
             }
         });
     } catch(e) {}

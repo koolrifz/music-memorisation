@@ -21,7 +21,7 @@
             <div class="game-icon icon-purple">1</div>
             <div class="game-details">
                 <h2>Line & Space Smash</h2>
-                <p>Train your visual reflexes. Distinguish lines from spaces instantly.</p>
+                <p>Build instant staff orientation, one position at a time.</p>
             </div>
         </div>
         <div class="game-card blue" onclick="launchGame('view-game2')">
@@ -54,8 +54,8 @@
     <div id="g1-screen-setup" class="screen active">
         <div class="setup-card">
             <h1>🎯 Line & Space Smash</h1>
-            <p>Pure visual reflex: Smash the correct cards as the grid grows.</p>
-            <button class="btn btn-start" onclick="startG1Game()">Start 30s Sprint</button>
+            <p>Build your Staff Numbering skills: master lines, spaces, then mixed positions.</p>
+            <button class="btn btn-start" onclick="startG1Game()">Start 30s of Smashing</button>
         </div>
     </div>
 
@@ -77,9 +77,7 @@
                 <div class="flash-timer" id="g1-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g1-flash-timer-fill"></div></div>
             </div>
             
-            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
-                 <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG1Watchlist()">⚠️ <span id="g1-watchlist-count">0</span></button>
-            </div>
+              <div style="flex: 1;"></div>
         </div>
 
         <div id="g1-clef-display"></div>
@@ -96,10 +94,17 @@
 
     <div id="g1-screen-summary" class="screen">
         <div class="summary-card" id="g1-summary-card">
-            <h2 id="g1-summary-title">🎉 Sprint Complete!</h2>
+            <h2 id="g1-summary-title">🎉 YOU SMASHED!</h2>
             <div class="g1-victory-banner" aria-hidden="true">★ ★ ★</div>
+            <p class="summary-progress-title" id="g1-summary-progress-title">Your Staff Numbering pathway</p>
+            <div class="g1-pathway" id="g1-pathway" aria-label="Staff Numbering pathway">
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">1</span><span>Lines</span></div>
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">2</span><span>Spaces</span></div>
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">3</span><span>Mixed Lines<br>&amp; Spaces</span></div>
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">4</span><span>Staff<br>Numbering</span></div>
+            </div>
             <div class="summary-stat">Total Score: <span id="g1-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
-            <div class="summary-stat">Highest Grid Reached: <span id="g1-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
+            <div class="summary-stat"><span id="g1-final-tier-label">Highest Grid Reached</span>: <span id="g1-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
             <div class="summary-stat">Bonus Points (Duds): <span id="g1-final-bonus" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
             <button class="btn btn-secondary" onclick="switchScreenState('game1', 'g1-screen-setup')">Back to Setup</button>
@@ -123,13 +128,7 @@
                 <option value="alto">Alto Clef</option>
                 <option value="tenor">Tenor Clef</option>
             </select>
-            <select id="g2-round-select">
-                <option value="1">Round 1: Lines Only</option>
-                <option value="2">Round 2: Spaces Only</option>
-                <option value="3">Round 3: Staff Mixed</option>
-                <option value="4">Round 4: Add Ledgers</option>
-            </select>
-            <button class="btn btn-start" onclick="startG2Game()">Start Smash</button>
+            <button class="btn btn-start" onclick="startG2Game()">Start 60s of Smashing</button>
         </div>
     </div>
 
@@ -152,7 +151,7 @@
             </div>
             
             <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
-                <button class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
+                <button id="g2-helper-toggle" class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
                 <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
             </div>
         </div>
@@ -182,12 +181,15 @@
             <h2 id="g2-summary-title">🎉 Smash Complete!</h2>
             <div class="summary-stat">Total Score: <span id="g2-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
             <div class="summary-stat">Total Attempts: <span id="g2-final-attempts" style="color:white; font-weight:bold;">0</span></div>
-            <div class="summary-stat">Highest Grid Reached: <span id="g2-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
-            <div class="summary-stat">Personal Best: <span id="g2-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
-            
-            <div id="g2-auto-progress-container" style="display:none; margin-top: 15px;">
-                <button class="btn btn-start" onclick="advanceG2Round()">Continue to Next Round ➡️</button>
+            <div class="summary-progress-title" id="g2-summary-progress-title">Your Note Name pathway</div>
+            <div class="g1-pathway" id="g2-pathway" aria-label="Note Name pathway">
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">1</span><span>Lines</span></div>
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">2</span><span>Spaces</span></div>
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">3</span><span>Mixed<br>Staff</span></div>
+                <div class="g1-pathway-step"><span class="g1-pathway-icon">4</span><span>Ledger<br>Notes</span></div>
             </div>
+            <div class="summary-stat">Highest Grid Reached: <span id="g2-final-tier" style="color:var(--accent-blue); font-weight:bold;">3</span></div>
+            <div class="summary-stat">Personal Best: <span id="g2-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG2Game()">Replay Same Round</button>
             <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="switchScreenState('game2', 'g2-screen-setup')">Change Setup</button>
@@ -325,19 +327,39 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="modal-watchlist-g1">
-    <div class="watchlist-box">
-        <h3>⚠️ Active Watchlist (Line/Space)</h3>
-        <div class="watchlist-list" id="watchlist-display-list-g1"></div>
-        <button class="btn-close" onclick="hideG1Watchlist()">Continue</button>
-    </div>
-</div>
-
 <div class="modal-overlay" id="modal-watchlist-g2">
     <div class="watchlist-box">
         <h3>⚠️ Active Watchlist (Notes)</h3>
         <div class="watchlist-list" id="watchlist-display-list-g2"></div>
         <button class="btn-close" onclick="hideG2Watchlist()">Continue</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-g1-stage-complete">
+    <div class="stage-complete-box">
+        <div class="stage-complete-kicker">Stage Complete!</div>
+        <h3 id="g1-stage-complete-title">Great work!</h3>
+        <p id="g1-stage-complete-next">Next up: Spaces</p>
+        <div class="stage-complete-stats">
+            <div><strong id="g1-stage-score">0</strong><span>score</span></div>
+            <div><strong id="g1-stage-bonus">0</strong><span>bonus duds</span></div>
+            <div><strong id="g1-stage-time">0s</strong><span>time carried</span></div>
+        </div>
+        <button class="btn btn-start" onclick="continueG1Stage()">Continue</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-g2-stage-complete">
+    <div class="stage-complete-box">
+        <div class="stage-complete-kicker">Stage Complete!</div>
+        <h3 id="g2-stage-complete-title">Lines smashed!</h3>
+        <p id="g2-stage-complete-next">Next up: Spaces</p>
+        <div class="stage-complete-stats">
+            <div><strong id="g2-stage-score">0</strong><span>score</span></div>
+            <div><strong id="g2-stage-bonus">0</strong><span>time bonus</span></div>
+            <div><strong id="g2-stage-time">0s</strong><span>time carried</span></div>
+        </div>
+        <button class="btn btn-start" onclick="continueG2Stage()">Continue</button>
     </div>
 </div>
 
