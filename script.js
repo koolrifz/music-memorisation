@@ -165,6 +165,7 @@ let personalBests = {
    GLOBAL PAUSE / RESUME / ROUTING
    ========================================= */
 let g1Timer, g1FlashTimer, g2Timer, g2FlashTimer, gameTimer, breakOutTimer;
+let g1BonusCountdownTimer;
 let g1SecondsLeft = 30, g2SecondsLeft = 60, secondsLeft = 60;
 
 function stopAllGames() {
@@ -183,6 +184,7 @@ function stopAllGames() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
     if (g2FlashTimer) clearTimeout(g2FlashTimer);
     if (breakOutTimer) clearTimeout(breakOutTimer);
+    if (g1BonusCountdownTimer) clearInterval(g1BonusCountdownTimer);
 }
 
 function pauseCurrentGame(gameId) {
@@ -218,7 +220,7 @@ function handleBackButton(gameId) {
 
     if (activeScreen && activeScreen.id.includes('screen-game')) {
         stopAllGames();
-        let setupId = gameId === 'game1' ? 'g1-screen-setup' : (gameId === 'game2' ? 'g2-screen-setup' : 'g3-screen-setup');
+        let setupId = gameId === 'game1' ? 'g1-screen-pathway' : (gameId === 'game2' ? 'g2-screen-setup' : 'g3-screen-setup');
         switchScreenState(gameId, setupId);
     } else {
         stopAllGames();
@@ -236,6 +238,9 @@ function launchGame(targetViewId) {
         switchScreenState('game1', 'g1-screen-setup');
         switchScreenState('game2', 'g2-screen-setup');
         switchScreenState('game3', 'g3-screen-setup');
+    } else if (targetViewId === 'view-game1') {
+        renderG1Pathway();
+        switchScreenState('game1', 'g1-screen-pathway');
     }
 }
 
@@ -340,6 +345,87 @@ let g1LastRolledTotal = 0;
 let g1TierMin = 1;
 let g1TierMax = 2;
 let g1RoundStartedAt = 0;
+let g1SelectedStage = 'lines';
+let g1StageOnly = true;
+let g1IsLedgerBonus = false;
+let g1LedgerBonusRound = 0;
+let g1LedgerBonusTarget = null;
+let g1LedgerBonusClean = true;
+const g1LedgerBonusProximity = [Infinity, 4, 2];
+const g1PathwayStages = [
+    { id: 'lines', label: 'Lines', phase: 0 },
+    { id: 'spaces', label: 'Spaces', phase: 1 },
+    { id: 'mixed', label: 'Mixed', phase: 2 },
+    { id: 'numbers', label: 'Staff Numbers', phase: 3 },
+    { id: 'ledger', label: 'Ledger Bonus', phase: null }
+];
+
+function getG1PathwayProgress() {
+    const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
+    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG1Progress') || '{}') }; }
+    catch (error) { return fallback; }
+}
+
+function saveG1PathwayProgress(progress) {
+    localStorage.setItem('koolRiffsG1Progress', JSON.stringify(progress));
+}
+
+function renderG1Pathway() {
+    const progress = getG1PathwayProgress();
+    const unlocked = new Set(progress.unlockedStages || ['lines']);
+    const track = document.getElementById('g1-pathway-track');
+    if (!track) return;
+    track.innerHTML = '';
+    let recommended = progress.lastPosition || 'lines';
+    if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
+    g1SelectedStage = recommended;
+    g1PathwayStages.forEach(stage => {
+        const isUnlocked = unlocked.has(stage.id);
+        const record = progress.stageProgress?.[stage.id];
+        const node = document.createElement('button');
+        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
+        node.disabled = !isUnlocked;
+        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? stage.phase === null ? '★' : stage.phase + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${stage.label}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        if (isUnlocked) node.onclick = () => selectG1Stage(stage.id);
+        track.appendChild(node);
+    });
+    selectG1Stage(g1SelectedStage, false);
+}
+
+function selectG1Stage(stageId, rerender = true) {
+    const progress = getG1PathwayProgress();
+    if (!(progress.unlockedStages || []).includes(stageId)) return;
+    g1SelectedStage = stageId;
+    progress.lastPosition = stageId;
+    saveG1PathwayProgress(progress);
+    if (rerender) renderG1Pathway();
+    const startButton = document.getElementById('g1-pathway-start');
+    if (startButton) {
+        startButton.disabled = false;
+        startButton.innerText = stageId === 'ledger' ? 'Start Ledger Bonus' : `Start ${g1PathwayStages.find(stage => stage.id === stageId).label}`;
+    }
+}
+
+function startSelectedG1Stage() {
+    if (g1SelectedStage === 'ledger') startG1LedgerBonus();
+    else { switchScreenState('game1', 'g1-screen-setup'); startG1Game(); }
+}
+
+function recordG1PathwayResult(isOfficialSmash) {
+    const progress = getG1PathwayProgress();
+    const stage = progress.stageProgress[g1SelectedStage] || { bestScore: 0, bestTimeSec: null, timesPlayed: 0, cleared: false };
+    stage.timesPlayed++;
+    stage.lastPlayed = new Date().toISOString().slice(0, 10);
+    stage.bestScore = Math.max(stage.bestScore || 0, Math.round(g1Score));
+    stage.cleared = stage.cleared || isOfficialSmash;
+    progress.stageProgress[g1SelectedStage] = stage;
+    progress.totalPlays = (progress.totalPlays || 0) + 1;
+    if (isOfficialSmash && g1SelectedStage !== 'ledger') {
+        const nextStage = g1PathwayStages[g1PathwayStages.findIndex(stageItem => stageItem.id === g1SelectedStage) + 1];
+        if (nextStage && !progress.unlockedStages.includes(nextStage.id)) progress.unlockedStages.push(nextStage.id);
+    }
+    saveG1PathwayProgress(progress);
+}
 
 // Reserved for the future Game 2 ledger-naming stage; keep this position model available.
 function getG1OrientationPositions(config) {
@@ -399,15 +485,68 @@ function chooseG1OrientationTarget(config) {
 
 function getG1OrientationDistractors(target, positions) {
     return positions
-    .filter(position => position.type !== target.type)
+        .filter(position => position.label !== target.label)
         .sort((a, b) => Math.abs(a.height - target.height) - Math.abs(b.height - target.height));
+}
+
+function getG1LedgerBonusPrompt(target) {
+    const side = target.height < 8 ? 'below' : 'above';
+    const ordinal = target.type === 'line' ? 'line' : 'space';
+    const distance = Math.ceil(Math.abs(target.height - (side === 'above' ? 9 : 7)) / 2);
+    return `${ordinal[0].toUpperCase()}${ordinal.slice(1)} ${side} ${distance} ledger ${ordinal}${distance === 1 ? '' : 's'} ${side} the staff`;
+}
+
+function getG1LedgerBonusPositions(config) {
+    return getG1OrientationPositions(config).filter(position => position.type === 'ledger');
+}
+
+function startG1LedgerBonus() {
+    initAudio();
+    g1IsLedgerBonus = true;
+    g1SelectedStage = 'ledger';
+    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 3; g1Streak = 0; g1BonusDuds = 0;
+    g1LedgerBonusRound = 0; g1LedgerBonusTarget = null; g1LedgerBonusClean = true;
+    g1SecondsLeft = 30; g1IsTransitioning = true; g1PendingStageAdvance = false;
+    updateG1TrackerUI();
+    switchScreenState('game1', 'g1-screen-game');
+    speechRoundActive = true;
+    startG1Timer();
+    beginG1LedgerBonusRound();
+}
+
+function beginG1LedgerBonusRound() {
+    if (g1SecondsLeft <= 0) return;
+    const positions = getG1LedgerBonusPositions(NOTE_CONFIGS.treble);
+    g1LedgerBonusTarget = positions[Math.floor(Math.random() * positions.length)];
+    const prompt = getG1LedgerBonusPrompt(g1LedgerBonusTarget);
+    const modal = document.getElementById('modal-g1-ledger-bonus');
+    document.getElementById('g1-ledger-bonus-round').innerText = `Ledger Bonus Round ${g1LedgerBonusRound + 1} of 3`;
+    document.getElementById('g1-ledger-bonus-target').innerText = prompt;
+    document.getElementById('g1-ledger-bonus-countdown').innerText = 'Ready';
+    modal.classList.add('show');
+    speakLetter(prompt);
+
+    let countdown = 3;
+    g1BonusCountdownTimer = setInterval(() => {
+        countdown--;
+        document.getElementById('g1-ledger-bonus-countdown').innerText = countdown > 0 ? countdown : 'Go!';
+        if (countdown <= 0) {
+            clearInterval(g1BonusCountdownTimer);
+            g1BonusCountdownTimer = null;
+            modal.classList.remove('show');
+            g1IsTransitioning = false;
+            document.getElementById('g1-target-instruction-display').innerText = 'LEDGER BONUS';
+            loadG1Grid();
+        }
+    }, 700);
 }
 
 function startG1Game() {
     initAudio();
+    g1IsLedgerBonus = false;
     g1Level = 'level2';
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
-    g1Level2Phase = 0;
+    g1Level2Phase = g1PathwayStages.find(stage => stage.id === g1SelectedStage)?.phase ?? 0;
     g1SecondsLeft = 30; g1IsTransitioning = false; g1RoundStartedAt = 0; g1LastScreenWasDud = false; g1PendingStageAdvance = false; g1CarriedStageTime = 0;
     updateG1TrackerUI();
     
@@ -427,7 +566,9 @@ function updateG1TrackerUI() {
             `<span class="streak-dot${index < g1Streak ? ' active' : ''}" aria-hidden="true"></span>`
         ).join('');
 
-        const roundLabel = g1Level === 'level2'
+        const roundLabel = g1IsLedgerBonus
+            ? `Ledger Bonus ${g1LedgerBonusRound + 1}/3 | Grid: 12`
+            : g1Level === 'level2'
             ? `${g1Level2PhaseNames[g1Level2Phase]} | Grid: ${activeCardsCount}`
             : `Rows: ${rowCount}/4`;
         document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
@@ -499,6 +640,7 @@ function advanceG1Streak() {
             g1TierIndex++;
             return false;
         }
+        if (g1StageOnly) return true;
         if (g1Level2Phase < 3) {
             g1Level2Phase++;
             g1TierIndex = 0;
@@ -540,6 +682,10 @@ function markG1DudSuccess() {
 }
 
 function resolveG1Screen(cleared) {
+    if (g1IsLedgerBonus) {
+        resolveG1LedgerBonusScreen(cleared);
+        return;
+    }
     let oldTierIndex = g1TierIndex;
     let finished = false;
     if (cleared) {
@@ -576,6 +722,30 @@ function resolveG1Screen(cleared) {
     if (g1PendingStageAdvance) return;
     
     setTimeout(loadG1Grid, 200);
+}
+
+function resolveG1LedgerBonusScreen(cleared) {
+    if (cleared) {
+        g1Streak++;
+        triggerG1TimeBonus(0.5);
+        awardG1RoundBonuses();
+        if (g1Streak >= 3) {
+            g1Streak = 0;
+            awardG1TierBonus(12);
+        }
+    } else {
+        g1Streak = 0;
+        g1LedgerBonusClean = false;
+    }
+    updateG1TrackerUI();
+    g1LedgerBonusRound++;
+    if (g1LedgerBonusRound >= 3) {
+        if (g1LedgerBonusClean) g1Score += 10;
+        finishG1Game(true);
+        return;
+    }
+    g1IsTransitioning = true;
+    beginG1LedgerBonusRound();
 }
 
 function showG1StageComplete() {
@@ -646,7 +816,23 @@ function loadG1Grid() {
     let orientationTarget = null;
     let orientationTargets = [];
     let orientationDistractors = [];
-    if (g1Level === 'level2') {
+    if (g1IsLedgerBonus) {
+        const ledgerPositions = getG1LedgerBonusPositions(config);
+        orientationTarget = g1LedgerBonusTarget;
+        orientationTargets = [orientationTarget];
+        const proximity = g1LedgerBonusProximity[g1LedgerBonusRound];
+        orientationDistractors = getG1OrientationDistractors(orientationTarget, ledgerPositions)
+            .filter(position => Math.abs(position.height - orientationTarget.height) <= proximity);
+        if (orientationDistractors.length < 3) {
+            orientationDistractors = getG1OrientationDistractors(orientationTarget, ledgerPositions);
+        }
+        orientationDistractors = orientationDistractors.concat(
+            getG1OrientationDistractors(orientationTarget, ledgerPositions)
+        ).filter((position, index, positions) =>
+            positions.findIndex(candidate => candidate.label === position.label) === index
+        );
+        updateG1TrackerUI();
+    } else if (g1Level === 'level2') {
         const orientationPositions = getG1Level2PhasePositions(config);
         const allStaffPositions = getG1Level2StaffPositions(config);
         const numberedPhase = g1Level2Phase === 3;
@@ -797,7 +983,7 @@ function handleG1Click(cardElement, isTarget, pitchName) {
     
     if (isTarget) {
         playSound('correct'); cardElement.classList.add('correct');
-        g1Score++; g1TargetsFound++; updateG1TrackerUI();
+        g1Score += g1IsLedgerBonus ? 2 : 1; g1TargetsFound++; updateG1TrackerUI();
         
         if (g1TargetsFound >= g1TargetsPresent) {
             if (g1FlashTimer) clearTimeout(g1FlashTimer);
@@ -806,6 +992,7 @@ function handleG1Click(cardElement, isTarget, pitchName) {
         }
     } else {
         playSound('wrong'); g1WrongTapsThisScreen++;
+        if (g1IsLedgerBonus) g1LedgerBonusClean = false;
         cardElement.classList.remove('incorrect'); void cardElement.offsetWidth; cardElement.classList.add('incorrect');
         setTimeout(() => cardElement.classList.remove('incorrect'), 300);
     }
@@ -813,6 +1000,7 @@ function handleG1Click(cardElement, isTarget, pitchName) {
 
 function finishG1Game(isOfficialSmash = false) {
     stopAllGames();
+    recordG1PathwayResult(isOfficialSmash);
     const summaryCard = document.getElementById('g1-summary-card');
     summaryCard.classList.toggle('g1-victory', isOfficialSmash);
     document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 YOU SMASHED IT!' : '🎉 YOU SMASHED!';
@@ -1261,10 +1449,13 @@ function loadNextCard() {
             }
         }
 
-        const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG); 
-        renderer.resize(320, 130); const context = renderer.getContext(); context.scale(1.3, 1.3);
-
-        const stave = new VF.Stave(8, 35, 225); stave.addClef(config.clef);
+        const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG);
+        const rendererWidth = Math.min(320, Math.max(260, canvasContainer.clientWidth || 320));
+        renderer.resize(rendererWidth, 145);
+        const context = renderer.getContext();
+        const staveWidth = Math.min(260, rendererWidth - 24);
+        const staveX = (rendererWidth - staveWidth) / 2;
+        const stave = new VF.Stave(staveX, 25, staveWidth); stave.addClef(config.clef);
         if(currentMode.includes('drill') || currentTier === 1) { 
             stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(115); 
         } else { stave.addTimeSignature("4/4"); }

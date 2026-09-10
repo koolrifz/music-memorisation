@@ -51,11 +51,22 @@
         <button class="btn-back" onclick="handleBackButton('game1')">⬅ Back</button>
     </div>
 
-    <div id="g1-screen-setup" class="screen active">
+    <div id="g1-screen-pathway" class="screen active">
+        <div class="pathway-card">
+            <h1>Staff Numbering</h1>
+            <p class="pathway-subtitle">Choose your next unlocked stage.</p>
+            <div class="pathway-track" id="g1-pathway-track"></div>
+            <button class="btn btn-start" id="g1-pathway-start" onclick="startSelectedG1Stage()" disabled>Choose a stage</button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div id="g1-screen-setup" class="screen">
         <div class="setup-card">
             <h1>🎯 Line & Space Smash</h1>
             <p>Build your Staff Numbering skills: master lines, spaces, then mixed positions.</p>
             <button class="btn btn-start" onclick="startG1Game()">Start 30s of Smashing</button>
+            <button class="btn btn-secondary" onclick="startG1LedgerBonus()">Ledger Bonus Round</button>
         </div>
     </div>
 
@@ -346,6 +357,14 @@
             <div><strong id="g1-stage-time">0s</strong><span>time carried</span></div>
         </div>
         <button class="btn btn-start" onclick="continueG1Stage()">Continue</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-g1-ledger-bonus">
+    <div class="stage-complete-box ledger-bonus-box">
+        <div class="stage-complete-kicker" id="g1-ledger-bonus-round">Ledger Bonus Round 1 of 3</div>
+        <h3 id="g1-ledger-bonus-target">Space above two ledger lines above the staff</h3>
+        <p id="g1-ledger-bonus-countdown">Ready</p>
     </div>
 </div>
 
