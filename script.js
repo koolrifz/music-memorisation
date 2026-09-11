@@ -9,6 +9,14 @@ let tunerSource = null;
 let tunerAnalyser = null;
 let tunerAnimationFrame = null;
 
+function togglePracticeTool(toolName) {
+    const card = document.getElementById(`${toolName}-tool-card`);
+    if (!card) return;
+    const isOpen = card.classList.toggle('is-open');
+    const toggle = card.querySelector('.practice-tool-heading');
+    if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
 function initAudio() {
     try { 
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 

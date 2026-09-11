@@ -41,28 +41,32 @@
     </div>
 
     <section class="practice-tools" aria-label="Kool Riffs practice tools">
-        <div class="practice-tool-card beat-tool">
-            <div class="practice-tool-heading">
+        <div class="practice-tool-card beat-tool" id="beat-tool-card">
+            <button class="practice-tool-heading" onclick="togglePracticeTool('beat')" aria-expanded="false" aria-controls="beat-tool-controls">
                 <span class="practice-tool-icon">♪</span>
-                <div><h2>Kool Riffs Beat</h2><p>Keep a steady pulse.</p></div>
-            </div>
-            <div class="practice-tool-controls">
+                <span class="practice-tool-title"><strong>Kool Beat</strong><small>Practice tool</small></span>
+                <span class="practice-tool-chevron" aria-hidden="true">+</span>
+            </button>
+            <div class="practice-tool-controls" id="beat-tool-controls">
                 <label for="metronome-bpm">Tempo <strong><span id="metronome-bpm-value">80</span> BPM</strong></label>
                 <input id="metronome-bpm" type="range" min="40" max="200" value="80" oninput="updateMetronomeBpm(this.value)">
                 <button class="practice-tool-button" id="metronome-toggle" onclick="toggleMetronome()">Start Beat</button>
             </div>
         </div>
 
-        <div class="practice-tool-card tuner-tool">
-            <div class="practice-tool-heading">
+        <div class="practice-tool-card tuner-tool" id="tuner-tool-card">
+            <button class="practice-tool-heading" onclick="togglePracticeTool('tuner')" aria-expanded="false" aria-controls="tuner-tool-controls">
                 <span class="practice-tool-icon">♩</span>
-                <div><h2>Kool Riffs Tuner</h2><p>A friendly check for your note.</p></div>
-            </div>
-            <div class="tuner-readout" aria-live="polite">
+                <span class="practice-tool-title"><strong>Kool Tuner</strong><small>Practice tool</small></span>
+                <span class="practice-tool-chevron" aria-hidden="true">+</span>
+            </button>
+            <div class="tuner-tool-controls" id="tuner-tool-controls">
+              <div class="tuner-readout" aria-live="polite">
                 <strong id="tuner-note">Ready?</strong>
                 <span id="tuner-cents">Tap start, then play a note.</span>
+              </div>
+              <button class="practice-tool-button" id="tuner-toggle" onclick="toggleTuner()">Start Tuner</button>
             </div>
-            <button class="practice-tool-button" id="tuner-toggle" onclick="toggleTuner()">Start Tuner</button>
         </div>
     </section>
 

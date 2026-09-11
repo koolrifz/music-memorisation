@@ -74,15 +74,20 @@ body {
 .header p { color: var(--text-muted); margin: 5px 0 0 0; font-size: 16px; font-weight: bold; }
 .menu-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; }
 
-.practice-tools { width: 100%; max-width: 500px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
-.practice-tool-card { background: var(--bg-panel); border: 3px solid #324a64; border-radius: 18px; padding: 14px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-.beat-tool { border-color: var(--accent-gold); }
-.tuner-tool { border-color: var(--accent-blue); }
-.practice-tool-heading { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
-.practice-tool-heading h2 { margin: 0; color: white; font-size: 16px; }
-.practice-tool-heading p { margin: 3px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.15; }
-.practice-tool-icon { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px; display: grid; place-items: center; color: var(--bg-dark); background: var(--accent-gold); font-size: 23px; font-weight: 900; }
+.practice-tools { width: 100%; max-width: 500px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 8px; margin-top: 14px; }
+.practice-tool-card { background: rgba(36,52,71,0.72); border: 2px solid #324a64; border-radius: 14px; padding: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.beat-tool { border-color: rgba(255,200,0,0.7); }
+.tuner-tool { border-color: rgba(28,176,246,0.7); }
+.practice-tool-heading { width: 100%; min-height: 42px; display: flex; align-items: center; gap: 8px; padding: 3px; border: 0; background: none; color: white; text-align: left; cursor: pointer; }
+.practice-tool-title { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.practice-tool-title strong { color: white; font-size: 13px; line-height: 1; }
+.practice-tool-title small { color: var(--text-muted); font-size: 9px; line-height: 1; }
+.practice-tool-chevron { margin-left: auto; color: var(--text-muted); font-size: 20px; line-height: 1; }
+.practice-tool-icon { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 8px; display: grid; place-items: center; color: var(--bg-dark); background: var(--accent-gold); font-size: 19px; font-weight: 900; }
 .tuner-tool .practice-tool-icon { background: var(--accent-blue); }
+.practice-tool-controls, .tuner-tool-controls { display: none; padding: 7px 4px 4px; }
+.practice-tool-card.is-open .practice-tool-controls, .practice-tool-card.is-open .tuner-tool-controls { display: block; }
+.practice-tool-card.is-open .practice-tool-chevron { transform: rotate(45deg); }
 .practice-tool-controls label { display: flex; justify-content: space-between; gap: 6px; color: var(--text-muted); font-size: 12px; margin-bottom: 7px; }
 .practice-tool-controls strong { color: var(--accent-gold); white-space: nowrap; }
 .practice-tool-controls input { width: 100%; accent-color: var(--accent-gold); margin: 0 0 10px; }
@@ -94,7 +99,7 @@ body {
 .tuner-readout.in-tune strong { color: var(--accent-green); }
 .tuner-readout.low strong { color: var(--accent-gold); }
 .tuner-readout.high strong { color: var(--accent-red); }
-@media (max-width: 480px) { .practice-tools { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .practice-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .game-card { background: var(--bg-panel); border: 3px solid #324a64; border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 15px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.4); transition: transform 0.1s, border-color 0.1s; }
 .game-card:active { transform: scale(0.97); }
