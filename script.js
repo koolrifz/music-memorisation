@@ -363,9 +363,12 @@ function handleBackButton(gameId) {
     if (gameId === 'game2' && activeScreen && activeScreen.id === 'g2-screen-summary') {
         renderG2Pathway();
         switchScreenState('game2', 'g2-screen-pathway');
+    } else if (gameId === 'game3' && activeScreen && activeScreen.id === 'g3-screen-summary') {
+        renderG3Pathway();
+        switchScreenState('game3', 'g3-screen-pathway');
     } else if (activeScreen && activeScreen.id.includes('screen-game')) {
         stopAllGames();
-        let setupId = gameId === 'game1' ? 'g1-screen-pathway' : (gameId === 'game2' ? 'g2-screen-pathway' : 'g3-screen-setup');
+        let setupId = gameId === 'game1' ? 'g1-screen-pathway' : (gameId === 'game2' ? 'g2-screen-pathway' : 'g3-screen-pathway');
         switchScreenState(gameId, setupId);
     } else {
         stopAllGames();
@@ -389,6 +392,9 @@ function launchGame(targetViewId) {
     } else if (targetViewId === 'view-game2') {
         renderG2Pathway();
         switchScreenState('game2', 'g2-screen-pathway');
+    } else if (targetViewId === 'view-game3') {
+        renderG3Pathway();
+        switchScreenState('game3', 'g3-screen-pathway');
     }
 }
 
@@ -1148,12 +1154,15 @@ function handleG1Click(cardElement, isTarget, pitchName) {
 
 async function shareGameResult(gameId) {
     const isGame1 = gameId === 'game1';
-    const scoreValue = isGame1 ? g1Score : g2Score;
-    const attemptsValue = isGame1 ? g1TotalAttempts : g2TotalAttempts;
-    const timeValue = isGame1 ? g1SecondsLeft : g2SecondsLeft;
-    const gameName = isGame1 ? 'Staff Smash' : 'Note Smash';
-    const achievement = isGame1 ? 'I smashed the staff' : 'I smashed the notes';
-    const stage = isGame1 ? (g1Level2PhaseNames[g1Level2Phase] || 'Staff Smash') : g2PhaseNames[g2Phase];
+    const isGame2 = gameId === 'game2';
+    const scoreValue = isGame1 ? g1Score : isGame2 ? g2Score : score;
+    const attemptsValue = isGame1 ? g1TotalAttempts : isGame2 ? g2TotalAttempts : totalAttempts;
+    const timeValue = isGame1 ? g1SecondsLeft : isGame2 ? g2SecondsLeft : secondsLeft;
+    const gameName = isGame1 ? 'Staff Smash' : isGame2 ? 'Note Smash' : 'Real Smash';
+    const achievement = isGame1 ? 'I smashed the staff' : isGame2 ? 'I smashed the notes' : 'I crushed a Real Smash round';
+    const stage = isGame1
+        ? (g1IsLedgerBonus ? 'Ledger Bonus' : g1Level2PhaseNames[g1Level2Phase])
+        : isGame2 ? g2PhaseNames[g2Phase] : g3PathwayStages.find(stageItem => stageItem.id === g3SelectedStage)?.label || 'Real Smash';
     const shareText = `${achievement} in Kool Riffs ${gameName}!\nStage: ${stage}\nScore: ${Math.round(scoreValue)}\nAttempts: ${attemptsValue}\nTime remaining: ${Math.max(0, timeValue).toFixed(1)}s`;
     const shareData = { title: `Kool Riffs - ${gameName}`, text: shareText, url: window.location.href };
     const button = document.querySelector(`#${gameId}-screen-summary .btn-secondary[onclick*="shareGameResult"]`);
@@ -1186,6 +1195,10 @@ function finishG1Game(isOfficialSmash = false) {
     stopAllGames();
     recordG1PathwayResult(isOfficialSmash);
     const summaryCard = document.getElementById('g1-summary-card');
+    const nextStageButton = document.getElementById('g1-next-stage-button');
+    const selectedStageIndex = g1PathwayStages.findIndex(stage => stage.id === g1SelectedStage);
+    const nextStage = g1PathwayStages[selectedStageIndex + 1];
+    nextStageButton.style.display = 'none';
     summaryCard.classList.toggle('g1-victory', isOfficialSmash);
     document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 You Smashed the Staff!' : '🎉 You Smashed the Staff!';
     switchScreenState('game1', 'g1-screen-summary');
@@ -1217,6 +1230,18 @@ function finishG1Game(isOfficialSmash = false) {
         document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
     }
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
+    if (isOfficialSmash && nextStage) {
+        nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
+        nextStageButton.style.display = 'block';
+    }
+}
+
+function startNextG1Stage() {
+    const currentIndex = g1PathwayStages.findIndex(stage => stage.id === g1SelectedStage);
+    const nextStage = g1PathwayStages[currentIndex + 1];
+    if (!nextStage) return;
+    g1SelectedStage = nextStage.id;
+    startSelectedG1Stage();
 }
 
 
@@ -1601,6 +1626,9 @@ function handleG2Click(cardElement, letter) {
 function finishG2Game(isGraduation) {
     stopAllGames(); playSound('complete'); switchScreenState('game2', 'g2-screen-summary');
     recordG2StageResult(g2PathwayStages[g2Phase].id, isGraduation);
+    const nextStageButton = document.getElementById('g2-next-stage-button');
+    const nextStage = g2PathwayStages[g2Phase + 1];
+    nextStageButton.style.display = 'none';
     const pbKey = 'round' + (g2Phase + 1);
     let isNewPb = false;
     if (g2Score > personalBests.game2[pbKey]) { personalBests.game2[pbKey] = g2Score; isNewPb = true; }
@@ -1624,6 +1652,17 @@ function finishG2Game(isGraduation) {
     const title = document.getElementById('g2-summary-title');
 
     title.innerText = isGraduation ? '🏆 You Smashed the Notes!' : '🎉 You Smashed the Notes!';
+    if (!isGraduation && nextStage) {
+        nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
+        nextStageButton.style.display = 'block';
+    }
+}
+
+function startNextG2Stage() {
+    const nextStage = g2PathwayStages[g2Phase + 1];
+    if (!nextStage) return;
+    g2SelectedStage = nextStage.id;
+    startSelectedG2Stage();
 }
 
 /* =========================================
@@ -1632,6 +1671,88 @@ function finishG2Game(isGraduation) {
 let isPianoInput = true; let watchListQueue = []; let currentFlashcardPitch = null; let currentMode = 'drill-both';
 let currentTier = 1; let currentStreak = 0; let highestTierCompleted = 0; let score = 0; let totalAttempts = 0; let correctAttempts = 0;
 let currentExpectedNotes = []; let activeInputIndex = 0;
+let g3SelectedStage = 'lines';
+const g3PathwayStages = [
+    { id: 'lines', label: 'Lines', mode: 'drill-lines', level: '1' },
+    { id: 'spaces', label: 'Spaces', mode: 'drill-spaces', level: '1' },
+    { id: 'mixed', label: 'Staff Mix', mode: 'drill-both', level: '1' },
+    { id: 'ledger', label: 'Ledger Notes', mode: 'drill-both', level: '2' },
+    { id: 'real-smash', label: 'Real Staff Smash', mode: 'speed', level: '2' }
+];
+
+function getG3PathwayProgress() {
+    const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
+    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG3Progress') || '{}') }; }
+    catch (error) { return fallback; }
+}
+
+function saveG3PathwayProgress(progress) {
+    localStorage.setItem('koolRiffsG3Progress', JSON.stringify(progress));
+}
+
+function renderG3Pathway() {
+    const progress = getG3PathwayProgress();
+    const unlocked = new Set(progress.unlockedStages || ['lines']);
+    const track = document.getElementById('g3-pathway-track');
+    if (!track) return;
+    const subtitle = document.getElementById('g3-pathway-subtitle');
+    if (subtitle) subtitle.innerText = g3PathwayStages.every(stage => unlocked.has(stage.id))
+        ? 'Core note reading complete. Real Staff Smash is ready.'
+        : 'Build note-reading confidence, one mission at a time.';
+    track.innerHTML = '';
+    let recommended = progress.lastPosition || 'lines';
+    if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
+    g3SelectedStage = recommended;
+    g3PathwayStages.forEach((stage, index) => {
+        const isUnlocked = unlocked.has(stage.id);
+        const record = progress.stageProgress?.[stage.id];
+        const node = document.createElement('button');
+        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
+        node.disabled = !isUnlocked;
+        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${stage.label}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        if (isUnlocked) node.onclick = () => selectG3Stage(stage.id);
+        track.appendChild(node);
+    });
+    selectG3Stage(g3SelectedStage, false);
+}
+
+function selectG3Stage(stageId, rerender = true) {
+    const progress = getG3PathwayProgress();
+    if (!(progress.unlockedStages || []).includes(stageId)) return;
+    g3SelectedStage = stageId;
+    progress.lastPosition = stageId;
+    saveG3PathwayProgress(progress);
+    if (rerender) renderG3Pathway();
+    const startButton = document.getElementById('g3-pathway-start');
+    if (startButton) {
+        startButton.disabled = false;
+        startButton.innerText = `Start ${g3PathwayStages.find(stage => stage.id === stageId).label}`;
+    }
+}
+
+function startSelectedG3Stage() {
+    const stage = g3PathwayStages.find(stageItem => stageItem.id === g3SelectedStage);
+    if (!stage) return;
+    document.getElementById('level-select').value = stage.level;
+    document.getElementById('mode-select').value = stage.mode;
+    handleModeChange();
+    switchScreenState('game3', 'g3-screen-setup');
+    startG3Game();
+}
+
+function recordG3StageResult(isOfficialSmash) {
+    const progress = getG3PathwayProgress();
+    const stage = progress.stageProgress[g3SelectedStage] || { bestScore: 0, bestTimeSec: null, timesPlayed: 0, cleared: false };
+    stage.timesPlayed++;
+    stage.lastPlayed = new Date().toISOString().slice(0, 10);
+    stage.bestScore = Math.max(stage.bestScore || 0, Math.round(score));
+    stage.cleared = stage.cleared || isOfficialSmash;
+    progress.stageProgress[g3SelectedStage] = stage;
+    progress.totalPlays = (progress.totalPlays || 0) + 1;
+    const nextStage = g3PathwayStages[g3PathwayStages.findIndex(item => item.id === g3SelectedStage) + 1];
+    if (isOfficialSmash && nextStage && !progress.unlockedStages.includes(nextStage.id)) progress.unlockedStages.push(nextStage.id);
+    saveG3PathwayProgress(progress);
+}
 
 function getTimeLimitForTier(tier) { return tier + 1; }
 
@@ -1702,6 +1823,11 @@ function updateG3TrackerUI() {
 function startG3Game() {
     initAudio(); score = 0; totalAttempts = 0; correctAttempts = 0; secondsLeft = 60; watchListQueue = [];
     currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
+    const selectedStage = g3PathwayStages.find(stage => stage.id === g3SelectedStage);
+    if (selectedStage) {
+        document.getElementById('level-select').value = selectedStage.level;
+        document.getElementById('mode-select').value = selectedStage.mode;
+    }
     currentMode = document.getElementById('mode-select').value;
     updateG3TrackerUI();
     switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); loadNextCard();
@@ -1745,13 +1871,13 @@ function loadNextCard() {
         let combinedPool = [];
         if (currentMode === 'speed') {
             combinedPool = [...config.staffLines, ...config.staffSpaces];
-            if(level >= 2) combinedPool = combinedPool.concat([...config.ledgerLines, ...config.ledgerSpaces]);
+            if(level >= 2) combinedPool = combinedPool.concat(getG2LedgerFoundationPool(config));
         } else {
             if(currentMode === 'drill-lines' || currentMode === 'drill-both') {
-                combinedPool = combinedPool.concat(config.staffLines); if(level >= 2) combinedPool = combinedPool.concat(config.ledgerLines);
+                combinedPool = combinedPool.concat(config.staffLines); if(level >= 2) combinedPool = combinedPool.concat(getG2LedgerFoundationPool(config).filter(note => config.ledgerLines.some(ledgerNote => ledgerNote[1] === note[1])));
             }
             if(currentMode === 'drill-spaces' || currentMode === 'drill-both') {
-                combinedPool = combinedPool.concat(config.staffSpaces); if(level >= 2) combinedPool = combinedPool.concat(config.ledgerSpaces);
+                combinedPool = combinedPool.concat(config.staffSpaces); if(level >= 2) combinedPool = combinedPool.concat(getG2LedgerFoundationPool(config).filter(note => config.ledgerSpaces.some(ledgerNote => ledgerNote[1] === note[1])));
             }
         }
 
@@ -1859,6 +1985,8 @@ function handleKeypadInput(letter) {
 
 function finishG3Round(isGraduation = false) {
     stopAllGames(); playSound('complete'); switchScreenState('game3', 'g3-screen-summary');
+    const bonusCleared = g3SelectedStage === 'real-smash' && highestTierCompleted === 4;
+    recordG3StageResult(isGraduation || bonusCleared);
     
     let isNewPb = false;
     if (score > personalBests.game3[currentMode]) { personalBests.game3[currentMode] = score; isNewPb = true; }
@@ -1871,19 +1999,27 @@ function finishG3Round(isGraduation = false) {
     let medal = 'Keep Practising! 💪'; 
     const autoProgContainer = document.getElementById('g3-auto-progress-container');
     const title = document.getElementById('g3-summary-title');
+    const nextStageButton = document.getElementById('g3-next-stage-button');
+    const selectedStageIndex = g3PathwayStages.findIndex(stage => stage.id === g3SelectedStage);
+    const nextStage = g3PathwayStages[selectedStageIndex + 1];
+    nextStageButton.style.display = 'none';
     
     if (currentMode === 'speed') {
         document.getElementById('tier-result').style.display = 'block';
         document.getElementById('final-tier').innerText = highestTierCompleted;
         if (highestTierCompleted === 4) medal = 'Gold 🥇'; else if (highestTierCompleted === 3) medal = 'Silver 🥈'; else if (highestTierCompleted === 2) medal = 'Bronze 🥉'; 
         autoProgContainer.style.display = 'none';
-        title.innerText = "Sprint Complete!";
+        title.innerText = g3SelectedStage === 'real-smash' ? 'You Smashed Real Staff! 🌟' : `You Crushed ${g3PathwayStages[selectedStageIndex].label}! 🌟`;
     } else {
         document.getElementById('tier-result').style.display = 'none';
         if (isGraduation || (accuracy >= 95 && score >= 30)) {
             medal = 'Perfect Drill! 🌟';
-            title.innerText = "You Crushed It! 🌟";
-            if (currentMode !== 'drill-both') autoProgContainer.style.display = 'block';
+            title.innerText = `You Crushed ${g3PathwayStages[selectedStageIndex].label}! 🌟`;
+            autoProgContainer.style.display = 'none';
+            if (nextStage) {
+                nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
+                nextStageButton.style.display = 'block';
+            }
         } else {
             title.innerText = "Round Complete!";
             autoProgContainer.style.display = 'none';
@@ -1891,6 +2027,14 @@ function finishG3Round(isGraduation = false) {
     }
     
     document.getElementById('final-medal').innerText = medal;
+}
+
+function startNextG3Stage() {
+    const currentIndex = g3PathwayStages.findIndex(stage => stage.id === g3SelectedStage);
+    const nextStage = g3PathwayStages[currentIndex + 1];
+    if (!nextStage) return;
+    g3SelectedStage = nextStage.id;
+    startSelectedG3Stage();
 }
 
 function advanceG3Round() {

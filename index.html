@@ -149,7 +149,7 @@
             <div class="summary-stat">Bonus Points (Duds): <span id="g1-final-bonus" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
             <button class="btn btn-secondary" onclick="shareGameResult('game1')">Share My Score</button>
-            <button class="btn btn-secondary" onclick="switchScreenState('game1', 'g1-screen-setup')">Back to Setup</button>
+            <button class="btn btn-start" id="g1-next-stage-button" style="display:none;" onclick="startNextG1Stage()">Next: Smash Spaces!</button>
         </div>
     </div>
 </div>
@@ -246,7 +246,7 @@
             
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG2Game()">Replay Same Round</button>
             <button class="btn btn-secondary" onclick="shareGameResult('game2')">Share My Score</button>
-            <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="renderG2Pathway(); switchScreenState('game2', 'g2-screen-pathway')">Change Setup</button>
+            <button class="btn btn-start" id="g2-next-stage-button" style="margin-top: 15px; display:none;" onclick="startNextG2Stage()">Next: Smash Spaces!</button>
         </div>
     </div>
 </div>
@@ -257,7 +257,17 @@
         <button class="btn-back" onclick="handleBackButton('game3')">⬅ Back</button>
     </div>
     
-    <div id="g3-screen-setup" class="screen active">
+    <div id="g3-screen-pathway" class="screen active">
+        <div class="pathway-card">
+            <h1>Real Smash</h1>
+            <p class="pathway-subtitle" id="g3-pathway-subtitle">Build note-reading confidence, one mission at a time.</p>
+            <div class="pathway-track" id="g3-pathway-track"></div>
+            <button class="btn btn-start" id="g3-pathway-start" onclick="startSelectedG3Stage()" disabled>Choose your mission</button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div id="g3-screen-setup" class="screen">
         <div class="setup-card">
             <h1>🎵 Real Smash</h1>
             <select id="clef-select" onchange="renderHelperSheetGraphics()">
@@ -367,7 +377,8 @@
             </div>
             
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG3Game()">Replay Same Round</button>
-            <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="switchScreenState('game3', 'g3-screen-setup')">Change Settings</button>
+            <button class="btn btn-secondary" onclick="shareGameResult('game3')">Share My Score</button>
+            <button class="btn btn-start" id="g3-next-stage-button" style="margin-top: 15px; display:none;" onclick="startNextG3Stage()">Next: Smash Spaces!</button>
         </div>
     </div>
 </div>
