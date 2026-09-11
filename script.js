@@ -218,9 +218,12 @@ function handleBackButton(gameId) {
     const overlay = document.getElementById(`pause-overlay-${gameId}`);
     if (overlay) overlay.classList.remove('active');
 
-    if (activeScreen && activeScreen.id.includes('screen-game')) {
+    if (gameId === 'game2' && activeScreen && activeScreen.id === 'g2-screen-summary') {
+        renderG2Pathway();
+        switchScreenState('game2', 'g2-screen-pathway');
+    } else if (activeScreen && activeScreen.id.includes('screen-game')) {
         stopAllGames();
-        let setupId = gameId === 'game1' ? 'g1-screen-pathway' : (gameId === 'game2' ? 'g2-screen-setup' : 'g3-screen-setup');
+        let setupId = gameId === 'game1' ? 'g1-screen-pathway' : (gameId === 'game2' ? 'g2-screen-pathway' : 'g3-screen-setup');
         switchScreenState(gameId, setupId);
     } else {
         stopAllGames();
@@ -241,6 +244,9 @@ function launchGame(targetViewId) {
     } else if (targetViewId === 'view-game1') {
         renderG1Pathway();
         switchScreenState('game1', 'g1-screen-pathway');
+    } else if (targetViewId === 'view-game2') {
+        renderG2Pathway();
+        switchScreenState('game2', 'g2-screen-pathway');
     }
 }
 
@@ -294,7 +300,7 @@ function renderFloatingClef(containerId, clefName) {
 }
 
 /* =========================================
-   GAME 1: LINE & SPACE SMASH (v2 Cumulative Reveal & Micro-Reward Redesign)
+    GAME 1: STAFF SMASH (v2 Cumulative Reveal & Micro-Reward Redesign)
    ========================================= */
 let g1Score = 0;
 let g1TotalAttempts = 0;
@@ -1013,7 +1019,7 @@ function finishG1Game(isOfficialSmash = false) {
     }
     document.getElementById('g1-final-score').innerText = g1Score;
     if (g1Level === 'level2') {
-        document.getElementById('g1-final-tier-label').innerText = 'Staff Numbering Progress';
+        document.getElementById('g1-final-tier-label').innerText = 'Staff Smash Progress';
         const pathwaySteps = [...document.querySelectorAll('#g1-pathway .g1-pathway-step')];
         pathwaySteps.forEach((step, index) => {
             step.classList.remove('completed', 'current', 'locked');
@@ -1022,7 +1028,7 @@ function finishG1Game(isOfficialSmash = false) {
             else step.classList.add('locked');
         });
         document.getElementById('g1-summary-progress-title').innerText = isOfficialSmash
-            ? 'Staff Numbering pathway complete!'
+            ? 'Staff Smash pathway complete!'
             : `${g1Level2PhaseNames[g1Level2Phase]} is next to master`;
         document.getElementById('g1-final-tier').innerText = isOfficialSmash
             ? '4/4 stages complete'
@@ -1037,13 +1043,100 @@ function finishG1Game(isOfficialSmash = false) {
 
 
 /* =========================================
-   GAME 2: NOTE NAME SMASH (Fixed Width Stave)
+    GAME 2: NOTE SMASH (Fixed Width Stave)
    ========================================= */
 let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [3, 6, 9, 12];
 const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
 let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
 let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false; let g2RoundStartedAt = 0;
+let g2DuplicateBonusEligible = false; let g2DuplicateBonusAwarded = false;
+let g2SelectedStage = 'lines';
+const g2PathwayStages = [
+    { id: 'lines', label: 'Lines', phase: 0 },
+    { id: 'spaces', label: 'Spaces', phase: 1 },
+    { id: 'mixed', label: 'Mixed Staff', phase: 2 },
+    { id: 'ledger', label: 'Ledger Notes', phase: 3 }
+];
+
+function getG2PathwayProgress() {
+    const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
+    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG2Progress') || '{}') }; }
+    catch (error) { return fallback; }
+}
+
+function saveG2PathwayProgress(progress) {
+    localStorage.setItem('koolRiffsG2Progress', JSON.stringify(progress));
+}
+
+function renderG2Pathway() {
+    const progress = getG2PathwayProgress();
+    const unlocked = new Set(progress.unlockedStages || ['lines']);
+    const track = document.getElementById('g2-pathway-track');
+    if (!track) return;
+    const subtitle = document.getElementById('g2-pathway-subtitle');
+    if (subtitle) {
+        subtitle.innerText = g2PathwayStages.every(stage => unlocked.has(stage.id))
+            ? 'YOU HAVE SMASHED ALL THE NOTES! Next stop: Real Smash - The Ultimate Note Reading Sprint'
+            : 'Learn the notes, then smash the staff.';
+    }
+    track.innerHTML = '';
+    let recommended = progress.lastPosition || 'lines';
+    if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
+    g2SelectedStage = recommended;
+    g2PathwayStages.forEach(stage => {
+        const isUnlocked = unlocked.has(stage.id);
+        const record = progress.stageProgress?.[stage.id];
+        const node = document.createElement('button');
+        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
+        node.disabled = !isUnlocked;
+        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? stage.phase + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${stage.label}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        if (isUnlocked) node.onclick = () => selectG2Stage(stage.id);
+        track.appendChild(node);
+    });
+    selectG2Stage(g2SelectedStage, false);
+}
+
+function selectG2Stage(stageId, rerender = true) {
+    const progress = getG2PathwayProgress();
+    if (!(progress.unlockedStages || []).includes(stageId)) return;
+    g2SelectedStage = stageId;
+    progress.lastPosition = stageId;
+    saveG2PathwayProgress(progress);
+    if (rerender) renderG2Pathway();
+    const startButton = document.getElementById('g2-pathway-start');
+    if (startButton) {
+        startButton.disabled = false;
+        startButton.innerText = `Start ${g2PathwayStages.find(stage => stage.id === stageId).label}`;
+    }
+}
+
+function startSelectedG2Stage() {
+    switchScreenState('game2', 'g2-screen-setup');
+    startG2Game();
+}
+
+function recordG2StageResult(stageId, isOfficialSmash) {
+    const progress = getG2PathwayProgress();
+    const stage = progress.stageProgress[stageId] || { bestScore: 0, bestTimeSec: null, timesPlayed: 0, cleared: false };
+    stage.timesPlayed++;
+    stage.lastPlayed = new Date().toISOString().slice(0, 10);
+    stage.bestScore = Math.max(stage.bestScore || 0, Math.round(g2Score));
+    stage.cleared = stage.cleared || isOfficialSmash;
+    progress.stageProgress[stageId] = stage;
+    progress.totalPlays = (progress.totalPlays || 0) + 1;
+    const nextStage = g2PathwayStages[g2PathwayStages.findIndex(item => item.id === stageId) + 1];
+    if (isOfficialSmash && nextStage && !progress.unlockedStages.includes(nextStage.id)) progress.unlockedStages.push(nextStage.id);
+    if (isOfficialSmash && g2Phase === g2PathwayStages.length - 1) {
+        progress.unlockedStages = g2PathwayStages.map(stageItem => stageItem.id);
+        g2PathwayStages.forEach(stageItem => {
+            const completedStage = progress.stageProgress[stageItem.id] || { bestScore: 0, bestTimeSec: null, timesPlayed: 0, cleared: false };
+            completedStage.cleared = true;
+            progress.stageProgress[stageItem.id] = completedStage;
+        });
+    }
+    saveG2PathwayProgress(progress);
+}
 
 function toggleG2HelperModal() {
     const modal = document.getElementById('g2-helper-modal');
@@ -1094,11 +1187,23 @@ function setupG2Helpers(round) {
     setTimeout(renderHelperSheetGraphics, 50);
 }
 
+function getG2LedgerFoundationPool(config) {
+    const lineMidpoint = config.ledgerLines.length / 2;
+    const spaceMidpoint = config.ledgerSpaces.length / 2;
+    return [
+        ...config.ledgerSpaces.slice(0, 2),
+        ...config.ledgerSpaces.slice(spaceMidpoint, spaceMidpoint + 2),
+        config.ledgerLines[0],
+        config.ledgerLines[lineMidpoint]
+    ];
+}
+
 function startG2Game() {
     initAudio();
-    setupG2Helpers('1');
+    const selectedPhase = g2PathwayStages.find(stage => stage.id === g2SelectedStage)?.phase ?? 0;
+    setupG2Helpers(selectedPhase === 0 ? '1' : selectedPhase === 1 ? '2' : '3');
 
-    g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Phase = 0; g2Streak = 0; g2DudStreak = 0;
+    g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Phase = g2PathwayStages.find(stage => stage.id === g2SelectedStage)?.phase ?? 0; g2Streak = 0; g2DudStreak = 0;
     g2SecondsLeft = 60; g2Watchlist = {}; g2IsTransitioning = false; g2LastScreenWasDud = false; g2PendingStageAdvance = false; g2CarriedStageTime = 0;
     updateG2WatchlistBadge(); updateG2TrackerUI();
     
@@ -1163,11 +1268,24 @@ function awardG2TierBonus() {
     triggerG2TimeBonus(g2Tiers[g2TierIndex] <= 6 ? 2 : 3);
 }
 
+function awardG2DuplicateNoteBonus() {
+    if (!g2DuplicateBonusEligible || g2DuplicateBonusAwarded || g2WrongTapsThisScreen > 0) return;
+    g2DuplicateBonusAwarded = true;
+    g2Score++;
+    triggerG2TimeBonus(1);
+    const targetDisplay = document.getElementById('g2-target-note-display');
+    targetDisplay.innerText = 'DOUBLE NOTE BONUS! +1';
+    setTimeout(() => {
+        if (targetDisplay) targetDisplay.innerText = `SMASH ${g2TargetNote}`;
+    }, 900);
+}
+
 function showG2StageComplete() {
     g2PendingStageAdvance = true;
     g2CarriedStageTime = Math.max(0, Math.floor(g2SecondsLeft));
     stopAllGames();
     g2IsTransitioning = true;
+    recordG2StageResult(g2PathwayStages[g2Phase].id, true);
     document.getElementById('g2-stage-complete-title').innerText = `${g2PhaseNames[g2Phase]} smashed!`;
     document.getElementById('g2-stage-complete-next').innerText = `Next up: ${g2PhaseNames[g2Phase + 1]}`;
     document.getElementById('g2-stage-score').innerText = g2Score;
@@ -1190,6 +1308,7 @@ function continueG2Stage() {
 function resolveG2Screen(cleared) {
     if (cleared) {
         if (g2TargetsPresent > 0) {
+            awardG2DuplicateNoteBonus();
             g2Streak++;
             awardG2ScreenBonuses();
             g2LastScreenWasDud = false;
@@ -1243,10 +1362,12 @@ function loadG2Grid() {
     if (g2Phase === 0) pool = [...config.staffLines];
     else if (g2Phase === 1) pool = [...config.staffSpaces];
     else if (g2Phase === 2) pool = [...config.staffLines, ...config.staffSpaces];
-    else pool = [...config.staffLines, ...config.staffSpaces, ...config.ledgerLines, ...config.ledgerSpaces];
+    else pool = [...config.staffLines, ...config.staffSpaces, ...getG2LedgerFoundationPool(config)];
     
     const targetLetters = [...new Set(pool.map(n => n[0].toUpperCase()))];
     g2TargetNote = targetLetters[Math.floor(Math.random() * targetLetters.length)];
+    g2DuplicateBonusEligible = false;
+    g2DuplicateBonusAwarded = false;
     
     document.getElementById('g2-target-note-display').innerText = `SMASH ${g2TargetNote}`;
     speakLetter(g2TargetNote);
@@ -1259,9 +1380,11 @@ function loadG2Grid() {
     let targetPool = pool.filter(n => n[0].toUpperCase() === g2TargetNote);
     let distractorPool = pool.filter(n => n[0].toUpperCase() !== g2TargetNote);
     if(targetPool.length === 0) { g2TargetsPresent = 0; isDud = true; }
+    g2DuplicateBonusEligible = g2Phase >= 2 && g2TargetsPresent >= 2 && targetPool.length >= 2;
 
     let gridNotes = [];
-    for(let i=0; i<g2TargetsPresent; i++) gridNotes.push(targetPool[Math.floor(Math.random() * targetPool.length)]);
+    const shuffledTargetPool = [...targetPool].sort(() => Math.random() - 0.5);
+    for(let i=0; i<g2TargetsPresent; i++) gridNotes.push(shuffledTargetPool[i % shuffledTargetPool.length]);
     for(let i=g2TargetsPresent; i<cardCount; i++) gridNotes.push(distractorPool[Math.floor(Math.random() * distractorPool.length)]);
     gridNotes.sort(() => Math.random() - 0.5);
 
@@ -1298,6 +1421,7 @@ function handleG2Click(cardElement, letter) {
 
 function finishG2Game(isGraduation) {
     stopAllGames(); playSound('complete'); switchScreenState('game2', 'g2-screen-summary');
+    recordG2StageResult(g2PathwayStages[g2Phase].id, isGraduation);
     const pbKey = 'round' + (g2Phase + 1);
     let isNewPb = false;
     if (g2Score > personalBests.game2[pbKey]) { personalBests.game2[pbKey] = g2Score; isNewPb = true; }
@@ -1311,7 +1435,9 @@ function finishG2Game(isGraduation) {
         else if (index === g2Phase) step.classList.add('current');
         else step.classList.add('locked');
     });
-    document.getElementById('g2-summary-progress-title').innerText = isGraduation ? 'Note Name pathway complete!' : `${g2PhaseNames[g2Phase]} is next to master`;
+    document.getElementById('g2-summary-progress-title').innerText = isGraduation
+        ? 'YOU HAVE SMASHED ALL THE NOTES! Next stop: Real Smash - The Ultimate Note Reading Sprint'
+        : `${g2PhaseNames[g2Phase]} is next to master`;
     document.getElementById('g2-final-tier').innerText = isGraduation ? '4/4 stages complete' : `${g2Phase}/4 stages complete`;
     document.getElementById('g2-personal-best').innerText = `${personalBests.game2[pbKey]} ${isNewPb ? '(New PB! 🎉)' : ''}`;
 
@@ -1321,7 +1447,7 @@ function finishG2Game(isGraduation) {
 }
 
 /* =========================================
-   GAME 3: NOTEQUEST 
+    GAME 3: REAL SMASH
    ========================================= */
 let isPianoInput = true; let watchListQueue = []; let currentFlashcardPitch = null; let currentMode = 'drill-both';
 let currentTier = 1; let currentStreak = 0; let highestTierCompleted = 0; let score = 0; let totalAttempts = 0; let correctAttempts = 0;

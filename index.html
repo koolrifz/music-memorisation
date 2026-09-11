@@ -20,21 +20,21 @@
         <div class="game-card purple" onclick="launchGame('view-game1')">
             <div class="game-icon icon-purple">1</div>
             <div class="game-details">
-                <h2>Line & Space Smash</h2>
+                <h2>Staff Smash</h2>
                 <p>Build instant staff orientation, one position at a time.</p>
             </div>
         </div>
         <div class="game-card blue" onclick="launchGame('view-game2')">
             <div class="game-icon icon-blue">2</div>
             <div class="game-details">
-                <h2>Note Name Smash</h2>
+                <h2>Note Smash</h2>
                 <p>Find the right note fast. Progressive grid logic.</p>
             </div>
         </div>
         <div class="game-card green" onclick="launchGame('view-game3')">
             <div class="game-icon icon-green">3</div>
             <div class="game-details">
-                <h2>NoteQuest</h2>
+                <h2>Real Smash</h2>
                 <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
             </div>
         </div>
@@ -45,7 +45,7 @@
     </div>
 </div>
 
-<!-- GAME 1 VIEW (Line & Space Smash - SMASH Grid Rebuild) -->
+<!-- GAME 1 VIEW (Staff Smash - SMASH Grid Rebuild) -->
 <div id="view-game1" class="view">
     <div class="game-nav">
         <button class="btn-back" onclick="handleBackButton('game1')">⬅ Back</button>
@@ -53,18 +53,18 @@
 
     <div id="g1-screen-pathway" class="screen active">
         <div class="pathway-card">
-            <h1>Staff Numbering</h1>
-            <p class="pathway-subtitle">Choose your next unlocked stage.</p>
+            <h1>Staff Smash</h1>
+            <p class="pathway-subtitle">5 lines + 4 spaces. Pick your next smash mission.</p>
             <div class="pathway-track" id="g1-pathway-track"></div>
-            <button class="btn btn-start" id="g1-pathway-start" onclick="startSelectedG1Stage()" disabled>Choose a stage</button>
+            <button class="btn btn-start" id="g1-pathway-start" onclick="startSelectedG1Stage()" disabled>Choose your mission</button>
             <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
         </div>
     </div>
 
     <div id="g1-screen-setup" class="screen">
         <div class="setup-card">
-            <h1>🎯 Line & Space Smash</h1>
-            <p>Build your Staff Numbering skills: master lines, spaces, then mixed positions.</p>
+            <h1>🎯 Staff Smash</h1>
+            <p>Build your staff-smashing skills: master 5 lines, 4 spaces, then the whole staff.</p>
             <button class="btn btn-start" onclick="startG1Game()">Start 30s of Smashing</button>
             <button class="btn btn-secondary" onclick="startG1LedgerBonus()">Ledger Bonus Round</button>
         </div>
@@ -107,8 +107,8 @@
         <div class="summary-card" id="g1-summary-card">
             <h2 id="g1-summary-title">🎉 YOU SMASHED!</h2>
             <div class="g1-victory-banner" aria-hidden="true">★ ★ ★</div>
-            <p class="summary-progress-title" id="g1-summary-progress-title">Your Staff Numbering pathway</p>
-            <div class="g1-pathway" id="g1-pathway" aria-label="Staff Numbering pathway">
+            <p class="summary-progress-title" id="g1-summary-progress-title">Your Staff Smash pathway</p>
+            <div class="g1-pathway" id="g1-pathway" aria-label="Staff Smash pathway">
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">1</span><span>Lines</span></div>
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">2</span><span>Spaces</span></div>
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">3</span><span>Mixed Lines<br>&amp; Spaces</span></div>
@@ -123,15 +123,25 @@
     </div>
 </div>
 
-<!-- GAME 2 VIEW (Note Name Smash) -->
+<!-- GAME 2 VIEW (Note Smash) -->
 <div id="view-game2" class="view">
     <div class="game-nav">
         <button class="btn-back" onclick="handleBackButton('game2')">⬅ Back</button>
     </div>
 
-    <div id="g2-screen-setup" class="screen active">
+    <div id="g2-screen-pathway" class="screen active">
+        <div class="pathway-card">
+            <h1>Note Smash</h1>
+            <p class="pathway-subtitle" id="g2-pathway-subtitle">Learn the notes, then smash the staff.</p>
+            <div class="pathway-track" id="g2-pathway-track"></div>
+            <button class="btn btn-start" id="g2-pathway-start" onclick="startSelectedG2Stage()" disabled>Choose your mission</button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div id="g2-screen-setup" class="screen">
         <div class="setup-card">
-            <h1>💥 Note Name Smash</h1>
+            <h1>💥 Note Smash</h1>
             <p>Find the right note fast in the grid.</p>
             <select id="g2-clef-select" onchange="renderHelperSheetGraphics()">
                 <option value="treble">Treble Clef</option>
@@ -192,8 +202,8 @@
             <h2 id="g2-summary-title">🎉 Smash Complete!</h2>
             <div class="summary-stat">Total Score: <span id="g2-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
             <div class="summary-stat">Total Attempts: <span id="g2-final-attempts" style="color:white; font-weight:bold;">0</span></div>
-            <div class="summary-progress-title" id="g2-summary-progress-title">Your Note Name pathway</div>
-            <div class="g1-pathway" id="g2-pathway" aria-label="Note Name pathway">
+            <div class="summary-progress-title" id="g2-summary-progress-title">Your Note Smash pathway</div>
+            <div class="g1-pathway" id="g2-pathway" aria-label="Note Smash pathway">
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">1</span><span>Lines</span></div>
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">2</span><span>Spaces</span></div>
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">3</span><span>Mixed<br>Staff</span></div>
@@ -203,12 +213,12 @@
             <div class="summary-stat">Personal Best: <span id="g2-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG2Game()">Replay Same Round</button>
-            <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="switchScreenState('game2', 'g2-screen-setup')">Change Setup</button>
+            <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="renderG2Pathway(); switchScreenState('game2', 'g2-screen-pathway')">Change Setup</button>
         </div>
     </div>
 </div>
 
-<!-- GAME 3 VIEW (NoteQuest) -->
+<!-- GAME 3 VIEW (Real Smash) -->
 <div id="view-game3" class="view">
     <div class="game-nav">
         <button class="btn-back" onclick="handleBackButton('game3')">⬅ Back</button>
@@ -216,7 +226,7 @@
     
     <div id="g3-screen-setup" class="screen active">
         <div class="setup-card">
-            <h1>🎵 Note Quest</h1>
+            <h1>🎵 Real Smash</h1>
             <select id="clef-select" onchange="renderHelperSheetGraphics()">
                 <option value="treble">Treble Clef</option>
                 <option value="bass">Bass Clef</option>
