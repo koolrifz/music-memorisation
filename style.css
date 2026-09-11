@@ -74,6 +74,28 @@ body {
 .header p { color: var(--text-muted); margin: 5px 0 0 0; font-size: 16px; font-weight: bold; }
 .menu-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; }
 
+.practice-tools { width: 100%; max-width: 500px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.practice-tool-card { background: var(--bg-panel); border: 3px solid #324a64; border-radius: 18px; padding: 14px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+.beat-tool { border-color: var(--accent-gold); }
+.tuner-tool { border-color: var(--accent-blue); }
+.practice-tool-heading { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+.practice-tool-heading h2 { margin: 0; color: white; font-size: 16px; }
+.practice-tool-heading p { margin: 3px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.15; }
+.practice-tool-icon { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px; display: grid; place-items: center; color: var(--bg-dark); background: var(--accent-gold); font-size: 23px; font-weight: 900; }
+.tuner-tool .practice-tool-icon { background: var(--accent-blue); }
+.practice-tool-controls label { display: flex; justify-content: space-between; gap: 6px; color: var(--text-muted); font-size: 12px; margin-bottom: 7px; }
+.practice-tool-controls strong { color: var(--accent-gold); white-space: nowrap; }
+.practice-tool-controls input { width: 100%; accent-color: var(--accent-gold); margin: 0 0 10px; }
+.practice-tool-button { width: 100%; padding: 10px 8px; border: 0; border-radius: 10px; background: var(--accent-green); box-shadow: 0 4px 0 var(--accent-green-shadow); color: white; font-weight: 900; cursor: pointer; }
+.practice-tool-button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent-green-shadow); }
+.tuner-readout { min-height: 48px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; margin: 2px 0 10px; }
+.tuner-readout strong { color: var(--accent-blue); font-size: 21px; }
+.tuner-readout span { color: var(--text-muted); font-size: 11px; margin-top: 3px; }
+.tuner-readout.in-tune strong { color: var(--accent-green); }
+.tuner-readout.low strong { color: var(--accent-gold); }
+.tuner-readout.high strong { color: var(--accent-red); }
+@media (max-width: 480px) { .practice-tools { grid-template-columns: 1fr; } }
+
 .game-card { background: var(--bg-panel); border: 3px solid #324a64; border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 15px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.4); transition: transform 0.1s, border-color 0.1s; }
 .game-card:active { transform: scale(0.97); }
 .game-card.purple:active { border-color: var(--accent-purple); }

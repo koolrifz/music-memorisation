@@ -40,6 +40,32 @@
         </div>
     </div>
 
+    <section class="practice-tools" aria-label="Kool Riffs practice tools">
+        <div class="practice-tool-card beat-tool">
+            <div class="practice-tool-heading">
+                <span class="practice-tool-icon">♪</span>
+                <div><h2>Kool Riffs Beat</h2><p>Keep a steady pulse.</p></div>
+            </div>
+            <div class="practice-tool-controls">
+                <label for="metronome-bpm">Tempo <strong><span id="metronome-bpm-value">80</span> BPM</strong></label>
+                <input id="metronome-bpm" type="range" min="40" max="200" value="80" oninput="updateMetronomeBpm(this.value)">
+                <button class="practice-tool-button" id="metronome-toggle" onclick="toggleMetronome()">Start Beat</button>
+            </div>
+        </div>
+
+        <div class="practice-tool-card tuner-tool">
+            <div class="practice-tool-heading">
+                <span class="practice-tool-icon">♩</span>
+                <div><h2>Kool Riffs Tuner</h2><p>A friendly check for your note.</p></div>
+            </div>
+            <div class="tuner-readout" aria-live="polite">
+                <strong id="tuner-note">Ready?</strong>
+                <span id="tuner-cents">Tap start, then play a note.</span>
+            </div>
+            <button class="practice-tool-button" id="tuner-toggle" onclick="toggleTuner()">Start Tuner</button>
+        </div>
+    </section>
+
     <div class="footer">
         <button class="btn-text" onclick="toggleCredits(true)">About Kool Riffs</button>
     </div>
@@ -105,7 +131,7 @@
 
     <div id="g1-screen-summary" class="screen">
         <div class="summary-card" id="g1-summary-card">
-            <h2 id="g1-summary-title">🎉 YOU SMASHED!</h2>
+            <h2 id="g1-summary-title">🎉 You Smashed the Staff!</h2>
             <div class="g1-victory-banner" aria-hidden="true">★ ★ ★</div>
             <p class="summary-progress-title" id="g1-summary-progress-title">Your Staff Smash pathway</p>
             <div class="g1-pathway" id="g1-pathway" aria-label="Staff Smash pathway">
@@ -118,6 +144,7 @@
             <div class="summary-stat"><span id="g1-final-tier-label">Highest Grid Reached</span>: <span id="g1-final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
             <div class="summary-stat">Bonus Points (Duds): <span id="g1-final-bonus" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             <button class="btn btn-start" onclick="startG1Game()">Play Again 🚀</button>
+            <button class="btn btn-secondary" onclick="shareGameResult('game1')">Share My Score</button>
             <button class="btn btn-secondary" onclick="switchScreenState('game1', 'g1-screen-setup')">Back to Setup</button>
         </div>
     </div>
@@ -199,9 +226,10 @@
 
     <div id="g2-screen-summary" class="screen">
         <div class="summary-card">
-            <h2 id="g2-summary-title">🎉 Smash Complete!</h2>
+            <h2 id="g2-summary-title">🎉 You Smashed the Notes!</h2>
             <div class="summary-stat">Total Score: <span id="g2-final-score" style="color:var(--accent-gold); font-weight:900; font-size:28px;">0</span></div>
             <div class="summary-stat">Total Attempts: <span id="g2-final-attempts" style="color:white; font-weight:bold;">0</span></div>
+            <div class="summary-stat">Time Remaining: <span id="g2-final-time" style="color:var(--accent-blue); font-weight:bold;">0.0s</span></div>
             <div class="summary-progress-title" id="g2-summary-progress-title">Your Note Smash pathway</div>
             <div class="g1-pathway" id="g2-pathway" aria-label="Note Smash pathway">
                 <div class="g1-pathway-step"><span class="g1-pathway-icon">1</span><span>Lines</span></div>
@@ -213,6 +241,7 @@
             <div class="summary-stat">Personal Best: <span id="g2-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
             
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG2Game()">Replay Same Round</button>
+            <button class="btn btn-secondary" onclick="shareGameResult('game2')">Share My Score</button>
             <button class="btn btn-text" style="color: white; margin-top: 10px;" onclick="renderG2Pathway(); switchScreenState('game2', 'g2-screen-pathway')">Change Setup</button>
         </div>
     </div>

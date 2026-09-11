@@ -2,12 +2,134 @@
    AUDIO & SPEECH ENGINE
    ========================================= */
 let audioCtx = null;
+let metronomeTimer = null;
+let metronomeBeat = 0;
+let tunerStream = null;
+let tunerSource = null;
+let tunerAnalyser = null;
+let tunerAnimationFrame = null;
 
 function initAudio() {
     try { 
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
         if (audioCtx.state === 'suspended') audioCtx.resume(); 
     } catch (e) {}
+}
+
+function playMetronomeClick() {
+    if (!audioCtx) return;
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+    oscillator.frequency.value = metronomeBeat === 0 ? 1100 : 760;
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.22, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.07);
+    oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.08);
+    metronomeBeat = (metronomeBeat + 1) % 4;
+}
+
+function updateMetronomeBpm(value) {
+    document.getElementById('metronome-bpm-value').innerText = value;
+    if (metronomeTimer) {
+        clearInterval(metronomeTimer);
+        metronomeTimer = setInterval(playMetronomeClick, 60000 / Number(value));
+    }
+}
+
+function toggleMetronome() {
+    initAudio();
+    const button = document.getElementById('metronome-toggle');
+    if (metronomeTimer) {
+        clearInterval(metronomeTimer); metronomeTimer = null;
+        button.innerText = 'Start Beat';
+        return;
+    }
+    metronomeBeat = 0;
+    playMetronomeClick();
+    const bpm = Number(document.getElementById('metronome-bpm').value);
+    metronomeTimer = setInterval(playMetronomeClick, 60000 / bpm);
+    button.innerText = 'Stop Beat';
+}
+
+function stopMetronome() {
+    if (metronomeTimer) clearInterval(metronomeTimer);
+    metronomeTimer = null;
+    const button = document.getElementById('metronome-toggle');
+    if (button) button.innerText = 'Start Beat';
+}
+
+function detectTunerPitch(buffer, sampleRate) {
+    let energy = 0;
+    for (let index = 0; index < buffer.length; index++) energy += buffer[index] * buffer[index];
+    if (Math.sqrt(energy / buffer.length) < 0.012) return null;
+
+    let bestOffset = -1;
+    let bestCorrelation = 0;
+    for (let offset = 24; offset < buffer.length / 2; offset++) {
+        let correlation = 0;
+        for (let index = 0; index < buffer.length / 2; index++) correlation += buffer[index] * buffer[index + offset];
+        correlation /= buffer.length / 2;
+        if (correlation > bestCorrelation) { bestCorrelation = correlation; bestOffset = offset; }
+    }
+    if (bestOffset < 0 || bestCorrelation < 0.01) return null;
+    return sampleRate / bestOffset;
+}
+
+function updateTuner() {
+    if (!tunerAnalyser) return;
+    const buffer = new Float32Array(tunerAnalyser.fftSize);
+    tunerAnalyser.getFloatTimeDomainData(buffer);
+    const frequency = detectTunerPitch(buffer, audioCtx.sampleRate);
+    if (frequency) {
+        const midi = 69 + 12 * Math.log2(frequency / 440);
+        const nearestMidi = Math.round(midi);
+        const cents = Math.round((midi - nearestMidi) * 100);
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const note = `${noteNames[(nearestMidi + 120) % 12]}${Math.floor(nearestMidi / 12) - 1}`;
+        const readout = document.querySelector('.tuner-readout');
+        document.getElementById('tuner-note').innerText = note;
+        document.getElementById('tuner-cents').innerText = Math.abs(cents) <= 35 ? 'In tune!' : cents < 0 ? 'A little low' : 'A little high';
+        readout.className = `tuner-readout ${Math.abs(cents) <= 35 ? 'in-tune' : cents < 0 ? 'low' : 'high'}`;
+    }
+    tunerAnimationFrame = requestAnimationFrame(updateTuner);
+}
+
+async function toggleTuner() {
+    const button = document.getElementById('tuner-toggle');
+    if (tunerStream) { stopTuner(); return; }
+    if (!navigator.mediaDevices?.getUserMedia) {
+        document.getElementById('tuner-cents').innerText = 'Microphone access is not available here.';
+        return;
+    }
+    try {
+        initAudio();
+        tunerStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        tunerSource = audioCtx.createMediaStreamSource(tunerStream);
+        tunerAnalyser = audioCtx.createAnalyser(); tunerAnalyser.fftSize = 2048;
+        tunerSource.connect(tunerAnalyser);
+        button.innerText = 'Stop Tuner';
+        document.getElementById('tuner-note').innerText = 'Listening...';
+        document.getElementById('tuner-cents').innerText = 'Play one clear note.';
+        updateTuner();
+    } catch (error) {
+        document.getElementById('tuner-cents').innerText = 'Please allow microphone access to tune.';
+    }
+}
+
+function stopTuner() {
+    if (tunerAnimationFrame) cancelAnimationFrame(tunerAnimationFrame);
+    if (tunerStream) tunerStream.getTracks().forEach(track => track.stop());
+    if (tunerSource) tunerSource.disconnect();
+    tunerStream = null; tunerSource = null; tunerAnalyser = null; tunerAnimationFrame = null;
+    const button = document.getElementById('tuner-toggle');
+    if (button) button.innerText = 'Start Tuner';
+    const readout = document.querySelector('.tuner-readout');
+    if (readout) readout.className = 'tuner-readout';
+    const note = document.getElementById('tuner-note');
+    const cents = document.getElementById('tuner-cents');
+    if (note) note.innerText = 'Ready?';
+    if (cents) cents.innerText = 'Tap start, then play a note.';
 }
 
 if ('speechSynthesis' in window) {
@@ -43,6 +165,14 @@ function playSound(type) {
             osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.3); osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.45); 
             gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.9); 
             osc.start(); osc.stop(audioCtx.currentTime + 0.9); 
+        }
+        else if (type === 'double-bonus') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(740, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(988, audioCtx.currentTime + 0.12);
+            gainNode.gain.setValueAtTime(0.35, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.28);
         }
     } catch (e) {}
 }
@@ -169,6 +299,8 @@ let g1BonusCountdownTimer;
 let g1SecondsLeft = 30, g2SecondsLeft = 60, secondsLeft = 60;
 
 function stopAllGames() {
+    stopMetronome();
+    stopTuner();
     speechRoundActive = false;
     if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'running') {
         audioCtx.suspend();
@@ -1004,12 +1136,48 @@ function handleG1Click(cardElement, isTarget, pitchName) {
     }
 }
 
+async function shareGameResult(gameId) {
+    const isGame1 = gameId === 'game1';
+    const scoreValue = isGame1 ? g1Score : g2Score;
+    const attemptsValue = isGame1 ? g1TotalAttempts : g2TotalAttempts;
+    const timeValue = isGame1 ? g1SecondsLeft : g2SecondsLeft;
+    const gameName = isGame1 ? 'Staff Smash' : 'Note Smash';
+    const achievement = isGame1 ? 'I smashed the staff' : 'I smashed the notes';
+    const stage = isGame1 ? (g1Level2PhaseNames[g1Level2Phase] || 'Staff Smash') : g2PhaseNames[g2Phase];
+    const shareText = `${achievement} in Kool Riffs ${gameName}!\nStage: ${stage}\nScore: ${Math.round(scoreValue)}\nAttempts: ${attemptsValue}\nTime remaining: ${Math.max(0, timeValue).toFixed(1)}s`;
+    const shareData = { title: `Kool Riffs - ${gameName}`, text: shareText, url: window.location.href };
+    const button = document.querySelector(`#${gameId}-screen-summary .btn-secondary[onclick*="shareGameResult"]`);
+
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(shareText);
+            if (button) {
+                const originalText = button.innerText;
+                button.innerText = 'Score Copied!';
+                setTimeout(() => { button.innerText = originalText; }, 1600);
+            }
+        } else {
+            const textArea = document.createElement('textarea');
+            textArea.value = shareText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            textArea.remove();
+            if (button) button.innerText = 'Score Copied!';
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError' && button) button.innerText = 'Share Unavailable';
+    }
+}
+
 function finishG1Game(isOfficialSmash = false) {
     stopAllGames();
     recordG1PathwayResult(isOfficialSmash);
     const summaryCard = document.getElementById('g1-summary-card');
     summaryCard.classList.toggle('g1-victory', isOfficialSmash);
-    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 YOU SMASHED IT!' : '🎉 YOU SMASHED!';
+    document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 You Smashed the Staff!' : '🎉 You Smashed the Staff!';
     switchScreenState('game1', 'g1-screen-summary');
     if (isOfficialSmash) {
         initAudio();
@@ -1273,6 +1441,7 @@ function awardG2DuplicateNoteBonus() {
     g2DuplicateBonusAwarded = true;
     g2Score++;
     triggerG2TimeBonus(1);
+    playSound('double-bonus');
     const targetDisplay = document.getElementById('g2-target-note-display');
     targetDisplay.innerText = 'DOUBLE NOTE BONUS! +1';
     setTimeout(() => {
@@ -1428,6 +1597,7 @@ function finishG2Game(isGraduation) {
     
     document.getElementById('g2-final-score').innerText = g2Score;
     document.getElementById('g2-final-attempts').innerText = g2TotalAttempts;
+    document.getElementById('g2-final-time').innerText = `${Math.max(0, g2SecondsLeft).toFixed(1)}s`;
     const pathwaySteps = [...document.querySelectorAll('#g2-pathway .g1-pathway-step')];
     pathwaySteps.forEach((step, index) => {
         step.classList.remove('completed', 'current', 'locked');
@@ -1443,7 +1613,7 @@ function finishG2Game(isGraduation) {
 
     const title = document.getElementById('g2-summary-title');
 
-    title.innerText = isGraduation ? '🏆 YOU SMASHED IT!' : '🎉 YOU SMASHED!';
+    title.innerText = isGraduation ? '🏆 You Smashed the Notes!' : '🎉 You Smashed the Notes!';
 }
 
 /* =========================================
