@@ -13,6 +13,8 @@ function togglePracticeTool(toolName) {
     const card = document.getElementById(`${toolName}-tool-card`);
     if (!card) return;
     const isOpen = card.classList.toggle('is-open');
+    if (!isOpen && toolName === 'beat') stopMetronome();
+    if (!isOpen && toolName === 'tuner') stopTuner();
     const toggle = card.querySelector('.practice-tool-heading');
     if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
