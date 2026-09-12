@@ -212,11 +212,21 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .helper-modal.show { display: flex; position: fixed; inset: 6vh 5vw; width: auto; max-width: none; max-height: 88vh; margin: 0; padding: 22px; flex-direction: column; justify-content: center; z-index: 100; box-shadow: 0 0 0 100vmax rgba(10,20,30,0.78), 0 10px 30px rgba(0,0,0,0.5); }
 .helper-modal h3 { margin: 0 0 4px 0; font-size: 12px; color: #1a2634; text-align: center; font-weight: 900; }
 .helper-close-button { position: absolute; top: 8px; right: 12px; border: 0; background: none; color: #1a2634; font-size: 30px; line-height: 1; cursor: pointer; }
-.helper-container { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 70px; padding: 18px 8px; overflow: auto; }
-.helper-section { width: min(70vw, 760px); max-width: 100%; color: #1a2634; font-size: 16px; font-weight: 900; text-align: center; }
-.helper-section > div { width: 100%; min-height: 150px; overflow: visible; }
-.helper-section svg { display: block; width: 100%; height: auto; max-height: 190px; }
-.helper-back-button { width: min(70vw, 760px); max-width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 12px; background: var(--accent-blue); box-shadow: 0 5px 0 var(--accent-blue-shadow); color: white; font-size: 18px; font-weight: 900; cursor: pointer; }
+.helper-container { display: flex; flex-direction: column; justify-content: flex-start; align-items: center; gap: 10px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 70px; padding: 14px 8px; overflow: auto; }
+.helper-section { width: min(70vw, 760px); max-width: 100%; color: #1a2634; font-size: 20px; font-weight: 900; text-align: left; display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); align-items: center; gap: 12px; }
+.helper-section > strong { align-self: center; text-align: center; }
+.helper-section > div { width: 100%; min-height: 135px; overflow: visible; position: relative; }
+.helper-section svg { display: block; width: 100%; height: auto; max-height: 135px; }
+.helper-note-labels { position: absolute; left: 0; right: 0; display: block; text-align: center; color: #1a2634; font-size: 22px; font-weight: 500; line-height: 1; pointer-events: none; }
+.helper-note-labels span { position: absolute; white-space: nowrap; transform: translateX(-50%); }
+.helper-note-labels > span:not(.single-label) { transform: none; }
+.helper-note-labels .helper-label-rest { position: static; transform: none; white-space: nowrap; margin-left: 0.58em; }
+.helper-note-labels b { font-size: 1.35em; font-weight: 900; }
+.helper-note-labels.below { bottom: 2px; }
+.helper-note-labels.above { top: 2px; }
+.helper-note-labels.above.ledger { top: 48px; }
+.helper-note-labels.below.ledger { bottom: 8px; }
+.helper-back-button { width: auto; max-width: 100%; align-self: center; margin-top: 14px; padding: 12px 28px; border: 0; border-radius: 10px; background: var(--accent-blue); box-shadow: 0 5px 0 var(--accent-blue-shadow); color: white; font-size: 18px; font-weight: 900; cursor: pointer; }
 .helper-back-button:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--accent-blue-shadow); }
 
 /* SMASH Grid Mechanics (Games 1 & 2) */
@@ -476,4 +486,7 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     .smash-card.small-card { min-height: 84px; padding: 4px 3px; }
     .smash-card.small-card svg { max-height: 78px; }
     #g2-helper-modal.helper-modal.show { inset: 4vh 4vw; max-height: 92vh; padding: 22px 8px 10px; }
+    .helper-section { width: 100%; grid-template-columns: 1fr; gap: 2px; text-align: center; font-size: 18px; }
+    .helper-section > div { min-height: 130px; }
+    .helper-note-labels { left: 0; right: 0; font-size: 18px; }
 }

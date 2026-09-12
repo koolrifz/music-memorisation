@@ -1809,6 +1809,56 @@ function toggleG3HelperModal() {
 
 function applyBottomAnnotation(text) { const VF = Vex.Flow; const anno = new VF.Annotation(text); anno.setVerticalJustification(3); return anno; }
 
+const helperMnemonics = {
+    treble: { lines: 'Every Good Boy Deserves Fruit', spaces: 'FACE' },
+    bass: { lines: 'Good Boys Deserve Fruit Always', spaces: 'All Cows Eat Grass' },
+    alto: { lines: 'Fat Alley Cats Eat Garbage', spaces: 'Great Big Dogs Fight' },
+    tenor: { lines: 'Dogs Fight All Cats Elegantly', spaces: 'Every Good Boy Deserves' }
+};
+
+function getHelperLedgerNotes(config, side) {
+    const lines = config.ledgerLines;
+    const spaces = config.ledgerSpaces;
+    const lineMidpoint = lines.length / 2;
+    const spaceMidpoint = spaces.length / 2;
+    return side === 'above'
+        ? [spaces[spaceMidpoint], lines[lineMidpoint], spaces[spaceMidpoint + 1], lines[lineMidpoint + 1], spaces[spaceMidpoint + 2]]
+        : [spaces[0], lines[0], spaces[1], lines[1], spaces[2]];
+}
+
+function addHelperLabels(canvas, notes, labels, placement) {
+    const labelsRow = document.createElement('div');
+    labelsRow.className = `helper-note-labels ${placement}`;
+    labels.forEach(label => {
+        const labelElement = document.createElement('span');
+        if (label.length > 1 && placement === 'below') {
+            labelElement.innerHTML = `<b>${label[0]}</b><span class="helper-label-rest">${label.slice(1)}</span>`;
+        } else {
+            labelElement.innerText = label;
+            labelElement.classList.add('single-label');
+        }
+        labelsRow.appendChild(labelElement);
+    });
+    canvas.appendChild(labelsRow);
+    return labelsRow;
+}
+
+function alignHelperLabelsToNotes(canvas, labelsRow) {
+    const svg = canvas.querySelector('svg');
+    const noteHeads = [...canvas.querySelectorAll('.vf-notehead')];
+    if (!svg || noteHeads.length < labelsRow.children.length) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    const relevantNoteHeads = labelsRow.classList.contains('below')
+        ? noteHeads.slice(-labelsRow.children.length)
+        : noteHeads.slice(0, labelsRow.children.length);
+    [...labelsRow.children].forEach((label, index) => {
+        const noteRect = relevantNoteHeads[index].getBoundingClientRect();
+        const noteCenter = noteRect.left + noteRect.width / 2 - canvasRect.left;
+        label.style.left = `${noteCenter}px`;
+        label.style.transform = label.classList.contains('single-label') ? 'translateX(-50%)' : 'none';
+    });
+}
+
 function renderHelperSheetGraphics() {
     try {
         const VF = Vex.Flow; const clefSelect = document.getElementById('clef-select') || document.getElementById('g2-clef-select');
@@ -1816,45 +1866,48 @@ function renderHelperSheetGraphics() {
         const config = NOTE_CONFIGS[currentClef];
         const helperWidth = Math.min(760, Math.max(320, window.innerWidth * 0.7));
         const ledgerLineMidpoint = config.ledgerLines.length / 2;
-        const ledgerSpaceMidpoint = config.ledgerSpaces.length / 2;
-        const helperLines = [
-            ...config.ledgerLines.slice(0, 2).reverse(),
-            ...config.staffLines,
-            ...config.ledgerLines.slice(ledgerLineMidpoint, ledgerLineMidpoint + 2)
+        const helperRows = [
+            { ids: ['helper-lines-canvas', 'g2-helper-lines-canvas'], notes: config.staffLines, labels: helperMnemonics[currentClef].lines.split(' ') },
+            { ids: ['helper-spaces-canvas', 'g2-helper-spaces-canvas'], notes: config.staffSpaces, labels: helperMnemonics[currentClef].spaces.split('') },
+            { ids: ['helper-ledger-canvas', 'g2-helper-ledger-canvas'], ledger: true, notes: getHelperLedgerNotes(config, 'above'), belowNotes: getHelperLedgerNotes(config, 'below'), labels: getHelperLedgerNotes(config, 'above').map(note => note[0]), belowLabels: getHelperLedgerNotes(config, 'below').map(note => note[0]) }
         ];
-        const helperSpaces = [
-            ...config.ledgerSpaces.slice(0, 2).reverse(),
-            ...config.staffSpaces,
-            ...config.ledgerSpaces.slice(ledgerSpaceMidpoint, ledgerSpaceMidpoint + 2)
-        ];
-        
-        ['helper-lines-canvas', 'g2-helper-lines-canvas'].forEach(id => {
-            const linesDiv = document.getElementById(id);
-            if (linesDiv) {
-                linesDiv.innerHTML = ''; const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG); renLines.resize(helperWidth, 180);
-                const ctxLines = renLines.getContext();
-                const stave1 = new VF.Stave(10, 28, helperWidth - 20).addClef(currentClef).setContext(ctxLines).draw();
-                const lineNotes = helperLines.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
-                const lineVoice = new VF.Voice({ num_beats: lineNotes.length, beat_value: 4 }).addTickables(lineNotes);
-                new VF.Formatter().joinVoices([lineVoice]).format([lineVoice], Math.max(120, helperWidth - 110));
-                lineVoice.draw(ctxLines, stave1);
-                linesDiv.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
-            }
-        });
 
-        ['helper-spaces-canvas', 'g2-helper-spaces-canvas'].forEach(id => {
-            const spacesDiv = document.getElementById(id);
-            if (spacesDiv) {
-                spacesDiv.innerHTML = ''; const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG); renSpaces.resize(helperWidth, 180);
-                const ctxSpaces = renSpaces.getContext();
-                const stave2 = new VF.Stave(10, 28, helperWidth - 20).addClef(currentClef).setContext(ctxSpaces).draw();
-                const spaceNotes = helperSpaces.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
-                const spaceVoice = new VF.Voice({ num_beats: spaceNotes.length, beat_value: 4 }).addTickables(spaceNotes);
-                new VF.Formatter().joinVoices([spaceVoice]).format([spaceVoice], Math.max(120, helperWidth - 110));
-                spaceVoice.draw(ctxSpaces, stave2);
-                spacesDiv.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
+        helperRows.forEach(row => row.ids.forEach(id => {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            canvas.innerHTML = '';
+            const renderer = new VF.Renderer(canvas, VF.Renderer.Backends.SVG);
+            renderer.resize(helperWidth, row.ledger ? 235 : 125);
+            const context = renderer.getContext();
+            const stave = new VF.Stave(10, row.ledger ? 92 : 32, helperWidth - 20).addClef(currentClef);
+            stave.setBegBarType(VF.Barline.type.NONE);
+            stave.options.left_bar = false;
+            stave.setNoteStartX(stave.getX() + 68);
+            stave.setContext(context).draw();
+            const notes = row.notes.map(note => new VF.StaveNote({
+                clef: currentClef,
+                keys: [note[1]],
+                duration: 'w',
+                stem_direction: 1
+            }));
+            const voice = new VF.Voice({ num_beats: notes.length * 4, beat_value: 4 }).addTickables(notes);
+            new VF.Formatter().joinVoices([voice]).format([voice], Math.max(120, helperWidth - 110));
+            voice.draw(context, stave);
+            const labelsRow = addHelperLabels(canvas, row.notes, row.labels, row.ledger ? 'above ledger' : 'below');
+            let belowLabelsRow = null;
+            if (row.ledger) {
+                const belowNotes = row.belowNotes.map(note => new VF.StaveNote({ clef: currentClef, keys: [note[1]], duration: 'w', stem_direction: 1 }));
+                const belowVoice = new VF.Voice({ num_beats: belowNotes.length * 4, beat_value: 4 }).addTickables(belowNotes);
+                new VF.Formatter().joinVoices([belowVoice]).format([belowVoice], Math.max(120, helperWidth - 110));
+                belowVoice.draw(context, stave);
+                belowLabelsRow = addHelperLabels(canvas, row.belowNotes, row.belowLabels, 'below ledger');
             }
-        });
+            requestAnimationFrame(() => {
+                alignHelperLabelsToNotes(canvas, labelsRow);
+                if (belowLabelsRow) alignHelperLabelsToNotes(canvas, belowLabelsRow);
+            });
+            canvas.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
+        }));
     } catch(e) {}
 }
 
