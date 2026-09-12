@@ -60,8 +60,15 @@
                 <span class="practice-tool-title"><strong>Kool Tuner</strong><small>Practice tool</small></span>
                 <span class="practice-tool-chevron" aria-hidden="true">+</span>
             </button>
-            <div class="tuner-tool-controls" id="tuner-tool-controls">
-              <div class="tuner-readout" aria-live="polite">
+                        <div class="tuner-tool-controls" id="tuner-tool-controls">
+                            <label class="tuner-instrument-label" for="tuner-instrument">I play:</label>
+                            <select id="tuner-instrument" onchange="updateTunerInstrument(this.value)">
+                                <option value="concert">Concert pitch</option>
+                                <option value="bb">Bb instrument</option>
+                                <option value="eb">Eb instrument</option>
+                                <option value="f">F instrument</option>
+                            </select>
+                            <div class="tuner-readout" aria-live="polite">
                 <strong id="tuner-note">Ready?</strong>
                 <span id="tuner-cents">Tap start, then play a note.</span>
               </div>
@@ -164,6 +171,10 @@
         <div class="pathway-card">
             <h1>Note Smash</h1>
             <p class="pathway-subtitle" id="g2-pathway-subtitle">Learn the notes, then smash the staff.</p>
+            <div class="pathway-handoff" id="g2-pathway-handoff" hidden>
+                <span>You Have Smashed All The Notes!</span>
+                <span>Next Stop: Real Smash - The Ultimate Note Reading Sprint</span>
+            </div>
             <div class="pathway-track" id="g2-pathway-track"></div>
             <button class="btn btn-start" id="g2-pathway-start" onclick="startSelectedG2Stage()" disabled>Choose your mission</button>
             <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
@@ -209,11 +220,13 @@
         </div>
         
         <div class="helper-modal" id="g2-helper-modal">
+            <button class="helper-close-button" onclick="toggleG2HelperModal()" aria-label="Close helpers">×</button>
             <h3>📖 Note Name Helpers</h3>
             <div class="helper-container">
-                <div id="g2-helper-lines-canvas"></div>
-                <div id="g2-helper-spaces-canvas"></div>
+                <div class="helper-section"><strong>Lines</strong><div id="g2-helper-lines-canvas"></div></div>
+                <div class="helper-section"><strong>Spaces</strong><div id="g2-helper-spaces-canvas"></div></div>
             </div>
+            <button class="helper-back-button" onclick="toggleG2HelperModal()">Back to Smashing</button>
         </div>
 
         <div id="g2-clef-display"></div>
@@ -309,11 +322,13 @@
         <div class="flash-timer" id="flash-timer-bar"><div class="flash-timer-fill" id="flash-timer-fill"></div></div>
 
         <div class="helper-modal" id="helper-sheet-modal">
+            <button class="helper-close-button" onclick="toggleG3HelperModal()" aria-label="Close helpers">×</button>
             <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
             <div class="helper-container">
-                <div id="helper-lines-canvas"></div>
-                <div id="helper-spaces-canvas"></div>
+                <div class="helper-section"><strong>Lines</strong><div id="helper-lines-canvas"></div></div>
+                <div class="helper-section"><strong>Spaces</strong><div id="helper-spaces-canvas"></div></div>
             </div>
+            <button class="helper-back-button" onclick="toggleG3HelperModal()">Back to Smashing</button>
         </div>
 
         <div class="card-wrapper" id="card-canvas-wrapper">

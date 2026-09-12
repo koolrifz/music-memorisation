@@ -86,13 +86,21 @@ function detectTunerPitch(buffer, sampleRate) {
     return sampleRate / bestOffset;
 }
 
+function updateTunerInstrument(instrument) {
+    tunerInstrument = instrument;
+    const labels = { concert: 'Concert pitch', bb: 'Bb instrument', eb: 'Eb instrument', f: 'F instrument' };
+    const cents = document.getElementById('tuner-cents');
+    if (cents && !tunerStream) cents.innerText = `${labels[instrument]} selected. Tap start, then play a note.`;
+}
+
 function updateTuner() {
     if (!tunerAnalyser) return;
     const buffer = new Float32Array(tunerAnalyser.fftSize);
     tunerAnalyser.getFloatTimeDomainData(buffer);
     const frequency = detectTunerPitch(buffer, audioCtx.sampleRate);
     if (frequency) {
-        const midi = 69 + 12 * Math.log2(frequency / 440);
+        const transposition = { concert: 0, bb: 2, eb: -3, f: -7 }[tunerInstrument] || 0;
+        const midi = 69 + 12 * Math.log2(frequency / 440) + transposition;
         const nearestMidi = Math.round(midi);
         const cents = Math.round((midi - nearestMidi) * 100);
         const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -305,6 +313,10 @@ let personalBests = {
    GLOBAL PAUSE / RESUME / ROUTING
    ========================================= */
 let g1Timer, g1FlashTimer, g2Timer, g2FlashTimer, gameTimer, breakOutTimer;
+let g2FlashDeadline = 0;
+let g2PausedFlashRemainingMs = null;
+let g3FlashDeadline = 0;
+let g3PausedFlashRemainingMs = null;
 let g1BonusCountdownTimer;
 let g1SecondsLeft = 30, g2SecondsLeft = 60, secondsLeft = 60;
 
@@ -637,9 +649,11 @@ function chooseG1OrientationTarget(config) {
     return positions.find(position => position.label === round.label);
 }
 
-function getG1OrientationDistractors(target, positions) {
+function getG1OrientationDistractors(target, positions, proximity = Infinity, includeSameType = false) {
     return positions
-        .filter(position => position.label !== target.label)
+    .filter(position => position.label !== target.label)
+    .filter(position => includeSameType || position.type !== target.type)
+    .filter(position => Math.abs(position.height - target.height) <= proximity)
         .sort((a, b) => Math.abs(a.height - target.height) - Math.abs(b.height - target.height));
 }
 
@@ -700,6 +714,7 @@ function startG1Game() {
     g1IsLedgerBonus = false;
     g1Level = 'level2';
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
+    g1CurrentPromptLabel = '';
     g1Level2Phase = g1PathwayStages.find(stage => stage.id === g1SelectedStage)?.phase ?? 0;
     g1SecondsLeft = 30; g1IsTransitioning = false; g1RoundStartedAt = 0; g1LastScreenWasDud = false; g1PendingStageAdvance = false; g1CarriedStageTime = 0;
     updateG1TrackerUI();
@@ -975,13 +990,12 @@ function loadG1Grid() {
         orientationTarget = g1LedgerBonusTarget;
         orientationTargets = [orientationTarget];
         const proximity = g1LedgerBonusProximity[g1LedgerBonusRound];
-        orientationDistractors = getG1OrientationDistractors(orientationTarget, ledgerPositions)
-            .filter(position => Math.abs(position.height - orientationTarget.height) <= proximity);
+        orientationDistractors = getG1OrientationDistractors(orientationTarget, ledgerPositions, proximity, true);
         if (orientationDistractors.length < 3) {
-            orientationDistractors = getG1OrientationDistractors(orientationTarget, ledgerPositions);
+            orientationDistractors = getG1OrientationDistractors(orientationTarget, ledgerPositions, Infinity, true);
         }
         orientationDistractors = orientationDistractors.concat(
-            getG1OrientationDistractors(orientationTarget, ledgerPositions)
+            getG1OrientationDistractors(orientationTarget, ledgerPositions, Infinity, true)
         ).filter((position, index, positions) =>
             positions.findIndex(candidate => candidate.label === position.label) === index
         );
@@ -1012,14 +1026,18 @@ function loadG1Grid() {
             .sort(() => Math.random() - 0.5);
         orientationDistractors.push(...randomFill);
         const prompt = numberedPhase ? `SMASH ${orientationTarget.label}` : `SMASH A ${targetType.toUpperCase()}`;
+        const shouldSpeakPrompt = g1CurrentPromptLabel !== prompt;
         g1CurrentPromptLabel = prompt;
         document.getElementById('g1-target-instruction-display').innerText = prompt.toUpperCase();
-        speakLetter(numberedPhase ? orientationTarget.label : `a ${targetType}`);
+        if (shouldSpeakPrompt) speakLetter(numberedPhase ? orientationTarget.label : `a ${targetType}`);
         updateG1TrackerUI();
     } else {
         g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
-        document.getElementById('g1-target-instruction-display').innerText = `SMASH ${g1TargetType.toUpperCase()}S`;
-        speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces');
+        const prompt = `SMASH ${g1TargetType.toUpperCase()}S`;
+        const shouldSpeakPrompt = g1CurrentPromptLabel !== prompt;
+        g1CurrentPromptLabel = prompt;
+        document.getElementById('g1-target-instruction-display').innerText = prompt;
+        if (shouldSpeakPrompt) speakLetter(g1TargetType === 'line' ? 'lines' : 'spaces');
     }
     
     let isDud = !g1LastScreenWasDud && Math.random() < 0.15;
@@ -1253,6 +1271,7 @@ const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
 let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
 let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false; let g2RoundStartedAt = 0;
+let tunerInstrument = 'concert';
 let g2DuplicateBonusEligible = false; let g2DuplicateBonusAwarded = false;
 let g2SelectedStage = 'lines';
 const g2PathwayStages = [
@@ -1278,11 +1297,10 @@ function renderG2Pathway() {
     const track = document.getElementById('g2-pathway-track');
     if (!track) return;
     const subtitle = document.getElementById('g2-pathway-subtitle');
-    if (subtitle) {
-        subtitle.innerText = g2PathwayStages.every(stage => unlocked.has(stage.id))
-            ? 'YOU HAVE SMASHED ALL THE NOTES! Next stop: Real Smash - The Ultimate Note Reading Sprint'
-            : 'Learn the notes, then smash the staff.';
-    }
+    const handoff = document.getElementById('g2-pathway-handoff');
+    const isGraduated = g2PathwayStages.every(stage => unlocked.has(stage.id));
+    if (subtitle) subtitle.hidden = isGraduated;
+    if (handoff) handoff.hidden = !isGraduated;
     track.innerHTML = '';
     let recommended = progress.lastPosition || 'lines';
     if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
@@ -1346,6 +1364,7 @@ function toggleG2HelperModal() {
     if (!modal) return;
     const isOpening = !modal.classList.contains('show');
     if (isOpening) {
+        g2PausedFlashRemainingMs = g2FlashDeadline ? Math.max(0, g2FlashDeadline - performance.now()) : null;
         stopAllGames();
         g2IsTransitioning = true;
         modal.classList.add('show');
@@ -1355,7 +1374,8 @@ function toggleG2HelperModal() {
         g2IsTransitioning = false;
         speechRoundActive = true;
         startG2Timer();
-        startG2FlashTimer();
+        startG2FlashTimer(g2PausedFlashRemainingMs === null ? null : g2PausedFlashRemainingMs / 1000);
+        g2PausedFlashRemainingMs = null;
     }
 }
 
@@ -1381,11 +1401,9 @@ function setupG2Helpers(round) {
     const linesCanvas = document.getElementById('g2-helper-lines-canvas');
     const spacesCanvas = document.getElementById('g2-helper-spaces-canvas');
 
-    linesCanvas.style.display = 'none'; spacesCanvas.style.display = 'none';
+    linesCanvas.style.display = 'block'; spacesCanvas.style.display = 'block';
     const helperToggle = document.getElementById('g2-helper-toggle');
-    if(round === '1') { linesCanvas.style.display = 'block'; helperToggle.style.display = 'flex'; } 
-    else if (round === '2') { spacesCanvas.style.display = 'block'; helperToggle.style.display = 'flex'; }
-    else { helperToggle.style.display = 'none'; }
+    helperToggle.style.display = 'flex';
     helperModal.classList.remove('show');
     setTimeout(renderHelperSheetGraphics, 50);
 }
@@ -1438,10 +1456,11 @@ function startG2Timer() {
     }, 1000);
 }
 
-function startG2FlashTimer() {
+function startG2FlashTimer(remainingSeconds = null) {
     if (g2FlashTimer) clearTimeout(g2FlashTimer);
     const flashFill = document.getElementById('g2-flash-timer-fill');
-    const flashSeconds = g2Tiers[g2TierIndex] / 3 + 2;
+    const flashSeconds = remainingSeconds === null ? g2Tiers[g2TierIndex] / 3 + 2 : remainingSeconds;
+    g2FlashDeadline = performance.now() + flashSeconds * 1000;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     g2FlashTimer = setTimeout(() => {
@@ -1643,15 +1662,16 @@ function finishG2Game(isGraduation) {
         else if (index === g2Phase) step.classList.add('current');
         else step.classList.add('locked');
     });
-    document.getElementById('g2-summary-progress-title').innerText = isGraduation
-        ? 'YOU HAVE SMASHED ALL THE NOTES! Next stop: Real Smash - The Ultimate Note Reading Sprint'
+    const summaryProgress = document.getElementById('g2-summary-progress-title');
+    summaryProgress.innerHTML = isGraduation
+        ? '<span class="g2-summary-handoff-line">You Have Smashed All The Notes!</span><span class="g2-summary-handoff-line">Next Stop: Real Smash - The Ultimate Note Reading Sprint</span>'
         : `${g2PhaseNames[g2Phase]} is next to master`;
     document.getElementById('g2-final-tier').innerText = isGraduation ? '4/4 stages complete' : `${g2Phase}/4 stages complete`;
     document.getElementById('g2-personal-best').innerText = `${personalBests.game2[pbKey]} ${isNewPb ? '(New PB! 🎉)' : ''}`;
 
     const title = document.getElementById('g2-summary-title');
 
-    title.innerText = isGraduation ? '🏆 You Smashed the Notes!' : '🎉 You Smashed the Notes!';
+    title.innerText = isGraduation ? '🏆 You Smashed All The Notes!' : '🎉 You Smashed the Notes!';
     if (!isGraduation && nextStage) {
         nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
         nextStageButton.style.display = 'block';
@@ -1772,7 +1792,19 @@ function toggleInputMethod() {
 
 function toggleG3HelperModal() {
     const modal = document.getElementById('helper-sheet-modal');
-    if(modal) { modal.classList.toggle('show'); if(modal.classList.contains('show')) setTimeout(renderHelperSheetGraphics, 50); }
+    if (!modal) return;
+    const isOpening = !modal.classList.contains('show');
+    if (isOpening) {
+        g3PausedFlashRemainingMs = g3FlashDeadline ? Math.max(0, g3FlashDeadline - performance.now()) : null;
+        stopAllGames();
+        modal.classList.add('show');
+        setTimeout(renderHelperSheetGraphics, 50);
+    } else {
+        modal.classList.remove('show');
+        if (secondsLeft > 0) start60SecondTimer();
+        if (currentMode === 'speed') startFlashcardTimer(getTimeLimitForTier(currentTier), g3PausedFlashRemainingMs === null ? null : g3PausedFlashRemainingMs / 1000);
+        g3PausedFlashRemainingMs = null;
+    }
 }
 
 function applyBottomAnnotation(text) { const VF = Vex.Flow; const anno = new VF.Annotation(text); anno.setVerticalJustification(3); return anno; }
@@ -1782,15 +1814,30 @@ function renderHelperSheetGraphics() {
         const VF = Vex.Flow; const clefSelect = document.getElementById('clef-select') || document.getElementById('g2-clef-select');
         const currentClef = clefSelect ? clefSelect.value : 'treble';
         const config = NOTE_CONFIGS[currentClef];
+        const helperWidth = Math.min(760, Math.max(320, window.innerWidth * 0.7));
+        const ledgerLineMidpoint = config.ledgerLines.length / 2;
+        const ledgerSpaceMidpoint = config.ledgerSpaces.length / 2;
+        const helperLines = [
+            ...config.ledgerLines.slice(0, 2).reverse(),
+            ...config.staffLines,
+            ...config.ledgerLines.slice(ledgerLineMidpoint, ledgerLineMidpoint + 2)
+        ];
+        const helperSpaces = [
+            ...config.ledgerSpaces.slice(0, 2).reverse(),
+            ...config.staffSpaces,
+            ...config.ledgerSpaces.slice(ledgerSpaceMidpoint, ledgerSpaceMidpoint + 2)
+        ];
         
         ['helper-lines-canvas', 'g2-helper-lines-canvas'].forEach(id => {
             const linesDiv = document.getElementById(id);
             if (linesDiv) {
-                linesDiv.innerHTML = ''; const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG); renLines.resize(250, 100);
-                const ctxLines = renLines.getContext(); ctxLines.scale(0.68, 0.68); 
-                const stave1 = new VF.Stave(0, 5, 360).addClef(currentClef).setContext(ctxLines).draw();
-                const lineNotes = config.staffLines.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
-                VF.Formatter.FormatAndDraw(ctxLines, stave1, lineNotes);
+                linesDiv.innerHTML = ''; const renLines = new VF.Renderer(linesDiv, VF.Renderer.Backends.SVG); renLines.resize(helperWidth, 180);
+                const ctxLines = renLines.getContext();
+                const stave1 = new VF.Stave(10, 28, helperWidth - 20).addClef(currentClef).setContext(ctxLines).draw();
+                const lineNotes = helperLines.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
+                const lineVoice = new VF.Voice({ num_beats: lineNotes.length, beat_value: 4 }).addTickables(lineNotes);
+                new VF.Formatter().joinVoices([lineVoice]).format([lineVoice], Math.max(120, helperWidth - 110));
+                lineVoice.draw(ctxLines, stave1);
                 linesDiv.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
             }
         });
@@ -1798,11 +1845,13 @@ function renderHelperSheetGraphics() {
         ['helper-spaces-canvas', 'g2-helper-spaces-canvas'].forEach(id => {
             const spacesDiv = document.getElementById(id);
             if (spacesDiv) {
-                spacesDiv.innerHTML = ''; const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG); renSpaces.resize(190, 100);
-                const ctxSpaces = renSpaces.getContext(); ctxSpaces.scale(0.68, 0.68);
-                const stave2 = new VF.Stave(0, 5, 275).addClef(currentClef).setContext(ctxSpaces).draw();
-                const spaceNotes = config.staffSpaces.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
-                VF.Formatter.FormatAndDraw(ctxSpaces, stave2, spaceNotes);
+                spacesDiv.innerHTML = ''; const renSpaces = new VF.Renderer(spacesDiv, VF.Renderer.Backends.SVG); renSpaces.resize(helperWidth, 180);
+                const ctxSpaces = renSpaces.getContext();
+                const stave2 = new VF.Stave(10, 28, helperWidth - 20).addClef(currentClef).setContext(ctxSpaces).draw();
+                const spaceNotes = helperSpaces.map(n => new VF.StaveNote({ clef: currentClef, keys: [n[1]], duration: 'q', stem_direction: 1 }).addAnnotation(0, applyBottomAnnotation(n[0])));
+                const spaceVoice = new VF.Voice({ num_beats: spaceNotes.length, beat_value: 4 }).addTickables(spaceNotes);
+                new VF.Formatter().joinVoices([spaceVoice]).format([spaceVoice], Math.max(120, helperWidth - 110));
+                spaceVoice.draw(ctxSpaces, stave2);
                 spacesDiv.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
             }
         });
@@ -1932,9 +1981,11 @@ function loadNextCard() {
     } catch (err) {}
 }
 
-function startFlashcardTimer(seconds) {
+function startFlashcardTimer(seconds, remainingSeconds = null) {
     const flashFill = document.getElementById('flash-timer-fill');
-    setTimeout(() => { flashFill.style.transition = `width ${seconds}s linear`; flashFill.style.width = '0%'; }, 50);
+    const timerSeconds = remainingSeconds === null ? seconds : remainingSeconds;
+    g3FlashDeadline = performance.now() + timerSeconds * 1000;
+    setTimeout(() => { flashFill.style.transition = `width ${timerSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     breakOutTimer = setTimeout(() => {
         if (secondsLeft > 0) {

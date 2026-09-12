@@ -85,6 +85,8 @@ body {
 .practice-tool-chevron { margin-left: auto; color: var(--text-muted); font-size: 20px; line-height: 1; }
 .practice-tool-icon { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 8px; display: grid; place-items: center; color: var(--bg-dark); background: var(--accent-gold); font-size: 19px; font-weight: 900; }
 .tuner-tool .practice-tool-icon { background: var(--accent-blue); }
+.tuner-instrument-label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 3px; }
+.tuner-tool-controls select { margin: 0 0 8px; padding: 7px 8px; border-width: 2px; border-radius: 8px; font-size: 12px; }
 .practice-tool-controls, .tuner-tool-controls { display: none; padding: 7px 4px 4px; }
 .practice-tool-card.is-open .practice-tool-controls, .practice-tool-card.is-open .tuner-tool-controls { display: block; }
 .practice-tool-card.is-open .practice-tool-chevron { transform: rotate(45deg); }
@@ -127,6 +129,11 @@ body {
 .pathway-card { background: var(--bg-panel); padding: 24px 16px; border-radius: 24px; width: 100%; max-width: 620px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid #324a64; z-index: 20; position: relative; margin-top: 60px; }
 .pathway-card h1 { margin: 0; color: var(--accent-gold); }
 .pathway-subtitle { color: var(--text-muted); margin: 6px 0 22px; }
+.pathway-handoff { color: var(--accent-gold); font-size: 15px; font-weight: 900; line-height: 1.35; margin: 6px 0 18px; }
+.pathway-handoff span { display: block; }
+.pathway-handoff span + span { color: var(--accent-blue); margin-top: 3px; }
+.g2-summary-handoff-line { display: block; }
+.g2-summary-handoff-line + .g2-summary-handoff-line { color: var(--accent-blue); margin-top: 3px; }
 .pathway-track { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; align-items: stretch; }
 .pathway-node { min-width: 0; min-height: 88px; padding: 8px 4px; border: 2px solid #526b85; border-radius: 12px; background: transparent; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
 .pathway-node.unlocked { color: white; border-color: var(--accent-blue); background: rgba(28,176,246,0.12); }
@@ -202,9 +209,15 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .btn-helper-toggle:active { transform: translateY(3px); box-shadow: 0 0 0 #1485bc; }
 
 .helper-modal { width: 100%; max-width: 500px; background: #ffffff; border-radius: 16px; padding: 6px 4px; margin-bottom: 6px; display: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: 3px solid var(--accent-blue); box-sizing: border-box; }
-.helper-modal.show { display: block; }
+.helper-modal.show { display: flex; position: fixed; inset: 6vh 5vw; width: auto; max-width: none; max-height: 88vh; margin: 0; padding: 22px; flex-direction: column; justify-content: center; z-index: 100; box-shadow: 0 0 0 100vmax rgba(10,20,30,0.78), 0 10px 30px rgba(0,0,0,0.5); }
 .helper-modal h3 { margin: 0 0 4px 0; font-size: 12px; color: #1a2634; text-align: center; font-weight: 900; }
-.helper-container { display: flex; justify-content: center; align-items: center; gap: 5px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 70px; padding-top: 2px; }
+.helper-close-button { position: absolute; top: 8px; right: 12px; border: 0; background: none; color: #1a2634; font-size: 30px; line-height: 1; cursor: pointer; }
+.helper-container { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; width: 100%; background: #fafbfc; border-radius: 8px; min-height: 70px; padding: 18px 8px; overflow: auto; }
+.helper-section { width: min(70vw, 760px); max-width: 100%; color: #1a2634; font-size: 16px; font-weight: 900; text-align: center; }
+.helper-section > div { width: 100%; min-height: 150px; overflow: visible; }
+.helper-section svg { display: block; width: 100%; height: auto; max-height: 190px; }
+.helper-back-button { width: min(70vw, 760px); max-width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 12px; background: var(--accent-blue); box-shadow: 0 5px 0 var(--accent-blue-shadow); color: white; font-size: 18px; font-weight: 900; cursor: pointer; }
+.helper-back-button:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--accent-blue-shadow); }
 
 /* SMASH Grid Mechanics (Games 1 & 2) */
 #g1-clef-display, #g2-clef-display { 
@@ -462,13 +475,5 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     #g1-grid-container, #g2-grid-container { padding-left: 8px; padding-right: 8px; }
     .smash-card.small-card { min-height: 84px; padding: 4px 3px; }
     .smash-card.small-card svg { max-height: 78px; }
-    #g2-helper-modal.helper-modal.show {
-        position: absolute;
-        top: 132px;
-        left: 4px;
-        right: 4px;
-        width: auto;
-        margin: 0;
-        z-index: 40;
-    }
+    #g2-helper-modal.helper-modal.show { inset: 4vh 4vw; max-height: 92vh; padding: 22px 8px 10px; }
 }
