@@ -219,6 +219,8 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .helper-section svg { display: block; width: 100%; height: auto; max-height: 135px; }
 .helper-note-labels { position: absolute; left: 0; right: 0; display: block; text-align: center; color: #1a2634; font-size: 22px; font-weight: 500; line-height: 1; pointer-events: none; }
 .helper-note-labels span { position: absolute; white-space: nowrap; transform: translateX(-50%); }
+.helper-note-labels.below span { bottom: 0; }
+.helper-note-labels.above span { top: 0; }
 .helper-note-labels > span:not(.single-label) { transform: none; }
 .helper-note-labels .helper-label-rest { position: static; transform: none; white-space: nowrap; margin-left: 0.58em; }
 .helper-note-labels b { font-size: 1.35em; font-weight: 900; }
@@ -485,7 +487,16 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     #g1-grid-container, #g2-grid-container { padding-left: 8px; padding-right: 8px; }
     .smash-card.small-card { min-height: 84px; padding: 4px 3px; }
     .smash-card.small-card svg { max-height: 78px; }
-    #g2-helper-modal.helper-modal.show { inset: 4vh 4vw; max-height: 92vh; padding: 22px 8px 10px; }
+}
+
+/* Below this width the helper-section's two-column grid (label + notation)
+   leaves too little room for the notation column to draw a legible stave -
+   stack label above notation instead, and trim the modal's own padding/inset
+   to reclaim every extra pixel for the notation. Threshold is wider than the
+   420px mobile breakpoint above because it needs to cover common phone widths
+   (390-430px), not just small ones. */
+@media (max-width: 600px) {
+    .helper-modal.show { inset: 4vh 4vw; max-height: 92vh; padding: 22px 8px 10px; }
     .helper-section { width: 100%; grid-template-columns: 1fr; gap: 2px; text-align: center; font-size: 18px; }
     .helper-section > div { min-height: 130px; }
     .helper-note-labels { left: 0; right: 0; font-size: 18px; }

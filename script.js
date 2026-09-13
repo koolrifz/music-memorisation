@@ -99,7 +99,7 @@ function updateTuner() {
     tunerAnalyser.getFloatTimeDomainData(buffer);
     const frequency = detectTunerPitch(buffer, audioCtx.sampleRate);
     if (frequency) {
-        const transposition = { concert: 0, bb: 2, eb: -3, f: -7 }[tunerInstrument] || 0;
+        const transposition = { concert: 0, bb: 2, eb: -3, f: 7 }[tunerInstrument] || 0;
         const midi = 69 + 12 * Math.log2(frequency / 440) + transposition;
         const nearestMidi = Math.round(midi);
         const cents = Math.round((midi - nearestMidi) * 100);
@@ -1810,7 +1810,7 @@ function toggleG3HelperModal() {
 function applyBottomAnnotation(text) { const VF = Vex.Flow; const anno = new VF.Annotation(text); anno.setVerticalJustification(3); return anno; }
 
 const helperMnemonics = {
-    treble: { lines: 'Every Good Boy Deserves Fruit', spaces: 'FACE' },
+    treble: { lines: 'Every Good Boy Does Fine', spaces: 'FACE' },
     bass: { lines: 'Good Boys Deserve Fruit Always', spaces: 'All Cows Eat Grass' },
     alto: { lines: 'Fat Alley Cats Eat Garbage', spaces: 'Great Big Dogs Fight' },
     tenor: { lines: 'Dogs Fight All Cats Elegantly', spaces: 'Every Good Boy Deserves' }
@@ -1859,12 +1859,31 @@ function alignHelperLabelsToNotes(canvas, labelsRow) {
     });
 }
 
+// Measures how much a label row's font-size must shrink so no label overlaps
+// the next one (or runs past the canvas edge). Returns 1 when it already fits.
+function measureRequiredLabelScale(canvas, labelsRow) {
+    if (!labelsRow || !labelsRow.children.length) return 1;
+    const canvasRect = canvas.getBoundingClientRect();
+    const rects = [...labelsRow.children].map(span => span.getBoundingClientRect());
+    let ratio = 1;
+    rects.forEach((rect, index) => {
+        const rightBound = index < rects.length - 1 ? rects[index + 1].left : canvasRect.right;
+        const available = rightBound - rect.left;
+        if (available > 0 && rect.width > available) ratio = Math.min(ratio, available / rect.width);
+    });
+    return ratio;
+}
+
+function applyLabelScale(labelsRow, ratio) {
+    const baseSize = parseFloat(getComputedStyle(labelsRow).fontSize);
+    labelsRow.style.fontSize = `${Math.max(10, baseSize * ratio * 0.94)}px`;
+}
+
 function renderHelperSheetGraphics() {
     try {
         const VF = Vex.Flow; const clefSelect = document.getElementById('clef-select') || document.getElementById('g2-clef-select');
         const currentClef = clefSelect ? clefSelect.value : 'treble';
         const config = NOTE_CONFIGS[currentClef];
-        const helperWidth = Math.min(760, Math.max(320, window.innerWidth * 0.7));
         const ledgerLineMidpoint = config.ledgerLines.length / 2;
         const helperRows = [
             { ids: ['helper-lines-canvas', 'g2-helper-lines-canvas'], notes: config.staffLines, labels: helperMnemonics[currentClef].lines.split(' ') },
@@ -1872,10 +1891,24 @@ function renderHelperSheetGraphics() {
             { ids: ['helper-ledger-canvas', 'g2-helper-ledger-canvas'], ledger: true, notes: getHelperLedgerNotes(config, 'above'), belowNotes: getHelperLedgerNotes(config, 'below'), labels: getHelperLedgerNotes(config, 'above').map(note => note[0]), belowLabels: getHelperLedgerNotes(config, 'below').map(note => note[0]) }
         ];
 
+        // Each helper sheet (Note Smash's vs. Real Smash's) gets one shared
+        // shrink ratio across its three rows, so if the mnemonic sentence needs
+        // to shrink to fit, every label on that sheet shrinks together rather
+        // than ending up at mismatched sizes.
+        const pendingByInstance = {};
+        helperRows.forEach(row => row.ids.forEach(id => {
+            if (!document.getElementById(id)) return;
+            const instanceKey = id.startsWith('g2-') ? 'g2' : 'g3';
+            pendingByInstance[instanceKey] = pendingByInstance[instanceKey] || { remaining: 0, entries: [] };
+            pendingByInstance[instanceKey].remaining++;
+        }));
+
         helperRows.forEach(row => row.ids.forEach(id => {
             const canvas = document.getElementById(id);
             if (!canvas) return;
+            const instanceKey = id.startsWith('g2-') ? 'g2' : 'g3';
             canvas.innerHTML = '';
+            const helperWidth = Math.max(260, canvas.clientWidth || 320);
             const renderer = new VF.Renderer(canvas, VF.Renderer.Backends.SVG);
             renderer.resize(helperWidth, row.ledger ? 235 : 125);
             const context = renderer.getContext();
@@ -1905,10 +1938,18 @@ function renderHelperSheetGraphics() {
             requestAnimationFrame(() => {
                 alignHelperLabelsToNotes(canvas, labelsRow);
                 if (belowLabelsRow) alignHelperLabelsToNotes(canvas, belowLabelsRow);
+                const bucket = pendingByInstance[instanceKey];
+                bucket.entries.push({ canvas, labelsRow });
+                if (belowLabelsRow) bucket.entries.push({ canvas, labelsRow: belowLabelsRow });
+                bucket.remaining--;
+                if (bucket.remaining === 0) {
+                    const ratio = Math.min(1, ...bucket.entries.map(entry => measureRequiredLabelScale(entry.canvas, entry.labelsRow)));
+                    if (ratio < 1) bucket.entries.forEach(entry => applyLabelScale(entry.labelsRow, ratio));
+                }
             });
             canvas.querySelectorAll('svg line, svg path').forEach(line => { line.setAttribute('stroke', '#000000'); line.setAttribute('stroke-width', '1.3'); });
         }));
-    } catch(e) {}
+    } catch(e) { console.error('renderHelperSheetGraphics failed:', e); }
 }
 
 function updateG3TrackerUI() {
