@@ -169,6 +169,10 @@
 
     <div id="g2-screen-pathway" class="screen active">
         <div class="pathway-card">
+            <div class="clef-picker">
+                <button class="clef-picker-btn" data-clef="treble" onclick="selectClef('treble')" title="Treble Clef">𝄞</button>
+                <button class="clef-picker-btn" data-clef="bass" onclick="selectClef('bass')" title="Bass Clef">𝄢</button>
+            </div>
             <h1>Note Smash</h1>
             <p class="pathway-subtitle" id="g2-pathway-subtitle">Learn the notes, then smash the staff.</p>
             <div class="pathway-handoff" id="g2-pathway-handoff" hidden>
@@ -178,20 +182,6 @@
             <div class="pathway-track" id="g2-pathway-track"></div>
             <button class="btn btn-start" id="g2-pathway-start" onclick="startSelectedG2Stage()" disabled>Choose your mission</button>
             <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
-        </div>
-    </div>
-
-    <div id="g2-screen-setup" class="screen">
-        <div class="setup-card">
-            <h1>💥 Note Smash</h1>
-            <p>Find the right note fast in the grid.</p>
-            <select id="g2-clef-select" onchange="renderHelperSheetGraphics()">
-                <option value="treble">Treble Clef</option>
-                <option value="bass">Bass Clef</option>
-                <option value="alto">Alto Clef</option>
-                <option value="tenor">Tenor Clef</option>
-            </select>
-            <button class="btn btn-start" onclick="startG2Game()">Start 60s of Smashing</button>
         </div>
     </div>
 
@@ -223,9 +213,9 @@
             <button class="helper-close-button" onclick="toggleG2HelperModal()" aria-label="Close helpers">×</button>
             <h3>📖 Note Name Helpers</h3>
             <div class="helper-container">
-                <div class="helper-section"><strong>Lines of the Staff</strong><div id="g2-helper-lines-canvas"></div></div>
-                <div class="helper-section"><strong>Spaces of the Staff</strong><div id="g2-helper-spaces-canvas"></div></div>
-                <div class="helper-section ledger-section"><strong>Ledger Lines Above and Below the Staff</strong><div id="g2-helper-ledger-canvas"></div></div>
+                <div class="helper-section"><strong>Lines</strong><div id="g2-helper-lines-canvas"></div></div>
+                <div class="helper-section"><strong>Spaces</strong><div id="g2-helper-spaces-canvas"></div></div>
+                <div class="helper-section ledger-section"><strong>Ledger Lines</strong><div id="g2-helper-ledger-canvas"></div></div>
             </div>
             <button class="helper-back-button" onclick="toggleG2HelperModal()">Back to Smashing</button>
         </div>
@@ -273,35 +263,15 @@
     
     <div id="g3-screen-pathway" class="screen active">
         <div class="pathway-card">
+            <div class="clef-picker">
+                <button class="clef-picker-btn" data-clef="treble" onclick="selectClef('treble')" title="Treble Clef">𝄞</button>
+                <button class="clef-picker-btn" data-clef="bass" onclick="selectClef('bass')" title="Bass Clef">𝄢</button>
+            </div>
             <h1>Real Smash</h1>
             <p class="pathway-subtitle" id="g3-pathway-subtitle">Build note-reading confidence, one mission at a time.</p>
             <div class="pathway-track" id="g3-pathway-track"></div>
             <button class="btn btn-start" id="g3-pathway-start" onclick="startSelectedG3Stage()" disabled>Choose your mission</button>
             <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
-        </div>
-    </div>
-
-    <div id="g3-screen-setup" class="screen">
-        <div class="setup-card">
-            <h1>🎵 Real Smash</h1>
-            <select id="clef-select" onchange="renderHelperSheetGraphics()">
-                <option value="treble">Treble Clef</option>
-                <option value="bass">Bass Clef</option>
-                <option value="alto">Alto Clef</option>
-                <option value="tenor">Tenor Clef</option>
-            </select>
-            <select id="level-select">
-                <option value="1">Level 1: Staff Notes Only</option>
-                <option value="2">Level 2: Extended Ledger Lines</option>
-                <option value="3">Level 3: Instrument Playing (Mic Soon)</option>
-            </select>
-            <select id="mode-select" onchange="handleModeChange()">
-                <option value="drill-lines">Drill Round: Lines Only</option>
-                <option value="drill-spaces">Drill Round: Spaces Only</option>
-                <option value="drill-both">Drill Round: Lines & Spaces</option>
-                <option value="speed">Speed Round: Progressive Sprint</option>
-            </select>
-            <button class="btn btn-start" id="start-btn" onclick="startG3Game()">Start Round</button>
         </div>
     </div>
 
@@ -326,9 +296,9 @@
             <button class="helper-close-button" onclick="toggleG3HelperModal()" aria-label="Close helpers">×</button>
             <h3>📖 Note Name Helpers (Lines & Spaces)</h3>
             <div class="helper-container">
-                <div class="helper-section"><strong>Lines of the Staff</strong><div id="helper-lines-canvas"></div></div>
-                <div class="helper-section"><strong>Spaces of the Staff</strong><div id="helper-spaces-canvas"></div></div>
-                <div class="helper-section ledger-section"><strong>Ledger Lines Above and Below the Staff</strong><div id="helper-ledger-canvas"></div></div>
+                <div class="helper-section"><strong>Lines</strong><div id="helper-lines-canvas"></div></div>
+                <div class="helper-section"><strong>Spaces</strong><div id="helper-spaces-canvas"></div></div>
+                <div class="helper-section ledger-section"><strong>Ledger Lines</strong><div id="helper-ledger-canvas"></div></div>
             </div>
             <button class="helper-back-button" onclick="toggleG3HelperModal()">Back to Smashing</button>
         </div>
@@ -388,10 +358,6 @@
             <div class="summary-stat">Accuracy: <span id="final-accuracy" style="color:white; font-weight:bold;">100%</span></div>
             <div class="summary-stat" id="tier-result">Highest Tier Reached: <span id="final-tier" style="color:var(--accent-blue); font-weight:bold;">1</span></div>
             <div class="summary-stat">Personal Best: <span id="g3-personal-best" style="color:var(--accent-green); font-weight:bold;">0</span></div>
-            
-            <div id="g3-auto-progress-container" style="display:none; margin-top: 15px;">
-                <button class="btn btn-start" onclick="advanceG3Round()">Continue to Next Round ➡️</button>
-            </div>
             
             <button class="btn btn-secondary" style="margin-top: 15px;" onclick="startG3Game()">Replay Same Round</button>
             <button class="btn btn-secondary" onclick="shareGameResult('game3')">Share My Score</button>

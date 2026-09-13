@@ -254,6 +254,34 @@ const NOTE_CONFIGS = {
     }
 };
 
+// Clef choice is shared between Note Smash and Real Smash: pick it in either
+// game's setup and it carries over as the default for both.
+const AVAILABLE_CLEFS = [
+    { id: 'treble', label: 'Treble', glyph: '𝄞' },
+    { id: 'bass', label: 'Bass', glyph: '𝄢' }
+];
+
+function getClefPreference() {
+    try { return localStorage.getItem('koolRiffsClefPreference') || 'treble'; }
+    catch (error) { return 'treble'; }
+}
+
+function setClefPreference(clef) {
+    try { localStorage.setItem('koolRiffsClefPreference', clef); } catch (error) {}
+}
+
+function syncClefPickerButtons() {
+    const current = getClefPreference();
+    document.querySelectorAll('.clef-picker-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.clef === current));
+}
+
+function selectClef(clef) {
+    setClefPreference(clef);
+    syncClefPickerButtons();
+    renderG2Pathway();
+    renderG3Pathway();
+}
+
 /* =========================================
    SHARED SMASH-CARD RENDERER (Games 1 & 2)
    Renders one mini-staff note into a card, then measures what was actually
@@ -396,8 +424,6 @@ function launchGame(targetViewId) {
     
     if (targetViewId === 'view-dashboard') {
         switchScreenState('game1', 'g1-screen-setup');
-        switchScreenState('game2', 'g2-screen-setup');
-        switchScreenState('game3', 'g3-screen-setup');
     } else if (targetViewId === 'view-game1') {
         renderG1Pathway();
         switchScreenState('game1', 'g1-screen-pathway');
@@ -1281,17 +1307,28 @@ const g2PathwayStages = [
     { id: 'ledger', label: 'Ledger Notes', phase: 3 }
 ];
 
+function loadAllG2Progress() {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem('koolRiffsG2Progress') || '{}'); } catch (error) { all = {}; }
+    // Pre-clef-picker saves were one flat object (implicitly treble); migrate
+    // that into treble's slot instead of discarding it.
+    if (all && all.unlockedStages) all = { treble: all };
+    return all || {};
+}
+
 function getG2PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
-    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG2Progress') || '{}') }; }
-    catch (error) { return fallback; }
+    return { ...fallback, ...(loadAllG2Progress()[getClefPreference()] || {}) };
 }
 
 function saveG2PathwayProgress(progress) {
-    localStorage.setItem('koolRiffsG2Progress', JSON.stringify(progress));
+    const all = loadAllG2Progress();
+    all[getClefPreference()] = progress;
+    localStorage.setItem('koolRiffsG2Progress', JSON.stringify(all));
 }
 
 function renderG2Pathway() {
+    syncClefPickerButtons();
     const progress = getG2PathwayProgress();
     const unlocked = new Set(progress.unlockedStages || ['lines']);
     const track = document.getElementById('g2-pathway-track');
@@ -1333,7 +1370,6 @@ function selectG2Stage(stageId, rerender = true) {
 }
 
 function startSelectedG2Stage() {
-    switchScreenState('game2', 'g2-screen-setup');
     startG2Game();
 }
 
@@ -1431,7 +1467,7 @@ function startG2Game() {
     switchScreenState('game2', 'g2-screen-game');
     speechRoundActive = true;
     
-    const clefName = document.getElementById('g2-clef-select').value;
+    const clefName = getClefPreference();
     renderFloatingClef('g2-clef-display', clefName);
 
     startG2Timer(); loadG2Grid();
@@ -1578,7 +1614,7 @@ function loadG2Grid() {
     let cardCount = g2Tiers[g2TierIndex];
     container.style.gridTemplateColumns = 'repeat(3, 1fr)';
 
-    const clefName = document.getElementById('g2-clef-select').value;
+    const clefName = getClefPreference();
     const config = NOTE_CONFIGS[clefName];
     
     let pool = [];
@@ -1689,6 +1725,7 @@ function startNextG2Stage() {
     GAME 3: REAL SMASH
    ========================================= */
 let isPianoInput = true; let watchListQueue = []; let currentFlashcardPitch = null; let currentMode = 'drill-both';
+let currentG3Level = '1';
 let currentTier = 1; let currentStreak = 0; let highestTierCompleted = 0; let score = 0; let totalAttempts = 0; let correctAttempts = 0;
 let currentExpectedNotes = []; let activeInputIndex = 0;
 let g3SelectedStage = 'lines';
@@ -1700,17 +1737,28 @@ const g3PathwayStages = [
     { id: 'real-smash', label: 'Real Staff Smash', mode: 'speed', level: '2' }
 ];
 
+function loadAllG3Progress() {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem('koolRiffsG3Progress') || '{}'); } catch (error) { all = {}; }
+    // Pre-clef-picker saves were one flat object (implicitly treble); migrate
+    // that into treble's slot instead of discarding it.
+    if (all && all.unlockedStages) all = { treble: all };
+    return all || {};
+}
+
 function getG3PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
-    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG3Progress') || '{}') }; }
-    catch (error) { return fallback; }
+    return { ...fallback, ...(loadAllG3Progress()[getClefPreference()] || {}) };
 }
 
 function saveG3PathwayProgress(progress) {
-    localStorage.setItem('koolRiffsG3Progress', JSON.stringify(progress));
+    const all = loadAllG3Progress();
+    all[getClefPreference()] = progress;
+    localStorage.setItem('koolRiffsG3Progress', JSON.stringify(all));
 }
 
 function renderG3Pathway() {
+    syncClefPickerButtons();
     const progress = getG3PathwayProgress();
     const unlocked = new Set(progress.unlockedStages || ['lines']);
     const track = document.getElementById('g3-pathway-track');
@@ -1751,12 +1799,6 @@ function selectG3Stage(stageId, rerender = true) {
 }
 
 function startSelectedG3Stage() {
-    const stage = g3PathwayStages.find(stageItem => stageItem.id === g3SelectedStage);
-    if (!stage) return;
-    document.getElementById('level-select').value = stage.level;
-    document.getElementById('mode-select').value = stage.mode;
-    handleModeChange();
-    switchScreenState('game3', 'g3-screen-setup');
     startG3Game();
 }
 
@@ -1775,13 +1817,6 @@ function recordG3StageResult(isOfficialSmash) {
 }
 
 function getTimeLimitForTier(tier) { return tier + 1; }
-
-function handleModeChange() {
-    const mode = document.getElementById('mode-select').value;
-    const speedOpt = document.getElementById('mode-select').options[3];
-    if(mode === 'speed') speedOpt.text = "Speed Round: Lines & Spaces (Forced)";
-    else speedOpt.text = "Speed Round: Progressive Sprint";
-}
 
 function toggleInputMethod() {
     isPianoInput = !isPianoInput;
@@ -1881,8 +1916,8 @@ function applyLabelScale(labelsRow, ratio) {
 
 function renderHelperSheetGraphics() {
     try {
-        const VF = Vex.Flow; const clefSelect = document.getElementById('clef-select') || document.getElementById('g2-clef-select');
-        const currentClef = clefSelect ? clefSelect.value : 'treble';
+        const VF = Vex.Flow;
+        const currentClef = getClefPreference();
         const config = NOTE_CONFIGS[currentClef];
         const ledgerLineMidpoint = config.ledgerLines.length / 2;
         const helperRows = [
@@ -1967,11 +2002,8 @@ function startG3Game() {
     initAudio(); score = 0; totalAttempts = 0; correctAttempts = 0; secondsLeft = 60; watchListQueue = [];
     currentTier = 1; currentStreak = 0; highestTierCompleted = 0;
     const selectedStage = g3PathwayStages.find(stage => stage.id === g3SelectedStage);
-    if (selectedStage) {
-        document.getElementById('level-select').value = selectedStage.level;
-        document.getElementById('mode-select').value = selectedStage.mode;
-    }
-    currentMode = document.getElementById('mode-select').value;
+    currentG3Level = selectedStage.level;
+    currentMode = selectedStage.mode;
     updateG3TrackerUI();
     switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); loadNextCard();
 }
@@ -2007,9 +2039,9 @@ function loadNextCard() {
         const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
         const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
         
-        const clefName = document.getElementById('clef-select').value;
+        const clefName = getClefPreference();
         const config = NOTE_CONFIGS[clefName];
-        const level = document.getElementById('level-select').value;
+        const level = currentG3Level;
         
         let combinedPool = [];
         if (currentMode === 'speed') {
@@ -2141,33 +2173,29 @@ function finishG3Round(isGraduation = false) {
     document.getElementById('final-accuracy').innerText = `${accuracy}%`;
     document.getElementById('g3-personal-best').innerText = `${personalBests.game3[currentMode]} ${isNewPb ? '(New PB! 🎉)' : ''}`;
     
-    let medal = 'Keep Practising! 💪'; 
-    const autoProgContainer = document.getElementById('g3-auto-progress-container');
+    let medal = 'Keep Practising! 💪';
     const title = document.getElementById('g3-summary-title');
     const nextStageButton = document.getElementById('g3-next-stage-button');
     const selectedStageIndex = g3PathwayStages.findIndex(stage => stage.id === g3SelectedStage);
     const nextStage = g3PathwayStages[selectedStageIndex + 1];
     nextStageButton.style.display = 'none';
-    
+
     if (currentMode === 'speed') {
         document.getElementById('tier-result').style.display = 'block';
         document.getElementById('final-tier').innerText = highestTierCompleted;
-        if (highestTierCompleted === 4) medal = 'Gold 🥇'; else if (highestTierCompleted === 3) medal = 'Silver 🥈'; else if (highestTierCompleted === 2) medal = 'Bronze 🥉'; 
-        autoProgContainer.style.display = 'none';
+        if (highestTierCompleted === 4) medal = 'Gold 🥇'; else if (highestTierCompleted === 3) medal = 'Silver 🥈'; else if (highestTierCompleted === 2) medal = 'Bronze 🥉';
         title.innerText = g3SelectedStage === 'real-smash' ? 'You Smashed Real Staff! 🌟' : `You Crushed ${g3PathwayStages[selectedStageIndex].label}! 🌟`;
     } else {
         document.getElementById('tier-result').style.display = 'none';
         if (isGraduation || (accuracy >= 95 && score >= 30)) {
             medal = 'Perfect Drill! 🌟';
             title.innerText = `You Crushed ${g3PathwayStages[selectedStageIndex].label}! 🌟`;
-            autoProgContainer.style.display = 'none';
             if (nextStage) {
                 nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
                 nextStageButton.style.display = 'block';
             }
         } else {
             title.innerText = "Round Complete!";
-            autoProgContainer.style.display = 'none';
         }
     }
     
@@ -2182,13 +2210,6 @@ function startNextG3Stage() {
     startSelectedG3Stage();
 }
 
-function advanceG3Round() {
-    const select = document.getElementById('mode-select');
-    if (currentMode === 'drill-lines') select.value = 'drill-spaces';
-    else if (currentMode === 'drill-spaces') select.value = 'drill-both';
-    else if (currentMode === 'drill-both') select.value = 'speed';
-    startG3Game();
-}
 
 window.addEventListener('keydown', (e) => {
     const key = e.key.toUpperCase();

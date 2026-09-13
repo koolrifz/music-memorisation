@@ -144,6 +144,9 @@ body {
 .pathway-node-label { font-size: 11px; font-weight: 900; line-height: 1.1; }
 .pathway-node small { font-size: 9px; color: var(--accent-gold); }
 .pathway-card .btn-text { margin-top: 14px; color: var(--text-muted); }
+.clef-picker { display: flex; justify-content: flex-start; gap: 8px; margin-bottom: 10px; }
+.clef-picker-btn { width: 34px; height: 34px; border-radius: 8px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 18px; line-height: 1; display: grid; place-items: center; cursor: pointer; }
+.clef-picker-btn.active { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(255,200,0,0.12); }
 @media (max-width: 480px) { .pathway-card { padding-left: 8px; padding-right: 8px; } .pathway-node { min-height: 76px; } .pathway-node-label { font-size: 9px; } }
 .setup-card h1 { margin: 0 0 6px 0; font-size: 28px; color: var(--accent-gold); text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
 .setup-card p { margin: 0 0 20px 0; font-size: 15px; color: var(--text-muted); }
