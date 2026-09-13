@@ -282,6 +282,23 @@ function selectClef(clef) {
     renderG3Pathway();
 }
 
+// Self-heals a pathway's unlocked-stages list against its own stage records:
+// a save race between two completions can drop a stage from the saved
+// unlocked list even though its progress record shows it was cleared (which
+// is only possible once its predecessor unlocked it). Deriving "unlocked"
+// from "cleared" here means a stage can never appear locked behind one the
+// player has already finished.
+function normalizeUnlockedStages(progress, stages) {
+    const unlocked = new Set(progress.unlockedStages || [stages[0].id]);
+    stages.forEach((stage, index) => {
+        if (progress.stageProgress?.[stage.id]?.cleared) {
+            unlocked.add(stage.id);
+            if (stages[index + 1]) unlocked.add(stages[index + 1].id);
+        }
+    });
+    return [...unlocked];
+}
+
 /* =========================================
    SHARED SMASH-CARD RENDERER (Games 1 & 2)
    Renders one mini-staff note into a card, then measures what was actually
@@ -691,7 +708,7 @@ function getG1LedgerBonusPrompt(target) {
 }
 
 function getG1LedgerBonusPositions(config) {
-    return getG1OrientationPositions(config).filter(position => position.type === 'ledger');
+    return getG1OrientationPositions(config).filter(position => position.label.startsWith('Ledger'));
 }
 
 function startG1LedgerBonus() {
@@ -1054,8 +1071,14 @@ function loadG1Grid() {
         const prompt = numberedPhase ? `SMASH ${orientationTarget.label}` : `SMASH A ${targetType.toUpperCase()}`;
         const shouldSpeakPrompt = g1CurrentPromptLabel !== prompt;
         g1CurrentPromptLabel = prompt;
-        document.getElementById('g1-target-instruction-display').innerText = prompt.toUpperCase();
-        if (shouldSpeakPrompt) speakLetter(numberedPhase ? orientationTarget.label : `a ${targetType}`);
+        const instructionDisplay = document.getElementById('g1-target-instruction-display');
+        instructionDisplay.innerText = prompt.toUpperCase();
+        instructionDisplay.style.color = numberedPhase ? 'var(--text-main)' : targetType === 'line' ? 'var(--accent-blue)' : 'var(--accent-gold)';
+        // Mixed phase deliberately stays silent on the line/space instruction -
+        // the whole point is training the player to scan the colour-coded text
+        // instead of listening for it. A voice hint here would let them skip
+        // that scanning skill.
+        if (shouldSpeakPrompt && g1Level2Phase !== 2) speakLetter(numberedPhase ? orientationTarget.label : `a ${targetType}`);
         updateG1TrackerUI();
     } else {
         g1TargetType = Math.random() > 0.5 ? 'line' : 'space';
@@ -1297,6 +1320,7 @@ const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
 let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
 let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false; let g2RoundStartedAt = 0;
+let g2LastAnnouncedNote = '';
 let tunerInstrument = 'concert';
 let g2DuplicateBonusEligible = false; let g2DuplicateBonusAwarded = false;
 let g2SelectedStage = 'lines';
@@ -1318,7 +1342,9 @@ function loadAllG2Progress() {
 
 function getG2PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
-    return { ...fallback, ...(loadAllG2Progress()[getClefPreference()] || {}) };
+    const progress = { ...fallback, ...(loadAllG2Progress()[getClefPreference()] || {}) };
+    progress.unlockedStages = normalizeUnlockedStages(progress, g2PathwayStages);
+    return progress;
 }
 
 function saveG2PathwayProgress(progress) {
@@ -1462,6 +1488,7 @@ function startG2Game() {
 
     g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Phase = g2PathwayStages.find(stage => stage.id === g2SelectedStage)?.phase ?? 0; g2Streak = 0; g2DudStreak = 0;
     g2SecondsLeft = 60; g2Watchlist = {}; g2IsTransitioning = false; g2LastScreenWasDud = false; g2PendingStageAdvance = false; g2CarriedStageTime = 0;
+    g2LastAnnouncedNote = '';
     updateG2WatchlistBadge(); updateG2TrackerUI();
     
     switchScreenState('game2', 'g2-screen-game');
@@ -1629,7 +1656,7 @@ function loadG2Grid() {
     g2DuplicateBonusAwarded = false;
     
     document.getElementById('g2-target-note-display').innerText = `SMASH ${g2TargetNote}`;
-    speakLetter(g2TargetNote);
+    if (g2TargetNote !== g2LastAnnouncedNote) { speakLetter(g2TargetNote); g2LastAnnouncedNote = g2TargetNote; }
     
     let isDud = !g2LastScreenWasDud && Math.random() < 0.15;
     g2TargetsPresent = isDud ? 0 : (cardCount === 3 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : Math.floor(Math.random() * 2) + 3);
@@ -1748,7 +1775,9 @@ function loadAllG3Progress() {
 
 function getG3PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
-    return { ...fallback, ...(loadAllG3Progress()[getClefPreference()] || {}) };
+    const progress = { ...fallback, ...(loadAllG3Progress()[getClefPreference()] || {}) };
+    progress.unlockedStages = normalizeUnlockedStages(progress, g3PathwayStages);
+    return progress;
 }
 
 function saveG3PathwayProgress(progress) {
