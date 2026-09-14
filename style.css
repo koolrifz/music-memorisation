@@ -513,39 +513,52 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 /* =========================================
    GAME 4: RHYTHM (Counting round, Level 1)
    ========================================= */
-.rhythm-header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; margin: 50px auto 10px; padding: 0 4px; }
+.rhythm-header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; margin: 46px auto 8px; padding: 0 4px; }
 .rhythm-header-label { font-weight: 900; color: var(--accent-gold); font-size: 15px; }
 
-.rhythm-bars { width: 100%; max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* One time signature per 4-bar screen, shown big and gold instead of
+   announced or repeated per bar - see rhythm-pillar-design-brief.md
+   follow-up: the game isn't clef-specific, so nothing needs a clef either. */
+.rhythm-time-signature { display: flex; flex-direction: column; align-items: center; line-height: 0.85; color: var(--accent-gold); font-weight: 900; font-size: 22px; }
+
+/* The staff is the single most important thing on this screen - it's what
+   the student is actually decoding - so it's one continuous panel (not 4
+   separate boxed cards eating space on borders/padding/backgrounds) with
+   thin barline dividers between bars, and a tall render area. */
+.rhythm-bars { width: 100%; max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; background: var(--bg-panel); border: 2px solid #324a64; border-radius: 12px; padding: 6px 2px 4px; }
 .rhythm-bars.portrait-layout { grid-template-columns: repeat(2, 1fr); }
 
-.rhythm-bar { background: var(--bg-panel); border: 2px solid #324a64; border-radius: 12px; padding: 6px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.rhythm-bar.active { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.2); }
-.rhythm-bar-staff { width: 100%; min-height: 60px; }
+.rhythm-bar { border-right: 2px solid #324a64; padding: 0 3px 3px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.rhythm-bar:last-child { border-right: none; }
+.rhythm-bars.portrait-layout .rhythm-bar { border-right: none; }
+.rhythm-bars.portrait-layout .rhythm-bar:nth-child(odd) { border-right: 2px solid #324a64; }
+.rhythm-bars.portrait-layout .rhythm-bar:nth-child(-n+2) { border-bottom: 2px solid #324a64; padding-bottom: 6px; }
+.rhythm-bar.active { background: rgba(255,200,0,0.1); border-radius: 8px; }
+.rhythm-bar-staff { width: 100%; height: 58px; overflow: hidden; }
 .rhythm-bar-staff svg { display: block; width: 100%; height: auto; }
 
-.rhythm-beat-strip { display: flex; gap: 3px; width: 100%; justify-content: center; }
-.rhythm-beat-cell { flex: 1; max-width: 34px; height: 24px; border-radius: 6px; border: 2px solid #526b85; display: grid; place-items: center; font-size: 11px; font-weight: 900; color: var(--text-muted); background: transparent; }
+.rhythm-beat-strip { display: flex; gap: 4px; width: 100%; justify-content: space-between; }
+.rhythm-beat-cell { flex: 1; height: 17px; border-radius: 5px; border: 2px solid #526b85; display: grid; place-items: center; font-size: 10px; font-weight: 900; color: var(--text-muted); background: transparent; }
 .rhythm-beat-cell.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
 .rhythm-beat-cell.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
 .rhythm-beat-cell.filled-rest { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
 .rhythm-beat-cell.reveal-answer { outline: 2px dashed white; outline-offset: 1px; }
 
-.rhythm-feedback { width: 100%; max-width: 640px; margin: 4px auto; text-align: center; font-weight: 900; padding: 8px; border-radius: 10px; }
+.rhythm-feedback { width: 100%; max-width: 640px; margin: 4px auto; text-align: center; font-weight: 900; padding: 6px; border-radius: 10px; }
 .rhythm-feedback.correct { background: rgba(88,204,2,0.18); color: var(--accent-green); }
 .rhythm-feedback.wrong { background: rgba(255,75,75,0.18); color: var(--accent-red); }
 
-.rhythm-controls { width: 100%; max-width: 640px; margin: 8px auto; display: flex; flex-direction: column; gap: 8px; }
+.rhythm-controls { width: 100%; max-width: 640px; margin: 6px auto; display: flex; flex-direction: column; gap: 6px; }
 .rhythm-mode-row { display: grid; grid-template-columns: repeat(3, 1fr) 54px; gap: 6px; }
-.rhythm-mode-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 20px; cursor: pointer; }
-.rhythm-mode-btn span { font-size: 11px; font-weight: 900; text-transform: uppercase; }
+.rhythm-mode-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 12px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 18px; cursor: pointer; }
+.rhythm-mode-btn span { font-size: 10px; font-weight: 900; text-transform: uppercase; }
 .rhythm-mode-btn[data-mode="play"].active { background: var(--accent-green); border-color: var(--accent-green); color: white; }
 .rhythm-mode-btn[data-mode="hold"].active { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
 .rhythm-mode-btn[data-mode="rest"].active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
-.rhythm-undo-btn { border-radius: 12px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 22px; cursor: pointer; }
+.rhythm-undo-btn { border-radius: 12px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 20px; cursor: pointer; }
 
 .rhythm-number-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.rhythm-number-btn { min-height: 64px; border-radius: 14px; border: 2px solid #526b85; background: transparent; color: var(--text-muted); font-size: 26px; font-weight: 900; cursor: pointer; }
+.rhythm-number-btn { min-height: 52px; border-radius: 14px; border: 2px solid #526b85; background: transparent; color: var(--text-muted); font-size: 24px; font-weight: 900; cursor: pointer; }
 .rhythm-number-btn.next { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.25); animation: rhythmBlink 1s ease-in-out infinite; }
 .rhythm-number-btn:disabled { opacity: 0.35; cursor: default; }
 .rhythm-number-btn.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
@@ -554,7 +567,7 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 @keyframes rhythmBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
-#rhythm-submit-button { max-width: 640px; margin: 10px auto 0; }
+#rhythm-submit-button { max-width: 640px; margin: 8px auto 0; }
 
 @media (max-width: 480px) {
     .rhythm-bars { grid-template-columns: repeat(2, 1fr); }

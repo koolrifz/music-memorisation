@@ -290,28 +290,50 @@ function renderRhythmBeatsToNotes(entries) {
     return notes;
 }
 
+// Rhythm doesn't care about pitch - only when a note starts - so the staff
+// is a single rhythm line with no clef, matching standard percussion/rhythm
+// notation. Notes still carry an internal treble-clef position (keys:
+// ['b/4']) so VexFlow's y-coordinate math is unchanged from a normal 5-line
+// stave - setConfigForLines then hides every line except the one that
+// position actually sits on, rather than using num_lines (which redraws a
+// reduced stave but keeps the *full* 5-line coordinate space internally, so
+// a note at 'b/4' - the middle line - ends up positioned below the visible
+// canvas entirely). Nothing about the clef itself is ever drawn.
 function renderRhythmBarStaff(container, entries) {
     container.innerHTML = '';
     const VF = Vex.Flow;
     const width = Math.max(120, container.clientWidth || 140);
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(width, 80);
+    renderer.resize(width, 180);
     const context = renderer.getContext();
-    const stave = new VF.Stave(4, 5, width - 8);
-    stave.addClef('treble');
+    const stave = new VF.Stave(4, 70, width - 8);
+    stave.setConfigForLines([
+        { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
+    ]);
     stave.setContext(context).draw();
 
     const notesSpec = renderRhythmBeatsToNotes(entries);
-    if (!notesSpec) return;
-    const staveNotes = notesSpec.map(spec => {
-        const duration = RHYTHM_DURATION_FOR_BEATS[spec.beats];
-        if (!duration) { console.warn(`Rhythm: no duration mapping for a ${spec.beats}-beat run yet (ties not built).`); return null; }
-        return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
-    }).filter(Boolean);
-    if (staveNotes.length !== notesSpec.length) return;
-    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-    new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, width - 50));
-    voice.draw(context, stave);
+    if (notesSpec) {
+        const staveNotes = notesSpec.map(spec => {
+            const duration = RHYTHM_DURATION_FOR_BEATS[spec.beats];
+            if (!duration) { console.warn(`Rhythm: no duration mapping for a ${spec.beats}-beat run yet (ties not built).`); return null; }
+            return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+        }).filter(Boolean);
+        if (staveNotes.length === notesSpec.length) {
+            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+            new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, width - 50));
+            voice.draw(context, stave);
+        }
+    }
+
+    // The stave math above is untouched 5-line positioning (so 'b/4' keeps
+    // landing correctly) - only one line is drawn, but the canvas still
+    // reserves room for the other four, plus headroom for stems/rests above
+    // and below the line. Crop the display down to just that band via the
+    // container's fixed height + overflow, so no vertical space goes to
+    // waste on blank canvas that VexFlow doesn't draw into.
+    const svg = container.querySelector('svg');
+    if (svg) svg.style.marginTop = '-90px';
 }
 
 function setupRhythmOrientationListener() {
