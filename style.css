@@ -108,11 +108,13 @@ body {
 .game-card.purple:active { border-color: var(--accent-purple); }
 .game-card.blue:active { border-color: var(--accent-blue); }
 .game-card.green:active { border-color: var(--accent-green); }
+.game-card.gold:active { border-color: var(--accent-gold); }
 
 .game-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; color: white; font-weight: 900; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
 .icon-purple { background: var(--accent-purple); }
 .icon-blue { background: var(--accent-blue); }
 .icon-green { background: var(--accent-green); }
+.icon-gold { background: var(--accent-gold); color: var(--bg-dark); }
 
 .game-details h2 { margin: 0 0 4px 0; font-size: 20px; color: white; }
 .game-details p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.3; }
@@ -136,6 +138,7 @@ body {
 .g2-summary-handoff-line + .g2-summary-handoff-line { color: var(--accent-blue); margin-top: 3px; }
 .pathway-track { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; align-items: stretch; }
 #g2-pathway-track { grid-template-columns: repeat(4, 1fr); }
+#rhythm-pathway-track { grid-template-columns: repeat(1, 1fr); max-width: 160px; margin: 0 auto; }
 .pathway-node { min-width: 0; min-height: 88px; padding: 8px 4px; border: 2px solid #526b85; border-radius: 12px; background: transparent; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
 .pathway-node.unlocked { color: white; border-color: var(--accent-blue); background: rgba(28,176,246,0.12); }
 .pathway-node.recommended { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.2); }
@@ -176,6 +179,7 @@ body {
 
 select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; color: white; border: 3px solid #324a64; border-radius: 16px; font-size: 16px; font-weight: bold; outline: none; }
 .btn { width: 100%; padding: 16px; font-size: 18px; font-weight: 800; border-radius: 18px; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; color: white; transition: transform 0.1s; touch-action: manipulation; position: relative; z-index: 30; }
+.btn:disabled { opacity: 0.4; cursor: default; filter: grayscale(0.6); }
 .btn-start { background: var(--accent-green); box-shadow: 0 6px 0 var(--accent-green-shadow); margin-top: 10px; }
 .btn-start:active { transform: translateY(6px); box-shadow: 0 0 0 var(--accent-green-shadow); }
 .btn-secondary { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; margin-top: 10px; font-size: 15px; padding: 14px; }
@@ -504,4 +508,54 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     .helper-section { width: 100%; grid-template-columns: 1fr; gap: 2px; text-align: center; font-size: 18px; }
     .helper-section > div { min-height: 130px; }
     .helper-note-labels { left: 0; right: 0; font-size: 18px; }
+}
+
+/* =========================================
+   GAME 4: RHYTHM (Counting round, Level 1)
+   ========================================= */
+.rhythm-header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; margin: 50px auto 10px; padding: 0 4px; }
+.rhythm-header-label { font-weight: 900; color: var(--accent-gold); font-size: 15px; }
+
+.rhythm-bars { width: 100%; max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rhythm-bars.portrait-layout { grid-template-columns: repeat(2, 1fr); }
+
+.rhythm-bar { background: var(--bg-panel); border: 2px solid #324a64; border-radius: 12px; padding: 6px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rhythm-bar.active { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.2); }
+.rhythm-bar-staff { width: 100%; min-height: 60px; }
+.rhythm-bar-staff svg { display: block; width: 100%; height: auto; }
+
+.rhythm-beat-strip { display: flex; gap: 3px; width: 100%; justify-content: center; }
+.rhythm-beat-cell { flex: 1; max-width: 34px; height: 24px; border-radius: 6px; border: 2px solid #526b85; display: grid; place-items: center; font-size: 11px; font-weight: 900; color: var(--text-muted); background: transparent; }
+.rhythm-beat-cell.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
+.rhythm-beat-cell.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
+.rhythm-beat-cell.filled-rest { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+.rhythm-beat-cell.reveal-answer { outline: 2px dashed white; outline-offset: 1px; }
+
+.rhythm-feedback { width: 100%; max-width: 640px; margin: 4px auto; text-align: center; font-weight: 900; padding: 8px; border-radius: 10px; }
+.rhythm-feedback.correct { background: rgba(88,204,2,0.18); color: var(--accent-green); }
+.rhythm-feedback.wrong { background: rgba(255,75,75,0.18); color: var(--accent-red); }
+
+.rhythm-controls { width: 100%; max-width: 640px; margin: 8px auto; display: flex; flex-direction: column; gap: 8px; }
+.rhythm-mode-row { display: grid; grid-template-columns: repeat(3, 1fr) 54px; gap: 6px; }
+.rhythm-mode-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 20px; cursor: pointer; }
+.rhythm-mode-btn span { font-size: 11px; font-weight: 900; text-transform: uppercase; }
+.rhythm-mode-btn[data-mode="play"].active { background: var(--accent-green); border-color: var(--accent-green); color: white; }
+.rhythm-mode-btn[data-mode="hold"].active { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
+.rhythm-mode-btn[data-mode="rest"].active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+.rhythm-undo-btn { border-radius: 12px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-size: 22px; cursor: pointer; }
+
+.rhythm-number-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rhythm-number-btn { min-height: 64px; border-radius: 14px; border: 2px solid #526b85; background: transparent; color: var(--text-muted); font-size: 26px; font-weight: 900; cursor: pointer; }
+.rhythm-number-btn.next { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.25); animation: rhythmBlink 1s ease-in-out infinite; }
+.rhythm-number-btn:disabled { opacity: 0.35; cursor: default; }
+.rhythm-number-btn.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
+.rhythm-number-btn.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
+.rhythm-number-btn.filled-rest { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+
+@keyframes rhythmBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+#rhythm-submit-button { max-width: 640px; margin: 10px auto 0; }
+
+@media (max-width: 480px) {
+    .rhythm-bars { grid-template-columns: repeat(2, 1fr); }
 }

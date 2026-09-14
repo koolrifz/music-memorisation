@@ -450,6 +450,9 @@ function launchGame(targetViewId) {
     } else if (targetViewId === 'view-game3') {
         renderG3Pathway();
         switchScreenState('game3', 'g3-screen-pathway');
+    } else if (targetViewId === 'view-rhythm') {
+        renderRhythmPathway();
+        switchScreenState('rhythm', 'rhythm-screen-pathway');
     }
 }
 

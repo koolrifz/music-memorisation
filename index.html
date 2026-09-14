@@ -38,6 +38,13 @@
                 <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
             </div>
         </div>
+        <div class="game-card gold" onclick="launchGame('view-rhythm')">
+            <div class="game-icon icon-gold">4</div>
+            <div class="game-details">
+                <h2>Rhythm</h2>
+                <p>Count when the next note starts, before you ever play it.</p>
+            </div>
+        </div>
     </div>
 
     <section class="practice-tools" aria-label="Kool Riffs practice tools">
@@ -366,6 +373,46 @@
     </div>
 </div>
 
+<!-- GAME 4 VIEW (Rhythm) -->
+<div id="view-rhythm" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleRhythmBackButton()">⬅ Back</button>
+    </div>
+
+    <div id="rhythm-screen-pathway" class="screen active">
+        <div class="pathway-card">
+            <h1>Rhythm</h1>
+            <p class="pathway-subtitle" id="rhythm-pathway-subtitle">Count when the next note starts, before you play it.</p>
+            <div class="pathway-track" id="rhythm-pathway-track"></div>
+            <button class="btn btn-start" id="rhythm-pathway-start" onclick="startSelectedRhythmLevel()" disabled>Choose your mission</button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div id="rhythm-screen-counting" class="screen">
+        <div class="rhythm-header">
+            <div class="rhythm-header-label" id="rhythm-level-label">Level 1: Whole Notes</div>
+            <div class="tier-tracker">Streak: <span class="streak-dots" id="rhythm-streak-dots"></span></div>
+        </div>
+
+        <div class="rhythm-bars" id="rhythm-bars-container"></div>
+
+        <div class="rhythm-feedback" id="rhythm-feedback" hidden></div>
+
+        <div class="rhythm-controls">
+            <div class="rhythm-mode-row">
+                <button class="rhythm-mode-btn" data-mode="play" onclick="setRhythmMode('play')">▶<span>Play</span></button>
+                <button class="rhythm-mode-btn" data-mode="hold" onclick="setRhythmMode('hold')">﹉<span>Hold</span></button>
+                <button class="rhythm-mode-btn" data-mode="rest" onclick="setRhythmMode('rest')">✖<span>Rest</span></button>
+                <button class="rhythm-undo-btn" onclick="undoRhythmStamp()" title="Undo" aria-label="Undo">↺</button>
+            </div>
+            <div class="rhythm-number-row" id="rhythm-number-row"></div>
+        </div>
+
+        <button class="btn btn-start" id="rhythm-submit-button" onclick="submitRhythmPhrase()" disabled>Submit</button>
+    </div>
+</div>
+
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-credits">
     <div class="credits-box">
@@ -419,6 +466,19 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="modal-rhythm-level-complete">
+    <div class="stage-complete-box">
+        <div class="stage-complete-kicker">Level Mastered!</div>
+        <h3 id="rhythm-level-complete-title">Level 1 mastered!</h3>
+        <p>Three phrases counted correctly in a row.</p>
+        <div class="stage-complete-stats">
+            <div><strong id="rhythm-level-complete-score">0</strong><span>score</span></div>
+        </div>
+        <button class="btn btn-start" onclick="continueAfterRhythmLevel()">Continue</button>
+    </div>
+</div>
+
 <script src="script.js"></script>
+<script src="rhythm.js"></script>
 </body>
 </html>
