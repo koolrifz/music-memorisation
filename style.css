@@ -529,29 +529,29 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rhythm-time-signature { display: flex; flex-direction: column; align-items: center; line-height: 0.85; color: var(--accent-gold); font-weight: 900; font-size: 22px; }
 
 /* The staff is the single most important thing on this screen - it's what
-   the student is actually decoding - so it's one continuous panel (not 4
-   separate boxed cards eating space on borders/padding/backgrounds) with
-   thin barline dividers between bars, and a tall render area. */
-.rhythm-bars { width: 100%; max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; background: var(--bg-panel); border: 2px solid #324a64; border-radius: 12px; padding: 6px 2px 4px; }
-.rhythm-bars.portrait-layout { grid-template-columns: repeat(2, 1fr); }
-
-.rhythm-bar { border-right: 2px solid #324a64; padding: 0 3px 3px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.rhythm-bar:last-child { border-right: none; }
-.rhythm-bars.portrait-layout .rhythm-bar { border-right: none; }
-.rhythm-bars.portrait-layout .rhythm-bar:nth-child(odd) { border-right: 2px solid #324a64; }
-.rhythm-bars.portrait-layout .rhythm-bar:nth-child(-n+2) { border-bottom: 2px solid #324a64; padding-bottom: 6px; }
-.rhythm-bar.active { background: rgba(255,200,0,0.14); border-radius: 8px; }
+   the student is actually decoding - so it's one continuous panel (not
+   separate boxed cards eating space on borders/padding/backgrounds) with a
+   tall render area. Bars are grouped into rows (1 row of 4 in landscape, 2
+   rows of 2 in portrait - see renderRhythmBars in rhythm.js), each row
+   sharing one VexFlow canvas so a cross-barline tie can be drawn as a real
+   curve between adjacent bars. */
+.rhythm-bars { width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; background: var(--bg-panel); border: 2px solid #324a64; border-radius: 12px; padding: 6px 2px 4px; }
 
 /* Printed-page look for the notation itself: a real white background behind
    the staff, independent of the dark app theme. Note/rest fill colors and
    the stave line's color are set directly in rhythm.js via VexFlow's own
    setStyle (so they can differ - green notes, blue rests - without a CSS
    rule fighting that per-note color); nothing here touches our shared
-   --text-main/--bg-panel variables. */
-.rhythm-bar-staff { width: 100%; height: 70px; overflow: hidden; background: #ffffff; border-radius: 4px; }
-.rhythm-bar-staff svg { display: block; width: 100%; height: auto; }
+   --text-main/--bg-panel variables. The active-bar highlight is also drawn
+   directly into this same canvas (a filled rect behind that bar's stave),
+   since the staff is no longer a separate div per bar to toggle a class on. */
+.rhythm-row-staff { width: 100%; height: 70px; overflow: hidden; background: #ffffff; border-radius: 4px; }
+.rhythm-row-staff svg { display: block; width: 100%; height: auto; }
 
-.rhythm-beat-strip { display: flex; gap: 4px; width: 100%; justify-content: space-between; }
+.rhythm-beat-strip-row { display: flex; gap: 0; width: 100%; }
+.rhythm-beat-strip-group { flex: 1; display: flex; gap: 4px; padding: 2px; border-right: 2px solid #324a64; justify-content: space-between; }
+.rhythm-beat-strip-group:last-child { border-right: none; }
+.rhythm-beat-strip-group.active { background: rgba(255,200,0,0.14); border-radius: 8px; }
 .rhythm-beat-cell { flex: 1; height: 17px; border-radius: 5px; border: 2px solid #526b85; display: grid; place-items: center; font-size: 10px; font-weight: 900; color: var(--text-muted); background: transparent; }
 .rhythm-beat-cell.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
 .rhythm-beat-cell.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
@@ -594,7 +594,3 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    button just needs to be smaller than the site-wide default so the
    notation grid above stays the visual focus of the screen. */
 #rhythm-submit-button { max-width: 640px; margin: 6px auto 0; padding: 10px; font-size: 15px; }
-
-@media (max-width: 480px) {
-    .rhythm-bars { grid-template-columns: repeat(2, 1fr); }
-}

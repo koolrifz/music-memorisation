@@ -45,7 +45,8 @@ const RHYTHM_LEVELS = [
     { id: '3', label: 'Level 3: Whole and Half Notes and Rests', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'] },
     { id: '4', label: 'Level 4: Quarter Notes and Rests', shortLabel: 'Quarter Notes and Rests', pool: ['quarter-note', 'quarter-rest'] },
     { id: '5', label: 'Level 5: Full Mix', shortLabel: 'Full Mix', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'] },
-    { id: '6', label: 'Level 6: Dotted Half Notes and Rests', shortLabel: 'Dotted Half Notes and Rests', pool: ['dotted-half-note', 'dotted-half-rest', 'quarter-note', 'quarter-rest'], requireAnyOf: ['dotted-half-note', 'dotted-half-rest'] }
+    { id: '6', label: 'Level 6: Dotted Half Notes and Rests', shortLabel: 'Dotted Half Notes and Rests', pool: ['dotted-half-note', 'dotted-half-rest', 'quarter-note', 'quarter-rest'], requireAnyOf: ['dotted-half-note', 'dotted-half-rest'] },
+    { id: '7', label: 'Level 7: Full Mix with Dotted Halves', shortLabel: 'Full Mix with Dotted Halves', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest', 'dotted-half-note', 'dotted-half-rest'] }
 ];
 
 // Beats-in-a-run -> VexFlow duration string. 3 is a dotted half ('hd' -
@@ -298,8 +299,18 @@ function updateRhythmNumberRow() {
     }
 }
 
-/* ---------- Rendering (beat-strip + VexFlow staff per bar) ---------- */
+/* ---------- Rendering (beat-strip + VexFlow staff per row of bars) ---------- */
 
+// Bars are grouped into "rows" that each share one VexFlow canvas - 1 row
+// of 4 in landscape, 2 rows of 2 in portrait - so that a cross-barline tie
+// (Level 8+) can be drawn as a real connecting curve between two adjacent
+// bars' noteheads, which is only possible when both sides of the tie live
+// in the same SVG. The bar-2/bar-3 boundary is deliberately never a tie
+// point (see generateRhythmPhrase) specifically because portrait splits
+// there into two separate rows/canvases - a tie can't be drawn across that
+// split, and the generated content has to be identical in both
+// orientations (design brief §5 item 3), so that boundary just never
+// carries one.
 function renderRhythmBars() {
     const container = document.getElementById('rhythm-bars-container');
     if (!container) return;
@@ -307,37 +318,44 @@ function renderRhythmBars() {
     const isLandscape = window.matchMedia('(orientation: landscape)').matches;
     container.classList.toggle('portrait-layout', !isLandscape);
     const activeBar = Math.floor(rhythmCursor / 4);
-    for (let barIndex = 0; barIndex < 4; barIndex++) {
-        const barDiv = document.createElement('div');
-        barDiv.className = `rhythm-bar${barIndex === activeBar && rhythmCursor < 16 ? ' active' : ''}`;
+    const rows = isLandscape ? [[0, 1, 2, 3]] : [[0, 1], [2, 3]];
+
+    rows.forEach(barIndices => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'rhythm-notation-row';
 
         const staffDiv = document.createElement('div');
-        staffDiv.className = 'rhythm-bar-staff';
-        barDiv.appendChild(staffDiv);
+        staffDiv.className = 'rhythm-row-staff';
+        rowDiv.appendChild(staffDiv);
 
-        const stripDiv = document.createElement('div');
-        stripDiv.className = 'rhythm-beat-strip';
-        for (let beat = 0; beat < 4; beat++) {
-            const index = barIndex * 4 + beat;
-            const cell = document.createElement('span');
-            cell.className = 'rhythm-beat-cell';
-            const mode = rhythmEntries[index];
-            if (mode) cell.classList.add(`filled-${mode}`);
-            if (rhythmRevealedBars.includes(barIndex)) cell.classList.add('reveal-answer');
-            cell.innerText = beat + 1;
-            stripDiv.appendChild(cell);
-        }
-        barDiv.appendChild(stripDiv);
+        const stripRow = document.createElement('div');
+        stripRow.className = 'rhythm-beat-strip-row';
+        barIndices.forEach(barIndex => {
+            const stripDiv = document.createElement('div');
+            stripDiv.className = `rhythm-beat-strip-group${barIndex === activeBar && rhythmCursor < 16 ? ' active' : ''}`;
+            for (let beat = 0; beat < 4; beat++) {
+                const index = barIndex * 4 + beat;
+                const cell = document.createElement('span');
+                cell.className = 'rhythm-beat-cell';
+                const mode = rhythmEntries[index];
+                if (mode) cell.classList.add(`filled-${mode}`);
+                if (rhythmRevealedBars.includes(barIndex)) cell.classList.add('reveal-answer');
+                cell.innerText = beat + 1;
+                stripDiv.appendChild(cell);
+            }
+            stripRow.appendChild(stripDiv);
+        });
+        rowDiv.appendChild(stripRow);
 
-        container.appendChild(barDiv);
+        container.appendChild(rowDiv);
         // The staff always shows the generated phrase, not the student's
         // stamped answer - this is a sight-count exercise (read the printed
         // rhythm, correctly label each beat Play/Hold/Rest), not a hidden-
         // phrase dictation, so the notation must be visible from the moment
         // the phrase is generated. rhythmEntries only drives the beat-strip
         // colors above and the number-row buttons - never the notation.
-        renderRhythmBarStaff(staffDiv, rhythmPhrase[barIndex]);
-    }
+        renderRhythmRowStaff(staffDiv, barIndices, activeBar);
+    });
 }
 
 // Converts a bar's 4-beat pattern into note/rest specs: a Play followed by
@@ -368,43 +386,91 @@ function renderRhythmBeatsToNotes(entries) {
 // reduced stave but keeps the *full* 5-line coordinate space internally, so
 // a note at 'b/4' - the middle line - ends up positioned below the visible
 // canvas entirely). Nothing about the clef itself is ever drawn.
-function renderRhythmBarStaff(container, entries) {
+//
+// All bars in barIndices share one VexFlow canvas/context (not one each) -
+// required so a cross-barline tie can be drawn as a real curve from a
+// notehead in one stave to a notehead in the next.
+function renderRhythmRowStaff(container, barIndices, activeBarIndex) {
     container.innerHTML = '';
     const VF = Vex.Flow;
-    const width = Math.max(120, container.clientWidth || 140);
+    const totalWidth = Math.max(120 * barIndices.length, container.clientWidth || (140 * barIndices.length));
+    const barWidth = totalWidth / barIndices.length;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(width, 180);
+    renderer.resize(totalWidth, 180);
     const context = renderer.getContext();
-    const stave = new VF.Stave(4, 70, width - 8);
-    stave.setConfigForLines([
-        { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
-    ]);
-    // The visible line defaults to VexFlow's mid-gray (#999) - force it to
-    // real black for the printed-page look. Barlines are hardcoded black by
-    // VexFlow already, independent of this.
-    stave.setStyle({ strokeStyle: '#000000' });
-    stave.setContext(context).draw();
 
-    // Real notation reads black regardless of Play/Hold/Rest - color only
-    // ever appears on the beat-strip and number-row buttons, which show the
-    // student's own answer, not on the printed rhythm itself.
-    const notesSpec = renderRhythmBeatsToNotes(entries);
-    const staveNotes = notesSpec.map(spec => {
-        const duration = RHYTHM_DURATION_FOR_BEATS[spec.beats];
-        if (!duration) { console.warn(`Rhythm: no duration mapping for a ${spec.beats}-beat run yet (ties not built).`); return null; }
-        const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
-        // VexFlow's 'd' duration suffix (dotted half etc.) sizes the note
-        // correctly for beat math but doesn't draw the dot glyph on its
-        // own - confirmed via a live probe that addDotToAll() is needed,
-        // or a dotted half renders visually identical to a plain half.
-        if (duration.includes('d')) note.addDotToAll();
-        return note;
-    }).filter(Boolean);
-    if (staveNotes.length === notesSpec.length) {
-        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-        new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, width - 50));
-        voice.draw(context, stave);
-    }
+    barIndices.forEach((barIndex, position) => {
+        const isLastInRow = position === barIndices.length - 1;
+        const x = 4 + position * barWidth;
+        const stave = new VF.Stave(x, 70, barWidth - (isLastInRow ? 8 : 0));
+        stave.setConfigForLines([
+            { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
+        ]);
+        // The visible line defaults to VexFlow's mid-gray (#999) - force it
+        // to real black for the printed-page look. Barlines are hardcoded
+        // black by VexFlow already, independent of this.
+        stave.setStyle({ strokeStyle: '#000000' });
+
+        if (barIndex === activeBarIndex) {
+            context.save();
+            context.setFillStyle('rgba(255,200,0,0.14)');
+            context.fillRect(x, 0, barWidth, 180);
+            context.restore();
+        }
+
+        stave.setContext(context).draw();
+
+        // Real notation reads black regardless of Play/Hold/Rest - color
+        // only ever appears on the beat-strip and number-row buttons, which
+        // show the student's own answer, not on the printed rhythm itself.
+        const entries = rhythmPhrase[barIndex];
+        const notesSpec = renderRhythmBeatsToNotes(entries);
+        const staveNotes = notesSpec.map(spec => {
+            const duration = RHYTHM_DURATION_FOR_BEATS[spec.beats];
+            if (!duration) { console.warn(`Rhythm: no duration mapping for a ${spec.beats}-beat run yet (ties not built).`); return null; }
+            const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+            // VexFlow's 'd' duration suffix (dotted half etc.) sizes the
+            // note correctly for beat math but doesn't draw the dot glyph
+            // on its own - confirmed via a live probe that addDotToAll()
+            // is needed, or a dotted half renders visually identical to a
+            // plain half.
+            if (duration.includes('d')) note.addDotToAll();
+            return note;
+        }).filter(Boolean);
+        if (staveNotes.length === notesSpec.length) {
+            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+            new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, barWidth - 50));
+
+            // VexFlow's own justify formatting has a confirmed bug (tested
+            // directly against the library, not just our usage of it): in
+            // a single unbeamed voice, a short note immediately followed
+            // by a much longer one gets squashed together near the start
+            // instead of spaced by duration, leaving the rest of the bar
+            // blank. Overriding each note's tick-context X with our own
+            // beats-cumulative proportional position - using the exact
+            // same beat data that built these notes in the first place -
+            // sidesteps it entirely and gives mathematically exact
+            // proportional spacing in every case, not just the ones
+            // VexFlow happened to get right on its own.
+            // getNoteStartX()/getNoteEndX() are absolute canvas coordinates
+            // (they already bake in this stave's own X offset), but
+            // TickContext.setX() apparently expects a value relative to the
+            // stave - confirmed via a live probe that using the absolute
+            // value directly double-counts the stave's offset, which is
+            // invisible with a single stave near canvas origin but throws
+            // every bar after the first wildly off to the right once
+            // multiple staves share a canvas at increasing X offsets.
+            const startX = stave.getNoteStartX() - stave.getX();
+            const endX = stave.getNoteEndX() - stave.getX();
+            let cumulativeBeats = 0;
+            staveNotes.forEach((note, index) => {
+                note.getTickContext().setX(startX + (cumulativeBeats / 4) * (endX - startX));
+                cumulativeBeats += notesSpec[index].beats;
+            });
+
+            voice.draw(context, stave);
+        }
+    });
 
     // The stave math above is untouched 5-line positioning (so 'b/4' keeps
     // landing correctly) - only one line is drawn, but the canvas still
