@@ -552,11 +552,17 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rhythm-beat-strip-group { flex: 1; display: flex; gap: 4px; padding: 2px; border-right: 2px solid #324a64; justify-content: space-between; }
 .rhythm-beat-strip-group:last-child { border-right: none; }
 .rhythm-beat-strip-group.active { background: rgba(255,200,0,0.14); border-radius: 8px; }
+/* One wrap per beat, flex:1 so beats stay equal-width whether they hold
+   one cell (undivided) or several (a subdivided beat, e.g. two eighths -
+   Concept A from the quaver-interface mockup: split the beat's own box in
+   half rather than a separate visual system). */
+.rhythm-beat-cell-wrap { flex: 1; display: flex; gap: 2px; min-width: 0; }
 .rhythm-beat-cell { flex: 1; height: 17px; border-radius: 5px; border: 2px solid #526b85; display: grid; place-items: center; font-size: 10px; font-weight: 900; color: var(--text-muted); background: transparent; }
 .rhythm-beat-cell.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
 .rhythm-beat-cell.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
 .rhythm-beat-cell.filled-rest { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
 .rhythm-beat-cell.reveal-answer { outline: 2px dashed white; outline-offset: 1px; }
+.rhythm-beat-cell-half { border-radius: 3px; font-size: 8px; }
 
 .rhythm-feedback { width: 100%; max-width: 640px; margin: 4px auto; text-align: center; font-weight: 900; padding: 6px; border-radius: 10px; }
 .rhythm-feedback.correct { background: rgba(88,204,2,0.18); color: var(--accent-green); }
@@ -580,13 +586,33 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rhythm-mode-btn.active .rhythm-key-hint { color: rgba(0,0,0,0.55); background: rgba(255,255,255,0.35); border-color: rgba(0,0,0,0.25); }
 #rhythm-submit-button .rhythm-key-hint { top: 6px; right: 10px; font-size: 10px; }
 
-.rhythm-number-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.rhythm-number-btn { min-height: 34px; border-radius: 10px; border: 2px solid #526b85; background: transparent; color: var(--text-muted); font-size: 18px; font-weight: 900; cursor: pointer; }
+/* Always exactly beatsPerBar buttons (4 today) - never grows to fit a
+   subdivided beat's extra sub-position, so it never wraps to a second row.
+   flex-wrap:nowrap + shrinkable buttons rather than a fixed grid, so a
+   future level with more beats per bar still fits one row instead of
+   wrapping. */
+.rhythm-number-row { display: flex; flex-wrap: nowrap; gap: 6px; }
+.rhythm-number-btn { flex: 1 1 0; min-width: 0; min-height: 34px; border-radius: 10px; border: 2px solid #526b85; background: transparent; color: var(--text-muted); font-size: 18px; font-weight: 900; cursor: pointer; }
 .rhythm-number-btn.next { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.25); animation: rhythmBlink 1s ease-in-out infinite; }
 .rhythm-number-btn:disabled { opacity: 0.35; cursor: default; }
 .rhythm-number-btn.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
 .rhythm-number-btn.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
 .rhythm-number-btn.filled-rest { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+
+/* Separate, fixed "e / + / a" subdivision row (Rob's syllables, plain "+"
+   rather than "&") - always 3 slots in this order regardless of level, so
+   the layout never reflows. A slot the active beat's subdivision doesn't
+   use stays in place but invisible (visibility, not display, so it still
+   reserves its space) rather than grayed out - see the design note above
+   updateRhythmNumberRow in rhythm.js. */
+.rhythm-subdivision-row { display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 6px; }
+.rhythm-subdivision-btn { flex: 1 1 0; min-width: 0; min-height: 30px; border-radius: 10px; border: 2px solid #526b85; background: transparent; color: var(--text-muted); font-size: 15px; font-weight: 900; cursor: pointer; }
+.rhythm-subdivision-btn.unused { visibility: hidden; }
+.rhythm-subdivision-btn.next { border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255,200,0,0.25); animation: rhythmBlink 1s ease-in-out infinite; }
+.rhythm-subdivision-btn:disabled:not(.unused) { opacity: 0.35; cursor: default; }
+.rhythm-subdivision-btn.filled-play { background: var(--accent-green); border-color: var(--accent-green); color: white; }
+.rhythm-subdivision-btn.filled-hold { background: var(--accent-gold); border-color: var(--accent-gold); color: var(--bg-dark); }
+.rhythm-subdivision-btn.filled-rest { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
 
 @keyframes rhythmBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
