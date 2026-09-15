@@ -1,26 +1,59 @@
 /* =========================================
    GAME 4: RHYTHM
-   Level 1 only: whole notes / whole rests, Counting round.
-   Core premise (design brief §1): count *when the next note starts*, not
-   "how long do I hold this." A beat is stamped as Play (a new onset), Hold
-   (sustaining a previous onset), or Rest (silence - its own explicit stamp,
-   no onset/continuation split since there's no sound to sustain).
+   Counting round. Core premise (design brief §1): count *when the next
+   note starts*, not "how long do I hold this." A beat is stamped as Play
+   (a new onset), Hold (sustaining a previous onset), or Rest (silence -
+   its own explicit stamp, no onset/continuation split since there's no
+   sound to sustain).
    ========================================= */
 
 const RHYTHM_PATTERNS = {
     'whole-note': ['play', 'hold', 'hold', 'hold'],
-    'whole-rest': ['rest', 'rest', 'rest', 'rest']
+    'whole-rest': ['rest', 'rest', 'rest', 'rest'],
+    'half-note': ['play', 'hold'],
+    'half-rest': ['rest', 'rest'],
+    'quarter-note': ['play'],
+    'quarter-rest': ['rest'],
+    // A half tied to a quarter, entirely inside one bar, engraves as a
+    // single dotted half rather than two notes joined by a tie curve - see
+    // design brief §4 level 6. The student's input is unaffected either
+    // way: it's just an ordinary 3-beat Hold-run (Play, Hold, Hold).
+    'dotted-half-note': ['play', 'hold', 'hold'],
+    'dotted-half-rest': ['rest', 'rest', 'rest']
 };
 
+// Each level's pool is whatever pattern keys are in play - the generator
+// (buildRhythmBarShapes below) works out every way those patterns can be
+// concatenated to fill a 4-beat bar, so a level can freely mix pattern
+// lengths (e.g. Level 3 mixing 4-beat and 2-beat patterns) with no extra
+// per-level bookkeeping. See design brief §4's level table. Counting rounds
+// are untimed at every level - the bonus Performing round (after 3 correct
+// Counting submissions) is where timing pressure lives instead, so no
+// level here carries a timer despite the original brief proposing one
+// starting at Level 4.
+//
+// requireAnyOf (optional): for an "isolated" level introducing a new
+// pattern that can't fill a bar by itself (e.g. a dotted half needs a
+// quarter alongside it to reach 4 beats), the pool alone would also let
+// the generator fall back to bars made entirely of the *other*, already-
+// familiar pattern - technically valid, but pointless for a level whose
+// whole point is drilling the new pattern. requireAnyOf rejects any bar
+// shape that doesn't include at least one of the listed keys.
 const RHYTHM_LEVELS = [
-    { id: '1', label: 'Level 1: Whole Notes', shortLabel: 'Whole Notes', pool: ['whole-note', 'whole-rest'] }
+    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', pool: ['whole-note', 'whole-rest'] },
+    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'] },
+    { id: '3', label: 'Level 3: Whole and Half Notes and Rests', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'] },
+    { id: '4', label: 'Level 4: Quarter Notes and Rests', shortLabel: 'Quarter Notes and Rests', pool: ['quarter-note', 'quarter-rest'] },
+    { id: '5', label: 'Level 5: Full Mix', shortLabel: 'Full Mix', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'] },
+    { id: '6', label: 'Level 6: Dotted Half Notes and Rests', shortLabel: 'Dotted Half Notes and Rests', pool: ['dotted-half-note', 'dotted-half-rest', 'quarter-note', 'quarter-rest'], requireAnyOf: ['dotted-half-note', 'dotted-half-rest'] }
 ];
 
-// Beats-in-a-run -> VexFlow duration string. Only 1/2/4 are reachable before
-// ties are introduced (level 6+ in the design brief) - a 3-beat run needs a
-// dotted-half duration, deliberately left unimplemented until that level is
-// actually built, rather than guessing at VexFlow's dot-modifier API now.
-const RHYTHM_DURATION_FOR_BEATS = { 1: 'q', 2: 'h', 4: 'w' };
+// Beats-in-a-run -> VexFlow duration string. 3 is a dotted half ('hd' -
+// confirmed via a live VexFlow probe that 'hd'/'hdr' produce the correct
+// 1.5x-half tick count; the more obvious-looking 'h.' is not valid VexFlow
+// syntax). Cross-barline ties (design brief levels 8-9) will need runs
+// longer than 4, which this doesn't handle yet.
+const RHYTHM_DURATION_FOR_BEATS = { 1: 'q', 2: 'h', 3: 'hd', 4: 'w' };
 
 let rhythmSelectedLevel = '1';
 let rhythmPhrase = [];              // 4 bars x 4 expected modes ('play'/'hold'/'rest')
@@ -115,24 +148,54 @@ function handleRhythmBackButton() {
 
 /* ---------- Phrase generator ---------- */
 
-// Variety rule (design brief §5 item 15, proposed default): no bar-pattern
+// Builds every full-bar "shape" a level can produce: every way to
+// concatenate the level's pool patterns so their beat-lengths sum to
+// exactly 4 (a full bar). A pool mixing lengths - e.g. Level 3's whole
+// (4-beat) and half (2-beat) patterns together - naturally yields both
+// single-pattern and multi-pattern shapes with no extra bookkeeping.
+//
+// Two adjacent rest-units - of any lengths, not just matching ones - always
+// collapse into one longer rest in real notation, since Rest has no onset
+// marker to tell them apart (design brief's Level 4 "no two quarter rests
+// in a row" rule, generalized: it's the same engraving principle whether
+// the two units happen to match, like quarter+quarter or half+half, or
+// don't, like half+quarter once Level 5 mixes lengths in one bar). A shape
+// with just one unit (like the level's own whole-rest) has no adjacent
+// pair to violate, so it's naturally unaffected.
+function buildRhythmBarShapes(level) {
+    const results = [];
+    (function build(remainingBeats, shape) {
+        if (remainingBeats === 0) { results.push(shape); return; }
+        level.pool.forEach(key => {
+            const length = RHYTHM_PATTERNS[key].length;
+            if (length <= remainingBeats) build(remainingBeats - length, [...shape, key]);
+        });
+    })(4, []);
+    const isRestPattern = key => RHYTHM_PATTERNS[key].every(mode => mode === 'rest');
+    const hasAdjacentRests = shape => shape.some((key, index) => index > 0 && isRestPattern(key) && isRestPattern(shape[index - 1]));
+    let shapes = results.filter(shape => !hasAdjacentRests(shape));
+    if (level.requireAnyOf) shapes = shapes.filter(shape => shape.some(key => level.requireAnyOf.includes(key)));
+    return shapes;
+}
+
+// Variety rule (design brief §5 item 15, proposed default): no bar shape
 // repeats more than twice across the 4 bars, no bar identical to the one
 // immediately before it.
 function generateRhythmPhrase(levelId) {
     const level = RHYTHM_LEVELS.find(entry => entry.id === levelId);
-    const pool = level.pool;
-    const chosenKeys = [];
-    const counts = {};
-    pool.forEach(key => { counts[key] = 0; });
+    const shapes = buildRhythmBarShapes(level);
+    const counts = new Array(shapes.length).fill(0);
+    const chosenIndices = [];
     for (let i = 0; i < 4; i++) {
-        let candidates = pool.filter(key => counts[key] < 2 && key !== chosenKeys[i - 1]);
-        if (candidates.length === 0) candidates = pool.filter(key => key !== chosenKeys[i - 1]);
-        if (candidates.length === 0) candidates = pool.slice();
+        const allIndices = shapes.map((_, index) => index);
+        let candidates = allIndices.filter(index => counts[index] < 2 && index !== chosenIndices[i - 1]);
+        if (candidates.length === 0) candidates = allIndices.filter(index => index !== chosenIndices[i - 1]);
+        if (candidates.length === 0) candidates = allIndices;
         const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-        chosenKeys.push(chosen);
+        chosenIndices.push(chosen);
         counts[chosen]++;
     }
-    return chosenKeys.map(key => [...RHYTHM_PATTERNS[key]]);
+    return chosenIndices.map(index => shapes[index].flatMap(key => RHYTHM_PATTERNS[key]));
 }
 
 /* ---------- Round lifecycle ---------- */
@@ -144,6 +207,7 @@ function startRhythmLevel() {
     rhythmScore = 0;
     rhythmLocked = false;
     setupRhythmOrientationListener();
+    setupRhythmKeyboardListener();
     switchScreenState('rhythm', 'rhythm-screen-counting');
     document.getElementById('rhythm-level-label').innerText = RHYTHM_LEVELS.find(level => level.id === rhythmSelectedLevel).label;
     setRhythmMode('play');
@@ -266,16 +330,21 @@ function renderRhythmBars() {
         barDiv.appendChild(stripDiv);
 
         container.appendChild(barDiv);
-        renderRhythmBarStaff(staffDiv, rhythmEntries.slice(barIndex * 4, barIndex * 4 + 4));
+        // The staff always shows the generated phrase, not the student's
+        // stamped answer - this is a sight-count exercise (read the printed
+        // rhythm, correctly label each beat Play/Hold/Rest), not a hidden-
+        // phrase dictation, so the notation must be visible from the moment
+        // the phrase is generated. rhythmEntries only drives the beat-strip
+        // colors above and the number-row buttons - never the notation.
+        renderRhythmBarStaff(staffDiv, rhythmPhrase[barIndex]);
     }
 }
 
-// Converts a complete 4-beat array into note/rest specs: a Play followed by
+// Converts a bar's 4-beat pattern into note/rest specs: a Play followed by
 // N Holds is one sustained note of duration N+1; a contiguous Rest run is
 // one rest of that duration (rests have no onset/continuation split - see
-// design brief §2/§3). Returns null while the bar is still incomplete.
+// design brief §2/§3).
 function renderRhythmBeatsToNotes(entries) {
-    if (entries.some(beat => beat === null)) return null;
     const notes = [];
     let i = 0;
     while (i < entries.length) {
@@ -310,20 +379,31 @@ function renderRhythmBarStaff(container, entries) {
     stave.setConfigForLines([
         { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
     ]);
+    // The visible line defaults to VexFlow's mid-gray (#999) - force it to
+    // real black for the printed-page look. Barlines are hardcoded black by
+    // VexFlow already, independent of this.
+    stave.setStyle({ strokeStyle: '#000000' });
     stave.setContext(context).draw();
 
+    // Real notation reads black regardless of Play/Hold/Rest - color only
+    // ever appears on the beat-strip and number-row buttons, which show the
+    // student's own answer, not on the printed rhythm itself.
     const notesSpec = renderRhythmBeatsToNotes(entries);
-    if (notesSpec) {
-        const staveNotes = notesSpec.map(spec => {
-            const duration = RHYTHM_DURATION_FOR_BEATS[spec.beats];
-            if (!duration) { console.warn(`Rhythm: no duration mapping for a ${spec.beats}-beat run yet (ties not built).`); return null; }
-            return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
-        }).filter(Boolean);
-        if (staveNotes.length === notesSpec.length) {
-            const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-            new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, width - 50));
-            voice.draw(context, stave);
-        }
+    const staveNotes = notesSpec.map(spec => {
+        const duration = RHYTHM_DURATION_FOR_BEATS[spec.beats];
+        if (!duration) { console.warn(`Rhythm: no duration mapping for a ${spec.beats}-beat run yet (ties not built).`); return null; }
+        const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+        // VexFlow's 'd' duration suffix (dotted half etc.) sizes the note
+        // correctly for beat math but doesn't draw the dot glyph on its
+        // own - confirmed via a live probe that addDotToAll() is needed,
+        // or a dotted half renders visually identical to a plain half.
+        if (duration.includes('d')) note.addDotToAll();
+        return note;
+    }).filter(Boolean);
+    if (staveNotes.length === notesSpec.length) {
+        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
+        new VF.Formatter().joinVoices([voice]).format([voice], Math.max(40, width - 50));
+        voice.draw(context, stave);
     }
 
     // The stave math above is untouched 5-line positioning (so 'b/4' keeps
@@ -342,6 +422,40 @@ function setupRhythmOrientationListener() {
     window.matchMedia('(orientation: landscape)').addEventListener('change', () => {
         const countingScreen = document.getElementById('rhythm-screen-counting');
         if (countingScreen && countingScreen.classList.contains('active')) renderRhythmBars();
+    });
+}
+
+// Keyboard controls for Chromebook/laptop play alongside touch: 1-2-3-4
+// stamp the current beat (matching the number already on screen), Z/X/C
+// pick Play/Hold/Rest, Backspace undoes, Enter submits. Only live while the
+// Counting screen is actually showing, so these keys don't leak into any
+// other game.
+function setupRhythmKeyboardListener() {
+    if (window.__rhythmKeyboardListenerAdded) return;
+    window.__rhythmKeyboardListenerAdded = true;
+    window.addEventListener('keydown', (event) => {
+        const countingScreen = document.getElementById('rhythm-screen-counting');
+        if (!countingScreen || !countingScreen.classList.contains('active')) return;
+        const key = event.key;
+        if (key >= '1' && key <= '4') {
+            const expectedDigit = (rhythmCursor % 4) + 1;
+            if (rhythmCursor < 16 && Number(key) === expectedDigit) {
+                event.preventDefault();
+                stampRhythmBeat();
+            }
+        } else if (key === 'z' || key === 'Z') {
+            setRhythmMode('play');
+        } else if (key === 'x' || key === 'X') {
+            setRhythmMode('hold');
+        } else if (key === 'c' || key === 'C') {
+            setRhythmMode('rest');
+        } else if (key === 'Backspace') {
+            event.preventDefault();
+            undoRhythmStamp();
+        } else if (key === 'Enter') {
+            event.preventDefault();
+            submitRhythmPhrase();
+        }
     });
 }
 

@@ -402,15 +402,15 @@
 
         <div class="rhythm-controls">
             <div class="rhythm-mode-row">
-                <button class="rhythm-mode-btn" data-mode="play" onclick="setRhythmMode('play')">▶<span>Play</span></button>
-                <button class="rhythm-mode-btn" data-mode="hold" onclick="setRhythmMode('hold')">﹉<span>Hold</span></button>
-                <button class="rhythm-mode-btn" data-mode="rest" onclick="setRhythmMode('rest')">✖<span>Rest</span></button>
-                <button class="rhythm-undo-btn" onclick="undoRhythmStamp()" title="Undo" aria-label="Undo">↺</button>
+                <button class="rhythm-mode-btn" data-mode="play" onclick="setRhythmMode('play')"><small class="rhythm-key-hint">Z</small>▶<span>Play</span></button>
+                <button class="rhythm-mode-btn" data-mode="hold" onclick="setRhythmMode('hold')"><small class="rhythm-key-hint">X</small>﹉<span>Hold</span></button>
+                <button class="rhythm-mode-btn" data-mode="rest" onclick="setRhythmMode('rest')"><small class="rhythm-key-hint">C</small>✖<span>Rest</span></button>
+                <button class="rhythm-undo-btn" onclick="undoRhythmStamp()" title="Undo (Backspace)" aria-label="Undo"><small class="rhythm-key-hint">⌫</small>↺</button>
             </div>
             <div class="rhythm-number-row" id="rhythm-number-row"></div>
         </div>
 
-        <button class="btn btn-start" id="rhythm-submit-button" onclick="submitRhythmPhrase()" disabled>Submit</button>
+        <button class="btn btn-start" id="rhythm-submit-button" onclick="submitRhythmPhrase()" disabled><small class="rhythm-key-hint">⏎</small>Submit</button>
     </div>
 </div>
 
