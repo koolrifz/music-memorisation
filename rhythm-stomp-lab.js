@@ -297,26 +297,41 @@ function renderRstompBars() {
 }
 
 // Reveals left-to-right only, never past the cursor (design brief §9.3 -
-// "eyes forward", never a glance backward needed). Consecutive Bracket
-// answers merge into ONE bracket pair as they're entered, confirmed
-// against Rob's worksheets and his own "one open, one close" framing -
-// not one bracket per beat.
+// "eyes forward", never a glance backward needed).
+//
+// Bracket-merge rule (corrected - see the fix commit for the mistake this
+// replaces): Hold and Rest share the same bracket SYMBOL, but that does not
+// mean any run of adjacent bracket answers merges into one pair. A run only
+// merges when it's genuinely the same underlying event the whole way
+// through - all Hold (one sustained note continuing) or all Rest (one
+// continuous silence). A Hold immediately followed by a Rest (e.g. a half
+// note's tail sitting right before a half rest's first beat, bar shapes
+// like half-note+half-rest) is TWO separate events happening to sit next
+// to each other - the rest genuinely starts at that beat, it isn't a
+// continuation of anything - so it gets its OWN bracket, even though nothing
+// in the student's two-state answer (which only knows Play vs Bracket)
+// distinguishes them. That's why this reads the true pattern
+// (rstompPhrase), not just rstompEntries, to find the merge boundary.
 function renderRstompCountingText(barIndex) {
     let text = '';
     let bracketOpen = false;
+    let bracketRunType = null; // 'hold' or 'rest' - which event the open bracket is tracking
     for (let beatIndex = 0; beatIndex < 4; beatIndex++) {
         const posIndex = barIndex * 4 + beatIndex;
         const answer = rstompEntries[posIndex];
         if (answer == null) break;
+        const trueMode = rstompPhrase[barIndex][beatIndex]; // 'play' | 'hold' | 'rest'
         const label = String(beatIndex + 1);
         if (answer === 'play') {
-            if (bracketOpen) { text += ')'; bracketOpen = false; }
+            if (bracketOpen) { text += ')'; bracketOpen = false; bracketRunType = null; }
             text += (text ? ' ' : '') + label;
-        } else if (!bracketOpen) {
+        } else if (bracketOpen && bracketRunType === trueMode) {
+            text += ' ' + label;
+        } else {
+            if (bracketOpen) text += ')';
             text += (text ? ' ' : '') + '(' + label;
             bracketOpen = true;
-        } else {
-            text += ' ' + label;
+            bracketRunType = trueMode;
         }
     }
     if (bracketOpen) text += ')';
