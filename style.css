@@ -523,7 +523,14 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    to sit at the real horizontal midpoint of the header, which lines up
    with the midpoint of the .rhythm-bars grid below (same max-width/margin
    auto), landing the 4/4 between bars 2-3 in landscape or 1-2 in portrait. */
-.rhythm-header { width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 46px auto 8px; padding: 0 4px; }
+/* column-gap fixes a real bug (not just cosmetic spacing): with none set,
+   a long wrapped label's column can butt directly against the adjacent
+   time-signature column with zero pixels between them - at phone width
+   "Level 1: Whole Notes and Rests" wraps close enough to its own column
+   edge that the 4/4 glyphs read as glued onto the end of the wrapped
+   text. Confirmed via getBoundingClientRect: label right edge and
+   time-signature left edge were the same x-coordinate before this fix. */
+.rhythm-header { width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 10px; align-items: center; margin: 46px auto 8px; padding: 0 4px; }
 .rhythm-header-label { font-weight: 900; color: var(--accent-gold); font-size: 15px; }
 .rhythm-header .tier-tracker { justify-self: end; }
 
