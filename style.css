@@ -10,6 +10,8 @@
     --accent-red: #ff4b4b;
     --accent-red-shadow: #d82b2b;
     --accent-gold: #ffc800;
+    --accent-teal: #2dd4bf;
+    --accent-teal-shadow: #1ea08f;
     --text-main: #ffffff;
     --text-muted: #8696a7;
 }
@@ -109,12 +111,14 @@ body {
 .game-card.blue:active { border-color: var(--accent-blue); }
 .game-card.green:active { border-color: var(--accent-green); }
 .game-card.gold:active { border-color: var(--accent-gold); }
+.game-card.teal:active { border-color: var(--accent-teal); }
 
 .game-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; color: white; font-weight: 900; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
 .icon-purple { background: var(--accent-purple); }
 .icon-blue { background: var(--accent-blue); }
 .icon-green { background: var(--accent-green); }
 .icon-gold { background: var(--accent-gold); color: var(--bg-dark); }
+.icon-teal { background: var(--accent-teal); color: var(--bg-dark); }
 
 .game-details h2 { margin: 0 0 4px 0; font-size: 20px; color: white; }
 .game-details p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.3; }
@@ -519,7 +523,14 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    to sit at the real horizontal midpoint of the header, which lines up
    with the midpoint of the .rhythm-bars grid below (same max-width/margin
    auto), landing the 4/4 between bars 2-3 in landscape or 1-2 in portrait. */
-.rhythm-header { width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 46px auto 8px; padding: 0 4px; }
+/* column-gap fixes a real bug (not just cosmetic spacing): with none set,
+   a long wrapped label's column can butt directly against the adjacent
+   time-signature column with zero pixels between them - at phone width
+   "Level 1: Whole Notes and Rests" wraps close enough to its own column
+   edge that the 4/4 glyphs read as glued onto the end of the wrapped
+   text. Confirmed via getBoundingClientRect: label right edge and
+   time-signature left edge were the same x-coordinate before this fix. */
+.rhythm-header { width: 100%; max-width: 640px; display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 10px; align-items: center; margin: 46px auto 8px; padding: 0 4px; }
 .rhythm-header-label { font-weight: 900; color: var(--accent-gold); font-size: 15px; }
 .rhythm-header .tier-tracker { justify-self: end; }
 
@@ -620,3 +631,49 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    button just needs to be smaller than the site-wide default so the
    notation grid above stays the visual focus of the screen. */
 #rhythm-submit-button { max-width: 640px; margin: 6px auto 0; padding: 10px; font-size: 15px; }
+
+/* =========================================
+   RHYTHM STOMP LAB — separate from every .rhythm-* rule above on purpose,
+   this styles the standalone prototype in rhythm-stomp-lab.js.
+   ========================================= */
+
+.rstomp-walkthrough { text-align: left; background: rgba(45,212,191,0.08); border: 2px solid var(--accent-teal); border-radius: 14px; padding: 14px 16px; margin: 14px 0; font-size: 14px; line-height: 1.4; }
+.rstomp-walkthrough p { margin: 0 0 10px; }
+.rstomp-walkthrough p:last-child { margin-bottom: 0; }
+.rstomp-walkthrough-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.rstomp-walkthrough-btn { flex: 0 0 auto; min-width: 64px; text-align: center; padding: 8px 10px; border-radius: 10px; font-weight: 900; font-size: 13px; color: white; }
+.rstomp-play-demo { background: var(--accent-green); }
+.rstomp-bracket-demo { background: var(--accent-teal); color: var(--bg-dark); }
+
+.rstomp-header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 46px auto 8px; padding: 0 4px; }
+.rstomp-header-label { font-weight: 900; color: var(--accent-teal); font-size: 14px; line-height: 1.25; }
+
+.rstomp-prompt { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-teal); background: rgba(45,212,191,0.1); border: 2px solid var(--accent-teal); border-radius: 12px; padding: 10px 12px; }
+
+.rstomp-bars { width: 100%; max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 420px) { .rstomp-bars { grid-template-columns: 1fr; } }
+
+.rstomp-bar-card { background: #ffffff; border-radius: 12px; padding: 4px 6px 8px; border: 3px solid #324a64; }
+.rstomp-bar-card.active { border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(45,212,191,0.3); }
+.rstomp-bar-staff { width: 100%; height: 60px; overflow: hidden; }
+.rstomp-bar-staff svg { display: block; width: 100%; height: auto; }
+.rstomp-bar-counting { text-align: center; font-family: 'Patrick Hand', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 400; color: #1a2634; letter-spacing: 1px; min-height: 32px; }
+
+.rstomp-controls { width: 100%; max-width: 640px; margin: 10px auto 4px; display: flex; flex-direction: column; gap: 8px; }
+.rstomp-answer-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rstomp-answer-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 8px; border-radius: 16px; border: none; cursor: pointer; color: white; }
+.rstomp-answer-btn small { font-weight: 700; font-size: 11px; opacity: 0.85; text-transform: none; letter-spacing: 0; }
+.rstomp-answer-symbol { font-size: 26px; font-weight: 900; }
+.rstomp-answer-label { font-size: 14px; font-weight: 900; letter-spacing: 0.5px; }
+.rstomp-answer-btn.rstomp-play { background: var(--accent-green); box-shadow: 0 6px 0 var(--accent-green-shadow); }
+.rstomp-answer-btn.rstomp-play:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 var(--accent-green-shadow); }
+.rstomp-answer-btn.rstomp-bracket { background: var(--accent-teal); color: var(--bg-dark); box-shadow: 0 6px 0 var(--accent-teal-shadow); }
+.rstomp-answer-btn.rstomp-bracket:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 var(--accent-teal-shadow); }
+.rstomp-answer-btn:disabled { opacity: 0.35; cursor: default; }
+
+.rstomp-undo-btn { align-self: center; background: none; border: 2px solid #526b85; color: var(--text-muted); border-radius: 10px; padding: 6px 18px; font-weight: 800; cursor: pointer; }
+.rstomp-undo-btn:disabled { opacity: 0.35; cursor: default; }
+
+.rstomp-feedback { width: 100%; max-width: 640px; margin: 4px auto; text-align: center; font-weight: 900; padding: 6px; border-radius: 10px; }
+.rstomp-feedback.correct { background: rgba(88,204,2,0.18); color: var(--accent-green); }
+.rstomp-feedback.wrong { background: rgba(255,75,75,0.18); color: var(--accent-red); }

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=portrait">
     <title>Kool Riffs - Music Mastery</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -43,6 +46,13 @@
             <div class="game-details">
                 <h2>Rhythm Stomp</h2>
                 <p>Count when the next note starts, before you ever play it.</p>
+            </div>
+        </div>
+        <div class="game-card teal" onclick="launchGame('view-rhythm-lab')">
+            <div class="game-icon icon-teal">🧪</div>
+            <div class="game-details">
+                <h2>Rhythm Stomp Lab</h2>
+                <p>New interface prototype — Level 1 only, for comparison.</p>
             </div>
         </div>
     </div>
@@ -415,6 +425,77 @@
     </div>
 </div>
 
+<!-- GAME 4B VIEW (Rhythm Stomp Lab — new interface prototype, separate from rhythm.js) -->
+<div id="view-rhythm-lab" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleRstompBackButton()">⬅ Back</button>
+    </div>
+
+    <div id="rhythm-lab-screen-intro" class="screen active">
+        <div class="pathway-card">
+            <h1>Rhythm Stomp Lab</h1>
+            <p class="pathway-subtitle">Level 1 · Whole Notes and Rests</p>
+            <div class="rstomp-walkthrough">
+                <p>Every bar gets 4 beats. For each beat, you'll answer one simple question:</p>
+                <div class="rstomp-walkthrough-row">
+                    <div class="rstomp-walkthrough-btn rstomp-play-demo">▶ PLAY</div>
+                    <span>a new note starts here</span>
+                </div>
+                <div class="rstomp-walkthrough-row">
+                    <div class="rstomp-walkthrough-btn rstomp-bracket-demo">( )</div>
+                    <span>nothing new — still ringing, or silence</span>
+                </div>
+                <p>Tap one, and it's written under the music straight away. Fill all 4 bars, then check your answer. Three phrases right in a row and you've mastered Level 1.</p>
+            </div>
+            <button class="btn btn-start" onclick="startRstompLevel1()">Start Level 1</button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div id="rhythm-lab-screen-game" class="screen">
+        <div class="rstomp-header">
+            <div class="rstomp-header-label">Level 1 · Whole Notes and Rests</div>
+            <div class="tier-tracker">Streak: <span class="streak-dots" id="rstomp-streak-dots"></span></div>
+        </div>
+
+        <div class="rstomp-prompt" id="rstomp-prompt">Bar 1 · Beat 1 — does a new note start here?</div>
+
+        <div class="rstomp-bars" id="rstomp-bars-container"></div>
+
+        <div class="rstomp-feedback" id="rstomp-feedback" hidden></div>
+
+        <div class="rstomp-controls">
+            <div class="rstomp-answer-row">
+                <button class="rstomp-answer-btn rstomp-play" id="rstomp-play-btn" onclick="stampRstomp('play')">
+                    <span class="rstomp-answer-symbol">▶</span>
+                    <span class="rstomp-answer-label">PLAY</span>
+                    <small>a new note starts</small>
+                </button>
+                <button class="rstomp-answer-btn rstomp-bracket" id="rstomp-bracket-btn" onclick="stampRstomp('bracket')">
+                    <span class="rstomp-answer-symbol">( )</span>
+                    <span class="rstomp-answer-label">NOTHING NEW</span>
+                    <small>held, or silent</small>
+                </button>
+            </div>
+            <button class="rstomp-undo-btn" id="rstomp-undo-btn" onclick="undoRstomp()">↺ Undo</button>
+        </div>
+
+        <button class="btn btn-start" id="rstomp-submit-button" onclick="submitRstompPhrase()" disabled>Check My Answer</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-rstomp-level-complete">
+    <div class="stage-complete-box">
+        <div class="stage-complete-kicker">Level Mastered!</div>
+        <h3>Level 1 mastered!</h3>
+        <p>Three phrases counted correctly in a row.</p>
+        <div class="stage-complete-stats">
+            <div><strong id="rstomp-level-complete-score">0</strong><span>score</span></div>
+        </div>
+        <button class="btn btn-start" onclick="continueAfterRstompLevel()">Continue</button>
+    </div>
+</div>
+
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-credits">
     <div class="credits-box">
@@ -482,5 +563,6 @@
 
 <script src="script.js"></script>
 <script src="rhythm.js"></script>
+<script src="rhythm-stomp-lab.js"></script>
 </body>
 </html>

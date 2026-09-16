@@ -453,6 +453,8 @@ function launchGame(targetViewId) {
     } else if (targetViewId === 'view-rhythm') {
         renderRhythmPathway();
         switchScreenState('rhythm', 'rhythm-screen-pathway');
+    } else if (targetViewId === 'view-rhythm-lab') {
+        enterRhythmLab();
     }
 }
 
