@@ -99,6 +99,66 @@ That lands on **9**, matching your original instinct better than my last count o
 28. **Cursor color — resolved away from a new hue.** Gold risked sitting too close to amber (Hold's color) and adding a fifth meaning to an already-deliberate palette. Recommendation: a plain, thicker vertical bar in black or grey — a shape distinction, not a color one, matching the Sibelius reference you cited and your own instinct not to overload color.
 27. **A real, acknowledged gap you flagged yourself:** because the mastery streak is Counting-only, a student with genuinely poor rhythmic coordination could clear every level on paper while never actually improving at tapping. Since you're the one who'll notice this in a real classroom, worth considering a simple non-gating Performing-accuracy view (a trend over time, visible to you or a parent) — not blocking progress, just surfacing the kids who need real-instrument coaching that the app itself won't force.
 
+## 9. Interface redesign — "Rhythm Stomp" (supersedes §2–§3)
+
+**Status: brief only, nothing in this section is built yet.** Written after a working prototype of §2/§3's mode+stamp interface existed (`rhythm.js`, built through Level 9/quavers) and was judged too convoluted in practice — "select the stamp button, then select the beat" is two decisions where there should be one. §1 (core premise), §3a (Performing round), §4 (level sequence), and §7/§8 are unaffected and still stand. This section is the replacement spec for the Counting screen's interaction and notation display only.
+
+### 9.0 Naming
+
+The pillar is now **Rhythm Stomp** — the second brand verb, pairing with **Smash** for the Notation pillar (Staff Smash / Note Smash / Real Smash). "Rhythm" alone (dashboard card, pathway header) has been renamed to "Rhythm Stomp" in `index.html`/`rhythm.js` already; nothing else in the running app changed. `CLAUDE.md`'s naming-conventions section still only documents "Smash" and needs a follow-up line once this pillar's rebuild actually ships — not done as part of this brief.
+
+### 9.1 The core fix: Hold and Rest collapse into one input state
+
+Confirmed directly by Rob: a held beat and a rested beat render as the *identical* bracket, and — this is the part that changes the code, not just the display — **the student's answer collapses to match**. There is no longer a three-way Play/Hold/Rest choice. Every stampable container has exactly two possible answers:
+
+- **Play** — a new attack starts here.
+- **Bracket** (`( )`) — nothing new happens here, whatever the reason (still ringing from an earlier attack, or silence). The student is never asked to say *which*.
+
+Rationale in Rob's own words: "what matters is the next event... that gives me the luxury to combine the two into one symbol." Pedagogically this is consistent with §1 — Hold and Rest were always graded as "you don't play here," the three-way split only existed to drive two different bracket colors (§5 item 11's now-superseded amber/blue scheme). Collapsing input to two states is *the* mechanism that removes the separate mode-select step: there's no mode to pre-arm anymore, each container just gets answered directly.
+
+**Grading implication (resolved, follows directly):** the generator/pattern data (`RHYTHM_PATTERNS`) keeps producing Play/Hold/Rest internally — that data still encodes real musical meaning (engraving rules, note durations, the whole-rest-vs-whole-note asymmetry in §2 still holds internally). Only the *comparison* against the student's answer changes: a Bracket tap is correct whenever the expected value is Hold **or** Rest; a Play tap is correct only when the expected value is Play. Existing `rhythmExpectedModeAt`-style lookups need this collapse applied at the comparison step, not by changing what the generator produces.
+
+### 9.2 Interaction model: containers, not mode+stamp
+
+Keep the existing engine concept of a flat, ordered list of stampable positions per phrase (`rhythmPositions`/cursor — this part of the current `rhythm.js` architecture is sound and doesn't need to change). What changes is the surface:
+
+- Only the **current** (cursor) container is ever live. Its answer controls — two buttons, **Play** and **( )** — sit in one fixed location on screen (not scattered per-beat like the old number row), so the student's eyes and thumb never have to travel to find the next control.
+- **One tap commits the answer and auto-advances the cursor** — no separate stamp step, no pre-armed mode to remember. This directly kills the "convoluted" complaint.
+- Already-answered containers are not editable individually; Undo (single-level, as in §3, still no redo) steps the cursor back one position and clears that container's answer.
+- No decision made yet on the exact widget for the two-button control (fixed Play/`( )` pair vs. a single toggle-then-confirm) — treat the two-fixed-buttons version as the working default; open to revision once it's actually built and tapped on a phone.
+
+### 9.3 Live counting display — the worksheet convention, confirmed against 5 uploaded worksheets
+
+Rob supplied five worksheets (`1 - Counting Quavers`, `2 - Counting Syncopation`, `3 - Semiquaver Rhythms Intro`, `4 - Semiquaver Workout`, `Counting Eighth Note Rhythms - Full Score`) plus a rough phone mockup ("Level 7: Dotted Notes" — explicitly a proportions/real-estate sketch only, not a literal interaction spec: Rob's own words, "I'm just playing... I've got to figure out how the interactions work"). What the worksheets confirm, as primary source rather than inference:
+
+- **Play renders as a bare token** — the beat number (`1`, `2`, `3`, `4`) or subdivision syllable (`+`, `e`, `a`).
+- **A single held/rested beat renders as that token in brackets** — e.g. a plain half note in 2/4 is `1 (2)` (Worksheet 1, example 2).
+- **A run of consecutive non-Play sub-beat positions merges into ONE bracket pair**, not one bracket per position — Worksheet 3 (Semiquaver Rhythms Intro) is explicit and exhaustive about this: `1 (e &) a`, not `1 (e) (&) a`, for a dotted-eighth-then-sixteenth pattern. This is a hard confirmed rule, not a guess.
+- **Worksheet 4's own instruction to students is literally "use ( ) to show tied rhythms"** — direct textual confirmation this is how Rob already teaches the convention on paper; the app is digitizing an existing worksheet habit, not inventing a new one.
+- Syllable system, confirmed by Worksheet 3 and already matching the current `rhythmSubdivisionLabel()` implementation in `rhythm.js` — no change needed here: beat number on the downbeat, `+` for the 2-way (quaver) split, `e`/`+`/`a` for the 4-way (semiquaver) split. Triplets use `+`/`a` for the 3-way split (Rob's chat description, "one and r," is almost certainly this same `+`/`a` pattern via a garbled transcription — flagged in §9.6 for an explicit yes/no rather than assumed silently).
+
+**Open, not yet confirmed (see §9.6):** whether the same merge-into-one-bracket rule applies *across full beat numbers*, not just within a beat's own subdivisions — e.g. does a dotted half spanning beats 2–3 render `1 (2 3)` (one bracket) or `1 (2) (3)` (two)? Worksheet 1's only multi-beat example (`1 (2)`) is a single held beat, so it doesn't settle this. Recommendation: merge at every level, for visual and rule consistency with §9.3's sub-beat evidence — but this is a recommendation standing in for a confirmed answer, not itself confirmed.
+
+The live counting row renders directly beneath the staff, positioned under the note(s) it describes, and reveals left-to-right as the student answers each container — never all at once, never requiring a glance backward. This is the direct interface expression of §1's "eyes forward, time-travellers not accountants" premise. Font: something with a handwritten/typewritten worksheet feel, distinct from the app's normal UI font, matching the worksheets' own aesthetic — exact typeface not chosen yet (§9.6).
+
+### 9.4 Screen layout
+
+- The staff itself is **display-only** — no finger ever touches it, since all input now happens through the fixed two-button control (§9.2), not per-note like the old number row. This means the staff can render considerably smaller than before, which is the direct answer to the "too crowded" note in the Working On Quavers commit — that crowding came from stacking mode buttons + number row + subdivision row all beneath a staff sized for finger contact; none of those rows exist in this design.
+- Target: up to **4 bars** visible at once (matching §5 item 3's original reasoning — the lookahead-scanning skill needs more than one bar in view), with the answer control (Play/`( )` buttons) below, sized generously since it's now the only touch surface on the whole screen.
+- Orientation/tie-safety: §5 item 3's resolved rule (portrait = 2×2 grid, landscape = single row of 4, no tie ever generated across whatever boundary is the live row-split point) is the carried-over default. **Worth re-validating, not just assuming, before building:** now that the staff is small and non-interactive, 4 bars may comfortably fit in a single portrait row too, which would remove the row-split/tie-safety problem entirely rather than just managing it. Prototype both before committing.
+
+### 9.5 What's unchanged
+
+§1 (core premise), §3a (Performing round and its scoring — Performing already uses a single tap button, untouched by this rebuild), §4 (level sequence), §7 (level-select grid), §8 (entrance screen) all still stand as written. The persistence shape (`koolRiffsRhythmProgress`, per CLAUDE.md's pattern) doesn't change — this is a front-end/interaction rebuild on a data model that mostly survives (see §9.1's grading note for the one real change).
+
+### 9.6 Still open — for Rob before/during implementation
+
+1. Does bracket-merging span full beat numbers, not just sub-beat positions (`1 (2 3)` vs `1 (2) (3)`)? Recommended: yes, merge everywhere. Not yet confirmed — see §9.3.
+2. Exact typeface for the handwritten/typewritten counting row.
+3. Portrait layout: re-validate whether 4 bars fit in one row now the staff is tiny, before defaulting to the carried-over 2×2/tie-safety rule.
+4. Confirm the triplet syllable is `+`/`a` (matching the existing `rhythmSubdivisionLabel()` code and the semiquaver worksheet's pattern) — Rob's chat description of "one and r" is assumed to be the same thing via a speech-to-text garble, not independently confirmed.
+5. Exact widget for the two-button control (fixed Play/`( )` pair, vs. cycle-then-confirm) — working default is the fixed pair; open to change once prototyped on a phone.
+
 ## 6. Recommended direction
 
 Down to four real threads. **Generator logic** (10, 15): engraving rule set and variety rule — needed on paper before content generation is trustworthy. **Streak/scoring semantics** (18, 19, 22): what a "success" actually means now spans two rounds (Counting + Performing) and two different scopes of "three" — worth writing out as explicit rules once, since it's easy to conflate in code otherwise. **Performing's timing engine** (20, 21): tolerance windows and error-type handling are real engineering questions you've already flagged as unresolved yourself — probably worth a dedicated pass once there's a working Counting prototype to attach Performing to. **Prototype-and-feel** (14 remainder): correct-answer audio is the last purely open item and is easiest to decide by trying it.

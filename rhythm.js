@@ -1,5 +1,5 @@
 /* =========================================
-   GAME 4: RHYTHM
+   GAME 4: RHYTHM STOMP
    Counting round. Core premise (design brief §1): count *when the next
    note starts*, not "how long do I hold this." A beat is stamped as Play
    (a new onset), Hold (sustaining a previous onset), or Rest (silence -
