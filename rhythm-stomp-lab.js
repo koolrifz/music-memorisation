@@ -209,15 +209,11 @@ function generateRstompPhraseNormal(level) {
     return chosenIndices.map(index => shapes[index].flatMap(key => RSTOMP_PATTERNS[key]));
 }
 
-// A tied note is split across the bar 0/1 or bar 2/3 boundary - NEVER the
-// bar 1/2 boundary. That boundary is where the 2-column CSS grid
-// (.rstomp-bars, <420px falls back to 1-column but >=420px is always
-// 2-columns-2-rows) puts its row split, so a tie could never be drawn
-// there as a real connecting curve - both halves have to share one
-// VexFlow canvas (see groupRstompBars/renderRstompStaffGroup), which is
-// only possible within a row, never across one. Ported from rhythm.js's
-// identical reasoning, which applies here regardless of the exact
-// breakpoint since the generated content has to be safe at every width.
+// A tied note can sit on ANY barline. It used to be restricted to the 0/1
+// and 2/3 boundaries because the old 2-column grid put a row break at 1/2,
+// and a tie curve has to be drawn inside one VexFlow canvas - impossible
+// across a row break. The whole phrase now renders as one continuous strip
+// on a single canvas (see renderRstompStaff), so that restriction is gone.
 //
 // r beats of the tied note sit at the end of the first bar (a Play plus
 // r-1 Holds), s beats sit at the start of the second bar as pure Hold -
@@ -248,7 +244,6 @@ function generateRstompPhraseWithTie(level) {
     const barA = [...leadShape.flatMap(key => RSTOMP_PATTERNS[key]), 'play', ...Array(r - 1).fill('hold')];
     const barB = [...Array(s).fill('hold'), ...tailShape.flatMap(key => RSTOMP_PATTERNS[key])];
 
-    const tiedPairIndex = Math.random() < 0.5 ? 0 : 1;
     const normalShapes = buildRstompBarShapes(level.pool);
     const pickNormalShape = previousShape => {
         const candidates = normalShapes.filter(shape => shape.join() !== (previousShape || []).join());
@@ -257,10 +252,22 @@ function generateRstompPhraseWithTie(level) {
     };
     const normalShape1 = pickNormalShape(null);
     const normalShape2 = pickNormalShape(normalShape1);
-    const normalBar1 = normalShape1.flatMap(key => RSTOMP_PATTERNS[key]);
-    const normalBar2 = normalShape2.flatMap(key => RSTOMP_PATTERNS[key]);
+    const normalBars = [
+        normalShape1.flatMap(key => RSTOMP_PATTERNS[key]),
+        normalShape2.flatMap(key => RSTOMP_PATTERNS[key])
+    ];
 
-    return tiedPairIndex === 0 ? [barA, barB, normalBar1, normalBar2] : [normalBar1, normalBar2, barA, barB];
+    // The tied pair occupies boundary/boundary+1; the remaining slots take
+    // the untied bars in order.
+    const boundary = Math.floor(Math.random() * 3);
+    const bars = [];
+    let nextNormal = 0;
+    for (let index = 0; index < 4; index++) {
+        if (index === boundary) bars.push(barA);
+        else if (index === boundary + 1) bars.push(barB);
+        else bars.push(normalBars[nextNormal++]);
+    }
+    return bars;
 }
 
 // Levels 1-2 are both a flat 4x4 grid (4 bars, 4 undivided beats each, no
@@ -289,6 +296,7 @@ function startRstompLevel() {
     rstompScore = 0;
     rstompLocked = false;
     switchScreenState('rhythm-lab', 'rhythm-lab-screen-game');
+    ensureRstompStripListeners();
     document.getElementById('rstomp-level-label').innerText = RSTOMP_LEVELS.find(level => level.id === rstompSelectedLevel).label;
     updateRstompStreakDots();
     startNewRstompPhrase();
@@ -301,7 +309,10 @@ function startNewRstompPhrase() {
     rstompEntries = new Array(rstompPositions.length).fill(null);
     rstompUndoStack = [];
     rstompCursor = 0;
+    rstompFollowing = true;
     hideRstompFeedback();
+    const strip = document.getElementById('rstomp-strip');
+    if (strip) strip.scrollLeft = 0;
     renderRstompBars();
     updateRstompPrompt();
     updateRstompButtonStates();
@@ -316,7 +327,9 @@ function stampRstomp(answer) {
     rstompEntries[rstompCursor] = answer;
     rstompUndoStack.push(rstompCursor);
     rstompCursor++;
+    rstompFollowing = true;   // answering resumes the follow, the way typing does in an editor
     renderRstompBars();
+    followRstompCursor();
     updateRstompPrompt();
     updateRstompButtonStates();
 }
@@ -326,7 +339,9 @@ function undoRstomp() {
     const index = rstompUndoStack.pop();
     rstompEntries[index] = null;
     rstompCursor = index;
+    rstompFollowing = true;
     renderRstompBars();
+    followRstompCursor();
     updateRstompPrompt();
     updateRstompButtonStates();
 }
@@ -355,48 +370,184 @@ function updateRstompButtonStates() {
 
 /* ---------- Rendering: staff (display-only) + live counting row ---------- */
 
-// A bar whose own beat 0 is 'hold' can only mean the note tied over from
-// the previous bar (see generateRstompPhraseWithTie) - groups bars into
-// rendering units of 1 (no tie touching it) or 2 (a tied pair, which must
-// share one VexFlow canvas so the tie curve can connect a notehead in
-// each - see renderRstompStaffGroup).
-function groupRstompBars(phrase) {
-    const groups = [];
-    let i = 0;
-    while (i < phrase.length) {
-        if (phrase[i + 1] && phrase[i + 1][0] === 'hold') {
-            groups.push([i, i + 1]);
-            i += 2;
-        } else {
-            groups.push([i]);
-            i += 1;
-        }
-    }
-    return groups;
+/* ---------- The strip: every bar on one continuous line ----------
+   Bars are sized to fill the space available and only scroll when they
+   can't: on a phone a 4-bar phrase runs off the edge and the strip follows
+   the cursor as the student answers, while a tablet or desktop simply shows
+   the whole phrase at once. Nothing about the phrase changes with width -
+   only how much of it is on screen. */
+
+const RSTOMP_MIN_BAR_WIDTH = 112;   // below this the counting row stops being readable
+const RSTOMP_MAX_BAR_WIDTH = 190;   // above this bars just look sparse on a big screen
+const RSTOMP_CURSOR_ANCHOR = 0.3;   // where the cursor parks after a scroll; the rest is look-ahead
+
+let rstompLayouts = [];
+let rstompTotalWidth = 0;
+let rstompFollowing = true;
+let rstompProgrammaticScroll = false;
+let rstompResizeTimer = null;
+let rstompStripListenersReady = false;
+
+function rstompBarWidth(barCount) {
+    const strip = document.getElementById('rstomp-strip');
+    const available = (strip ? strip.clientWidth : 360) - 12; // strip's own padding
+    return Math.max(RSTOMP_MIN_BAR_WIDTH, Math.min(RSTOMP_MAX_BAR_WIDTH, available / barCount));
 }
 
 function renderRstompBars() {
-    const container = document.getElementById('rstomp-bars-container');
-    if (!container) return;
-    container.innerHTML = '';
-    const activeBar = rstompCursor < rstompPositions.length ? rstompPositions[rstompCursor].barIndex : -1;
-    groupRstompBars(rstompPhrase).forEach(barIndices => {
-        const card = document.createElement('div');
-        const isActive = barIndices.includes(activeBar);
-        card.className = `rstomp-bar-card${isActive ? ' active' : ''}${barIndices.length > 1 ? ' rstomp-bar-card-wide' : ''}`;
+    const staffHost = document.getElementById('rstomp-staff');
+    const countingHost = document.getElementById('rstomp-counting');
+    const inner = document.getElementById('rstomp-strip-inner');
+    if (!staffHost || !countingHost || !inner || !rstompPhrase.length) return;
 
-        const staffDiv = document.createElement('div');
-        staffDiv.className = 'rstomp-bar-staff';
-        card.appendChild(staffDiv);
+    const perBarWidth = rstompBarWidth(rstompPhrase.length);
+    rstompTotalWidth = perBarWidth * rstompPhrase.length;
+    inner.style.width = `${rstompTotalWidth}px`;
 
-        const countingDiv = document.createElement('div');
-        countingDiv.className = 'rstomp-bar-counting';
-        card.appendChild(countingDiv);
+    rstompLayouts = renderRstompStaff(staffHost, rstompPhrase, perBarWidth);
+    renderRstompCountingRow(countingHost, rstompLayouts, perBarWidth, rstompTotalWidth);
+    updateRstompCaret();
+    updateRstompStripChrome();
+}
 
-        container.appendChild(card);
-        const layouts = renderRstompStaffGroup(staffDiv, barIndices.map(i => rstompPhrase[i]));
-        renderRstompCountingRow(countingDiv, barIndices, layouts);
+// The caret marks the beat being answered - the one thing that has to stay
+// findable when most of the phrase is off screen.
+function updateRstompCaret() {
+    const caret = document.getElementById('rstomp-caret');
+    if (!caret) return;
+    const done = rstompCursor >= rstompPositions.length;
+    caret.hidden = done || rstompLocked;
+    if (caret.hidden) return;
+    const position = rstompPositions[rstompCursor];
+    const layout = rstompLayouts[position.barIndex];
+    if (!layout) return;
+    caret.style.left = `${layout.pulseX(position.beatIndex) - 1.5}px`;
+}
+
+// Scroll-follows-cursor, the way an editor follows a caret: only move once
+// the cursor drifts out of a comfortable band, so the strip settles in steps
+// instead of creeping on every tap, and always leave more room ahead of the
+// cursor than behind it - the student still needs to read forward.
+function followRstompCursor() {
+    const strip = document.getElementById('rstomp-strip');
+    if (!strip || !rstompFollowing || rstompCursor >= rstompPositions.length) return;
+    const visible = strip.clientWidth;
+    if (rstompTotalWidth <= visible) return;
+    const position = rstompPositions[rstompCursor];
+    const layout = rstompLayouts[position.barIndex];
+    if (!layout) return;
+
+    const x = layout.pulseX(position.beatIndex);
+    if (x >= strip.scrollLeft + visible * 0.12 && x <= strip.scrollLeft + visible * 0.62) return;
+
+    const target = Math.max(0, Math.min(x - visible * RSTOMP_CURSOR_ANCHOR, rstompTotalWidth - visible));
+    rstompProgrammaticScroll = true;
+    strip.scrollTo({ left: target, behavior: 'smooth' });
+    setTimeout(() => { rstompProgrammaticScroll = false; }, 450);
+}
+
+function updateRstompStripChrome() {
+    const strip = document.getElementById('rstomp-strip');
+    if (!strip) return;
+    const scrollable = rstompTotalWidth - strip.clientWidth > 2;
+    strip.classList.toggle('scrollable', scrollable);
+
+    const progress = document.getElementById('rstomp-strip-progress');
+    if (progress) {
+        const total = rstompPositions.length;
+        progress.textContent = rstompCursor >= total
+            ? `All ${total} beats in`
+            : `Beat ${rstompCursor + 1} of ${total}`;
+    }
+
+    // Nothing to expand when the whole phrase is already on screen.
+    const fullView = document.getElementById('rstomp-fullview-btn');
+    if (fullView) fullView.hidden = !scrollable;
+
+    const chip = document.getElementById('rstomp-jump-chip');
+    if (chip) chip.hidden = rstompFollowing || !scrollable || rstompCursor >= rstompPositions.length;
+}
+
+function jumpRstompToCursor() {
+    rstompFollowing = true;
+    followRstompCursor();
+    updateRstompStripChrome();
+}
+
+function ensureRstompStripListeners() {
+    if (rstompStripListenersReady) return;
+    const strip = document.getElementById('rstomp-strip');
+    if (!strip) return;
+
+    // A scroll the student started means they want to look around; stop
+    // chasing them until they answer again (or tap the jump chip).
+    strip.addEventListener('scroll', () => {
+        if (rstompProgrammaticScroll || !rstompFollowing) return;
+        rstompFollowing = false;
+        updateRstompStripChrome();
     });
+
+    window.addEventListener('resize', () => {
+        clearTimeout(rstompResizeTimer);
+        rstompResizeTimer = setTimeout(() => {
+            const screen = document.getElementById('rhythm-lab-screen-game');
+            if (!screen || !screen.classList.contains('active') || !rstompPhrase.length) return;
+            renderRstompBars();
+            followRstompCursor();
+        }, 150);
+    });
+
+    rstompStripListenersReady = true;
+}
+
+/* ---------- Full view: the whole phrase, wrapped into systems ---------- */
+
+function openRstompFullView() {
+    const host = document.getElementById('rstomp-fullview-systems');
+    const modal = document.getElementById('modal-rstomp-full-view');
+    if (!host || !modal) return;
+    host.innerHTML = '';
+    modal.classList.add('show');
+
+    // Measured after the modal is shown, so the widths are the real ones.
+    // Systems have to divide the phrase EVENLY - 4 bars wrap as 2+2, never
+    // 3+1. A last system holding one lonely bar is the ragged look this
+    // whole layout exists to get rid of, so the largest divisor that fits
+    // wins rather than simply the most bars that fit.
+    const available = host.clientWidth;
+    const capacity = Math.max(1, Math.floor(available / RSTOMP_MIN_BAR_WIDTH));
+    const barCount = rstompPhrase.length;
+    let barsPerSystem = 1;
+    for (let size = barCount; size >= 1; size--) {
+        if (barCount % size === 0 && size <= capacity) { barsPerSystem = size; break; }
+    }
+    const perBarWidth = available / barsPerSystem;
+
+    for (let start = 0; start < rstompPhrase.length; start += barsPerSystem) {
+        const slice = rstompPhrase.slice(start, start + barsPerSystem);
+        const system = document.createElement('div');
+        system.className = 'rstomp-system';
+
+        const staff = document.createElement('div');
+        staff.className = 'rstomp-staff';
+        const counting = document.createElement('div');
+        counting.className = 'rstomp-counting';
+        system.appendChild(staff);
+        system.appendChild(counting);
+        host.appendChild(system);
+
+        const nextBar = rstompPhrase[start + slice.length];
+        const layouts = renderRstompStaff(staff, slice, perBarWidth, {
+            tieIn: start > 0 && slice[0][0] === 'hold',
+            tieOut: Boolean(nextBar) && nextBar[0] === 'hold'
+        });
+        renderRstompCountingRow(counting, layouts, perBarWidth, perBarWidth * slice.length, start);
+    }
+}
+
+function closeRstompFullView() {
+    const modal = document.getElementById('modal-rstomp-full-view');
+    if (modal) modal.classList.remove('show');
 }
 
 // Reveals left-to-right only, never past the cursor (design brief §9.3 -
@@ -461,32 +612,28 @@ function buildRstompCountingTokens(barIndex) {
 // setCenterAlignment() is explicitly called, which nothing here does. No
 // exception needed - rule 1 already produces the correct position.
 //
-// barIndices/layouts are arrays - length 1 for an ordinary bar, length 2
-// for a tied pair sharing one canvas (see renderRstompStaffGroup); each
-// layout's noteX/pulseX are already expressed in that shared canvas's one
-// coordinate space, so a second bar's tokens don't need any extra offset
-// - they slot into the same container as the first bar's.
+// layouts covers consecutive bars starting at barOffset - the whole phrase
+// on the playing strip, or one system's worth in the full view. Every
+// layout's noteX/pulseX already sits in the shared canvas's one coordinate
+// space, so no per-bar offset is needed; they all drop into one container.
 //
-// Font size still scales with the card's actual per-bar width (2-column
-// portrait grid can put a bar under 180px wide - a fixed size overlaps
-// there); a tied pair uses the same per-bar width its two bars share.
-function renderRstompCountingRow(container, barIndices, layouts) {
+// Font size scales with the per-bar width, then shrinks further if the
+// tokens still won't fit (see the placement pass below).
+function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, barOffset = 0) {
     container.innerHTML = '';
-    container.style.fontSize = `${Math.max(13, Math.min(24, layouts[0].width * 0.09))}px`;
+    container.style.width = `${totalWidth}px`;
     const els = [];
-    barIndices.forEach((barIndex, position) => {
-        const layout = layouts[position];
-        buildRstompCountingTokens(barIndex).forEach(token => {
+    const anchors = [];
+    layouts.forEach((layout, position) => {
+        buildRstompCountingTokens(barOffset + position).forEach(token => {
             const el = document.createElement('span');
             el.className = 'rstomp-count-token';
             el.textContent = token.text;
             if (token.kind === 'hold') {
-                const x = (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2;
-                el.style.left = `${x}px`;
+                anchors.push((layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2);
                 el.classList.add('rstomp-count-token-centered');
             } else {
-                const specIndex = layout.beatOwner[token.startBeat].specIndex;
-                el.style.left = `${layout.noteX[specIndex]}px`;
+                anchors.push(layout.noteX[layout.beatOwner[token.startBeat].specIndex]);
             }
             container.appendChild(el);
             els.push(el);
@@ -501,9 +648,8 @@ function renderRstompCountingRow(container, barIndices, layouts) {
     // Only a Hold token gets nudged, clamped into whatever free space
     // actually exists between its two fixed neighbours, measured from the
     // real rendered widths (offsetWidth) now that everything's in the DOM.
-    // Runs across the WHOLE combined sequence for a tied pair, not per bar
-    // - a token near the shared bar boundary can collide with its
-    // neighbour on the other side of that boundary too.
+    // Runs across the WHOLE phrase, not per bar - a token near a barline can
+    // collide with its neighbour on the other side of that barline too.
     // GAP is deliberately generous (not just enough to clear zero overlap
     // in one browser's font metrics) - a downloaded webfont like Patrick
     // Hand can render at measurably different widths across platforms
@@ -517,16 +663,35 @@ function renderRstompCountingRow(container, barIndices, layouts) {
         const width = el.offsetWidth;
         return centered ? [anchor - width / 2, anchor + width / 2] : [anchor, anchor + width];
     };
-    els.forEach((el, index) => {
-        if (!el.classList.contains('rstomp-count-token-centered')) return;
-        const width = el.offsetWidth;
-        let center = parseFloat(el.style.left);
-        const prevRight = index > 0 ? edgesOf(els[index - 1])[1] : -Infinity;
-        const nextLeft = index < els.length - 1 ? edgesOf(els[index + 1])[0] : Infinity;
-        center = Math.max(center, prevRight + GAP + width / 2);
-        center = Math.min(center, nextLeft - GAP - width / 2);
-        el.style.left = `${center}px`;
-    });
+
+    // Place everything at one font size and report the worst overlap left
+    // over. Nudging alone can't always win: where two fixed onsets sit close
+    // together, the bracket squeezed between them has nowhere legal to go.
+    const placeAt = fontSize => {
+        container.style.fontSize = `${fontSize}px`;
+        els.forEach((el, index) => { el.style.left = `${anchors[index]}px`; });
+        els.forEach((el, index) => {
+            if (!el.classList.contains('rstomp-count-token-centered')) return;
+            const width = el.offsetWidth;
+            let center = anchors[index];
+            const prevRight = index > 0 ? edgesOf(els[index - 1])[1] : -Infinity;
+            const nextLeft = index < els.length - 1 ? edgesOf(els[index + 1])[0] : Infinity;
+            center = Math.max(center, prevRight + GAP + width / 2);
+            center = Math.min(center, nextLeft - GAP - width / 2);
+            el.style.left = `${center}px`;
+        });
+        let worst = 0;
+        for (let index = 1; index < els.length; index++) {
+            worst = Math.max(worst, edgesOf(els[index - 1])[1] - edgesOf(els[index])[0]);
+        }
+        return worst;
+    };
+
+    // When a dense bar genuinely can't fit its counting at the natural size,
+    // shrink the row rather than let the numbers collide - and the shrinking
+    // is itself the signal that this width is running out of room.
+    let fontSize = Math.max(13, Math.min(24, perBarWidth * 0.09));
+    while (fontSize > 10 && placeAt(fontSize) > 0.5) fontSize -= 1;
 }
 
 // A Play followed by N Holds is one sustained note of duration N+1; a
@@ -548,18 +713,18 @@ function rstompBeatsToNoteSpecs(entries) {
     return specs;
 }
 
-// Renders 1 or 2 bars. 2 only when a tie connects them (see
-// groupRstompBars) - both must share ONE VexFlow canvas/context, since a
-// tie curve has to be drawn within a single context to connect a notehead
-// in one bar to a notehead in the next; two separate per-bar canvases
-// (which is all a single, untied bar ever needed) can't do that. Returns
-// one layout object per bar, in the SAME shape a single-bar render always
-// returned - renderRstompCountingRow doesn't need to know or care whether
-// its bar is sharing a canvas with a neighbour.
-function renderRstompStaffGroup(container, bars) {
+// Renders any number of consecutive bars onto ONE VexFlow canvas/context.
+// Sharing a single context is what lets a tie curve connect a notehead in
+// one bar to a notehead in the next - which is now every barline, not just
+// the ones that happened to land inside a card. Returns one layout object
+// per bar for renderRstompCountingRow.
+//
+// options.tieIn / options.tieOut draw the half-curve stubs for a tie that
+// continues off the start or end of this slice - only the full view splits
+// a phrase mid-tie, when it wraps bars into systems.
+function renderRstompStaff(container, bars, perBarWidth, options = {}) {
     container.innerHTML = '';
     const VF = Vex.Flow;
-    const perBarWidth = Math.max(150, (container.clientWidth || (150 * bars.length)) / bars.length);
     const totalWidth = perBarWidth * bars.length;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
     renderer.resize(totalWidth, 130);
@@ -611,28 +776,38 @@ function renderRstompStaffGroup(container, bars) {
             cumulativeBeats += spec.beats;
         });
 
-        return { bar, notes, noteX, pulseX, beatOwner, width: perBarWidth };
+        return { bar, notes, noteX, pulseX, beatOwner };
     });
 
     // Cross-barline tie: a fresh bar's own generated content never opens
     // on a Hold (every pool pattern starts with Play or Rest - see
-    // RSTOMP_PATTERNS), so entries[0] === 'hold' can only mean the note
-    // tied over from the previous bar (see generateRstompPhraseWithTie).
-    // Draw the actual curved tie connecting that previous bar's last
-    // notehead to this bar's first notehead - possible now because both
-    // bars share one context/canvas.
-    if (bars.length === 2 && bars[1][0] === 'hold') {
-        const lastNote = rendered[0].notes[rendered[0].notes.length - 1];
-        const firstNote = rendered[1].notes[0];
+    // RSTOMP_PATTERNS), so a bar whose beat 0 is 'hold' can only mean the
+    // note tied over from the previous bar (see generateRstompPhraseWithTie).
+    // Every bar is on this one canvas, so the curve can be drawn wherever
+    // that happens.
+    for (let position = 1; position < bars.length; position++) {
+        if (bars[position][0] !== 'hold') continue;
+        const previousNotes = rendered[position - 1].notes;
+        const lastNote = previousNotes[previousNotes.length - 1];
+        const firstNote = rendered[position].notes[0];
         if (lastNote && firstNote) {
             new VF.StaveTie({ first_note: lastNote, last_note: firstNote, first_indices: [0], last_indices: [0] }).setContext(context).draw();
         }
+    }
+    if (options.tieIn) {
+        const firstNote = rendered[0].notes[0];
+        if (firstNote) new VF.StaveTie({ last_note: firstNote, last_indices: [0] }).setContext(context).draw();
+    }
+    if (options.tieOut) {
+        const lastBarNotes = rendered[rendered.length - 1].notes;
+        const lastNote = lastBarNotes[lastBarNotes.length - 1];
+        if (lastNote) new VF.StaveTie({ first_note: lastNote, first_indices: [0] }).setContext(context).draw();
     }
 
     const svg = container.querySelector('svg');
     if (svg) svg.style.marginTop = '-30px';
 
-    return rendered.map(({ noteX, pulseX, beatOwner, width }) => ({ noteX, pulseX, beatOwner, width }));
+    return rendered.map(({ noteX, pulseX, beatOwner }) => ({ noteX, pulseX, beatOwner }));
 }
 
 /* ---------- Streak + feedback ---------- */
@@ -699,11 +874,13 @@ function handleRstompFailure(wrongBars) {
             rstompUndoStack = rstompUndoStack.filter(index => !wrongSet.has(rstompPositions[index].barIndex));
             const nextNull = rstompEntries.findIndex(value => value === null);
             rstompCursor = nextNull === -1 ? rstompPositions.length : nextNull;
+            rstompLocked = false;
+            rstompFollowing = true;
             renderRstompBars();
+            followRstompCursor();   // the cursor has jumped back to the first wrong bar; go with it
             updateRstompPrompt();
             updateRstompButtonStates();
             hideRstompFeedback();
-            rstompLocked = false;
         }, 1400);
     } else {
         showRstompFeedback('wrong', "Here's the correct answer - new phrase next.");
