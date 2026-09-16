@@ -657,7 +657,13 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rstomp-bar-card.active { border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(45,212,191,0.3); }
 .rstomp-bar-staff { width: 100%; height: 60px; overflow: hidden; }
 .rstomp-bar-staff svg { display: block; width: 100%; height: auto; }
-.rstomp-bar-counting { text-align: center; font-family: 'Patrick Hand', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 400; color: #1a2634; letter-spacing: 1px; min-height: 32px; }
+
+/* position: relative so .rstomp-count-token children can be placed at an
+   absolute pixel x lifted straight from the staff's own coordinate space -
+   see renderRstompCountingRow. Not a centered text block anymore; each
+   token sits at the x of the beat it actually describes. */
+.rstomp-bar-counting { position: relative; width: 100%; min-height: 34px; }
+.rstomp-count-token { position: absolute; top: 2px; transform: translateX(-50%); font-family: 'Patrick Hand', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 400; color: #1a2634; white-space: nowrap; }
 
 .rstomp-controls { width: 100%; max-width: 640px; margin: 10px auto 4px; display: flex; flex-direction: column; gap: 8px; }
 .rstomp-answer-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

@@ -288,54 +288,66 @@ function renderRstompBars() {
 
         const countingDiv = document.createElement('div');
         countingDiv.className = 'rstomp-bar-counting';
-        countingDiv.textContent = renderRstompCountingText(barIndex) || ' ';
         card.appendChild(countingDiv);
 
         container.appendChild(card);
-        renderRstompStaff(staffDiv, bar);
+        const layout = renderRstompStaff(staffDiv, bar);
+        renderRstompCountingRow(countingDiv, barIndex, layout);
     });
 }
 
 // Reveals left-to-right only, never past the cursor (design brief §9.3 -
-// "eyes forward", never a glance backward needed).
+// "eyes forward", never a glance backward needed). Returns positioned
+// tokens (not a flat string) so each one can be placed at the x of the
+// beat it actually describes - directly under the note it refers to, per
+// Rob's Rubank reference, not centered as one string under the whole bar.
 //
-// Bracket-merge rule (corrected - see the fix commit for the mistake this
-// replaces): Hold and Rest share the same bracket SYMBOL, but that does not
-// mean any run of adjacent bracket answers merges into one pair. A run only
-// merges when it's genuinely the same underlying event the whole way
+// Bracket-merge rule (corrected earlier - see that fix's commit): Hold and
+// Rest share the same bracket SYMBOL, but a run only merges into one
+// bracket when it's genuinely the same underlying event the whole way
 // through - all Hold (one sustained note continuing) or all Rest (one
-// continuous silence). A Hold immediately followed by a Rest (e.g. a half
-// note's tail sitting right before a half rest's first beat, bar shapes
-// like half-note+half-rest) is TWO separate events happening to sit next
-// to each other - the rest genuinely starts at that beat, it isn't a
-// continuation of anything - so it gets its OWN bracket, even though nothing
-// in the student's two-state answer (which only knows Play vs Bracket)
-// distinguishes them. That's why this reads the true pattern
-// (rstompPhrase), not just rstompEntries, to find the merge boundary.
-function renderRstompCountingText(barIndex) {
-    let text = '';
-    let bracketOpen = false;
-    let bracketRunType = null; // 'hold' or 'rest' - which event the open bracket is tracking
-    for (let beatIndex = 0; beatIndex < 4; beatIndex++) {
+// continuous silence), never across the boundary between them, even though
+// the student's own answer (which only knows Play vs Bracket) can't see
+// that distinction - that's why this reads the true pattern (rstompPhrase).
+function buildRstompCountingTokens(barIndex) {
+    const tokens = [];
+    let beatIndex = 0;
+    while (beatIndex < 4) {
         const posIndex = barIndex * 4 + beatIndex;
         const answer = rstompEntries[posIndex];
         if (answer == null) break;
-        const trueMode = rstompPhrase[barIndex][beatIndex]; // 'play' | 'hold' | 'rest'
-        const label = String(beatIndex + 1);
         if (answer === 'play') {
-            if (bracketOpen) { text += ')'; bracketOpen = false; bracketRunType = null; }
-            text += (text ? ' ' : '') + label;
-        } else if (bracketOpen && bracketRunType === trueMode) {
-            text += ' ' + label;
-        } else {
-            if (bracketOpen) text += ')';
-            text += (text ? ' ' : '') + '(' + label;
-            bracketOpen = true;
-            bracketRunType = trueMode;
+            tokens.push({ text: String(beatIndex + 1), startBeat: beatIndex });
+            beatIndex++;
+            continue;
         }
+        const trueMode = rstompPhrase[barIndex][beatIndex];
+        const labels = [String(beatIndex + 1)];
+        let end = beatIndex;
+        while (end + 1 < 4) {
+            const nextAnswer = rstompEntries[barIndex * 4 + end + 1];
+            if (nextAnswer !== 'bracket' || rstompPhrase[barIndex][end + 1] !== trueMode) break;
+            end++;
+            labels.push(String(end + 1));
+        }
+        tokens.push({ text: `(${labels.join(' ')})`, startBeat: beatIndex });
+        beatIndex = end + 1;
     }
-    if (bracketOpen) text += ')';
-    return text;
+    return tokens;
+}
+
+// layout.beatX comes straight from renderRstompStaff's read-back of
+// VexFlow's own rendered note positions, so a token's left offset lines
+// up with the real glyph above it rather than a guessed position.
+function renderRstompCountingRow(container, barIndex, layout) {
+    container.innerHTML = '';
+    buildRstompCountingTokens(barIndex).forEach(token => {
+        const el = document.createElement('span');
+        el.className = 'rstomp-count-token';
+        el.textContent = token.text;
+        el.style.left = `${layout.beatX[token.startBeat]}px`;
+        container.appendChild(el);
+    });
 }
 
 // A Play followed by N Holds is one sustained note of duration N+1; a
@@ -383,6 +395,34 @@ function renderRstompStaff(container, bar) {
 
     const svg = container.querySelector('svg');
     if (svg) svg.style.marginTop = '-30px';
+
+    // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) rather
+    // than hand-computing a proportional-beat guess - a first attempt at
+    // that guess (startX + beatIndex/4 * width) was measurably off by
+    // ~26-27px from where VexFlow actually drew the glyph (internal
+    // padding/spacing this project doesn't need to reverse-engineer).
+    // Reading the real position back is what actually guarantees the
+    // counting row lines up under its note, not just plausibly close.
+    const noteX = notes.map(note => note.getAbsoluteX());
+    const endX = stave.getNoteEndX();
+
+    // Map every beat (0-3) to an x-coordinate: a beat that starts a note
+    // gets that note's real x; a beat continuing an existing note (no
+    // glyph of its own - e.g. beat 2 of a held half note) is interpolated
+    // proportionally between its note's onset and the next note's onset
+    // (or the bar's end, for the last note).
+    const beatX = new Array(4);
+    let cumulativeBeats = 0;
+    specs.forEach((spec, index) => {
+        const thisX = noteX[index];
+        const nextX = index + 1 < noteX.length ? noteX[index + 1] : endX;
+        for (let k = 0; k < spec.beats; k++) {
+            beatX[cumulativeBeats + k] = thisX + (k / spec.beats) * (nextX - thisX);
+        }
+        cumulativeBeats += spec.beats;
+    });
+
+    return { beatX };
 }
 
 /* ---------- Streak + feedback ---------- */
