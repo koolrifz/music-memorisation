@@ -339,8 +339,16 @@ function buildRstompCountingTokens(barIndex) {
 // layout.beatX comes straight from renderRstompStaff's read-back of
 // VexFlow's own rendered note positions, so a token's left offset lines
 // up with the real glyph above it rather than a guessed position.
+//
+// Font size scales with the card's actual width rather than staying fixed:
+// in the 2-column portrait grid a bar-card can be under 180px wide, and a
+// fixed 24px font produces tokens wide enough to visually overlap their
+// neighbour (confirmed by measuring rendered bounding boxes at that width -
+// "(2)" and "(3 4)" overlapped by ~5px). Scaling keeps every token legible
+// without colliding, at any card width the grid produces.
 function renderRstompCountingRow(container, barIndex, layout) {
     container.innerHTML = '';
+    container.style.fontSize = `${Math.max(13, Math.min(24, layout.width * 0.09))}px`;
     buildRstompCountingTokens(barIndex).forEach(token => {
         const el = document.createElement('span');
         el.className = 'rstomp-count-token';
@@ -422,7 +430,7 @@ function renderRstompStaff(container, bar) {
         cumulativeBeats += spec.beats;
     });
 
-    return { beatX };
+    return { beatX, width };
 }
 
 /* ---------- Streak + feedback ---------- */
