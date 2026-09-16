@@ -23,9 +23,18 @@ const RSTOMP_PATTERNS = {
 // Counting rounds are untimed at every level (the eventual Performing round
 // is where timing pressure lives, per the design brief) - so no timing
 // field exists here yet.
+// Level 3's pool, once the half-note-adjacency and rest-adjacency
+// engraving rules both apply, only actually produces 4 valid bar shapes:
+// a lone whole note, a lone whole rest, half-note+half-rest, and
+// half-rest+half-note - by design, not a bug. It's genuinely a thin
+// "mixed" level at this stage (testing whether a student can switch
+// between whole-note-scale and half-note-scale thinking within one
+// level, not new combinatorics) - the pool grows once quarter notes
+// arrive at a future level.
 const RSTOMP_LEVELS = [
     { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', pool: ['whole-note', 'whole-rest'] },
-    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'] }
+    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'] },
+    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'] }
 ];
 
 // Beats-in-a-run -> VexFlow duration string. Only what levels 1-2 actually
@@ -155,9 +164,13 @@ function buildRstompBarShapes(pool) {
     const isRestPattern = key => RSTOMP_PATTERNS[key].every(mode => mode === 'rest');
     return results.filter(shape => {
         let run = 0;
-        for (const key of shape) {
-            run = isRestPattern(key) ? run + 1 : 0;
+        for (let i = 0; i < shape.length; i++) {
+            run = isRestPattern(shape[i]) ? run + 1 : 0;
             if (run > 1) return false;
+            // Engraving rule (design brief §4, level 3): two half notes
+            // adjacent in a bar should be written as one whole note instead
+            // - never generate the redundant two-half-notes shape.
+            if (shape[i] === 'half-note' && shape[i - 1] === 'half-note') return false;
         }
         return true;
     });
