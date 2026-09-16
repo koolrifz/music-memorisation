@@ -655,6 +655,19 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 .rstomp-bar-card { background: #ffffff; border-radius: 12px; padding: 4px 6px 8px; border: 3px solid #324a64; }
 .rstomp-bar-card.active { border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(45,212,191,0.3); }
+/* A tied pair renders as one wide card (one shared VexFlow canvas, so the
+   tie curve can be drawn) - spans both grid columns rather than sitting in
+   just one, matching the 2 bars' worth of content it actually holds. */
+.rstomp-bar-card-wide { grid-column: span 2; }
+/* grid-column: span 2 on a 1-column grid does NOT clamp to the one
+   available column - CSS Grid creates an extra IMPLICIT column to satisfy
+   the span instead, overflowing the layout (confirmed: a tied pair's wide
+   card rendered wider than the viewport, content cut off past the right
+   edge). This override has to come AFTER the unconditional rule above -
+   equal-specificity rules cascade by source order regardless of which one
+   sits inside a media query, so putting it earlier in the file (as a first
+   attempt did) let the unconditional span:2 win anyway. */
+@media (max-width: 420px) { .rstomp-bar-card-wide { grid-column: span 1; } }
 .rstomp-bar-staff { width: 100%; height: 60px; overflow: hidden; }
 .rstomp-bar-staff svg { display: block; width: 100%; height: auto; }
 

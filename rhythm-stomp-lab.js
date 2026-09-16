@@ -6,11 +6,11 @@
    nothing here touches rhythm.js. It exists to compare the old
    mode+stamp interface against the new two-state container model
    (Play vs a single "( )" bracket covering both Hold and Rest) on the
-   same dashboard, side by side. Levels 1-2 so far (whole notes/rests,
-   then half notes/rests, both untimed) - Level 1 doubles as a guided
-   walkthrough, since it's the tutorial for this interaction model;
-   every level after that launches straight into the game, matching the
-   rest of the app.
+   same dashboard, side by side. Levels 1-4 so far (whole notes/rests,
+   half notes/rests, the two mixed, ties across the barline - all
+   untimed) - Level 1 doubles as a guided walkthrough, since it's the
+   tutorial for this interaction model; every level after that launches
+   straight into the game, matching the rest of the app.
    ========================================= */
 
 const RSTOMP_PATTERNS = {
@@ -34,7 +34,13 @@ const RSTOMP_PATTERNS = {
 const RSTOMP_LEVELS = [
     { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', pool: ['whole-note', 'whole-rest'] },
     { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'] },
-    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'] }
+    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'] },
+    // tieLevel/tieChance: see generateRstompPhraseWithTie. Every phrase at
+    // this level carries a tie (tieChance 1), matching the original design
+    // brief's level 4 - ties are introduced right after whole/half, using
+    // only durations already taught, per Rob's "a tie is just how we make
+    // really long notes" framing.
+    { id: '4', label: 'Level 4: Ties Across the Barline', shortLabel: 'Ties Across the Barline', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], tieLevel: true, tieChance: 1 }
 ];
 
 // Beats-in-a-run -> VexFlow duration string. Only what levels 1-2 actually
@@ -146,13 +152,17 @@ function handleRstompBackButton() {
 /* ---------- Phrase generator ---------- */
 
 // Every way to concatenate a level's pool patterns so their beat-lengths
-// sum to exactly 4 (a full bar) - same approach as rhythm.js's
-// buildRhythmUnitShapes/buildRhythmBarShapes, ported rather than shared
-// since this file is deliberately independent of rhythm.js. Two adjacent
+// sum to exactly targetBeats - same approach as rhythm.js's
+// buildRhythmUnitShapes, ported rather than shared since this file is
+// deliberately independent of rhythm.js. Not hardcoded to a full 4-beat
+// bar: the tie generator below reuses this at shorter targets to fill the
+// beats on either side of a tied note within a single bar. Two adjacent
 // rest-units always collapse into one longer rest in real notation (no
 // onset to tell them apart), so any shape with more than 1 rest-unit in a
-// row is filtered out - standard engraving, not level-specific yet.
-function buildRstompBarShapes(pool) {
+// row is filtered out - standard engraving, not level-specific. Same for
+// two adjacent half notes (design brief §4, level 3) - that's a whole
+// note, never generate the redundant two-half-notes shape.
+function buildRstompUnitShapes(pool, targetBeats) {
     const results = [];
     (function build(remainingBeats, shape) {
         if (remainingBeats === 0) { results.push(shape); return; }
@@ -160,25 +170,30 @@ function buildRstompBarShapes(pool) {
             const length = RSTOMP_PATTERNS[key].length;
             if (length <= remainingBeats) build(remainingBeats - length, [...shape, key]);
         });
-    })(4, []);
+    })(targetBeats, []);
     const isRestPattern = key => RSTOMP_PATTERNS[key].every(mode => mode === 'rest');
     return results.filter(shape => {
         let run = 0;
         for (let i = 0; i < shape.length; i++) {
             run = isRestPattern(shape[i]) ? run + 1 : 0;
             if (run > 1) return false;
-            // Engraving rule (design brief §4, level 3): two half notes
-            // adjacent in a bar should be written as one whole note instead
-            // - never generate the redundant two-half-notes shape.
             if (shape[i] === 'half-note' && shape[i - 1] === 'half-note') return false;
         }
         return true;
     });
 }
 
+function buildRstompBarShapes(pool) {
+    return buildRstompUnitShapes(pool, 4);
+}
+
+function generateRstompPhrase(level) {
+    return level.tieLevel ? generateRstompPhraseWithTie(level) : generateRstompPhraseNormal(level);
+}
+
 // Variety rule (design brief §5 item 15): no bar shape repeats more than
 // twice across the 4 bars, never identical to the bar immediately before it.
-function generateRstompPhrase(level) {
+function generateRstompPhraseNormal(level) {
     const shapes = buildRstompBarShapes(level.pool);
     const counts = new Array(shapes.length).fill(0);
     const chosenIndices = [];
@@ -192,6 +207,60 @@ function generateRstompPhrase(level) {
         counts[chosen]++;
     }
     return chosenIndices.map(index => shapes[index].flatMap(key => RSTOMP_PATTERNS[key]));
+}
+
+// A tied note is split across the bar 0/1 or bar 2/3 boundary - NEVER the
+// bar 1/2 boundary. That boundary is where the 2-column CSS grid
+// (.rstomp-bars, <420px falls back to 1-column but >=420px is always
+// 2-columns-2-rows) puts its row split, so a tie could never be drawn
+// there as a real connecting curve - both halves have to share one
+// VexFlow canvas (see groupRstompBars/renderRstompStaffGroup), which is
+// only possible within a row, never across one. Ported from rhythm.js's
+// identical reasoning, which applies here regardless of the exact
+// breakpoint since the generated content has to be safe at every width.
+//
+// r beats of the tied note sit at the end of the first bar (a Play plus
+// r-1 Holds), s beats sit at the start of the second bar as pure Hold -
+// no onset there, since it's the same note continuing, not a new attack.
+// That leading Hold-with-no-Play is exactly how a fresh bar's own content
+// is told apart from a tie continuation (every pool pattern starts with
+// Play or Rest, never Hold - see RSTOMP_PATTERNS). r/s are only ever
+// picked from beat-counts that leave the *rest* of their bar fillable by
+// this level's pool.
+function generateRstompPhraseWithTie(level) {
+    const includesTie = Math.random() < (level.tieChance != null ? level.tieChance : 1);
+    if (!includesTie) return generateRstompPhraseNormal(level);
+
+    const pool = level.pool;
+    const candidateRuns = [];
+    for (let n = 1; n <= 4; n++) {
+        if (buildRstompUnitShapes(pool, 4 - n).length > 0) candidateRuns.push(n);
+    }
+    const rsPairs = [];
+    candidateRuns.forEach(r => candidateRuns.forEach(s => rsPairs.push([r, s])));
+    const [r, s] = rsPairs[Math.floor(Math.random() * rsPairs.length)];
+
+    const leadShapes = buildRstompUnitShapes(pool, 4 - r);
+    const tailShapes = buildRstompUnitShapes(pool, 4 - s);
+    const leadShape = leadShapes[Math.floor(Math.random() * leadShapes.length)];
+    const tailShape = tailShapes[Math.floor(Math.random() * tailShapes.length)];
+
+    const barA = [...leadShape.flatMap(key => RSTOMP_PATTERNS[key]), 'play', ...Array(r - 1).fill('hold')];
+    const barB = [...Array(s).fill('hold'), ...tailShape.flatMap(key => RSTOMP_PATTERNS[key])];
+
+    const tiedPairIndex = Math.random() < 0.5 ? 0 : 1;
+    const normalShapes = buildRstompBarShapes(level.pool);
+    const pickNormalShape = previousShape => {
+        const candidates = normalShapes.filter(shape => shape.join() !== (previousShape || []).join());
+        const options = candidates.length ? candidates : normalShapes;
+        return options[Math.floor(Math.random() * options.length)];
+    };
+    const normalShape1 = pickNormalShape(null);
+    const normalShape2 = pickNormalShape(normalShape1);
+    const normalBar1 = normalShape1.flatMap(key => RSTOMP_PATTERNS[key]);
+    const normalBar2 = normalShape2.flatMap(key => RSTOMP_PATTERNS[key]);
+
+    return tiedPairIndex === 0 ? [barA, barB, normalBar1, normalBar2] : [normalBar1, normalBar2, barA, barB];
 }
 
 // Levels 1-2 are both a flat 4x4 grid (4 bars, 4 undivided beats each, no
@@ -286,14 +355,35 @@ function updateRstompButtonStates() {
 
 /* ---------- Rendering: staff (display-only) + live counting row ---------- */
 
+// A bar whose own beat 0 is 'hold' can only mean the note tied over from
+// the previous bar (see generateRstompPhraseWithTie) - groups bars into
+// rendering units of 1 (no tie touching it) or 2 (a tied pair, which must
+// share one VexFlow canvas so the tie curve can connect a notehead in
+// each - see renderRstompStaffGroup).
+function groupRstompBars(phrase) {
+    const groups = [];
+    let i = 0;
+    while (i < phrase.length) {
+        if (phrase[i + 1] && phrase[i + 1][0] === 'hold') {
+            groups.push([i, i + 1]);
+            i += 2;
+        } else {
+            groups.push([i]);
+            i += 1;
+        }
+    }
+    return groups;
+}
+
 function renderRstompBars() {
     const container = document.getElementById('rstomp-bars-container');
     if (!container) return;
     container.innerHTML = '';
     const activeBar = rstompCursor < rstompPositions.length ? rstompPositions[rstompCursor].barIndex : -1;
-    rstompPhrase.forEach((bar, barIndex) => {
+    groupRstompBars(rstompPhrase).forEach(barIndices => {
         const card = document.createElement('div');
-        card.className = `rstomp-bar-card${barIndex === activeBar ? ' active' : ''}`;
+        const isActive = barIndices.includes(activeBar);
+        card.className = `rstomp-bar-card${isActive ? ' active' : ''}${barIndices.length > 1 ? ' rstomp-bar-card-wide' : ''}`;
 
         const staffDiv = document.createElement('div');
         staffDiv.className = 'rstomp-bar-staff';
@@ -304,8 +394,8 @@ function renderRstompBars() {
         card.appendChild(countingDiv);
 
         container.appendChild(card);
-        const layout = renderRstompStaff(staffDiv, bar);
-        renderRstompCountingRow(countingDiv, barIndex, layout);
+        const layouts = renderRstompStaffGroup(staffDiv, barIndices.map(i => rstompPhrase[i]));
+        renderRstompCountingRow(countingDiv, barIndices, layouts);
     });
 }
 
@@ -371,26 +461,36 @@ function buildRstompCountingTokens(barIndex) {
 // setCenterAlignment() is explicitly called, which nothing here does. No
 // exception needed - rule 1 already produces the correct position.
 //
-// Font size still scales with the card's actual width (2-column portrait
-// grid can put a bar-card under 180px wide - a fixed size overlaps there).
-function renderRstompCountingRow(container, barIndex, layout) {
+// barIndices/layouts are arrays - length 1 for an ordinary bar, length 2
+// for a tied pair sharing one canvas (see renderRstompStaffGroup); each
+// layout's noteX/pulseX are already expressed in that shared canvas's one
+// coordinate space, so a second bar's tokens don't need any extra offset
+// - they slot into the same container as the first bar's.
+//
+// Font size still scales with the card's actual per-bar width (2-column
+// portrait grid can put a bar under 180px wide - a fixed size overlaps
+// there); a tied pair uses the same per-bar width its two bars share.
+function renderRstompCountingRow(container, barIndices, layouts) {
     container.innerHTML = '';
-    container.style.fontSize = `${Math.max(13, Math.min(24, layout.width * 0.09))}px`;
-    const tokens = buildRstompCountingTokens(barIndex);
-    const els = tokens.map(token => {
-        const el = document.createElement('span');
-        el.className = 'rstomp-count-token';
-        el.textContent = token.text;
-        if (token.kind === 'hold') {
-            const x = (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2;
-            el.style.left = `${x}px`;
-            el.classList.add('rstomp-count-token-centered');
-        } else {
-            const specIndex = layout.beatOwner[token.startBeat].specIndex;
-            el.style.left = `${layout.noteX[specIndex]}px`;
-        }
-        container.appendChild(el);
-        return el;
+    container.style.fontSize = `${Math.max(13, Math.min(24, layouts[0].width * 0.09))}px`;
+    const els = [];
+    barIndices.forEach((barIndex, position) => {
+        const layout = layouts[position];
+        buildRstompCountingTokens(barIndex).forEach(token => {
+            const el = document.createElement('span');
+            el.className = 'rstomp-count-token';
+            el.textContent = token.text;
+            if (token.kind === 'hold') {
+                const x = (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2;
+                el.style.left = `${x}px`;
+                el.classList.add('rstomp-count-token-centered');
+            } else {
+                const specIndex = layout.beatOwner[token.startBeat].specIndex;
+                el.style.left = `${layout.noteX[specIndex]}px`;
+            }
+            container.appendChild(el);
+            els.push(el);
+        });
     });
 
     // Rule 2's "breathe at the true mid-span" position is an ideal, not a
@@ -401,12 +501,15 @@ function renderRstompCountingRow(container, barIndex, layout) {
     // Only a Hold token gets nudged, clamped into whatever free space
     // actually exists between its two fixed neighbours, measured from the
     // real rendered widths (offsetWidth) now that everything's in the DOM.
+    // Runs across the WHOLE combined sequence for a tied pair, not per bar
+    // - a token near the shared bar boundary can collide with its
+    // neighbour on the other side of that boundary too.
     // GAP is deliberately generous (not just enough to clear zero overlap
     // in one browser's font metrics) - a downloaded webfont like Patrick
     // Hand can render at measurably different widths across platforms
     // (desktop headless Chromium vs a phone's Chrome build), so a hairline
-    // 3px margin that only just clears in one environment can still
-    // collide in another.
+    // margin that only just clears in one environment can still collide
+    // in another.
     const GAP = 8;
     const edgesOf = el => {
         const centered = el.classList.contains('rstomp-count-token-centered');
@@ -445,58 +548,91 @@ function rstompBeatsToNoteSpecs(entries) {
     return specs;
 }
 
-function renderRstompStaff(container, bar) {
+// Renders 1 or 2 bars. 2 only when a tie connects them (see
+// groupRstompBars) - both must share ONE VexFlow canvas/context, since a
+// tie curve has to be drawn within a single context to connect a notehead
+// in one bar to a notehead in the next; two separate per-bar canvases
+// (which is all a single, untied bar ever needed) can't do that. Returns
+// one layout object per bar, in the SAME shape a single-bar render always
+// returned - renderRstompCountingRow doesn't need to know or care whether
+// its bar is sharing a canvas with a neighbour.
+function renderRstompStaffGroup(container, bars) {
     container.innerHTML = '';
     const VF = Vex.Flow;
-    const width = Math.max(150, container.clientWidth || 150);
+    const perBarWidth = Math.max(150, (container.clientWidth || (150 * bars.length)) / bars.length);
+    const totalWidth = perBarWidth * bars.length;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(width, 130);
+    renderer.resize(totalWidth, 130);
     const context = renderer.getContext();
 
-    const stave = new VF.Stave(4, 20, width - 8);
-    stave.setConfigForLines([
-        { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
-    ]);
-    stave.setStyle({ strokeStyle: '#000000' });
-    stave.setContext(context).draw();
+    const rendered = bars.map((bar, position) => {
+        const isLastInGroup = position === bars.length - 1;
+        const x = 4 + position * perBarWidth;
+        const stave = new VF.Stave(x, 20, perBarWidth - (isLastInGroup ? 8 : 0));
+        stave.setConfigForLines([
+            { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
+        ]);
+        stave.setStyle({ strokeStyle: '#000000' });
+        stave.setContext(context).draw();
 
-    const specs = rstompBeatsToNoteSpecs(bar);
-    const notes = specs.map(spec => {
-        const duration = RSTOMP_DURATION_FOR_BEATS[spec.beats];
-        return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+        const specs = rstompBeatsToNoteSpecs(bar);
+        const notes = specs.map(spec => {
+            const duration = RSTOMP_DURATION_FOR_BEATS[spec.beats];
+            return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+        });
+        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(notes);
+        new VF.Formatter().joinVoices([voice]).format([voice], perBarWidth - 60);
+        voice.draw(context, stave);
+
+        // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) -
+        // the real onset a Play token or a non-whole-bar Rest bracket
+        // left-aligns to (see renderRstompCountingRow for the alignment
+        // rules this layout serves). Already in the shared canvas's one
+        // coordinate space (position's own x offset baked in), so a second
+        // bar's positions need no further adjustment.
+        const noteX = notes.map(note => note.getAbsoluteX());
+
+        // The ideal, evenly-spaced beat grid (true beat 1/2/3/4 positions),
+        // independent of where any glyph actually landed - this is what a
+        // Hold-continuation bracket (no glyph of its own) centers across.
+        const trueStartX = stave.getNoteStartX();
+        const trueEndX = stave.getNoteEndX();
+        const pulseX = beatFraction => trueStartX + (beatFraction / 4) * (trueEndX - trueStartX);
+
+        // Which spec (note/rest object) owns each beat, and whether that
+        // beat is the spec's own onset (has a glyph) or a continuation
+        // (doesn't) - a bar whose own beat 0 is 'hold' (a tie continuing
+        // from the previous bar) still gets a real onset glyph and real
+        // noteX here, same as any other spec; it just isn't a Play.
+        const beatOwner = new Array(4);
+        let cumulativeBeats = 0;
+        specs.forEach((spec, index) => {
+            for (let k = 0; k < spec.beats; k++) beatOwner[cumulativeBeats + k] = { specIndex: index, isOnset: k === 0 };
+            cumulativeBeats += spec.beats;
+        });
+
+        return { bar, notes, noteX, pulseX, beatOwner, width: perBarWidth };
     });
-    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(notes);
-    new VF.Formatter().joinVoices([voice]).format([voice], width - 60);
-    voice.draw(context, stave);
+
+    // Cross-barline tie: a fresh bar's own generated content never opens
+    // on a Hold (every pool pattern starts with Play or Rest - see
+    // RSTOMP_PATTERNS), so entries[0] === 'hold' can only mean the note
+    // tied over from the previous bar (see generateRstompPhraseWithTie).
+    // Draw the actual curved tie connecting that previous bar's last
+    // notehead to this bar's first notehead - possible now because both
+    // bars share one context/canvas.
+    if (bars.length === 2 && bars[1][0] === 'hold') {
+        const lastNote = rendered[0].notes[rendered[0].notes.length - 1];
+        const firstNote = rendered[1].notes[0];
+        if (lastNote && firstNote) {
+            new VF.StaveTie({ first_note: lastNote, last_note: firstNote, first_indices: [0], last_indices: [0] }).setContext(context).draw();
+        }
+    }
 
     const svg = container.querySelector('svg');
     if (svg) svg.style.marginTop = '-30px';
 
-    // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) -
-    // the real onset a Play token or a non-whole-bar Rest bracket left-
-    // aligns to (see renderRstompCountingRow for the alignment rules this
-    // layout serves).
-    const noteX = notes.map(note => note.getAbsoluteX());
-
-    // The ideal, evenly-spaced beat grid (true beat 1/2/3/4 positions),
-    // independent of where any glyph actually landed - this is what a
-    // Hold-continuation bracket (no glyph of its own) centers across, and
-    // what a whole rest's "1" anchors to instead of that glyph's own
-    // (deliberately centered, per standard engraving) rendered position.
-    const trueStartX = stave.getNoteStartX();
-    const trueEndX = stave.getNoteEndX();
-    const pulseX = beatFraction => trueStartX + (beatFraction / 4) * (trueEndX - trueStartX);
-
-    // Which spec (note/rest object) owns each beat, and whether that beat
-    // is the spec's own onset (has a glyph) or a continuation (doesn't).
-    const beatOwner = new Array(4);
-    let cumulativeBeats = 0;
-    specs.forEach((spec, index) => {
-        for (let k = 0; k < spec.beats; k++) beatOwner[cumulativeBeats + k] = { specIndex: index, isOnset: k === 0 };
-        cumulativeBeats += spec.beats;
-    });
-
-    return { noteX, pulseX, beatOwner, width };
+    return rendered.map(({ noteX, pulseX, beatOwner, width }) => ({ noteX, pulseX, beatOwner, width }));
 }
 
 /* ---------- Streak + feedback ---------- */
