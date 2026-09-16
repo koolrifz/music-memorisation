@@ -6,17 +6,34 @@
    nothing here touches rhythm.js. It exists to compare the old
    mode+stamp interface against the new two-state container model
    (Play vs a single "( )" bracket covering both Hold and Rest) on the
-   same dashboard, side by side. Level 1 only for now (whole notes and
-   whole rests, untimed) - deliberately built as a guided walkthrough,
-   since Level 1 IS the tutorial for this interaction model.
+   same dashboard, side by side. Levels 1-2 so far (whole notes/rests,
+   then half notes/rests, both untimed) - Level 1 doubles as a guided
+   walkthrough, since it's the tutorial for this interaction model;
+   every level after that launches straight into the game, matching the
+   rest of the app.
    ========================================= */
 
 const RSTOMP_PATTERNS = {
     'whole-note': ['play', 'hold', 'hold', 'hold'],
-    'whole-rest': ['rest', 'rest', 'rest', 'rest']
+    'whole-rest': ['rest', 'rest', 'rest', 'rest'],
+    'half-note': ['play', 'hold'],
+    'half-rest': ['rest', 'rest']
 };
-const RSTOMP_POOL = ['whole-note', 'whole-rest'];
 
+// Counting rounds are untimed at every level (the eventual Performing round
+// is where timing pressure lives, per the design brief) - so no timing
+// field exists here yet.
+const RSTOMP_LEVELS = [
+    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', pool: ['whole-note', 'whole-rest'] },
+    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'] }
+];
+
+// Beats-in-a-run -> VexFlow duration string. Only what levels 1-2 actually
+// need (a lone 4-beat note/rest, or two 2-beat ones) - no reason to bring
+// in rhythm.js's fuller map (dotted values, quavers) before a level needs it.
+const RSTOMP_DURATION_FOR_BEATS = { 1: 'q', 2: 'h', 4: 'w' };
+
+let rstompSelectedLevel = '1';
 let rstompPhrase = [];          // 4 bars, each a 4-entry array of 'play'/'hold'/'rest'
 let rstompPositions = [];       // flat [{barIndex, beatIndex}] - 16 for a 4-bar phrase, level 1 has no subdivisions
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
@@ -30,7 +47,7 @@ let rstompLocked = false;
 /* ---------- Persistence (same shape as the other games, per CLAUDE.md) ---------- */
 
 function getRstompProgress() {
-    const fallback = { stageProgress: {}, totalPlays: 0 };
+    const fallback = { unlockedStages: ['1'], stageProgress: {}, lastPosition: '1', totalPlays: 0 };
     try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmLabProgress') || '{}') }; }
     catch (error) { return fallback; }
 }
@@ -41,25 +58,77 @@ function saveRstompProgress(progress) {
 
 function recordRstompResult(isOfficialMastery) {
     const progress = getRstompProgress();
-    const stage = progress.stageProgress['1'] || { bestScore: 0, timesPlayed: 0, cleared: false };
+    const stage = progress.stageProgress[rstompSelectedLevel] || { bestScore: 0, timesPlayed: 0, cleared: false };
     stage.timesPlayed++;
     stage.bestScore = Math.max(stage.bestScore || 0, Math.round(rstompScore));
     stage.cleared = stage.cleared || isOfficialMastery;
-    progress.stageProgress['1'] = stage;
+    progress.stageProgress[rstompSelectedLevel] = stage;
     progress.totalPlays = (progress.totalPlays || 0) + 1;
+    const currentIndex = RSTOMP_LEVELS.findIndex(level => level.id === rstompSelectedLevel);
+    const nextLevel = RSTOMP_LEVELS[currentIndex + 1];
+    if (isOfficialMastery && nextLevel && !progress.unlockedStages.includes(nextLevel.id)) progress.unlockedStages.push(nextLevel.id);
     saveRstompProgress(progress);
 }
 
-/* ---------- Entry / navigation ---------- */
+/* ---------- Pathway screen ---------- */
 
 function enterRhythmLab() {
-    switchScreenState('rhythm-lab', 'rhythm-lab-screen-intro');
+    renderRstompPathway();
+    switchScreenState('rhythm-lab', 'rhythm-lab-screen-pathway');
+}
+
+function renderRstompPathway() {
+    const progress = getRstompProgress();
+    const unlocked = new Set(progress.unlockedStages || ['1']);
+    const track = document.getElementById('rstomp-pathway-track');
+    if (!track) return;
+    track.innerHTML = '';
+    let recommended = progress.lastPosition || '1';
+    if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
+    rstompSelectedLevel = recommended;
+    RSTOMP_LEVELS.forEach((level, index) => {
+        const isUnlocked = unlocked.has(level.id);
+        const record = progress.stageProgress?.[level.id];
+        const node = document.createElement('button');
+        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${level.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
+        node.disabled = !isUnlocked;
+        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${level.shortLabel}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        if (isUnlocked) node.onclick = () => selectRstompLevel(level.id);
+        track.appendChild(node);
+    });
+    selectRstompLevel(rstompSelectedLevel, false);
+}
+
+function selectRstompLevel(levelId, rerender = true) {
+    const progress = getRstompProgress();
+    if (!(progress.unlockedStages || []).includes(levelId)) return;
+    rstompSelectedLevel = levelId;
+    progress.lastPosition = levelId;
+    saveRstompProgress(progress);
+    if (rerender) renderRstompPathway();
+    const startButton = document.getElementById('rstomp-pathway-start');
+    if (startButton) {
+        startButton.disabled = false;
+        startButton.innerText = `Start ${RSTOMP_LEVELS.find(level => level.id === levelId).shortLabel}`;
+    }
+}
+
+// Level 1 gets the guided walkthrough screen first, since that's the
+// tutorial for the whole interaction model; every other level launches
+// straight into the game, same as the rest of the app.
+function startSelectedRstompLevel() {
+    if (rstompSelectedLevel === '1') {
+        switchScreenState('rhythm-lab', 'rhythm-lab-screen-intro');
+    } else {
+        startRstompLevel();
+    }
 }
 
 function handleRstompBackButton() {
     const activeScreen = document.querySelector('#view-rhythm-lab .screen.active');
-    if (activeScreen && activeScreen.id === 'rhythm-lab-screen-game') {
-        switchScreenState('rhythm-lab', 'rhythm-lab-screen-intro');
+    if (activeScreen && (activeScreen.id === 'rhythm-lab-screen-game' || activeScreen.id === 'rhythm-lab-screen-intro')) {
+        renderRstompPathway();
+        switchScreenState('rhythm-lab', 'rhythm-lab-screen-pathway');
     } else {
         launchGame('view-dashboard');
     }
@@ -67,27 +136,55 @@ function handleRstompBackButton() {
 
 /* ---------- Phrase generator ---------- */
 
-// Same variety rule as rhythm.js (design brief §5 item 15): no pattern
-// repeats more than twice across the 4 bars, never identical to the bar
-// immediately before it.
-function generateRstompPhrase() {
-    const counts = { 'whole-note': 0, 'whole-rest': 0 };
-    const chosenKeys = [];
-    for (let i = 0; i < 4; i++) {
-        let candidates = RSTOMP_POOL.filter(key => counts[key] < 2 && key !== chosenKeys[i - 1]);
-        if (candidates.length === 0) candidates = RSTOMP_POOL.filter(key => key !== chosenKeys[i - 1]);
-        if (candidates.length === 0) candidates = RSTOMP_POOL;
-        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-        chosenKeys.push(chosen);
-        counts[chosen]++;
-    }
-    return chosenKeys.map(key => [...RSTOMP_PATTERNS[key]]);
+// Every way to concatenate a level's pool patterns so their beat-lengths
+// sum to exactly 4 (a full bar) - same approach as rhythm.js's
+// buildRhythmUnitShapes/buildRhythmBarShapes, ported rather than shared
+// since this file is deliberately independent of rhythm.js. Two adjacent
+// rest-units always collapse into one longer rest in real notation (no
+// onset to tell them apart), so any shape with more than 1 rest-unit in a
+// row is filtered out - standard engraving, not level-specific yet.
+function buildRstompBarShapes(pool) {
+    const results = [];
+    (function build(remainingBeats, shape) {
+        if (remainingBeats === 0) { results.push(shape); return; }
+        pool.forEach(key => {
+            const length = RSTOMP_PATTERNS[key].length;
+            if (length <= remainingBeats) build(remainingBeats - length, [...shape, key]);
+        });
+    })(4, []);
+    const isRestPattern = key => RSTOMP_PATTERNS[key].every(mode => mode === 'rest');
+    return results.filter(shape => {
+        let run = 0;
+        for (const key of shape) {
+            run = isRestPattern(key) ? run + 1 : 0;
+            if (run > 1) return false;
+        }
+        return true;
+    });
 }
 
-// Level 1 is a flat 4x4 grid (4 bars, 4 undivided beats each, no
+// Variety rule (design brief §5 item 15): no bar shape repeats more than
+// twice across the 4 bars, never identical to the bar immediately before it.
+function generateRstompPhrase(level) {
+    const shapes = buildRstompBarShapes(level.pool);
+    const counts = new Array(shapes.length).fill(0);
+    const chosenIndices = [];
+    for (let i = 0; i < 4; i++) {
+        const allIndices = shapes.map((_, index) => index);
+        let candidates = allIndices.filter(index => counts[index] < 2 && index !== chosenIndices[i - 1]);
+        if (candidates.length === 0) candidates = allIndices.filter(index => index !== chosenIndices[i - 1]);
+        if (candidates.length === 0) candidates = allIndices;
+        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        chosenIndices.push(chosen);
+        counts[chosen]++;
+    }
+    return chosenIndices.map(index => shapes[index].flatMap(key => RSTOMP_PATTERNS[key]));
+}
+
+// Levels 1-2 are both a flat 4x4 grid (4 bars, 4 undivided beats each, no
 // subdivisions) - so a position's flat index is just barIndex*4+beatIndex.
-// Later levels with subdivided beats would need rhythm.js's more general
-// position-lookup approach; not needed yet.
+// A future level with subdivided beats (quavers etc.) would need
+// rhythm.js's more general position-lookup approach; not needed yet.
 function buildRstompPositions(phrase) {
     const positions = [];
     phrase.forEach((bar, barIndex) => {
@@ -103,19 +200,21 @@ function rstompExpectedAnswer(position) {
 
 /* ---------- Round lifecycle ---------- */
 
-function startRstompLevel1() {
+function startRstompLevel() {
     initAudio();
     rstompAttempt = 1;
     rstompStreak = 0;
     rstompScore = 0;
     rstompLocked = false;
     switchScreenState('rhythm-lab', 'rhythm-lab-screen-game');
+    document.getElementById('rstomp-level-label').innerText = RSTOMP_LEVELS.find(level => level.id === rstompSelectedLevel).label;
     updateRstompStreakDots();
     startNewRstompPhrase();
 }
 
 function startNewRstompPhrase() {
-    rstompPhrase = generateRstompPhrase();
+    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    rstompPhrase = generateRstompPhrase(level);
     rstompPositions = buildRstompPositions(rstompPhrase);
     rstompEntries = new Array(rstompPositions.length).fill(null);
     rstompUndoStack = [];
@@ -224,10 +323,25 @@ function renderRstompCountingText(barIndex) {
     return text;
 }
 
-// Level 1 only ever has a whole note or a whole rest filling the bar, so
-// this is deliberately not the general run-length note-building machinery
-// rhythm.js needs for mixed durations - no reason to build that generality
-// before a level actually needs it.
+// A Play followed by N Holds is one sustained note of duration N+1; a
+// contiguous Rest run is one rest of that duration - same run-length
+// encoding as rhythm.js, just without its subdivision/tie/beaming
+// machinery, which levels 1-2 don't need yet.
+function rstompBeatsToNoteSpecs(entries) {
+    const specs = [];
+    let i = 0;
+    while (i < entries.length) {
+        const mode = entries[i];
+        const isRest = mode === 'rest';
+        const continuesAs = isRest ? 'rest' : 'hold';
+        let run = 1;
+        while (i + run < entries.length && entries[i + run] === continuesAs) run++;
+        specs.push({ beats: run, isRest });
+        i += run;
+    }
+    return specs;
+}
+
 function renderRstompStaff(container, bar) {
     container.innerHTML = '';
     const VF = Vex.Flow;
@@ -243,9 +357,12 @@ function renderRstompStaff(container, bar) {
     stave.setStyle({ strokeStyle: '#000000' });
     stave.setContext(context).draw();
 
-    const isRest = bar[0] === 'rest';
-    const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: isRest ? 'wr' : 'w' });
-    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
+    const specs = rstompBeatsToNoteSpecs(bar);
+    const notes = specs.map(spec => {
+        const duration = RSTOMP_DURATION_FOR_BEATS[spec.beats];
+        return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+    });
+    const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(notes);
     new VF.Formatter().joinVoices([voice]).format([voice], width - 60);
     voice.draw(context, stave);
 
@@ -338,6 +455,8 @@ function handleRstompFailure(wrongBars) {
 
 function showRstompLevelComplete() {
     recordRstompResult(true);
+    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    document.getElementById('rstomp-level-complete-title').innerText = `${level.shortLabel} mastered!`;
     document.getElementById('rstomp-level-complete-score').innerText = rstompScore;
     playSound('complete');
     document.getElementById('modal-rstomp-level-complete').classList.add('show');
@@ -346,5 +465,6 @@ function showRstompLevelComplete() {
 function continueAfterRstompLevel() {
     document.getElementById('modal-rstomp-level-complete').classList.remove('show');
     rstompLocked = false;
-    switchScreenState('rhythm-lab', 'rhythm-lab-screen-intro');
+    renderRstompPathway();
+    switchScreenState('rhythm-lab', 'rhythm-lab-screen-pathway');
 }

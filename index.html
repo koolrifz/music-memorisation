@@ -431,7 +431,17 @@
         <button class="btn-back" onclick="handleRstompBackButton()">⬅ Back</button>
     </div>
 
-    <div id="rhythm-lab-screen-intro" class="screen active">
+    <div id="rhythm-lab-screen-pathway" class="screen active">
+        <div class="pathway-card">
+            <h1>Rhythm Stomp Lab</h1>
+            <p class="pathway-subtitle">New interface prototype — pick a level to test.</p>
+            <div class="pathway-track" id="rstomp-pathway-track"></div>
+            <button class="btn btn-start" id="rstomp-pathway-start" onclick="startSelectedRstompLevel()" disabled>Choose your mission</button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <div id="rhythm-lab-screen-intro" class="screen">
         <div class="pathway-card">
             <h1>Rhythm Stomp Lab</h1>
             <p class="pathway-subtitle">Level 1 · Whole Notes and Rests</p>
@@ -445,16 +455,16 @@
                     <div class="rstomp-walkthrough-btn rstomp-bracket-demo">( )</div>
                     <span>nothing new — still ringing, or silence</span>
                 </div>
-                <p>Tap one, and it's written under the music straight away. Fill all 4 bars, then check your answer. Three phrases right in a row and you've mastered Level 1.</p>
+                <p>Tap one, and it's written under the music straight away. Fill all 4 bars, then check your answer. Three phrases right in a row and you've mastered the level.</p>
             </div>
-            <button class="btn btn-start" onclick="startRstompLevel1()">Start Level 1</button>
+            <button class="btn btn-start" onclick="startRstompLevel()">Start Level 1</button>
             <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
         </div>
     </div>
 
     <div id="rhythm-lab-screen-game" class="screen">
         <div class="rstomp-header">
-            <div class="rstomp-header-label">Level 1 · Whole Notes and Rests</div>
+            <div class="rstomp-header-label" id="rstomp-level-label">Level 1 · Whole Notes and Rests</div>
             <div class="tier-tracker">Streak: <span class="streak-dots" id="rstomp-streak-dots"></span></div>
         </div>
 
@@ -487,7 +497,7 @@
 <div class="modal-overlay" id="modal-rstomp-level-complete">
     <div class="stage-complete-box">
         <div class="stage-complete-kicker">Level Mastered!</div>
-        <h3>Level 1 mastered!</h3>
+        <h3 id="rstomp-level-complete-title">Level 1 mastered!</h3>
         <p>Three phrases counted correctly in a row.</p>
         <div class="stage-complete-stats">
             <div><strong id="rstomp-level-complete-score">0</strong><span>score</span></div>
