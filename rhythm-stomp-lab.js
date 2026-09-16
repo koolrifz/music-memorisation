@@ -401,7 +401,13 @@ function renderRstompCountingRow(container, barIndex, layout) {
     // Only a Hold token gets nudged, clamped into whatever free space
     // actually exists between its two fixed neighbours, measured from the
     // real rendered widths (offsetWidth) now that everything's in the DOM.
-    const GAP = 3;
+    // GAP is deliberately generous (not just enough to clear zero overlap
+    // in one browser's font metrics) - a downloaded webfont like Patrick
+    // Hand can render at measurably different widths across platforms
+    // (desktop headless Chromium vs a phone's Chrome build), so a hairline
+    // 3px margin that only just clears in one environment can still
+    // collide in another.
+    const GAP = 8;
     const edgesOf = el => {
         const centered = el.classList.contains('rstomp-count-token-centered');
         const anchor = parseFloat(el.style.left);
