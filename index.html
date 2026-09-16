@@ -470,7 +470,19 @@
 
         <div class="rstomp-prompt" id="rstomp-prompt">Bar 1 · Beat 1 — does a new note start here?</div>
 
-        <div class="rstomp-bars" id="rstomp-bars-container"></div>
+        <div class="rstomp-strip" id="rstomp-strip">
+            <div class="rstomp-strip-inner" id="rstomp-strip-inner">
+                <div class="rstomp-staff" id="rstomp-staff"></div>
+                <div class="rstomp-counting" id="rstomp-counting"></div>
+                <div class="rstomp-caret" id="rstomp-caret" hidden></div>
+            </div>
+            <button class="rstomp-jump-chip" id="rstomp-jump-chip" hidden onclick="jumpRstompToCursor()">Jump to cursor</button>
+        </div>
+
+        <div class="rstomp-strip-status">
+            <span id="rstomp-strip-progress"></span>
+            <button class="rstomp-fullview-btn" id="rstomp-fullview-btn" hidden onclick="openRstompFullView()">Full view</button>
+        </div>
 
         <div class="rstomp-feedback" id="rstomp-feedback" hidden></div>
 
@@ -503,6 +515,15 @@
             <div><strong id="rstomp-level-complete-score">0</strong><span>score</span></div>
         </div>
         <button class="btn btn-start" onclick="continueAfterRstompLevel()">Continue</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-rstomp-full-view">
+    <div class="rstomp-fullview-box">
+        <h3>Full view</h3>
+        <p>The whole phrase, wrapped the way printed music breaks a line.</p>
+        <div id="rstomp-fullview-systems"></div>
+        <button class="btn-close" onclick="closeRstompFullView()">Close</button>
     </div>
 </div>
 

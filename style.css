@@ -650,35 +650,86 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 .rstomp-prompt { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-teal); background: rgba(45,212,191,0.1); border: 2px solid var(--accent-teal); border-radius: 12px; padding: 10px 12px; }
 
-.rstomp-bars { width: 100%; max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-@media (max-width: 420px) { .rstomp-bars { grid-template-columns: 1fr; } }
+/* The whole phrase on one continuous line. The strip is the ONLY thing that
+   scrolls sideways - the prompt, buttons and everything else stay put at
+   full size. It goes wider than the 640px the rest of the screen uses,
+   because notation is what actually needs the room: on a desktop that's
+   enough for the full phrase with no scrolling at all. */
+.rstomp-strip {
+    position: relative;
+    width: 100%; max-width: 960px; margin: 0 auto;
+    background: #ffffff; border: 3px solid #324a64; border-radius: 12px;
+    padding: 4px 6px 8px;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: thin;
+}
+/* Only meaningful when the phrase overruns: fades the cut-off edge so it
+   reads as "there is more music here", not as a bar that stops mid-air. */
+.rstomp-strip.scrollable::after {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 24px;
+    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.95));
+    pointer-events: none;
+}
+/* Centred so a phrase that doesn't need the full width sits in the middle
+   of the strip rather than stranded against the left edge; when it IS wider
+   than the strip the auto margins collapse and it simply scrolls. */
+.rstomp-strip-inner { position: relative; margin: 0 auto; }
 
-.rstomp-bar-card { background: #ffffff; border-radius: 12px; padding: 4px 6px 8px; border: 3px solid #324a64; }
-.rstomp-bar-card.active { border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(45,212,191,0.3); }
-/* A tied pair renders as one wide card (one shared VexFlow canvas, so the
-   tie curve can be drawn) - spans both grid columns rather than sitting in
-   just one, matching the 2 bars' worth of content it actually holds. */
-.rstomp-bar-card-wide { grid-column: span 2; }
-/* grid-column: span 2 on a 1-column grid does NOT clamp to the one
-   available column - CSS Grid creates an extra IMPLICIT column to satisfy
-   the span instead, overflowing the layout (confirmed: a tied pair's wide
-   card rendered wider than the viewport, content cut off past the right
-   edge). This override has to come AFTER the unconditional rule above -
-   equal-specificity rules cascade by source order regardless of which one
-   sits inside a media query, so putting it earlier in the file (as a first
-   attempt did) let the unconditional span:2 win anyway. */
-@media (max-width: 420px) { .rstomp-bar-card-wide { grid-column: span 1; } }
-.rstomp-bar-staff { width: 100%; height: 60px; overflow: hidden; }
-.rstomp-bar-staff svg { display: block; width: 100%; height: auto; }
+/* The canvas VexFlow draws carries a lot of empty space above and below the
+   single visible staff line; clamping the height crops it back to the band
+   the notes actually occupy (the SVG is pulled up by a negative margin in
+   renderRstompStaff to put that band in view). */
+.rstomp-staff { height: 60px; overflow: hidden; }
+.rstomp-staff svg { display: block; }
 
 /* position: relative so .rstomp-count-token children can be placed at an
    absolute pixel x lifted straight from the staff's own coordinate space -
-   see renderRstompCountingRow. Not a centered text block anymore; each
-   token sits at the x of the beat it actually describes. */
-.rstomp-bar-counting { position: relative; width: 100%; min-height: 34px; }
-/* font-size deliberately not set here - it's inherited from
-   .rstomp-bar-counting's inline style, scaled per-card in
-   renderRstompCountingRow so tokens don't overlap at narrow card widths. */
+   see renderRstompCountingRow. Not a centered text block; each token sits
+   at the x of the beat it actually describes. */
+.rstomp-counting { position: relative; min-height: 34px; }
+/* font-size deliberately not set here - it's set inline by
+   renderRstompCountingRow, which scales it to the bar width and shrinks it
+   further if dense bars still can't fit their counting. */
+
+/* Marks the beat being answered - the one thing that has to stay findable
+   when most of the phrase is off screen. */
+.rstomp-caret {
+    position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px;
+    background: var(--accent-teal); box-shadow: 0 0 0 4px rgba(45,212,191,0.22);
+    transition: left 0.18s ease; pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .rstomp-caret { transition: none; } }
+
+/* Absolutely positioned inside the scroll container, so it stays pinned to
+   the visible frame while the notation scrolls underneath it. */
+.rstomp-jump-chip {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 6px;
+    background: var(--bg-dark); color: var(--accent-teal); border: 1px solid var(--accent-teal);
+    border-radius: 20px; padding: 5px 14px; font-family: inherit;
+    font-size: 12px; font-weight: 800; cursor: pointer;
+}
+
+.rstomp-strip-status {
+    width: 100%; max-width: 960px; margin: 6px auto 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+}
+.rstomp-fullview-btn {
+    background: none; border: 2px solid #526b85; color: var(--text-muted);
+    border-radius: 10px; padding: 5px 14px; font-family: inherit;
+    font-size: 12px; font-weight: 800; cursor: pointer;
+}
+
+.rstomp-fullview-box {
+    background: var(--bg-panel); border-radius: 18px; padding: 20px;
+    width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto; text-align: center;
+}
+.rstomp-fullview-box h3 { margin: 0 0 4px; }
+.rstomp-fullview-box p { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); }
+.rstomp-system {
+    background: #ffffff; border: 3px solid #324a64; border-radius: 10px;
+    padding: 4px 6px 8px; margin-bottom: 10px; overflow: hidden;
+}
 /* Left-aligned by default (onset tokens - see the alignment rules above
    renderRstompCountingRow). .rstomp-count-token-centered overrides this for
    Hold-continuation brackets, which have no glyph to left-align to. */
