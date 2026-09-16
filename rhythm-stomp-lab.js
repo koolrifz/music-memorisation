@@ -317,11 +317,11 @@ function buildRstompCountingTokens(barIndex) {
         const answer = rstompEntries[posIndex];
         if (answer == null) break;
         if (answer === 'play') {
-            tokens.push({ text: String(beatIndex + 1), startBeat: beatIndex });
+            tokens.push({ text: String(beatIndex + 1), startBeat: beatIndex, endBeat: beatIndex, kind: 'play' });
             beatIndex++;
             continue;
         }
-        const trueMode = rstompPhrase[barIndex][beatIndex];
+        const trueMode = rstompPhrase[barIndex][beatIndex]; // 'hold' | 'rest'
         const labels = [String(beatIndex + 1)];
         let end = beatIndex;
         while (end + 1 < 4) {
@@ -330,31 +330,80 @@ function buildRstompCountingTokens(barIndex) {
             end++;
             labels.push(String(end + 1));
         }
-        tokens.push({ text: `(${labels.join(' ')})`, startBeat: beatIndex });
+        tokens.push({ text: `(${labels.join(' ')})`, startBeat: beatIndex, endBeat: end, kind: trueMode });
         beatIndex = end + 1;
     }
     return tokens;
 }
 
-// layout.beatX comes straight from renderRstompStaff's read-back of
-// VexFlow's own rendered note positions, so a token's left offset lines
-// up with the real glyph above it rather than a guessed position.
+// Alignment style guide (Rob's review of the live rendering, confirmed
+// against the Rubank method reference):
 //
-// Font size scales with the card's actual width rather than staying fixed:
-// in the 2-column portrait grid a bar-card can be under 180px wide, and a
-// fixed 24px font produces tokens wide enough to visually overlap their
-// neighbour (confirmed by measuring rendered bounding boxes at that width -
-// "(2)" and "(3 4)" overlapped by ~5px). Scaling keeps every token legible
-// without colliding, at any card width the grid produces.
+// 1. A token with a real glyph above it (a Play, or any Rest shorter than
+//    a full bar) LEFT-ALIGNS to that glyph's actual rendered position
+//    (layout.noteX) - not centered on it. "A whole note's beat 1 left-
+//    aligns with the note above it."
+// 2. A Hold-continuation bracket (no glyph of its own - it's the tail of
+//    a note that already has its own onset token) has nothing to left-
+//    align to, so it CENTERS across the true, evenly-spaced beat-grid span
+//    it covers (layout.pulseX) instead - "the numbers need to breathe",
+//    landing naturally mid-span rather than crammed against the note that
+//    started it (e.g. a whole note's "(2 3 4)" centers near beat 2.5,
+//    matching Rob's own description of the right feel).
+// A whole rest was expected to need the same treatment - real engraving
+// convention often hangs it centered in the bar rather than at beat 1's
+// true position - but measured directly (note.getAbsoluteX()) it renders
+// at the same onset-style position a whole note does (21px in, matching
+// exactly): this VexFlow setup never applies that centering unless
+// setCenterAlignment() is explicitly called, which nothing here does. No
+// exception needed - rule 1 already produces the correct position.
+//
+// Font size still scales with the card's actual width (2-column portrait
+// grid can put a bar-card under 180px wide - a fixed size overlaps there).
 function renderRstompCountingRow(container, barIndex, layout) {
     container.innerHTML = '';
     container.style.fontSize = `${Math.max(13, Math.min(24, layout.width * 0.09))}px`;
-    buildRstompCountingTokens(barIndex).forEach(token => {
+    const tokens = buildRstompCountingTokens(barIndex);
+    const els = tokens.map(token => {
         const el = document.createElement('span');
         el.className = 'rstomp-count-token';
         el.textContent = token.text;
-        el.style.left = `${layout.beatX[token.startBeat]}px`;
+        if (token.kind === 'hold') {
+            const x = (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2;
+            el.style.left = `${x}px`;
+            el.classList.add('rstomp-count-token-centered');
+        } else {
+            const specIndex = layout.beatOwner[token.startBeat].specIndex;
+            el.style.left = `${layout.noteX[specIndex]}px`;
+        }
         container.appendChild(el);
+        return el;
+    });
+
+    // Rule 2's "breathe at the true mid-span" position is an ideal, not a
+    // guarantee - at narrow card widths (2-column portrait grid) it can
+    // overlap a neighbouring onset token, confirmed by measurement (e.g.
+    // "(2)" and the following "3" touching at ~170px card width). Onset
+    // tokens (rule 1) are never moved - they're anchored to a real glyph.
+    // Only a Hold token gets nudged, clamped into whatever free space
+    // actually exists between its two fixed neighbours, measured from the
+    // real rendered widths (offsetWidth) now that everything's in the DOM.
+    const GAP = 3;
+    const edgesOf = el => {
+        const centered = el.classList.contains('rstomp-count-token-centered');
+        const anchor = parseFloat(el.style.left);
+        const width = el.offsetWidth;
+        return centered ? [anchor - width / 2, anchor + width / 2] : [anchor, anchor + width];
+    };
+    els.forEach((el, index) => {
+        if (!el.classList.contains('rstomp-count-token-centered')) return;
+        const width = el.offsetWidth;
+        let center = parseFloat(el.style.left);
+        const prevRight = index > 0 ? edgesOf(els[index - 1])[1] : -Infinity;
+        const nextLeft = index < els.length - 1 ? edgesOf(els[index + 1])[0] : Infinity;
+        center = Math.max(center, prevRight + GAP + width / 2);
+        center = Math.min(center, nextLeft - GAP - width / 2);
+        el.style.left = `${center}px`;
     });
 }
 
@@ -404,33 +453,31 @@ function renderRstompStaff(container, bar) {
     const svg = container.querySelector('svg');
     if (svg) svg.style.marginTop = '-30px';
 
-    // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) rather
-    // than hand-computing a proportional-beat guess - a first attempt at
-    // that guess (startX + beatIndex/4 * width) was measurably off by
-    // ~26-27px from where VexFlow actually drew the glyph (internal
-    // padding/spacing this project doesn't need to reverse-engineer).
-    // Reading the real position back is what actually guarantees the
-    // counting row lines up under its note, not just plausibly close.
+    // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) -
+    // the real onset a Play token or a non-whole-bar Rest bracket left-
+    // aligns to (see renderRstompCountingRow for the alignment rules this
+    // layout serves).
     const noteX = notes.map(note => note.getAbsoluteX());
-    const endX = stave.getNoteEndX();
 
-    // Map every beat (0-3) to an x-coordinate: a beat that starts a note
-    // gets that note's real x; a beat continuing an existing note (no
-    // glyph of its own - e.g. beat 2 of a held half note) is interpolated
-    // proportionally between its note's onset and the next note's onset
-    // (or the bar's end, for the last note).
-    const beatX = new Array(4);
+    // The ideal, evenly-spaced beat grid (true beat 1/2/3/4 positions),
+    // independent of where any glyph actually landed - this is what a
+    // Hold-continuation bracket (no glyph of its own) centers across, and
+    // what a whole rest's "1" anchors to instead of that glyph's own
+    // (deliberately centered, per standard engraving) rendered position.
+    const trueStartX = stave.getNoteStartX();
+    const trueEndX = stave.getNoteEndX();
+    const pulseX = beatFraction => trueStartX + (beatFraction / 4) * (trueEndX - trueStartX);
+
+    // Which spec (note/rest object) owns each beat, and whether that beat
+    // is the spec's own onset (has a glyph) or a continuation (doesn't).
+    const beatOwner = new Array(4);
     let cumulativeBeats = 0;
     specs.forEach((spec, index) => {
-        const thisX = noteX[index];
-        const nextX = index + 1 < noteX.length ? noteX[index + 1] : endX;
-        for (let k = 0; k < spec.beats; k++) {
-            beatX[cumulativeBeats + k] = thisX + (k / spec.beats) * (nextX - thisX);
-        }
+        for (let k = 0; k < spec.beats; k++) beatOwner[cumulativeBeats + k] = { specIndex: index, isOnset: k === 0 };
         cumulativeBeats += spec.beats;
     });
 
-    return { beatX, width };
+    return { noteX, pulseX, beatOwner, width };
 }
 
 /* ---------- Streak + feedback ---------- */

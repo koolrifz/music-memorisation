@@ -666,7 +666,11 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 /* font-size deliberately not set here - it's inherited from
    .rstomp-bar-counting's inline style, scaled per-card in
    renderRstompCountingRow so tokens don't overlap at narrow card widths. */
-.rstomp-count-token { position: absolute; top: 2px; transform: translateX(-50%); font-family: 'Patrick Hand', 'Segoe UI', sans-serif; font-weight: 400; color: #1a2634; white-space: nowrap; }
+/* Left-aligned by default (onset tokens - see the alignment rules above
+   renderRstompCountingRow). .rstomp-count-token-centered overrides this for
+   Hold-continuation brackets, which have no glyph to left-align to. */
+.rstomp-count-token { position: absolute; top: 2px; font-family: 'Patrick Hand', 'Segoe UI', sans-serif; font-weight: 400; color: #1a2634; white-space: nowrap; }
+.rstomp-count-token-centered { transform: translateX(-50%); }
 
 .rstomp-controls { width: 100%; max-width: 640px; margin: 10px auto 4px; display: flex; flex-direction: column; gap: 8px; }
 .rstomp-answer-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
