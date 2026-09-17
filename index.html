@@ -486,7 +486,11 @@
 
         <div class="rstomp-feedback" id="rstomp-feedback" hidden></div>
 
-        <div class="rstomp-controls">
+        <!-- Two control blocks, one per interface. The two-button row is the
+             TUTORIAL interface (Level 1) and is not legacy - see CLAUDE.md.
+             The keypad is the game proper, where the student writes every
+             numeral themselves. applyRstompInterface() shows one. -->
+        <div class="rstomp-controls" id="rstomp-controls-twobutton">
             <div class="rstomp-answer-row">
                 <button class="rstomp-answer-btn rstomp-play" id="rstomp-play-btn" onclick="stampRstomp('play')">
                     <span class="rstomp-answer-symbol">▶</span>
@@ -500,6 +504,20 @@
                 </button>
             </div>
             <button class="rstomp-undo-btn" id="rstomp-undo-btn" onclick="undoRstomp()">↺ Undo</button>
+        </div>
+
+        <div class="rstomp-controls rstomp-keypad" id="rstomp-controls-keypad" hidden>
+            <div class="rstomp-key-row">
+                <button class="rstomp-key" data-digit="1" onclick="rstompKey('1')">1</button>
+                <button class="rstomp-key" data-digit="2" onclick="rstompKey('2')">2</button>
+                <button class="rstomp-key" data-digit="3" onclick="rstompKey('3')">3</button>
+                <button class="rstomp-key" data-digit="4" onclick="rstompKey('4')">4</button>
+            </div>
+            <div class="rstomp-key-row">
+                <button class="rstomp-key rstomp-key-bracket" id="rstomp-key-open" onclick="rstompKey('(')">(</button>
+                <button class="rstomp-key rstomp-key-bracket" id="rstomp-key-close" onclick="rstompKey(')')">)</button>
+                <button class="rstomp-key rstomp-key-erase" id="rstomp-key-erase" onclick="rstompKey('erase')">⌫</button>
+            </div>
         </div>
 
         <button class="btn btn-start" id="rstomp-submit-button" onclick="submitRstompPhrase()" disabled>Check My Answer</button>
