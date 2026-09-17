@@ -15,29 +15,56 @@ A browser-based music-education app (single HTML page, no build step) teaching p
 - **Kool Tuner** — mic-based tuner with an instrument-transposition selector (concert/Bb/Eb/F), dashboard practice tool.
 
 ## Rhythm Stomp Lab — TWO interfaces, deliberately. Don't delete either.
-`rhythm-stomp-lab.js` teaches counting. There are two ways in, pitched at
-different ages, and **neither supersedes the other**:
+`rhythm-stomp-lab.js` teaches counting. There are two ways in, and **neither
+supersedes the other** — but they now have different jobs:
 
 1. **Two-button (Play / "Nothing New")** — the cursor walks the phrase a beat at
-   a time and the student answers "does a new note start here?" This is the
-   kindergarten-to-lower-primary entry point: a child who can't yet write
-   numerals confidently can still play it. Primary music programs run as low as
-   preps and this is aimed squarely there. It is what currently ships.
+   a time and the student answers "does a new note start here?" A child who
+   can't yet write numerals confidently can still play it, and it works
+   beautifully in prompts. **Decided: this becomes the interactive tutorial /
+   help area**, not a parallel game with its own level spiral. It is the way in
+   — for preps and lower primary as their whole experience, and for everyone
+   else as the thing that teaches the idea before the keypad asks them to write
+   it. It is what currently ships as the game.
 2. **Scribe keypad** — the student writes the counting out themselves on a
    keypad (`1 2 3 4`, `(`, `)`), supplying every numeral. Nothing is pre-placed,
    so it can't be solved without knowing what each note is worth. This is the
    precise version for students who can write, and the transferable skill: it's
-   as close to writing counting under the notes by hand as a screen gets.
+   as close to writing counting under the notes by hand as a screen gets. **The
+   level spiral lives here**, not in the two-button game.
 
 The second was designed *after* the first and is more rigorous, which makes it
 look like a replacement. It isn't. If you are tidying up, **do not remove the
 two-button game on the grounds that the keypad replaces it** — that would delete
-the only version young children can use. Both can carry the same bonus round.
+the only version young children can use, and the tutorial with it. Both can
+carry the same bonus stomp round.
 
 Counting convention worth knowing before touching either: a tie is ONE note, so
 its counting is ONE bracket, and that bracket crosses the barline — `(4 1 2)`,
 not `(4)` then `(1 2)`. Closing at the barline asserts two held notes where there
 is one. Rests never merge across a barline.
+
+## Counting engine — the shape to build to
+Settled, and written up in full in the private docs repo
+(`kool-riffs-docs/docs/rhythm-pillar-design-brief.md`, §11–§12). The short
+version, so nobody re-derives it from the code:
+
+- A phrase is a **flat array of slots**, each `struck` | `hold` | `rest`. Note
+  values are derived on the way out, for drawing only — the engine never needs
+  to know what a dotted quaver is.
+- **A level is defined by one array of counting labels.** Slots per bar is its
+  length; the keypad is its distinct values.
+  `1 2 3 4` / `1 + 2 + 3 + 4 +` / `1 e + a 2 e + a …` / `1 2 3 4 5 6` (6/8 in 6)
+  / `1 + a 2 + a` (6/8 in 2).
+- **6/8-in-6 and 6/8-in-2 are the same six-slot grid with different labels.**
+  6/8 is taught as simple time first; in-2 is a later relabelling at speed.
+- **`+`, never `&`.** The counting has to transfer to handwriting, and a
+  handwritten `&` looks like a `+` anyway.
+- **Long-hand spelling is a teaching device, not an engraving rule.** Two tied
+  crotchets shown against a minim, a crotchet tied to a quaver shown against a
+  dotted crotchet — same counting under both. Strictly one generation at a time
+  (never four crotchets tied into a semibreve). It is sprinkled through existing
+  levels, never given levels of its own.
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
