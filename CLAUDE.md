@@ -5,7 +5,7 @@ Read this before touching the code. It's the accumulated context from months of 
 ## What this is
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
-**Files:** `index.html`, `script.js`, `style.css`. Notation rendering uses VexFlow 3.0.9 via CDN.
+**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar. Notation rendering uses VexFlow 3.0.9 via CDN.
 
 ## The three games + two tools
 - **Staff Smash** (Game 1) — orientation drills: lines, spaces, mixed, staff numbers, then a Ledger Bonus Round. Uses a "SMASH grid" mechanic: a grid of mini-staves, tap the ones matching the announced target, density scales 3→6→9→12 cards as streaks build.
@@ -13,6 +13,31 @@ A browser-based music-education app (single HTML page, no build step) teaching p
 - **Real Smash** (Game 3) — the graduation stage: 60-second sprints, full sight-reading, no hints, scored with medals and a personal best.
 - **Kool Beat** — metronome (dashboard practice tool).
 - **Kool Tuner** — mic-based tuner with an instrument-transposition selector (concert/Bb/Eb/F), dashboard practice tool.
+
+## Rhythm Stomp Lab — TWO interfaces, deliberately. Don't delete either.
+`rhythm-stomp-lab.js` teaches counting. There are two ways in, pitched at
+different ages, and **neither supersedes the other**:
+
+1. **Two-button (Play / "Nothing New")** — the cursor walks the phrase a beat at
+   a time and the student answers "does a new note start here?" This is the
+   kindergarten-to-lower-primary entry point: a child who can't yet write
+   numerals confidently can still play it. Primary music programs run as low as
+   preps and this is aimed squarely there. It is what currently ships.
+2. **Scribe keypad** — the student writes the counting out themselves on a
+   keypad (`1 2 3 4`, `(`, `)`), supplying every numeral. Nothing is pre-placed,
+   so it can't be solved without knowing what each note is worth. This is the
+   precise version for students who can write, and the transferable skill: it's
+   as close to writing counting under the notes by hand as a screen gets.
+
+The second was designed *after* the first and is more rigorous, which makes it
+look like a replacement. It isn't. If you are tidying up, **do not remove the
+two-button game on the grounds that the keypad replaces it** — that would delete
+the only version young children can use. Both can carry the same bonus round.
+
+Counting convention worth knowing before touching either: a tie is ONE note, so
+its counting is ONE bracket, and that bracket crosses the barline — `(4 1 2)`,
+not `(4)` then `(1 2)`. Closing at the barline asserts two held notes where there
+is one. Rests never merge across a barline.
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
