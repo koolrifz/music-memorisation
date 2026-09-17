@@ -604,6 +604,13 @@ function buildRstompCountingTokens(barIndex) {
 //    landing naturally mid-span rather than crammed against the note that
 //    started it (e.g. a whole note's "(2 3 4)" centers near beat 2.5,
 //    matching Rob's own description of the right feel).
+// The deciding question is therefore "is there a glyph above this token?",
+// NOT "is it a bracket?" - and there is exactly one Hold that answers yes:
+// the one opening a bar tied over from the previous one. That note IS
+// re-drawn as a real notehead (it just isn't re-attacked), so its bracket
+// takes rule 1 like any other token sitting under a glyph. Centering it
+// pushed it a beat late - measured at 32px right of its own notehead on a
+// desktop render, which reads as belonging to beat 2 rather than beat 1.
 // A whole rest was expected to need the same treatment - real engraving
 // convention often hangs it centered in the bar rather than at beat 1's
 // true position - but measured directly (note.getAbsoluteX()) it renders
@@ -629,11 +636,12 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
             const el = document.createElement('span');
             el.className = 'rstomp-count-token';
             el.textContent = token.text;
-            if (token.kind === 'hold') {
+            const owner = layout.beatOwner[token.startBeat];
+            if (token.kind === 'hold' && !owner.isOnset) {
                 anchors.push((layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2);
                 el.classList.add('rstomp-count-token-centered');
             } else {
-                anchors.push(layout.noteX[layout.beatOwner[token.startBeat].specIndex]);
+                anchors.push(layout.noteX[owner.specIndex]);
             }
             container.appendChild(el);
             els.push(el);
