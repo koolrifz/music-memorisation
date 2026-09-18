@@ -309,29 +309,62 @@ function rstompExpectedAnswer(position) {
    start here?" and does the grouping for them.
    ========================================================================= */
 
-// The counting the student is meant to arrive at, as ONE stream for the whole
-// phrase rather than four separate bars.
+// The counting the student is meant to arrive at.
 //
-// A held run carries straight over a barline, so a note tied across one is
-// written as a single bracket - "(4 1 2)" - because it IS a single event.
-// Closing at the barline and opening a fresh bracket would assert two held
-// notes where there is only one, which is exactly the misreading the tie
-// exists to prevent. A rest never merges across a barline: untied, the new
-// bar's silence is its own rest.
+// THE BRACKET NEVER CROSSES A BARLINE. A note tied over one is written as two
+// brackets - "1 (2 3 4)" then "(1 2 3 4)" for a whole tied to a whole, never
+// "1 (2 3 4 1 2 3 4)". This is the opposite of what an earlier draft of this
+// file said, and the reversal is Rob's, for a reason that outranks the tidiness
+// of showing a tie as one object:
+//
+//   The student has to know where beat 1 is without stopping to work it out.
+//   The counting is what teaches them, so the counting has to delineate the
+//   bar. A bracket that runs through the barline bunches the phrase into one
+//   undifferentiated blob and hides the single most important landmark in it.
+//   Laying the mechanics out correctly is how the FEEL of the pulse gets built
+//   - so the layout is not cosmetic, it is the teaching.
+//
+// The unit is therefore one WRITTEN note or rest, which is also why brackets
+// can't cross a barline: a written note can't either. That is what a tie is
+// for. Each spec on the staff gets exactly one group:
+//
+//   struck note   -> its onset digit outside, its held beats in a bracket
+//                    (a whole note: "1 (2 3 4)")
+//   tied-into note-> no onset to write, so every beat sits in the bracket
+//                    (the second half of a tie: "(1 2)")
+//   rest          -> no onset/sustain distinction to draw, so all bracketed
+//                    ("(1 2 3 4)")
+//
+// Two half notes tied inside one bar are two written notes, so they are two
+// brackets - "1 (2) (3 4)" - even though nothing is re-struck on beat 3.
+// Reading the groups off the rendered specs rather than off the raw slot
+// stream is what makes that fall out automatically: the counting matches the
+// notation because it is derived from the same specs the notation is.
+//
+// KNOWN LIMIT, and the next thing the engine needs. A bar of play/hold/hold/
+// hold is read as one whole note, so it counts "1 (2 3 4)". Two half notes
+// tied inside the bar would have the identical slot stream, and there is
+// currently no way to say which was meant - so "1 (2) (3 4)" is correct but
+// not yet reachable. That's the same gap the design brief's long-hand
+// spelling device runs into (two tied crotchets shown against a minim), and
+// it wants explicit note boundaries in the phrase model rather than pure
+// run-length encoding. Grouping per spec here means this function needs no
+// change when they arrive.
 function rstompTargetGroups() {
     const groups = [];
-    rstompPhrase.forEach((bar, barIndex) => {
-        bar.forEach((kind, beatIndex) => {
-            const digit = String(beatIndex + 1);
-            if (kind === 'play') {
-                groups.push({ bracketed: false, digits: [digit] });
-                return;
+    rstompPhrase.forEach(bar => {
+        let beat = 0;
+        rstompBeatsToNoteSpecs(bar).forEach(spec => {
+            const digits = [];
+            for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
+            const struck = !spec.isRest && bar[beat] === 'play';
+            if (struck) {
+                groups.push({ bracketed: false, digits: [digits[0]] });
+                if (digits.length > 1) groups.push({ bracketed: true, closed: true, kind: 'hold', digits: digits.slice(1) });
+            } else {
+                groups.push({ bracketed: true, closed: true, kind: spec.isRest ? 'rest' : 'hold', digits });
             }
-            const previous = groups[groups.length - 1];
-            const sameEvent = previous && previous.bracketed && previous.kind === kind;
-            const crossesBar = beatIndex === 0 && barIndex > 0;
-            if (sameEvent && !(kind === 'rest' && crossesBar)) previous.digits.push(digit);
-            else groups.push({ bracketed: true, closed: true, kind, digits: [digit] });
+            beat += spec.beats;
         });
     });
     return groups;
@@ -449,10 +482,12 @@ function rstompWrongBarsFor(writing) {
     return [...wrong].sort((a, b) => a - b);
 }
 
-// Rewind to the start of the first wrong bar. Everything after it goes too,
-// because a bracket may run across the join - keeping a later bar that a
-// re-written tie is about to re-group would leave the student editing around
-// an answer that no longer fits.
+// Rewind to the start of the first wrong bar. Everything after it goes too:
+// a correct bar later in the phrase is only correct in the counting it
+// currently sits in, and re-writing an earlier bar shifts every beat after
+// it. Rebuilding from the first mistake is simpler to reason about than
+// splicing, and it never leaves the student editing around an answer that no
+// longer lines up.
 function rstompRewindTo(barIndex) {
     const keepBeats = barIndex * 4;
     const rebuilt = { groups: [], inside: false };
@@ -866,11 +901,16 @@ function buildRstompCountingTokens(barIndex) {
 //
 // Font size scales with the per-bar width, then shrinks further if the
 // tokens still won't fit (see the placement pass below).
-// What the student has written, as runs over ABSOLUTE beat slots - a bracket
-// may span a barline, so a run does not belong to any one bar. Only the
-// notation underneath decides alignment, which is why the same two rules
-// apply here as to the tutorial's derived tokens: what matters is whether
-// there is a glyph above the run's first beat, not what the student wrote.
+// What the student has written, as runs over ABSOLUTE beat slots. A correct
+// bracket never crosses a barline (see rstompTargetGroups), but a student's
+// can - writing one is a real mistake they're allowed to make and see marked
+// - so runs are kept on absolute slots and the renderer handles a run whose
+// end lands in a later bar rather than assuming it can't.
+//
+// Only the notation underneath decides alignment, which is why the same two
+// rules apply here as to the tutorial's derived tokens: what matters is
+// whether there is a glyph above the run's first beat, not what the student
+// wrote above it.
 function buildRstompScribeRuns() {
     const groups = rstompRevealed || (rstompWriting ? rstompWriting.groups : []);
     const wrong = new Set(rstompWrongBars.map(bar => bar - 1));

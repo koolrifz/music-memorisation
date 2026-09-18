@@ -39,10 +39,37 @@ two-button game on the grounds that the keypad replaces it** — that would dele
 the only version young children can use, and the tutorial with it. Both can
 carry the same bonus stomp round.
 
-Counting convention worth knowing before touching either: a tie is ONE note, so
-its counting is ONE bracket, and that bracket crosses the barline — `(4 1 2)`,
-not `(4)` then `(1 2)`. Closing at the barline asserts two held notes where there
-is one. Rests never merge across a barline.
+## Counting convention — THE BRACKET NEVER CROSSES A BARLINE
+Read this before touching either interface. An earlier version of this file
+said the opposite (that a tie should be one bracket spanning the barline).
+**That was wrong and has been reversed** — the reversal is Rob's, and the
+reason outranks the tidiness of drawing a tie as one object:
+
+> The student has to know where beat 1 is without stopping to work it out. The
+> counting is what teaches them that, so the counting has to delineate the bar.
+> A bracket running through the barline bunches the phrase into one
+> undifferentiated blob and hides the single most important landmark in it.
+> Laying the mechanics out correctly is how the *feel* of the pulse gets built
+> — so this layout is not cosmetic, it is the teaching.
+
+A whole note tied to a whole note is `1 (2 3 4)` then `(1 2 3 4)` — **never**
+`1 (2 3 4 1 2 3 4)`. A half tied across the barline is `3 (4)` then `(1 2)`.
+
+The grouping unit is **one written note or rest**, which is also why a bracket
+can't cross a barline: a written note can't either — that is what a tie is for.
+Each note or rest on the staff gets exactly one group:
+
+| On the staff | Counting |
+|---|---|
+| A struck note | onset digit outside, held beats bracketed — `1 (2 3 4)` |
+| A note tied into (no onset to write) | every beat bracketed — `(1 2)` |
+| A rest (no onset/sustain distinction) | every beat bracketed — `(1 2 3 4)` |
+
+Two half notes tied *inside* one bar are two written notes, so two brackets:
+`1 (2) (3 4)`, even though nothing is re-struck on beat 3.
+
+Derive the groups from the rendered note specs, not from the raw beat stream —
+that is what makes the counting match the notation automatically.
 
 ## Counting engine — the shape to build to
 Settled, and written up in full in the private docs repo
@@ -60,6 +87,13 @@ version, so nobody re-derives it from the code:
   6/8 is taught as simple time first; in-2 is a later relabelling at speed.
 - **`+`, never `&`.** The counting has to transfer to handwriting, and a
   handwritten `&` looks like a `+` anyway.
+- **The bracket never crosses a barline** (see the convention section above) —
+  the grouping unit is one written note or rest.
+- **Known limit worth knowing:** a bar of `play/hold/hold/hold` is read as one
+  whole note, so two half notes tied inside a bar can't currently be
+  represented — the slot stream alone can't tell them apart. Explicit note
+  boundaries in the phrase model are the next engine step, and the long-hand
+  device below needs them too.
 - **Long-hand spelling is a teaching device, not an engraving rule.** Two tied
   crotchets shown against a minim, a crotchet tied to a quaver shown against a
   dotted crotchet — same counting under both. Strictly one generation at a time
