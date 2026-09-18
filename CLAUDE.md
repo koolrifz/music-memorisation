@@ -98,9 +98,31 @@ counting says how it is counted, and it is counted the same way.
 **Engraving rule:** a bar of 4/4 never holds four quarter rests — three at
 most, so the real beat stays findable.
 
-Full detail, including three open typography questions (italic brackets for
-rests, spacing, and whether a note's counting is one tight unit), lives in the
-design brief §10.2a–§10.2b.
+### How the counting is SET — settled, don't re-open these
+
+**One bracket style for everything.** No font change, no italics, no visual
+distinction between a hold bracket and a rest bracket. Rob's notation examples
+show rest brackets in italic; that is a **Sibelius artefact** (lyric text won't
+span a rest, so he used expression text, which is italic and he couldn't turn
+it off), not a distinction. His words: *"keep everything exactly the same. Type
+font, no italics, no change, no delineation between rests and holding."*
+
+So the two collisions above stay collisions **on purpose** — nothing in the
+counting will ever separate them, and nothing should try.
+
+**There is one spacing system and it belongs to the engraving.** The counting
+row is not typeset on its own and then aligned; it *inherits* the notation's
+horizontal positions. Every number sits under the thing it counts because that
+is where the thing it counts is. Rob: *"there aren't two different sets of
+spacing... it's all the same."*
+
+His handwritten `1(234)` is a constraint of writing by hand, not a spec — do
+**not** force a note's counting into one tight run. The onset digit anchors to
+its notehead; a hold bracket with no glyph of its own centres across the span
+it covers, so the numbers breathe. That is what the app already does and it is
+correct.
+
+Full detail lives in the design brief §10.2a–§10.2b.
 
 ## Counting engine — the shape to build to
 Settled, and written up in full in the private docs repo
