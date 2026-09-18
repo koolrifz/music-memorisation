@@ -68,8 +68,39 @@ Each note or rest on the staff gets exactly one group:
 Two half notes tied *inside* one bar are two written notes, so two brackets:
 `1 (2) (3 4)`, even though nothing is re-struck on beat 3.
 
-Derive the groups from the rendered note specs, not from the raw beat stream —
-that is what makes the counting match the notation automatically.
+Derive the groups from the note specs, not from the beat stream — that is what
+makes the counting match the notation automatically. **Note boundaries are
+explicit in the phrase model** (`rstompSpecBars`, a list of bars each holding
+`{beats, isRest, tied}` per written note); the beat stream is derived from it,
+never the other way round. Beats alone cannot tell a whole note from two tied
+half notes.
+
+### Rob's worked examples — the authority, all reproduced in code
+
+| Written | Counting |
+|---|---|
+| Two quarters tied | `1 (2)` — *identical to a half note, and that is the point* |
+| Quarter tied to half | `1 (2 3)` — identical to the dotted half it demonstrates |
+| **Half tied to quarter** | `1 (2) (3)` — two brackets; a new written note starts on beat 3 |
+| Two halves tied | `1 (2) (3 4)` |
+| Whole note | `1 (2 3 4)` |
+| Half rest + two quarter rests | `(1 2) (3) (4)` — adjacent rests never merge |
+| Whole tied to whole | `1 (2 3 4)` · `(1 2 3 4)` |
+| Half tied to whole | `3 (4)` · `(1 2 3 4)` |
+| Whole tied to half | `1 (2 3 4)` · `(1 2)` |
+| Quarter tied to quarter across a barline | `4` · `(1)` |
+
+Two collisions are **deliberately accepted**: a quarter tied to a half reads
+the same as a quarter plus a half rest, and a half note plus a whole rest reads
+the same as a half tied to a whole. The notation above says which it is; the
+counting says how it is counted, and it is counted the same way.
+
+**Engraving rule:** a bar of 4/4 never holds four quarter rests — three at
+most, so the real beat stays findable.
+
+Full detail, including three open typography questions (italic brackets for
+rests, spacing, and whether a note's counting is one tight unit), lives in the
+design brief §10.2a–§10.2b.
 
 ## Counting engine — the shape to build to
 Settled, and written up in full in the private docs repo
@@ -89,11 +120,10 @@ version, so nobody re-derives it from the code:
   handwritten `&` looks like a `+` anyway.
 - **The bracket never crosses a barline** (see the convention section above) —
   the grouping unit is one written note or rest.
-- **Known limit worth knowing:** a bar of `play/hold/hold/hold` is read as one
-  whole note, so two half notes tied inside a bar can't currently be
-  represented — the slot stream alone can't tell them apart. Explicit note
-  boundaries in the phrase model are the next engine step, and the long-hand
-  device below needs them too.
+- **Note boundaries are explicit** — `rstompSpecBars` is the source of truth and
+  the beat stream is derived from it. This is what makes within-bar ties and
+  the long-hand device below expressible at all; beats alone can't tell a whole
+  note from two tied half notes.
 - **Long-hand spelling is a teaching device, not an engraving rule.** Two tied
   crotchets shown against a minim, a crotchet tied to a quaver shown against a
   dotted crotchet — same counting under both. Strictly one generation at a time

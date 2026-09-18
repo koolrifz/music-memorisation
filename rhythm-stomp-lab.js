@@ -53,8 +53,47 @@ const RSTOMP_LEVELS = [
 // in rhythm.js's fuller map (dotted values, quavers) before a level needs it.
 const RSTOMP_DURATION_FOR_BEATS = { 1: 'q', 2: 'h', 4: 'w' };
 
+/* =========================================================================
+   NOTE BOUNDARIES ARE EXPLICIT
+   A phrase is a list of bars; a bar is a list of SPECS, one per written note
+   or rest: { beats, isRest, tied }. `tied` means this note is tied into from
+   the note before it - it is drawn, but never re-struck.
+
+   Beats alone cannot carry this. Two half notes tied inside a bar and a
+   single whole note have the identical beat stream (play/hold/hold/hold), and
+   Rob's counting tells them apart: "1(2)(34)" against "1(234)". The same
+   ambiguity blocks the long-hand spelling device in the design brief (two
+   tied crotchets shown against a minim). Specs are the fix, and everything
+   else - the beat stream, the counting, the notation - derives from them.
+   ========================================================================= */
+
+const RSTOMP_SPEC_FOR_PATTERN = {
+    'whole-note': { beats: 4, isRest: false },
+    'whole-rest': { beats: 4, isRest: true },
+    'half-note': { beats: 2, isRest: false },
+    'half-rest': { beats: 2, isRest: true }
+};
+
+// Specs -> the per-beat stream the two-button interface answers against. A
+// tied note's first beat is a Hold, not a Play: it is the same note still
+// sounding, so nothing new starts there.
+function rstompSpecsToBeats(specs) {
+    const beats = [];
+    specs.forEach(spec => {
+        for (let k = 0; k < spec.beats; k++) {
+            beats.push(spec.isRest ? 'rest' : (k === 0 && !spec.tied ? 'play' : 'hold'));
+        }
+    });
+    return beats;
+}
+
+function rstompSpecsToPhrase(specBars) {
+    return specBars.map(rstompSpecsToBeats);
+}
+
 let rstompSelectedLevel = '1';
-let rstompPhrase = [];          // 4 bars, each a 4-entry array of 'play'/'hold'/'rest'
+let rstompSpecBars = [];        // SOURCE OF TRUTH: 4 bars, each a list of {beats,isRest,tied}
+let rstompPhrase = [];          // derived beat stream: 4 bars, each 4 of 'play'/'hold'/'rest'
 let rstompPositions = [];       // flat [{barIndex, beatIndex}] - 16 for a 4-bar phrase, level 1 has no subdivisions
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
 let rstompUndoStack = [];
@@ -219,7 +258,14 @@ function generateRstompPhraseNormal(level) {
         chosenIndices.push(chosen);
         counts[chosen]++;
     }
-    return chosenIndices.map(index => shapes[index].flatMap(key => RSTOMP_PATTERNS[key]));
+    return chosenIndices.map(index => rstompShapeToSpecs(shapes[index]));
+}
+
+// A shape is a list of pattern keys, which is already a list of written
+// notes - the beats were only ever a flattening of it. Keeping the specs is
+// what lets a tie inside a bar exist at all.
+function rstompShapeToSpecs(shape) {
+    return shape.map(key => ({ ...RSTOMP_SPEC_FOR_PATTERN[key] }));
 }
 
 // A tied note can sit on ANY barline. It used to be restricted to the 0/1
@@ -254,8 +300,8 @@ function generateRstompPhraseWithTie(level) {
     const leadShape = leadShapes[Math.floor(Math.random() * leadShapes.length)];
     const tailShape = tailShapes[Math.floor(Math.random() * tailShapes.length)];
 
-    const barA = [...leadShape.flatMap(key => RSTOMP_PATTERNS[key]), 'play', ...Array(r - 1).fill('hold')];
-    const barB = [...Array(s).fill('hold'), ...tailShape.flatMap(key => RSTOMP_PATTERNS[key])];
+    const barA = [...rstompShapeToSpecs(leadShape), { beats: r, isRest: false }];
+    const barB = [{ beats: s, isRest: false, tied: true }, ...rstompShapeToSpecs(tailShape)];
 
     const normalShapes = buildRstompBarShapes(level.pool);
     const pickNormalShape = previousShape => {
@@ -265,10 +311,7 @@ function generateRstompPhraseWithTie(level) {
     };
     const normalShape1 = pickNormalShape(null);
     const normalShape2 = pickNormalShape(normalShape1);
-    const normalBars = [
-        normalShape1.flatMap(key => RSTOMP_PATTERNS[key]),
-        normalShape2.flatMap(key => RSTOMP_PATTERNS[key])
-    ];
+    const normalBars = [rstompShapeToSpecs(normalShape1), rstompShapeToSpecs(normalShape2)];
 
     // The tied pair occupies boundary/boundary+1; the remaining slots take
     // the untied bars in order.
@@ -341,24 +384,30 @@ function rstompExpectedAnswer(position) {
 // stream is what makes that fall out automatically: the counting matches the
 // notation because it is derived from the same specs the notation is.
 //
-// KNOWN LIMIT, and the next thing the engine needs. A bar of play/hold/hold/
-// hold is read as one whole note, so it counts "1 (2 3 4)". Two half notes
-// tied inside the bar would have the identical slot stream, and there is
-// currently no way to say which was meant - so "1 (2) (3 4)" is correct but
-// not yet reachable. That's the same gap the design brief's long-hand
-// spelling device runs into (two tied crotchets shown against a minim), and
-// it wants explicit note boundaries in the phrase model rather than pure
-// run-length encoding. Grouping per spec here means this function needs no
-// change when they arrive.
+// Rob's worked examples, all of which fall out of the per-spec rule with no
+// special cases (his own wording in quotes):
+//
+//   two quarters tied     1 (2)        "exactly the same thing as a half note"
+//   quarter tied to half  1 (2 3)      "it would look just like a dotted minim"
+//   half tied to quarter  1 (2) (3)    "two sets of brackets because we do need
+//                                       to see that the new note" starts
+//   two halves tied       1 (2) (3 4)
+//   half rest + 2 q rests (1 2) (3) (4) "we would delineate each beat"
+//
+// Note the deliberate collisions: a quarter tied to a half and a quarter
+// followed by a half rest both read "1 (2 3)". Rob is content with that -
+// "that all makes sense, that is the reversible that I'm looking for" - since
+// the notation above the counting says which it is.
 function rstompTargetGroups() {
     const groups = [];
-    rstompPhrase.forEach(bar => {
+    rstompSpecBars.forEach(specs => {
         let beat = 0;
-        rstompBeatsToNoteSpecs(bar).forEach(spec => {
+        specs.forEach(spec => {
             const digits = [];
             for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
-            const struck = !spec.isRest && bar[beat] === 'play';
-            if (struck) {
+            if (!spec.isRest && !spec.tied) {
+                // Struck: the onset digit is written plainly, its held beats
+                // bracketed. A one-beat note has no held beats, so no bracket.
                 groups.push({ bracketed: false, digits: [digits[0]] });
                 if (digits.length > 1) groups.push({ bracketed: true, closed: true, kind: 'hold', digits: digits.slice(1) });
             } else {
@@ -521,7 +570,8 @@ function startRstompLevel() {
 
 function startNewRstompPhrase() {
     const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
-    rstompPhrase = generateRstompPhrase(level);
+    rstompSpecBars = generateRstompPhrase(level);
+    rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
     rstompPositions = buildRstompPositions(rstompPhrase);
     rstompEntries = new Array(rstompPositions.length).fill(null);
     rstompWriting = { groups: [], inside: false };
@@ -678,7 +728,7 @@ function renderRstompBars() {
     rstompTotalWidth = perBarWidth * rstompPhrase.length;
     inner.style.width = `${rstompTotalWidth}px`;
 
-    rstompLayouts = renderRstompStaff(staffHost, rstompPhrase, perBarWidth);
+    rstompLayouts = renderRstompStaff(staffHost, rstompSpecBars, perBarWidth);
     renderRstompCountingRow(countingHost, rstompLayouts, perBarWidth, rstompTotalWidth);
     updateRstompCaret();
     updateRstompStripChrome();
@@ -798,8 +848,8 @@ function openRstompFullView() {
     }
     const perBarWidth = available / barsPerSystem;
 
-    for (let start = 0; start < rstompPhrase.length; start += barsPerSystem) {
-        const slice = rstompPhrase.slice(start, start + barsPerSystem);
+    for (let start = 0; start < rstompSpecBars.length; start += barsPerSystem) {
+        const slice = rstompSpecBars.slice(start, start + barsPerSystem);
         const system = document.createElement('div');
         system.className = 'rstomp-system';
 
@@ -811,10 +861,10 @@ function openRstompFullView() {
         system.appendChild(counting);
         host.appendChild(system);
 
-        const nextBar = rstompPhrase[start + slice.length];
+        const nextBar = rstompSpecBars[start + slice.length];
         const layouts = renderRstompStaff(staff, slice, perBarWidth, {
-            tieIn: start > 0 && slice[0][0] === 'hold',
-            tieOut: Boolean(nextBar) && nextBar[0] === 'hold'
+            tieIn: start > 0 && Boolean(slice[0][0] && slice[0][0].tied),
+            tieOut: Boolean(nextBar && nextBar[0] && nextBar[0].tied)
         });
         renderRstompCountingRow(counting, layouts, perBarWidth, perBarWidth * slice.length, start);
     }
@@ -831,36 +881,40 @@ function closeRstompFullView() {
 // beat it actually describes - directly under the note it refers to, per
 // Rob's Rubank reference, not centered as one string under the whole bar.
 //
-// Bracket-merge rule (corrected earlier - see that fix's commit): Hold and
-// Rest share the same bracket SYMBOL, but a run only merges into one
-// bracket when it's genuinely the same underlying event the whole way
-// through - all Hold (one sustained note continuing) or all Rest (one
-// continuous silence), never across the boundary between them, even though
-// the student's own answer (which only knows Play vs Bracket) can't see
-// that distinction - that's why this reads the true pattern (rstompPhrase).
+// Grouping rule: ONE GROUP PER WRITTEN NOTE OR REST, which supersedes the
+// older "merge any contiguous run of the same underlying event" rule. The two
+// agree on everything the old rule was written for, and differ where it
+// mattered: two notes tied inside a bar are two groups, and adjacent rests
+// never merge - "we would delineate each beat" (Rob, on a half rest followed
+// by two quarter rests: "(1 2) (3) (4)").
 function buildRstompCountingTokens(barIndex) {
+    const specs = rstompSpecBars[barIndex] || [];
     const tokens = [];
-    let beatIndex = 0;
-    while (beatIndex < 4) {
-        const posIndex = barIndex * 4 + beatIndex;
-        const answer = rstompEntries[posIndex];
-        if (answer == null) break;
-        if (answer === 'play') {
-            tokens.push({ text: String(beatIndex + 1), startBeat: beatIndex, endBeat: beatIndex, kind: 'play' });
-            beatIndex++;
-            continue;
+    let beat = 0;
+    for (const spec of specs) {
+        // A note's counting only appears once every beat it covers has been
+        // answered - showing half a group would put a bracket on screen the
+        // student hasn't finished building.
+        let answered = true;
+        for (let k = 0; k < spec.beats; k++) {
+            if (rstompEntries[barIndex * 4 + beat + k] == null) { answered = false; break; }
         }
-        const trueMode = rstompPhrase[barIndex][beatIndex]; // 'hold' | 'rest'
-        const labels = [String(beatIndex + 1)];
-        let end = beatIndex;
-        while (end + 1 < 4) {
-            const nextAnswer = rstompEntries[barIndex * 4 + end + 1];
-            if (nextAnswer !== 'bracket' || rstompPhrase[barIndex][end + 1] !== trueMode) break;
-            end++;
-            labels.push(String(end + 1));
+        if (!answered) break;
+
+        const digits = [];
+        for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
+        // The student's own answer decides plain-vs-bracketed on the first
+        // beat; the grouping comes from the written note. That keeps the row
+        // honest to what they typed while still delineating the notation.
+        if (rstompEntries[barIndex * 4 + beat] === 'play') {
+            tokens.push({ text: digits[0], startBeat: beat, endBeat: beat, kind: 'play' });
+            if (digits.length > 1) {
+                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: beat + 1, endBeat: beat + spec.beats - 1, kind: 'hold' });
+            }
+        } else {
+            tokens.push({ text: `(${digits.join(' ')})`, startBeat: beat, endBeat: beat + spec.beats - 1, kind: spec.isRest ? 'rest' : 'hold' });
         }
-        tokens.push({ text: `(${labels.join(' ')})`, startBeat: beatIndex, endBeat: end, kind: trueMode });
-        beatIndex = end + 1;
+        beat += spec.beats;
     }
     return tokens;
 }
@@ -1037,44 +1091,16 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
     while (fontSize > 10 && placeAt(fontSize) > 0.5) fontSize -= 1;
 }
 
-// A Play followed by N Holds is one sustained note of duration N+1; a
-// contiguous Rest run is one rest of that duration - same run-length
-// encoding as rhythm.js, just without its subdivision/tie/beaming
-// machinery, which levels 1-2 don't need yet.
-function rstompBeatsToNoteSpecs(entries) {
-    const specs = [];
-    let i = 0;
-    while (i < entries.length) {
-        const mode = entries[i];
-        const isRest = mode === 'rest';
-        const continuesAs = isRest ? 'rest' : 'hold';
-        let run = 1;
-        while (i + run < entries.length && entries[i + run] === continuesAs) run++;
-        specs.push({ beats: run, isRest });
-        i += run;
-    }
-    return specs;
-}
-
-// Renders any number of consecutive bars onto ONE VexFlow canvas/context.
-// Sharing a single context is what lets a tie curve connect a notehead in
-// one bar to a notehead in the next - which is now every barline, not just
-// the ones that happened to land inside a card. Returns one layout object
-// per bar for renderRstompCountingRow.
-//
-// options.tieIn / options.tieOut draw the half-curve stubs for a tie that
-// continues off the start or end of this slice - only the full view splits
-// a phrase mid-tie, when it wraps bars into systems.
-function renderRstompStaff(container, bars, perBarWidth, options = {}) {
+function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
     container.innerHTML = '';
     const VF = Vex.Flow;
-    const totalWidth = perBarWidth * bars.length;
+    const totalWidth = perBarWidth * specBars.length;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
     renderer.resize(totalWidth, 130);
     const context = renderer.getContext();
 
-    const rendered = bars.map((bar, position) => {
-        const isLastInGroup = position === bars.length - 1;
+    const rendered = specBars.map((specs, position) => {
+        const isLastInGroup = position === specBars.length - 1;
         const x = 4 + position * perBarWidth;
         const stave = new VF.Stave(x, 20, perBarWidth - (isLastInGroup ? 8 : 0));
         stave.setConfigForLines([
@@ -1083,7 +1109,6 @@ function renderRstompStaff(container, bars, perBarWidth, options = {}) {
         stave.setStyle({ strokeStyle: '#000000' });
         stave.setContext(context).draw();
 
-        const specs = rstompBeatsToNoteSpecs(bar);
         const notes = specs.map(spec => {
             const duration = RSTOMP_DURATION_FOR_BEATS[spec.beats];
             return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
@@ -1119,17 +1144,26 @@ function renderRstompStaff(container, bars, perBarWidth, options = {}) {
             cumulativeBeats += spec.beats;
         });
 
-        return { bar, notes, noteX, pulseX, beatOwner };
+        return { specs, notes, noteX, pulseX, beatOwner };
     });
 
-    // Cross-barline tie: a fresh bar's own generated content never opens
-    // on a Hold (every pool pattern starts with Play or Rest - see
-    // RSTOMP_PATTERNS), so a bar whose beat 0 is 'hold' can only mean the
-    // note tied over from the previous bar (see generateRstompPhraseWithTie).
-    // Every bar is on this one canvas, so the curve can be drawn wherever
-    // that happens.
-    for (let position = 1; position < bars.length; position++) {
-        if (bars[position][0] !== 'hold') continue;
+    // Ties INSIDE a bar: any spec marked tied is the same note continuing
+    // from the one before it. This is what two half notes tied in one bar
+    // needs, and it is drawn exactly like a tie over a barline - the only
+    // difference is which two noteheads it joins.
+    rendered.forEach(({ specs, notes }) => {
+        specs.forEach((spec, index) => {
+            if (!spec.tied || index === 0) return;
+            new VF.StaveTie({ first_note: notes[index - 1], last_note: notes[index], first_indices: [0], last_indices: [0] }).setContext(context).draw();
+        });
+    });
+
+    // Cross-barline tie. Now simply "the bar's first note is marked tied" -
+    // no longer inferred from a leading Hold in the beat stream, which was
+    // only ever a proxy for this. Every bar is on this one canvas, so the
+    // curve can be drawn wherever it happens.
+    for (let position = 1; position < specBars.length; position++) {
+        if (!specBars[position][0] || !specBars[position][0].tied) continue;
         const previousNotes = rendered[position - 1].notes;
         const lastNote = previousNotes[previousNotes.length - 1];
         const firstNote = rendered[position].notes[0];
