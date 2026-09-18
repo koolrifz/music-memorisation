@@ -32,15 +32,20 @@ const RSTOMP_PATTERNS = {
 // level, not new combinatorics) - the pool grows once quarter notes
 // arrive at a future level.
 const RSTOMP_LEVELS = [
+    // Level 1 is the two-button walkthrough - the tutorial for the whole
+    // idea, and a complete experience on its own for a child who can't yet
+    // write numerals (CLAUDE.md, "TWO interfaces"). Every level after it
+    // hands the student the keypad and asks them to write the counting
+    // themselves, which is the transferable skill.
     { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', pool: ['whole-note', 'whole-rest'] },
-    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'] },
-    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'] },
+    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'], scribe: true },
+    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], scribe: true },
     // tieLevel/tieChance: see generateRstompPhraseWithTie. Every phrase at
     // this level carries a tie (tieChance 1), matching the original design
     // brief's level 4 - ties are introduced right after whole/half, using
     // only durations already taught, per Rob's "a tie is just how we make
     // really long notes" framing.
-    { id: '4', label: 'Level 4: Ties Across the Barline', shortLabel: 'Ties Across the Barline', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], tieLevel: true, tieChance: 1 }
+    { id: '4', label: 'Level 4: Ties Across the Barline', shortLabel: 'Ties Across the Barline', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], tieLevel: true, tieChance: 1, scribe: true }
 ];
 
 // Beats-in-a-run -> VexFlow duration string. Only what levels 1-2 actually
@@ -48,8 +53,47 @@ const RSTOMP_LEVELS = [
 // in rhythm.js's fuller map (dotted values, quavers) before a level needs it.
 const RSTOMP_DURATION_FOR_BEATS = { 1: 'q', 2: 'h', 4: 'w' };
 
+/* =========================================================================
+   NOTE BOUNDARIES ARE EXPLICIT
+   A phrase is a list of bars; a bar is a list of SPECS, one per written note
+   or rest: { beats, isRest, tied }. `tied` means this note is tied into from
+   the note before it - it is drawn, but never re-struck.
+
+   Beats alone cannot carry this. Two half notes tied inside a bar and a
+   single whole note have the identical beat stream (play/hold/hold/hold), and
+   Rob's counting tells them apart: "1(2)(34)" against "1(234)". The same
+   ambiguity blocks the long-hand spelling device in the design brief (two
+   tied crotchets shown against a minim). Specs are the fix, and everything
+   else - the beat stream, the counting, the notation - derives from them.
+   ========================================================================= */
+
+const RSTOMP_SPEC_FOR_PATTERN = {
+    'whole-note': { beats: 4, isRest: false },
+    'whole-rest': { beats: 4, isRest: true },
+    'half-note': { beats: 2, isRest: false },
+    'half-rest': { beats: 2, isRest: true }
+};
+
+// Specs -> the per-beat stream the two-button interface answers against. A
+// tied note's first beat is a Hold, not a Play: it is the same note still
+// sounding, so nothing new starts there.
+function rstompSpecsToBeats(specs) {
+    const beats = [];
+    specs.forEach(spec => {
+        for (let k = 0; k < spec.beats; k++) {
+            beats.push(spec.isRest ? 'rest' : (k === 0 && !spec.tied ? 'play' : 'hold'));
+        }
+    });
+    return beats;
+}
+
+function rstompSpecsToPhrase(specBars) {
+    return specBars.map(rstompSpecsToBeats);
+}
+
 let rstompSelectedLevel = '1';
-let rstompPhrase = [];          // 4 bars, each a 4-entry array of 'play'/'hold'/'rest'
+let rstompSpecBars = [];        // SOURCE OF TRUTH: 4 bars, each a list of {beats,isRest,tied}
+let rstompPhrase = [];          // derived beat stream: 4 bars, each 4 of 'play'/'hold'/'rest'
 let rstompPositions = [];       // flat [{barIndex, beatIndex}] - 16 for a 4-bar phrase, level 1 has no subdivisions
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
 let rstompUndoStack = [];
@@ -58,6 +102,14 @@ let rstompAttempt = 1;
 let rstompStreak = 0;
 let rstompScore = 0;
 let rstompLocked = false;
+
+// Scribe state. rstompWriting is what the STUDENT has written; nothing in it
+// is derived from the phrase, which is the whole point of this interface -
+// see the scribe section below.
+let rstompScribe = false;       // is this level played on the keypad?
+let rstompWriting = null;       // { groups: [...], inside: bool }
+let rstompRevealed = null;      // the correct groups, shown after the third strike
+let rstompWrongBars = [];       // 1-based bar numbers to mark, when we're naming them
 
 /* ---------- Persistence (same shape as the other games, per CLAUDE.md) ---------- */
 
@@ -206,7 +258,14 @@ function generateRstompPhraseNormal(level) {
         chosenIndices.push(chosen);
         counts[chosen]++;
     }
-    return chosenIndices.map(index => shapes[index].flatMap(key => RSTOMP_PATTERNS[key]));
+    return chosenIndices.map(index => rstompShapeToSpecs(shapes[index]));
+}
+
+// A shape is a list of pattern keys, which is already a list of written
+// notes - the beats were only ever a flattening of it. Keeping the specs is
+// what lets a tie inside a bar exist at all.
+function rstompShapeToSpecs(shape) {
+    return shape.map(key => ({ ...RSTOMP_SPEC_FOR_PATTERN[key] }));
 }
 
 // A tied note can sit on ANY barline. It used to be restricted to the 0/1
@@ -241,8 +300,8 @@ function generateRstompPhraseWithTie(level) {
     const leadShape = leadShapes[Math.floor(Math.random() * leadShapes.length)];
     const tailShape = tailShapes[Math.floor(Math.random() * tailShapes.length)];
 
-    const barA = [...leadShape.flatMap(key => RSTOMP_PATTERNS[key]), 'play', ...Array(r - 1).fill('hold')];
-    const barB = [...Array(s).fill('hold'), ...tailShape.flatMap(key => RSTOMP_PATTERNS[key])];
+    const barA = [...rstompShapeToSpecs(leadShape), { beats: r, isRest: false }];
+    const barB = [{ beats: s, isRest: false, tied: true }, ...rstompShapeToSpecs(tailShape)];
 
     const normalShapes = buildRstompBarShapes(level.pool);
     const pickNormalShape = previousShape => {
@@ -252,10 +311,7 @@ function generateRstompPhraseWithTie(level) {
     };
     const normalShape1 = pickNormalShape(null);
     const normalShape2 = pickNormalShape(normalShape1);
-    const normalBars = [
-        normalShape1.flatMap(key => RSTOMP_PATTERNS[key]),
-        normalShape2.flatMap(key => RSTOMP_PATTERNS[key])
-    ];
+    const normalBars = [rstompShapeToSpecs(normalShape1), rstompShapeToSpecs(normalShape2)];
 
     // The tied pair occupies boundary/boundary+1; the remaining slots take
     // the untied bars in order.
@@ -287,6 +343,213 @@ function rstompExpectedAnswer(position) {
     return mode === 'play' ? 'play' : 'bracket';
 }
 
+/* =========================================================================
+   THE SCRIBE KEYPAD
+   The student writes the counting out themselves - every numeral, every
+   bracket. Nothing is pre-placed and nothing is derived from the phrase, so
+   it can't be solved without knowing what each note is worth. That's the
+   difference from the two-button tutorial, which asks only "does a new note
+   start here?" and does the grouping for them.
+   ========================================================================= */
+
+// The counting the student is meant to arrive at.
+//
+// THE BRACKET NEVER CROSSES A BARLINE. A note tied over one is written as two
+// brackets - "1 (2 3 4)" then "(1 2 3 4)" for a whole tied to a whole, never
+// "1 (2 3 4 1 2 3 4)". This is the opposite of what an earlier draft of this
+// file said, and the reversal is Rob's, for a reason that outranks the tidiness
+// of showing a tie as one object:
+//
+//   The student has to know where beat 1 is without stopping to work it out.
+//   The counting is what teaches them, so the counting has to delineate the
+//   bar. A bracket that runs through the barline bunches the phrase into one
+//   undifferentiated blob and hides the single most important landmark in it.
+//   Laying the mechanics out correctly is how the FEEL of the pulse gets built
+//   - so the layout is not cosmetic, it is the teaching.
+//
+// The unit is therefore one WRITTEN note or rest, which is also why brackets
+// can't cross a barline: a written note can't either. That is what a tie is
+// for. Each spec on the staff gets exactly one group:
+//
+//   struck note   -> its onset digit outside, its held beats in a bracket
+//                    (a whole note: "1 (2 3 4)")
+//   tied-into note-> no onset to write, so every beat sits in the bracket
+//                    (the second half of a tie: "(1 2)")
+//   rest          -> no onset/sustain distinction to draw, so all bracketed
+//                    ("(1 2 3 4)")
+//
+// Two half notes tied inside one bar are two written notes, so they are two
+// brackets - "1 (2) (3 4)" - even though nothing is re-struck on beat 3.
+// Reading the groups off the rendered specs rather than off the raw slot
+// stream is what makes that fall out automatically: the counting matches the
+// notation because it is derived from the same specs the notation is.
+//
+// Rob's worked examples, all of which fall out of the per-spec rule with no
+// special cases (his own wording in quotes):
+//
+//   two quarters tied     1 (2)        "exactly the same thing as a half note"
+//   quarter tied to half  1 (2 3)      "it would look just like a dotted minim"
+//   half tied to quarter  1 (2) (3)    "two sets of brackets because we do need
+//                                       to see that the new note" starts
+//   two halves tied       1 (2) (3 4)
+//   half rest + 2 q rests (1 2) (3) (4) "we would delineate each beat"
+//
+// Note the deliberate collisions: a quarter tied to a half and a quarter
+// followed by a half rest both read "1 (2 3)". Rob is content with that -
+// "that all makes sense, that is the reversible that I'm looking for" - since
+// the notation above the counting says which it is.
+function rstompTargetGroups() {
+    const groups = [];
+    rstompSpecBars.forEach(specs => {
+        let beat = 0;
+        specs.forEach(spec => {
+            const digits = [];
+            for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
+            if (!spec.isRest && !spec.tied) {
+                // Struck: the onset digit is written plainly, its held beats
+                // bracketed. A one-beat note has no held beats, so no bracket.
+                groups.push({ bracketed: false, digits: [digits[0]] });
+                if (digits.length > 1) groups.push({ bracketed: true, closed: true, kind: 'hold', digits: digits.slice(1) });
+            } else {
+                groups.push({ bracketed: true, closed: true, kind: spec.isRest ? 'rest' : 'hold', digits });
+            }
+            beat += spec.beats;
+        });
+    });
+    return groups;
+}
+
+function rstompGroupText(group) {
+    if (!group.bracketed) return group.digits.join(' ');
+    return `(${group.digits.join(' ')}${group.closed ? ')' : ''}`;
+}
+
+// One descriptor per beat, so a bar can be marked right or wrong by comparing
+// only the beats that belong to it - including whether a bracket opens or
+// closes there, which is what a mishandled tie gets wrong. A bracket left
+// hanging open never matches: an unclosed bracket isn't finished counting.
+function rstompGroupsToSlotMarks(groups) {
+    const marks = [];
+    groups.forEach(group => {
+        group.digits.forEach((digit, index) => {
+            marks.push([
+                digit,
+                group.bracketed ? 'b' : '-',
+                index === 0 ? 's' : '-',
+                (index === group.digits.length - 1 && (!group.bracketed || group.closed)) ? 'e' : '-'
+            ].join(''));
+        });
+    });
+    return marks;
+}
+
+function rstompWrittenBeats() {
+    return rstompWriting ? rstompWriting.groups.reduce((total, group) => total + group.digits.length, 0) : 0;
+}
+
+/* ---------- The keys ---------- */
+
+function rstompPressDigit(digit) {
+    const last = rstompWriting.groups[rstompWriting.groups.length - 1];
+    if (rstompWriting.inside && last && last.bracketed) last.digits.push(digit);
+    else rstompWriting.groups.push({ bracketed: false, digits: [digit] });
+}
+
+// "(" writes an open bracket and nothing else. A single key labelled "( )"
+// claimed it had finished the job, which made the close key look redundant
+// and made it easy to forget to close at all. An unclosed bracket is now
+// visibly unclosed, and closing it is a real act - which is the habit being
+// taught.
+function rstompPressOpen() {
+    if (rstompWriting.inside) return;
+    rstompWriting.groups.push({ bracketed: true, closed: false, digits: [] });
+    rstompWriting.inside = true;
+}
+
+function rstompPressClose() {
+    if (!rstompWriting.inside) return;
+    const last = rstompWriting.groups[rstompWriting.groups.length - 1];
+    if (last && last.bracketed && !last.digits.length) rstompWriting.groups.pop();
+    else if (last) last.closed = true;
+    rstompWriting.inside = false;
+}
+
+function rstompPressErase() {
+    const last = rstompWriting.groups[rstompWriting.groups.length - 1];
+    if (!last) return;
+    if (last.bracketed && last.closed) {
+        last.closed = false;          // erasing the ")" puts you back inside it
+        rstompWriting.inside = true;
+        return;
+    }
+    if (last.digits.length) {
+        last.digits.pop();
+        if (last.bracketed) rstompWriting.inside = true;
+        if (!last.digits.length && !last.bracketed) rstompWriting.groups.pop();
+    } else {
+        rstompWriting.groups.pop();
+        rstompWriting.inside = false;
+    }
+}
+
+// One entry point for every key, so each press re-renders and re-scrolls the
+// same way. Writing resumes the follow, the way typing does in an editor.
+function rstompKey(key) {
+    if (rstompLocked || !rstompScribe || !rstompWriting) return;
+    if (key === '(') rstompPressOpen();
+    else if (key === ')') rstompPressClose();
+    else if (key === 'erase') rstompPressErase();
+    else {
+        // Never let them write past the end of the phrase - there is no beat
+        // there to count, and the overflow would only ever be marked wrong.
+        if (rstompWrittenBeats() >= rstompPositions.length) return;
+        rstompPressDigit(key);
+    }
+    rstompCursor = Math.min(rstompWrittenBeats(), rstompPositions.length);
+    rstompFollowing = true;
+    rstompRevealed = null;
+    renderRstompBars();
+    followRstompCursor();
+    updateRstompPrompt();
+    updateRstompButtonStates();
+}
+
+/* ---------- Grading ---------- */
+
+// Compare beat by beat, then blame whole bars. Extra beats written past the
+// end of the phrase land on the last bar rather than vanishing.
+function rstompWrongBarsFor(writing) {
+    const mine = rstompGroupsToSlotMarks(writing.groups);
+    const theirs = rstompGroupsToSlotMarks(rstompTargetGroups());
+    const wrong = new Set();
+    for (let slot = 0; slot < theirs.length; slot++) {
+        if (mine[slot] !== theirs[slot]) wrong.add(Math.floor(slot / 4));
+    }
+    for (let extra = theirs.length; extra < mine.length; extra++) {
+        wrong.add(Math.min(rstompPhrase.length - 1, Math.floor(extra / 4)));
+    }
+    return [...wrong].sort((a, b) => a - b);
+}
+
+// Rewind to the start of the first wrong bar. Everything after it goes too:
+// a correct bar later in the phrase is only correct in the counting it
+// currently sits in, and re-writing an earlier bar shifts every beat after
+// it. Rebuilding from the first mistake is simpler to reason about than
+// splicing, and it never leaves the student editing around an answer that no
+// longer lines up.
+function rstompRewindTo(barIndex) {
+    const keepBeats = barIndex * 4;
+    const rebuilt = { groups: [], inside: false };
+    let used = 0;
+    for (const group of rstompWriting.groups) {
+        if (used + group.digits.length > keepBeats) break;
+        rebuilt.groups.push(group);
+        used += group.digits.length;
+    }
+    rstompWriting = rebuilt;
+    rstompCursor = Math.min(rstompWrittenBeats(), rstompPositions.length);
+}
+
 /* ---------- Round lifecycle ---------- */
 
 function startRstompLevel() {
@@ -295,18 +558,25 @@ function startRstompLevel() {
     rstompStreak = 0;
     rstompScore = 0;
     rstompLocked = false;
+    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    rstompScribe = !!level.scribe;
     switchScreenState('rhythm-lab', 'rhythm-lab-screen-game');
     ensureRstompStripListeners();
-    document.getElementById('rstomp-level-label').innerText = RSTOMP_LEVELS.find(level => level.id === rstompSelectedLevel).label;
+    applyRstompInterface();
+    document.getElementById('rstomp-level-label').innerText = level.label;
     updateRstompStreakDots();
     startNewRstompPhrase();
 }
 
 function startNewRstompPhrase() {
     const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
-    rstompPhrase = generateRstompPhrase(level);
+    rstompSpecBars = generateRstompPhrase(level);
+    rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
     rstompPositions = buildRstompPositions(rstompPhrase);
     rstompEntries = new Array(rstompPositions.length).fill(null);
+    rstompWriting = { groups: [], inside: false };
+    rstompRevealed = null;
+    rstompWrongBars = [];
     rstompUndoStack = [];
     rstompCursor = 0;
     rstompFollowing = true;
@@ -316,6 +586,17 @@ function startNewRstompPhrase() {
     renderRstompBars();
     updateRstompPrompt();
     updateRstompButtonStates();
+}
+
+// Which control block the level uses. Both live in the markup; only one is
+// ever on screen. The two-button row is not a legacy path - it is the
+// tutorial interface, and deleting it would take the only version a child who
+// can't yet write numerals can play (see CLAUDE.md).
+function applyRstompInterface() {
+    const twoButton = document.getElementById('rstomp-controls-twobutton');
+    const keypad = document.getElementById('rstomp-controls-keypad');
+    if (twoButton) twoButton.hidden = rstompScribe;
+    if (keypad) keypad.hidden = !rstompScribe;
 }
 
 /* ---------- Two-state answer + cursor (design brief §9.1/§9.2) ---------- */
@@ -352,6 +633,19 @@ function undoRstomp() {
 function updateRstompPrompt() {
     const el = document.getElementById('rstomp-prompt');
     if (!el) return;
+
+    // PLACEHOLDER COPY. Rob is writing the real instructional wording - see
+    // the design brief's note on §1 vs the walkthrough copy. Keep these
+    // functional and short until then; do not polish them, they're going.
+    if (rstompScribe) {
+        if (rstompRevealed) { el.textContent = "Here's the counting."; return; }
+        if (rstompWriting && rstompWriting.inside) { el.textContent = 'Bracket open — count the beats it holds for, then close it.'; return; }
+        if (rstompCursor >= rstompPositions.length) { el.textContent = 'All four bars written — check your answer below.'; return; }
+        const bar = Math.floor(rstompCursor / 4) + 1;
+        el.textContent = `Bar ${bar} — write the counting under the notes.`;
+        return;
+    }
+
     if (rstompCursor >= rstompPositions.length) {
         el.textContent = "All filled in — check your answer below.";
         return;
@@ -362,6 +656,27 @@ function updateRstompPrompt() {
 
 function updateRstompButtonStates() {
     const done = rstompCursor >= rstompPositions.length;
+
+    if (rstompScribe) {
+        const full = rstompWrittenBeats() >= rstompPositions.length;
+        document.querySelectorAll('#rstomp-controls-keypad .rstomp-key[data-digit]').forEach(key => {
+            key.disabled = rstompLocked || full;
+        });
+        const open = document.getElementById('rstomp-key-open');
+        const close = document.getElementById('rstomp-key-close');
+        const erase = document.getElementById('rstomp-key-erase');
+        // The bracket keys mirror the state of the bracket itself: you can
+        // only open one when none is open, and only close one that is.
+        if (open) open.disabled = rstompLocked || full || rstompWriting.inside;
+        if (close) close.disabled = rstompLocked || !rstompWriting.inside;
+        if (erase) erase.disabled = rstompLocked || !rstompWriting.groups.length;
+        // Submit is live as soon as all four bars are accounted for, even
+        // with a bracket left hanging open. Refusing to submit would hide
+        // the mistake; marking it wrong is the honest answer.
+        document.getElementById('rstomp-submit-button').disabled = rstompLocked || !full;
+        return;
+    }
+
     document.getElementById('rstomp-play-btn').disabled = rstompLocked || done;
     document.getElementById('rstomp-bracket-btn').disabled = rstompLocked || done;
     document.getElementById('rstomp-undo-btn').disabled = rstompLocked || rstompUndoStack.length === 0;
@@ -377,7 +692,16 @@ function updateRstompButtonStates() {
    the whole phrase at once. Nothing about the phrase changes with width -
    only how much of it is on screen. */
 
-const RSTOMP_MIN_BAR_WIDTH = 112;   // below this the counting row stops being readable
+// Below this the counting row stops being readable. Measured, not guessed:
+// at 112 the worst-case bar ("1 (2) (3 4)" - a half note then a half rest,
+// whose two glyphs sit close enough together to leave the middle bracket
+// nowhere to go) still overlapped by ~7px even after the nudge-and-shrink
+// pass had bottomed out at an 11px font. 126 clears it at 11px; 140 clears it
+// at a comfortable 13px, which is what the counting row deserves now that
+// writing it IS the game rather than a readout of two-button answers. The
+// cost is scrolling sooner on a phone, which is exactly what the strip and
+// the full view are for.
+const RSTOMP_MIN_BAR_WIDTH = 140;
 const RSTOMP_MAX_BAR_WIDTH = 190;   // above this bars just look sparse on a big screen
 const RSTOMP_CURSOR_ANCHOR = 0.3;   // where the cursor parks after a scroll; the rest is look-ahead
 
@@ -404,7 +728,7 @@ function renderRstompBars() {
     rstompTotalWidth = perBarWidth * rstompPhrase.length;
     inner.style.width = `${rstompTotalWidth}px`;
 
-    rstompLayouts = renderRstompStaff(staffHost, rstompPhrase, perBarWidth);
+    rstompLayouts = renderRstompStaff(staffHost, rstompSpecBars, perBarWidth);
     renderRstompCountingRow(countingHost, rstompLayouts, perBarWidth, rstompTotalWidth);
     updateRstompCaret();
     updateRstompStripChrome();
@@ -455,9 +779,10 @@ function updateRstompStripChrome() {
     const progress = document.getElementById('rstomp-strip-progress');
     if (progress) {
         const total = rstompPositions.length;
-        progress.textContent = rstompCursor >= total
+        const written = rstompScribe ? rstompWrittenBeats() : rstompCursor;
+        progress.textContent = written >= total
             ? `All ${total} beats in`
-            : `Beat ${rstompCursor + 1} of ${total}`;
+            : `Beat ${written + 1} of ${total}`;
     }
 
     // Nothing to expand when the whole phrase is already on screen.
@@ -523,8 +848,8 @@ function openRstompFullView() {
     }
     const perBarWidth = available / barsPerSystem;
 
-    for (let start = 0; start < rstompPhrase.length; start += barsPerSystem) {
-        const slice = rstompPhrase.slice(start, start + barsPerSystem);
+    for (let start = 0; start < rstompSpecBars.length; start += barsPerSystem) {
+        const slice = rstompSpecBars.slice(start, start + barsPerSystem);
         const system = document.createElement('div');
         system.className = 'rstomp-system';
 
@@ -536,10 +861,10 @@ function openRstompFullView() {
         system.appendChild(counting);
         host.appendChild(system);
 
-        const nextBar = rstompPhrase[start + slice.length];
+        const nextBar = rstompSpecBars[start + slice.length];
         const layouts = renderRstompStaff(staff, slice, perBarWidth, {
-            tieIn: start > 0 && slice[0][0] === 'hold',
-            tieOut: Boolean(nextBar) && nextBar[0] === 'hold'
+            tieIn: start > 0 && Boolean(slice[0][0] && slice[0][0].tied),
+            tieOut: Boolean(nextBar && nextBar[0] && nextBar[0].tied)
         });
         renderRstompCountingRow(counting, layouts, perBarWidth, perBarWidth * slice.length, start);
     }
@@ -556,36 +881,40 @@ function closeRstompFullView() {
 // beat it actually describes - directly under the note it refers to, per
 // Rob's Rubank reference, not centered as one string under the whole bar.
 //
-// Bracket-merge rule (corrected earlier - see that fix's commit): Hold and
-// Rest share the same bracket SYMBOL, but a run only merges into one
-// bracket when it's genuinely the same underlying event the whole way
-// through - all Hold (one sustained note continuing) or all Rest (one
-// continuous silence), never across the boundary between them, even though
-// the student's own answer (which only knows Play vs Bracket) can't see
-// that distinction - that's why this reads the true pattern (rstompPhrase).
+// Grouping rule: ONE GROUP PER WRITTEN NOTE OR REST, which supersedes the
+// older "merge any contiguous run of the same underlying event" rule. The two
+// agree on everything the old rule was written for, and differ where it
+// mattered: two notes tied inside a bar are two groups, and adjacent rests
+// never merge - "we would delineate each beat" (Rob, on a half rest followed
+// by two quarter rests: "(1 2) (3) (4)").
 function buildRstompCountingTokens(barIndex) {
+    const specs = rstompSpecBars[barIndex] || [];
     const tokens = [];
-    let beatIndex = 0;
-    while (beatIndex < 4) {
-        const posIndex = barIndex * 4 + beatIndex;
-        const answer = rstompEntries[posIndex];
-        if (answer == null) break;
-        if (answer === 'play') {
-            tokens.push({ text: String(beatIndex + 1), startBeat: beatIndex, endBeat: beatIndex, kind: 'play' });
-            beatIndex++;
-            continue;
+    let beat = 0;
+    for (const spec of specs) {
+        // A note's counting only appears once every beat it covers has been
+        // answered - showing half a group would put a bracket on screen the
+        // student hasn't finished building.
+        let answered = true;
+        for (let k = 0; k < spec.beats; k++) {
+            if (rstompEntries[barIndex * 4 + beat + k] == null) { answered = false; break; }
         }
-        const trueMode = rstompPhrase[barIndex][beatIndex]; // 'hold' | 'rest'
-        const labels = [String(beatIndex + 1)];
-        let end = beatIndex;
-        while (end + 1 < 4) {
-            const nextAnswer = rstompEntries[barIndex * 4 + end + 1];
-            if (nextAnswer !== 'bracket' || rstompPhrase[barIndex][end + 1] !== trueMode) break;
-            end++;
-            labels.push(String(end + 1));
+        if (!answered) break;
+
+        const digits = [];
+        for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
+        // The student's own answer decides plain-vs-bracketed on the first
+        // beat; the grouping comes from the written note. That keeps the row
+        // honest to what they typed while still delineating the notation.
+        if (rstompEntries[barIndex * 4 + beat] === 'play') {
+            tokens.push({ text: digits[0], startBeat: beat, endBeat: beat, kind: 'play' });
+            if (digits.length > 1) {
+                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: beat + 1, endBeat: beat + spec.beats - 1, kind: 'hold' });
+            }
+        } else {
+            tokens.push({ text: `(${digits.join(' ')})`, startBeat: beat, endBeat: beat + spec.beats - 1, kind: spec.isRest ? 'rest' : 'hold' });
         }
-        tokens.push({ text: `(${labels.join(' ')})`, startBeat: beatIndex, endBeat: end, kind: trueMode });
-        beatIndex = end + 1;
+        beat += spec.beats;
     }
     return tokens;
 }
@@ -626,27 +955,87 @@ function buildRstompCountingTokens(barIndex) {
 //
 // Font size scales with the per-bar width, then shrinks further if the
 // tokens still won't fit (see the placement pass below).
+// What the student has written, as runs over ABSOLUTE beat slots. A correct
+// bracket never crosses a barline (see rstompTargetGroups), but a student's
+// can - writing one is a real mistake they're allowed to make and see marked
+// - so runs are kept on absolute slots and the renderer handles a run whose
+// end lands in a later bar rather than assuming it can't.
+//
+// Only the notation underneath decides alignment, which is why the same two
+// rules apply here as to the tutorial's derived tokens: what matters is
+// whether there is a glyph above the run's first beat, not what the student
+// wrote above it.
+function buildRstompScribeRuns() {
+    const groups = rstompRevealed || (rstompWriting ? rstompWriting.groups : []);
+    const wrong = new Set(rstompWrongBars.map(bar => bar - 1));
+    const runs = [];
+    let slot = 0;
+    groups.forEach(group => {
+        // A bracket just opened has no digits yet but must still show - the
+        // whole point of the key is that opening one is a visible act.
+        if (!group.digits.length && !group.bracketed) return;
+        const span = Math.max(0, group.digits.length - 1);
+        runs.push({
+            text: rstompGroupText(group),
+            bracketed: group.bracketed,
+            empty: group.digits.length === 0,
+            startSlot: slot,
+            endSlot: slot + span,
+            wrong: wrong.has(Math.floor(slot / 4)) || wrong.has(Math.floor((slot + span) / 4))
+        });
+        slot += group.digits.length;
+    });
+    return runs;
+}
+
 function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, barOffset = 0) {
     container.innerHTML = '';
     container.style.width = `${totalWidth}px`;
     const els = [];
     const anchors = [];
-    layouts.forEach((layout, position) => {
-        buildRstompCountingTokens(barOffset + position).forEach(token => {
-            const el = document.createElement('span');
-            el.className = 'rstomp-count-token';
-            el.textContent = token.text;
-            const owner = layout.beatOwner[token.startBeat];
-            if (token.kind === 'hold' && !owner.isOnset) {
-                anchors.push((layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2);
-                el.classList.add('rstomp-count-token-centered');
+
+    const add = (text, anchor, centered, wrong) => {
+        const el = document.createElement('span');
+        el.className = `rstomp-count-token${centered ? ' rstomp-count-token-centered' : ''}${wrong ? ' wrong' : ''}`;
+        el.textContent = text;
+        container.appendChild(el);
+        els.push(el);
+        anchors.push(anchor);
+    };
+
+    if (rstompScribe) {
+        // Absolute slot -> the layout showing it, or null when that bar isn't
+        // in this container (the full view renders one system at a time).
+        const layoutFor = slot => layouts[Math.floor(slot / 4) - barOffset] || null;
+        buildRstompScribeRuns().forEach(run => {
+            const startLayout = layoutFor(run.startSlot);
+            if (!startLayout) return;
+            const startBeat = run.startSlot % 4;
+            const owner = startLayout.beatOwner[startBeat];
+            if (run.empty) {
+                // Nothing written inside it yet, so there is no span to
+                // centre across - park it on its own beat.
+                add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
+            } else if (run.bracketed && !owner.isOnset) {
+                const endLayout = layoutFor(run.endSlot) || layouts[layouts.length - 1];
+                const endBeat = layoutFor(run.endSlot) ? (run.endSlot % 4) + 1 : 4;
+                add(run.text, (startLayout.pulseX(startBeat) + endLayout.pulseX(endBeat)) / 2, true, run.wrong);
             } else {
-                anchors.push(layout.noteX[owner.specIndex]);
+                add(run.text, startLayout.noteX[owner.specIndex], false, run.wrong);
             }
-            container.appendChild(el);
-            els.push(el);
         });
-    });
+    } else {
+        layouts.forEach((layout, position) => {
+            buildRstompCountingTokens(barOffset + position).forEach(token => {
+                const owner = layout.beatOwner[token.startBeat];
+                if (token.kind === 'hold' && !owner.isOnset) {
+                    add(token.text, (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2, true, false);
+                } else {
+                    add(token.text, layout.noteX[owner.specIndex], false, false);
+                }
+            });
+        });
+    }
 
     // Rule 2's "breathe at the true mid-span" position is an ideal, not a
     // guarantee - at narrow card widths (2-column portrait grid) it can
@@ -702,44 +1091,16 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
     while (fontSize > 10 && placeAt(fontSize) > 0.5) fontSize -= 1;
 }
 
-// A Play followed by N Holds is one sustained note of duration N+1; a
-// contiguous Rest run is one rest of that duration - same run-length
-// encoding as rhythm.js, just without its subdivision/tie/beaming
-// machinery, which levels 1-2 don't need yet.
-function rstompBeatsToNoteSpecs(entries) {
-    const specs = [];
-    let i = 0;
-    while (i < entries.length) {
-        const mode = entries[i];
-        const isRest = mode === 'rest';
-        const continuesAs = isRest ? 'rest' : 'hold';
-        let run = 1;
-        while (i + run < entries.length && entries[i + run] === continuesAs) run++;
-        specs.push({ beats: run, isRest });
-        i += run;
-    }
-    return specs;
-}
-
-// Renders any number of consecutive bars onto ONE VexFlow canvas/context.
-// Sharing a single context is what lets a tie curve connect a notehead in
-// one bar to a notehead in the next - which is now every barline, not just
-// the ones that happened to land inside a card. Returns one layout object
-// per bar for renderRstompCountingRow.
-//
-// options.tieIn / options.tieOut draw the half-curve stubs for a tie that
-// continues off the start or end of this slice - only the full view splits
-// a phrase mid-tie, when it wraps bars into systems.
-function renderRstompStaff(container, bars, perBarWidth, options = {}) {
+function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
     container.innerHTML = '';
     const VF = Vex.Flow;
-    const totalWidth = perBarWidth * bars.length;
+    const totalWidth = perBarWidth * specBars.length;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
     renderer.resize(totalWidth, 130);
     const context = renderer.getContext();
 
-    const rendered = bars.map((bar, position) => {
-        const isLastInGroup = position === bars.length - 1;
+    const rendered = specBars.map((specs, position) => {
+        const isLastInGroup = position === specBars.length - 1;
         const x = 4 + position * perBarWidth;
         const stave = new VF.Stave(x, 20, perBarWidth - (isLastInGroup ? 8 : 0));
         stave.setConfigForLines([
@@ -748,7 +1109,6 @@ function renderRstompStaff(container, bars, perBarWidth, options = {}) {
         stave.setStyle({ strokeStyle: '#000000' });
         stave.setContext(context).draw();
 
-        const specs = rstompBeatsToNoteSpecs(bar);
         const notes = specs.map(spec => {
             const duration = RSTOMP_DURATION_FOR_BEATS[spec.beats];
             return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
@@ -784,17 +1144,26 @@ function renderRstompStaff(container, bars, perBarWidth, options = {}) {
             cumulativeBeats += spec.beats;
         });
 
-        return { bar, notes, noteX, pulseX, beatOwner };
+        return { specs, notes, noteX, pulseX, beatOwner };
     });
 
-    // Cross-barline tie: a fresh bar's own generated content never opens
-    // on a Hold (every pool pattern starts with Play or Rest - see
-    // RSTOMP_PATTERNS), so a bar whose beat 0 is 'hold' can only mean the
-    // note tied over from the previous bar (see generateRstompPhraseWithTie).
-    // Every bar is on this one canvas, so the curve can be drawn wherever
-    // that happens.
-    for (let position = 1; position < bars.length; position++) {
-        if (bars[position][0] !== 'hold') continue;
+    // Ties INSIDE a bar: any spec marked tied is the same note continuing
+    // from the one before it. This is what two half notes tied in one bar
+    // needs, and it is drawn exactly like a tie over a barline - the only
+    // difference is which two noteheads it joins.
+    rendered.forEach(({ specs, notes }) => {
+        specs.forEach((spec, index) => {
+            if (!spec.tied || index === 0) return;
+            new VF.StaveTie({ first_note: notes[index - 1], last_note: notes[index], first_indices: [0], last_indices: [0] }).setContext(context).draw();
+        });
+    });
+
+    // Cross-barline tie. Now simply "the bar's first note is marked tied" -
+    // no longer inferred from a leading Hold in the beat stream, which was
+    // only ever a proxy for this. Every bar is on this one canvas, so the
+    // curve can be drawn wherever it happens.
+    for (let position = 1; position < specBars.length; position++) {
+        if (!specBars[position][0] || !specBars[position][0].tied) continue;
         const previousNotes = rendered[position - 1].notes;
         const lastNote = previousNotes[previousNotes.length - 1];
         const firstNote = rendered[position].notes[0];
@@ -842,7 +1211,16 @@ function hideRstompFeedback() {
 /* ---------- Submit + grading ---------- */
 
 function submitRstompPhrase() {
-    if (rstompLocked || rstompCursor < rstompPositions.length) return;
+    if (rstompLocked) return;
+    if (rstompScribe) {
+        if (rstompWrittenBeats() < rstompPositions.length) return;
+        rstompLocked = true;
+        const wrongBars = rstompWrongBarsFor(rstompWriting);
+        if (wrongBars.length === 0) handleRstompSuccess();
+        else handleRstompScribeFailure(wrongBars);
+        return;
+    }
+    if (rstompCursor < rstompPositions.length) return;
     rstompLocked = true;
     const wrongBarsSet = new Set();
     rstompPositions.forEach((position, index) => {
@@ -864,6 +1242,57 @@ function handleRstompSuccess() {
     } else {
         setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 1000);
     }
+}
+
+// Finding your own mistake is the skill, so the first strike says only HOW
+// MANY bars are wrong - not which. The second names them and rewinds to the
+// first one. The third shows the answer and resets the streak. Naming them
+// immediately would turn a reading task into a "fix the highlighted box"
+// task, which is the scaffolding this interface exists to remove.
+function handleRstompScribeFailure(wrongBars) {
+    playSound('wrong');
+    const names = wrongBars.map(index => index + 1);
+
+    if (rstompAttempt === 1) {
+        rstompAttempt++;
+        rstompWrongBars = [];
+        showRstompFeedback('wrong', wrongBars.length === 1
+            ? "One bar isn't right. Can you find it before you submit again?"
+            : `${wrongBars.length} bars aren't right. Can you find them?`);
+        renderRstompBars();
+        setTimeout(() => { rstompLocked = false; updateRstompButtonStates(); }, 700);
+        return;
+    }
+
+    if (rstompAttempt === 2) {
+        rstompAttempt++;
+        rstompWrongBars = names;
+        showRstompFeedback('wrong', wrongBars.length > 1
+            ? `Bars ${names.join(', ')} aren't right — read them again.`
+            : `Bar ${names[0]} isn't right — read it again.`);
+        renderRstompBars();
+        setTimeout(() => {
+            rstompRewindTo(wrongBars[0]);
+            rstompWrongBars = [];
+            rstompLocked = false;
+            rstompFollowing = true;
+            renderRstompBars();
+            followRstompCursor();
+            updateRstompPrompt();
+            updateRstompButtonStates();
+            hideRstompFeedback();
+        }, 1800);
+        return;
+    }
+
+    rstompRevealed = rstompTargetGroups();
+    rstompWrongBars = [];
+    rstompStreak = 0;
+    updateRstompStreakDots();
+    showRstompFeedback('wrong', "Here's the counting — streak reset. New phrase next.");
+    renderRstompBars();
+    updateRstompPrompt();
+    setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 3200);
 }
 
 // Same shape as rhythm.js: attempts 1-2 clear only the wrong bar(s) for

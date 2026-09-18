@@ -39,10 +39,90 @@ two-button game on the grounds that the keypad replaces it** — that would dele
 the only version young children can use, and the tutorial with it. Both can
 carry the same bonus stomp round.
 
-Counting convention worth knowing before touching either: a tie is ONE note, so
-its counting is ONE bracket, and that bracket crosses the barline — `(4 1 2)`,
-not `(4)` then `(1 2)`. Closing at the barline asserts two held notes where there
-is one. Rests never merge across a barline.
+## Counting convention — THE BRACKET NEVER CROSSES A BARLINE
+Read this before touching either interface. An earlier version of this file
+said the opposite (that a tie should be one bracket spanning the barline).
+**That was wrong and has been reversed** — the reversal is Rob's, and the
+reason outranks the tidiness of drawing a tie as one object:
+
+> The student has to know where beat 1 is without stopping to work it out. The
+> counting is what teaches them that, so the counting has to delineate the bar.
+> A bracket running through the barline bunches the phrase into one
+> undifferentiated blob and hides the single most important landmark in it.
+> Laying the mechanics out correctly is how the *feel* of the pulse gets built
+> — so this layout is not cosmetic, it is the teaching.
+
+A whole note tied to a whole note is `1 (2 3 4)` then `(1 2 3 4)` — **never**
+`1 (2 3 4 1 2 3 4)`. A half tied across the barline is `3 (4)` then `(1 2)`.
+
+The grouping unit is **one written note or rest**, which is also why a bracket
+can't cross a barline: a written note can't either — that is what a tie is for.
+Each note or rest on the staff gets exactly one group:
+
+| On the staff | Counting |
+|---|---|
+| A struck note | onset digit outside, held beats bracketed — `1 (2 3 4)` |
+| A note tied into (no onset to write) | every beat bracketed — `(1 2)` |
+| A rest (no onset/sustain distinction) | every beat bracketed — `(1 2 3 4)` |
+
+Two half notes tied *inside* one bar are two written notes, so two brackets:
+`1 (2) (3 4)`, even though nothing is re-struck on beat 3.
+
+Derive the groups from the note specs, not from the beat stream — that is what
+makes the counting match the notation automatically. **Note boundaries are
+explicit in the phrase model** (`rstompSpecBars`, a list of bars each holding
+`{beats, isRest, tied}` per written note); the beat stream is derived from it,
+never the other way round. Beats alone cannot tell a whole note from two tied
+half notes.
+
+### Rob's worked examples — the authority, all reproduced in code
+
+| Written | Counting |
+|---|---|
+| Two quarters tied | `1 (2)` — *identical to a half note, and that is the point* |
+| Quarter tied to half | `1 (2 3)` — identical to the dotted half it demonstrates |
+| **Half tied to quarter** | `1 (2) (3)` — two brackets; a new written note starts on beat 3 |
+| Two halves tied | `1 (2) (3 4)` |
+| Whole note | `1 (2 3 4)` |
+| Half rest + two quarter rests | `(1 2) (3) (4)` — adjacent rests never merge |
+| Whole tied to whole | `1 (2 3 4)` · `(1 2 3 4)` |
+| Half tied to whole | `3 (4)` · `(1 2 3 4)` |
+| Whole tied to half | `1 (2 3 4)` · `(1 2)` |
+| Quarter tied to quarter across a barline | `4` · `(1)` |
+
+Two collisions are **deliberately accepted**: a quarter tied to a half reads
+the same as a quarter plus a half rest, and a half note plus a whole rest reads
+the same as a half tied to a whole. The notation above says which it is; the
+counting says how it is counted, and it is counted the same way.
+
+**Engraving rule:** a bar of 4/4 never holds four quarter rests — three at
+most, so the real beat stays findable.
+
+### How the counting is SET — settled, don't re-open these
+
+**One bracket style for everything.** No font change, no italics, no visual
+distinction between a hold bracket and a rest bracket. Rob's notation examples
+show rest brackets in italic; that is a **Sibelius artefact** (lyric text won't
+span a rest, so he used expression text, which is italic and he couldn't turn
+it off), not a distinction. His words: *"keep everything exactly the same. Type
+font, no italics, no change, no delineation between rests and holding."*
+
+So the two collisions above stay collisions **on purpose** — nothing in the
+counting will ever separate them, and nothing should try.
+
+**There is one spacing system and it belongs to the engraving.** The counting
+row is not typeset on its own and then aligned; it *inherits* the notation's
+horizontal positions. Every number sits under the thing it counts because that
+is where the thing it counts is. Rob: *"there aren't two different sets of
+spacing... it's all the same."*
+
+His handwritten `1(234)` is a constraint of writing by hand, not a spec — do
+**not** force a note's counting into one tight run. The onset digit anchors to
+its notehead; a hold bracket with no glyph of its own centres across the span
+it covers, so the numbers breathe. That is what the app already does and it is
+correct.
+
+Full detail lives in the design brief §10.2a–§10.2b.
 
 ## Counting engine — the shape to build to
 Settled, and written up in full in the private docs repo
@@ -60,6 +140,12 @@ version, so nobody re-derives it from the code:
   6/8 is taught as simple time first; in-2 is a later relabelling at speed.
 - **`+`, never `&`.** The counting has to transfer to handwriting, and a
   handwritten `&` looks like a `+` anyway.
+- **The bracket never crosses a barline** (see the convention section above) —
+  the grouping unit is one written note or rest.
+- **Note boundaries are explicit** — `rstompSpecBars` is the source of truth and
+  the beat stream is derived from it. This is what makes within-bar ties and
+  the long-hand device below expressible at all; beats alone can't tell a whole
+  note from two tied half notes.
 - **Long-hand spelling is a teaching device, not an engraving rule.** Two tied
   crotchets shown against a minim, a crotchet tied to a quaver shown against a
   dotted crotchet — same counting under both. Strictly one generation at a time
