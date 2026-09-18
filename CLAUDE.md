@@ -152,6 +152,35 @@ version, so nobody re-derives it from the code:
   (never four crotchets tied into a semibreve). It is sprinkled through existing
   levels, never given levels of its own.
 
+## Level sequence — 21 levels, to sixteenth notes
+Designed against the standard reading and drum methods so a student who opens a
+band book finds themselves somewhere recognisable. Full table with what each
+level teaches: design brief **§13**. Do not invent a level order from the code.
+
+| Stage | Labels | Levels |
+|---|---|---|
+| **A — the beat** | `1 2 3 4` | quarters · halves · wholes · mixed · dotted half · barline ties |
+| **B — the quaver** | `1 + 2 + 3 + 4 +` | paired 8ths · mixed · single 8th · dotted quarter · syncopa · mixed + ties |
+| **C — 6/8** | `1 2 3 4 5 6` then `1 + a 2 + a` | in 6 · in 2 at speed |
+| **D — the semiquaver** | `1 e + a …` | four 16ths · mixed · patterns 1–2 · dotted 8th+16th · reversed · syncopation · review |
+
+Three things to know before touching `RSTOMP_LEVELS`:
+
+- **It starts at the quarter note, not the whole note.** A bar of quarters is
+  `1 2 3 4` with no brackets at all, so the student learns the keypad and the
+  grid before meeting the bracket. A whole note is `1 (2 3 4)` — that put the
+  hardest idea in the notation in bar one of level one.
+- **The four levels that exist today become A3, A2, A4 and A6** — reordered,
+  not rewritten. Seventeen levels do not exist yet.
+- **Stage B is the centre of gravity**, six levels. That first subdivision of
+  the beat is where the real work is; everything finer is the same skill at a
+  smaller scale.
+
+Anacrusis (after B3), accent (after B5) and Mystery Rhythms (from A4) are
+slotted through existing levels rather than given levels of their own. The
+anacrusis is the biggest content hole — every generated phrase currently starts
+on beat 1, and a pick-up is the sharpest test of where beat 1 is.
+
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
 
