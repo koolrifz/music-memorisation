@@ -228,6 +228,20 @@ Idea: audio encouragement at streak 1/2/3 within a density tier, matching Rob's 
 
 ---
 
+## The constraint that outranks engagement
+**Time at the instrument beats time in the app.** Rob: *"None of this makes any
+difference unless they're practising their instrument… They shouldn't live their
+life on the computer. They should live their life behind their instrument."*
+
+This is the opposite of how apps are normally designed, so it needs stating
+before someone optimises the wrong number:
+
+- A short session that clears a level and ends is a **success**.
+- **No streak mechanic may punish a day away from the screen** — that day may
+  have been spent playing.
+- "Now go and play this" prompts are a **feature**, not an off-ramp.
+- If a change would raise engagement but lower practice time, **it loses.**
+
 ## Design philosophy (useful context, not a task list)
 Rob's teaching background is built around rote memorization drilled to automaticity (flashcard-style, "rule of three" mastery checks) rather than repertoire-first instruction — he considers this the biggest gap in how music reading is currently taught, and it's the whole reason this app exists. When in doubt about how strict a mastery gate should be, or whether to add a hint/scaffold, the answer is usually "make them actually prove it" rather than "make it easier to pass." This app is explicitly not meant to feel like generic edutainment — the "Smash" branding and the strict all-or-nothing mastery checks are deliberate, not to be softened without asking.
 
