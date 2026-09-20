@@ -185,34 +185,65 @@ version, so nobody re-derives it from the code:
     into. Parked: an **equivalency bonus round** where it goes deliberately
     silly and lots of things get tied together.
 
-## Level sequence — 21 levels, to sixteenth notes
+## Level sequence — to sixteenth notes
 Designed against the standard reading and drum methods so a student who opens a
 band book finds themselves somewhere recognisable. Full table with what each
 level teaches: design brief **§13**. Do not invent a level order from the code.
 
 | Stage | Labels | Levels |
 |---|---|---|
-| **A — the beat** | `1 2 3 4` | quarters · halves · wholes · mixed · dotted half · barline ties |
+| **A — sustain and the bracket** | `1 2 3 4` | **BUILT, 9 levels** — see below |
 | **B — the quaver** | `1 + 2 + 3 + 4 +` | paired 8ths · mixed · single 8th · dotted quarter · syncopa · mixed + ties |
 | **C — 6/8** | `1 2 3 4 5 6` then `1 + a 2 + a` | in 6 · in 2 at speed |
 | **D — the semiquaver** | `1 e + a …` | four 16ths · mixed · patterns 1–2 · dotted 8th+16th · reversed · syncopation · review |
 
-Three things to know before touching `RSTOMP_LEVELS`:
+### Stage A — built, nine levels, brief §13.4
+| # | Level | New idea |
+|---|---|---|
+| A1 | Whole notes and rests | The bar, the beat numbers, **the bracket**. Exactly two possible bars. |
+| A2 | Half notes and rests | Two events in a bar |
+| A3 | Whole and half mixed | Switching scale inside a bar |
+| A4 | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
+| A5 | Quarters, halves, wholes | Full crotchet vocabulary; long-hand sprinkled |
+| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4` |
+| A7 | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
+| A8 | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
+| A9 | Ties across the barline | Any value crossing |
 
-- **It starts at the quarter note, not the whole note.** A bar of quarters is
-  `1 2 3 4` with no brackets at all, so the student learns the keypad and the
-  grid before meeting the bracket. A whole note is `1 (2 3 4)` — that put the
-  hardest idea in the notation in bar one of level one.
-- **The four levels that exist today become A3, A2, A4 and A6** — reordered,
-  not rewritten. Seventeen levels do not exist yet.
-- **Stage B is the centre of gravity**, six levels. That first subdivision of
-  the beat is where the real work is; everything finer is the same skill at a
-  smaller scale.
+**It opens on whole notes, NOT the quarter note.** An earlier version of this
+file said the opposite; brief §13.1 records that as a reversal, for two reasons:
 
-Anacrusis (after B3), accent (after B5) and Mystery Rhythms (from A4) are
-slotted through existing levels rather than given levels of their own. The
-anacrusis is the biggest content hole — every generated phrase currently starts
-on beat 1, and a pick-up is the sharpest test of where beat 1 is.
+- **The canon is percussion-shaped.** Drum and band methods open on the quarter
+  note because for a drummer one strike per beat *is* the pulse. These are wind
+  and string players, for whom four quarters is four separate attacks and a
+  whole note is one sustained sound — which is both physically easier and what a
+  beginner should be doing anyway.
+- **A bar of whole notes and whole rests has exactly two shapes**, `1 (2 3 4)`
+  and `(1 2 3 4)`. That is the most constrained place the bracket can be
+  introduced, and the contrast teaches the rule everything rests on: the onset
+  digit sits **outside** the bracket for a note and **inside** it for a rest.
+
+Stage A runs to nine because it has three values to introduce before the stage
+template (§13.3) can start. Every later stage repeats that six-step arc: the new
+value isolated · mixed · ties inside the bar · the dotted form · syncopation ·
+ties across the barline.
+
+Anacrusis (after B3), accent (after B5) and Mystery Rhythms are slotted through
+existing levels rather than given levels of their own. **The anacrusis is the
+biggest content hole** — every generated phrase still starts on beat 1, and a
+pick-up is the sharpest test of where beat 1 is.
+
+### Engraving rules for rests — notes are not bound by them
+- **An all-rest bar is written as one whole rest**, never as smaller rests added
+  up. This is what forbids two half rests filling a bar, and a bar of four
+  quarter rests.
+- **A rest N slots long starts on a multiple of N** — a half rest may cover
+  beats 1–2 or 3–4, never 2–3.
+- **Notes are deliberately not restricted this way.** A minim across beats 2 and
+  3 is ordinary syncopation and is exactly the figure A6 is built on. *Silence
+  has to show the beat; sound is allowed to hide it.*
+- Rests in a bar that also holds a note **do not merge** — Rob's own
+  `(1 2) (3) (4)` is a half rest followed by two quarter rests.
 
 ### One engraving rule was mislabelled — check before reusing it
 The generator used to reject two **adjacent** half notes in a bar, citing the
