@@ -158,6 +158,114 @@ function rstompVoiceMeter() {
 }
 
 /* =========================================================================
+   THE EQUIVALENCY SCAFFOLD  ("the long way")
+
+   One written note, spelled out as several tied notes, so the student sees
+   that the two are the same length. A minim is the short way; two tied
+   crotchets are the long way. Rob: "that is the point."
+
+   IT IS SCAFFOLDING, AND IT COMES DOWN. This is not a permanent 10% garnish
+   sprinkled through every level. A level that is LANDING a new note value
+   spells that value out - every way it can be spelled - as a rite of passage.
+   Once the student can see the equivalence, the scaffold is withdrawn and
+   later levels show the plain note only. Rob: "As soon as they can see that,
+   we don't have to show it to them anymore. They just need to pass that
+   round. It's a level test of equivalency."
+
+   It recurs at every subdivision, which is why it lives on the grid rather
+   than in a table: two quavers make a crotchet at Stage B for exactly the
+   reason two crotchets make a minim at Stage A, and two semiquavers make a
+   quaver at Stage D. Rob: "All of this equivalency has to scale down into
+   subdivision."
+
+   ONE GENERATION AT A TIME. The pieces may be the target's own base value or
+   the one immediately below it, never further. So a dotted minim may be
+   spelled crotchet+minim, minim+crotchet, or - Rob's "ludicrous mode" -
+   three tied crotchets. A semibreve may be two tied minims, but NEVER four
+   tied crotchets: crotchets are two generations below a semibreve, and that
+   is a different (and much worse) picture.
+
+   The counting is NOT always identical, and that is information rather than a
+   defect. Short-note-first spellings read identically to the plain note
+   (crotchet tied to minim is "1 (2 3)", so is a dotted minim). The others
+   do not, because they are more written notes and every written note gets its
+   own group: two tied minims read "1 (2) (3 4)" where a semibreve reads
+   "1 (2 3 4)". Both belong in the scaffold round - the first teaches that
+   they are the same, the second teaches that the counting shows you which
+   spelling you are looking at.
+   ========================================================================= */
+
+// The piece values allowed when spelling out `value`: its own base, and the
+// one generation below. A dotted minim's base is the minim, so its pieces may
+// be minims and crotchets.
+function rstompSpellingPieces(value, slotValue) {
+    const base = value.slice(-1) === 'd' ? value.slice(0, -1) : value;
+    const index = RSTOMP_VALUE_LADDER.indexOf(base);
+    return [RSTOMP_VALUE_LADDER[index], RSTOMP_VALUE_LADDER[index - 1]]
+        .filter(Boolean)
+        .map(piece => ({ value: piece, slots: rstompSlotsFor(piece, slotValue) }))
+        .filter(piece => piece.slots);
+}
+
+// Every way to write `value` as two or more tied notes, one generation down.
+// Order matters: crotchet+minim and minim+crotchet are different pictures and
+// count differently, and Rob wants both when a dotted minim is being landed.
+function rstompLonghandSpellings(value, slotValue) {
+    const total = rstompSlotsFor(value, slotValue);
+    const pieces = rstompSpellingPieces(value, slotValue);
+    if (!total) return [];
+    const out = [];
+    (function build(remaining, run) {
+        if (remaining === 0) { if (run.length > 1) out.push(run); return; }
+        pieces.forEach(piece => {
+            if (piece.slots <= remaining) build(remaining - piece.slots, [...run, piece]);
+        });
+    })(total, []);
+    return out;
+}
+
+// Rewrite one spec as its long-hand spelling: the first piece is struck, every
+// piece after it is tied into. Nothing else about the bar moves, because the
+// total slot count is unchanged by construction.
+function rstompSpellOutSpec(spec, spelling) {
+    return spelling.map((piece, index) => ({
+        slots: piece.slots,
+        value: piece.value,
+        isRest: false,
+        tied: index > 0 ? true : spec.tied
+    }));
+}
+
+// Apply the scaffold to a generated phrase, in place of one plain note. A
+// level opts in with `spellOut` (which values it is landing) and
+// `longhandChance`. At most one note per phrase is spelled out - the device
+// is a pointed comparison, not a texture - and a note already tied into is
+// never chosen, since spelling out a continuation teaches nothing.
+function rstompApplyLonghand(bars, level, grid) {
+    if (!level.spellOut || !level.spellOut.length) return bars;
+    if (Math.random() >= (level.longhandChance != null ? level.longhandChance : 0)) return bars;
+
+    const candidates = [];
+    bars.forEach((specs, barIndex) => specs.forEach((spec, specIndex) => {
+        if (spec.isRest || spec.tied) return;
+        if (level.spellOut.indexOf(spec.value) === -1) return;
+        const spellings = rstompLonghandSpellings(spec.value, grid.slotValue);
+        if (spellings.length) candidates.push({ barIndex, specIndex, spellings });
+    }));
+    if (!candidates.length) return bars;
+
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    const spelling = pick.spellings[Math.floor(Math.random() * pick.spellings.length)];
+    const specs = bars[pick.barIndex];
+    bars[pick.barIndex] = [
+        ...specs.slice(0, pick.specIndex),
+        ...rstompSpellOutSpec(specs[pick.specIndex], spelling),
+        ...specs.slice(pick.specIndex + 1)
+    ];
+    return bars;
+}
+
+/* =========================================================================
    NOTE BOUNDARIES ARE EXPLICIT
    A phrase is a list of bars; a bar is a list of SPECS, one per written note
    or rest: { slots, value, isRest, tied }. `tied` means this note is tied
@@ -363,7 +471,8 @@ function buildRstompBarShapes(grid) {
 
 function generateRstompPhrase(level) {
     const grid = rstompGridFor(level);
-    return level.tieLevel ? generateRstompPhraseWithTie(level, grid) : generateRstompPhraseNormal(level, grid);
+    const bars = level.tieLevel ? generateRstompPhraseWithTie(level, grid) : generateRstompPhraseNormal(level, grid);
+    return rstompApplyLonghand(bars, level, grid);
 }
 
 // Variety rule (design brief §5 item 15): no bar shape repeats more than
@@ -1245,7 +1354,15 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             // table, and no way for the drawn note and the counted slots to
             // disagree, since the generator set both from the same unit.
             const duration = spec.value;
-            return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+            const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+            // VexFlow reads the "d" suffix for TICKS but does not draw the dot
+            // from it - a dotted minim comes out looking exactly like a plain
+            // minim, with the bar still filling correctly and no error raised.
+            // The modifier has to be attached by hand. Silent until a dotted
+            // value reaches a level, which is A5 (dotted minim) and all of
+            // Stage B, so it is caught here rather than there.
+            if (note.dots) note.addDotToAll();
+            return note;
         });
         const meter = rstompVoiceMeter();
         const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den }).addTickables(notes);
