@@ -95,33 +95,107 @@ const RSTOMP_VOCABULARY = {
 // Counting rounds are untimed at every level (the eventual Performing round
 // is where timing pressure lives, per the design brief) - so no timing
 // field exists here yet.
-// Level 3's pool, once the merge and rest-adjacency engraving rules both
-// apply, only actually produces 4 valid bar shapes: a lone whole note, a
-// lone whole rest, half-note+half-rest, and half-rest+half-note - by design,
-// not a bug. It's genuinely a thin "mixed" level at this stage (testing
-// whether a student can switch between whole-note-scale and half-note-scale
-// thinking within one level, not new combinatorics) - the pool grows once
-// quarter notes arrive at a future level.
 //
-// Every level carries `labels` and `slot`. The four that ship today are all
-// on the crotchet grid, so they all take RSTOMP_LABELS_BEAT - the machinery
-// for the finer grids is here and exercised by the tests, but no level uses
-// it until Stage B is built (design brief §13).
+// STAGE A - sustain and the bracket. Labels "1 2 3 4", 4 bars.
+// Built to design brief S13.4. DO NOT re-derive this order from the code or
+// from a drum method: S13.1 records a reversal. The canon opens on the quarter
+// note because it is percussion-shaped - one strike per beat IS the pulse for
+// a drummer. These are wind and string players, for whom four quarters is four
+// separate attacks and a whole note is one sustained sound, which is both
+// easier and what a beginner should be doing anyway. And a bar of whole notes
+// and whole rests has exactly two possible shapes:
+//
+//     1 (2 3 4)      a whole note
+//     (1 2 3 4)      a whole rest
+//
+// which is the most constrained place the bracket can possibly be introduced,
+// and the contrast teaches the one rule everything else rests on: the onset
+// digit sits OUTSIDE the bracket for a note and INSIDE it for a rest.
+//
+// Every level after A3 follows the stage template (S13.3): the new value
+// isolated, mixed, tied inside the bar, the dotted form revealed, syncopation,
+// then ties across the barline. Stage A runs to nine because it has three
+// values to introduce before that arc can start.
 const RSTOMP_LEVELS = [
-    // Level 1 is the two-button walkthrough - the tutorial for the whole
-    // idea, and a complete experience on its own for a child who can't yet
-    // write numerals (CLAUDE.md, "TWO interfaces"). Every level after it
-    // hands the student the keypad and asks them to write the counting
-    // themselves, which is the transferable skill.
-    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', labels: RSTOMP_LABELS_BEAT, slot: 'q', pool: ['whole-note', 'whole-rest'] },
-    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', labels: RSTOMP_LABELS_BEAT, slot: 'q', pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'], scribe: true },
-    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', labels: RSTOMP_LABELS_BEAT, slot: 'q', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'], scribe: true },
-    // tieLevel/tieChance: see generateRstompPhraseWithTie. Every phrase at
-    // this level carries a tie (tieChance 1), matching the original design
-    // brief's level 4 - ties are introduced right after whole/half, using
-    // only durations already taught, per Rob's "a tie is just how we make
-    // really long notes" framing.
-    { id: '4', label: 'Level 4: Ties Across the Barline', shortLabel: 'Ties Across the Barline', labels: RSTOMP_LABELS_BEAT, slot: 'q', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'], tieLevel: true, tieChance: 1, scribe: true }
+    // A1. The two-button walkthrough - the tutorial for the whole idea, and a
+    // complete experience on its own for a child who can't yet write numerals
+    // (CLAUDE.md, "TWO interfaces"). Every level after it hands the student the
+    // keypad and asks them to write the counting themselves.
+    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest'] },
+
+    // A2. Two events in a bar - the first time anything happens twice.
+    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'], scribe: true },
+
+    // A3. Switching scale inside a bar.
+    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'], scribe: true },
+
+    // A4. THE QUARTER-NOTE MAP (brief S13.5). The beat itself, in every
+    // position. Fifteen bar shapes - everything from four quarters down to one
+    // quarter, that one quarter in each of the four places - with the all-rest
+    // bar excluded by the engraving rule. SEVEN of the fifteen do not start on
+    // a struck beat 1, which is the "find beat 1 with no note on it" drill and
+    // the reason this level cannot be skipped. Quarters ALONE are trivial;
+    // quarters with rests in every position are the fundamental reading
+    // exercise.
+    { id: '4', label: 'Level 4: Quarter Notes and Rests', shortLabel: 'Quarter Notes and Rests',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['quarter-note', 'quarter-rest'], scribe: true },
+
+    // A5. The full crotchet vocabulary in one place. A sprinkle of long-hand
+    // starts here, now that a minim has a spelling (two tied crotchets) the
+    // student can read.
+    { id: '5', label: 'Level 5: Quarters, Halves and Wholes', shortLabel: 'Quarters, Halves, Wholes',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      spellOut: ['h'], longhandChance: 0.15, scribe: true },
+
+    // A6. THE DOUBLED SYNCOPATION (brief S13.5a). The classic syncopation
+    // figure one generation up: crotchet / minim / crotchet, onsets on 1, 2
+    // and 4, counted "1 2 (3) 4". Syncopation does NOT wait for quavers - it
+    // arrives here, where the student already has the vocabulary, and it seeds
+    // the anacrusis at the same time. Rob: "It really has to pop back in on
+    // beat 4. Beat 4 opens the door. It opens the door to beat 1. It's a
+    // pickup beat."
+    { id: '6', label: 'Level 6: Syncopation', shortLabel: 'Syncopation',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      featureShape: ['quarter-note', 'half-note', 'quarter-note'], scribe: true },
+
+    // A7. THE LONG-HAND DRILL - the level test of equivalency. Ties sit here
+    // rather than back at whole notes on Rob's correction: the quarter is the
+    // unit everything is built from, so once quarters exist you can tie two
+    // into a half, three into a dotted half, or a half to a quarter - every
+    // long-hand device becomes available at once. Teaching the tie at whole
+    // notes gives one trick; teaching it here gives the whole toolkit.
+    // spellOutEvery, so the short way and the long way appear in the same line
+    // to be read against each other. This is also where the dotted minim is
+    // first seen, as the thing three tied crotchets add up to.
+    { id: '7', label: 'Level 7: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest', 'dotted-half-note', 'quarter-note', 'quarter-rest'],
+      spellOut: ['h', 'hd'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
+
+    // A8. The shortcut A7 revealed, now in ordinary use. The scaffold comes
+    // down: no spellOut here, so the dotted minim is written as a dotted minim.
+    { id: '8', label: 'Level 8: Dotted Half Notes', shortLabel: 'Dotted Half Notes',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      scribe: true },
+
+    // A9. Any value crossing the barline. tieLevel/tieChance: see
+    // generateRstompPhraseWithTie. Every phrase carries a tie, using only
+    // durations already taught, per Rob's "a tie is just how we make really
+    // long notes" framing.
+    { id: '9', label: 'Level 9: Ties Across the Barline', shortLabel: 'Ties Across the Barline',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      tieLevel: true, tieChance: 1, scribe: true }
 ];
 
 const RSTOMP_BARS_PER_PHRASE = 4;
@@ -243,7 +317,7 @@ function rstompSpellOutSpec(spec, spelling) {
 // never chosen, since spelling out a continuation teaches nothing.
 function rstompApplyLonghand(bars, level, grid) {
     if (!level.spellOut || !level.spellOut.length) return bars;
-    if (Math.random() >= (level.longhandChance != null ? level.longhandChance : 0)) return bars;
+    const chance = level.longhandChance != null ? level.longhandChance : 0;
 
     const candidates = [];
     bars.forEach((specs, barIndex) => specs.forEach((spec, specIndex) => {
@@ -254,14 +328,32 @@ function rstompApplyLonghand(bars, level, grid) {
     }));
     if (!candidates.length) return bars;
 
-    const pick = candidates[Math.floor(Math.random() * candidates.length)];
-    const spelling = pick.spellings[Math.floor(Math.random() * pick.spellings.length)];
-    const specs = bars[pick.barIndex];
-    bars[pick.barIndex] = [
-        ...specs.slice(0, pick.specIndex),
-        ...rstompSpellOutSpec(specs[pick.specIndex], spelling),
-        ...specs.slice(pick.specIndex + 1)
-    ];
+    // Two modes, because a sprinkle and a drill want different things.
+    //
+    // SPRINKLE (the default): one note in the phrase, at `longhandChance`. The
+    // device is a pointed comparison against the plain notation around it, so
+    // more than one at a time blurs it.
+    //
+    // DRILL (`spellOutEvery`): each eligible note is rolled independently, so
+    // one phrase carries several and the short way and the long way sit side
+    // by side in the same line. This is what a level whose whole job is
+    // equivalency needs - A7, where two tied crotchets and a plain minim have
+    // to be readable against each other.
+    const chosen = level.spellOutEvery
+        ? candidates.filter(() => Math.random() < chance)
+        : (Math.random() < chance ? [candidates[Math.floor(Math.random() * candidates.length)]] : []);
+
+    // Right to left, so an earlier rewrite doesn't shift a later one's index.
+    chosen.slice().sort((a, b) => b.barIndex - a.barIndex || b.specIndex - a.specIndex)
+        .forEach(pick => {
+            const spelling = pick.spellings[Math.floor(Math.random() * pick.spellings.length)];
+            const specs = bars[pick.barIndex];
+            bars[pick.barIndex] = [
+                ...specs.slice(0, pick.specIndex),
+                ...rstompSpellOutSpec(specs[pick.specIndex], spelling),
+                ...specs.slice(pick.specIndex + 1)
+            ];
+        });
     return bars;
 }
 
@@ -422,29 +514,40 @@ function handleRstompBackButton() {
 // tie generator below reuses this at shorter targets to fill the slots on
 // either side of a tied note within a single bar.
 //
-// Two filters run over the results, and they are NOT the same kind of rule:
+// Three filters run over the results, and they are NOT the same kind of rule.
 //
-//  1. ADJACENT RESTS - engraving, general. Two rests in a row collapse into
-//     one longer rest; there is no onset to tell them apart. (This needs
-//     revisiting when quarter rests arrive at Stage A: Rob's own
-//     "(1 2) (3) (4)" example is a half rest followed by TWO quarter rests,
-//     so the real rule is metric, not absolute. Nothing in the levels that
-//     ship today can reach that case.)
-//  2. avoidRepeats - LEVEL DESIGN, not engraving, and declared per level.
+//  1. AN ALL-REST BAR IS ONE REST - engraving. A bar of nothing is written as
+//     a whole rest, never as smaller rests added up. This is the rule that
+//     kills two half rests filling a bar, and a bar of four quarter rests
+//     (CLAUDE.md's "three at most, so the real beat stays findable"). It
+//     replaces an older "no two adjacent rests anywhere" rule, which was too
+//     strong: Rob's own "(1 2) (3) (4)" is a half rest followed by TWO quarter
+//     rests, and level A4's map needs bars holding three adjacent quarter
+//     rests. Rests in a bar that has any note in it do not merge.
+//
+//  2. A REST SITS ON ITS OWN BOUNDARY - engraving. A rest N slots long starts
+//     on a multiple of N, so a half rest may cover beats 1-2 or 3-4 but never
+//     2-3. NOTES ARE NOT RESTRICTED THIS WAY, and that asymmetry is real: a
+//     minim across beats 2 and 3 is ordinary syncopation, and it is exactly
+//     the figure level A6 is built on. Silence has to show the beat; sound is
+//     allowed to hide it.
+//
+//  3. avoidRepeats - LEVEL DESIGN, not engraving, and declared per level.
 //     Listing a unit key stops two of them being generated back to back.
+//     It used to be hardcoded as "never two half notes in a row" and described
+//     as engraving, citing the design brief. The brief's rule is narrower:
+//     never TIE two half notes in a bar - write a whole note instead. Two
+//     SEPARATELY STRUCK half notes, on beats 1 and 3, are ordinary notation
+//     and a different rhythm from a whole note. So it is a level-design choice
+//     - it keeps A2's content out of A3's "mixed" bars - and it is declared on
+//     the levels that want it rather than generalised, because the metric
+//     version of it would wrongly throw out a pair of quavers on beat 1.
 //
-// Rule 2 used to be hardcoded as "never two half notes in a row" and
-// described as engraving, citing the design brief. The brief's rule is
-// narrower than that: "never TIE two half notes in the same bar - write a
-// whole note instead." Two SEPARATELY STRUCK half notes, on beats 1 and 3,
-// are ordinary notation and a different rhythm from a whole note. So this is
-// a level-design choice - it keeps level 2's content out of level 3's
-// "mixed" bars - and it is declared on the levels that want it rather than
-// generalised, because the metric version of it ("two equal notes where one
-// longer note would do") would wrongly throw out a pair of quavers on beat 1,
-// which is most of Stage B. Flagged for Rob: on level 2 it means a level
-// called "Half Notes and Rests" never shows two half notes in one bar.
-function buildRstompUnitShapes(grid, targetSlots) {
+// `startSlot` is where this run of units begins INSIDE its bar, and it matters
+// for rule 2. The tie generator fills the slots after a tied-in note, so its
+// tail starts partway through the bar; validating those rests as though they
+// began at beat 1 let a half rest land on beats 2-3.
+function buildRstompUnitShapes(grid, targetSlots, startSlot) {
     const results = [];
     (function build(remainingSlots, shape) {
         if (remainingSlots === 0) { results.push(shape); return; }
@@ -454,19 +557,22 @@ function buildRstompUnitShapes(grid, targetSlots) {
     })(targetSlots, []);
 
     const unitOf = key => grid.units.find(unit => unit.key === key);
+    const isWholeBar = targetSlots === grid.slotsPerBar && !startSlot;
     return results.filter(shape => {
-        for (let i = 1; i < shape.length; i++) {
-            const unit = unitOf(shape[i]);
-            const previous = unitOf(shape[i - 1]);
-            if (unit.isRest && previous.isRest) return false;
-            if (shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
+        const units = shape.map(unitOf);
+        if (isWholeBar && units.length > 1 && units.every(unit => unit.isRest)) return false;
+        let slot = startSlot || 0;
+        for (let i = 0; i < units.length; i++) {
+            if (units[i].isRest && slot % units[i].slots !== 0) return false;
+            if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
+            slot += units[i].slots;
         }
         return true;
     });
 }
 
 function buildRstompBarShapes(grid) {
-    return buildRstompUnitShapes(grid, grid.slotsPerBar);
+    return buildRstompUnitShapes(grid, grid.slotsPerBar, 0);
 }
 
 function generateRstompPhrase(level) {
@@ -490,7 +596,26 @@ function generateRstompPhraseNormal(level, grid) {
         chosenIndices.push(chosen);
         counts[chosen]++;
     }
-    return chosenIndices.map(index => rstompShapeToSpecs(shapes[index], grid));
+    const bars = chosenIndices.map(index => rstompShapeToSpecs(shapes[index], grid));
+    return rstompPlantFeatureShape(bars, level, grid);
+}
+
+// A level built AROUND one figure has to be sure the figure turns up. A6 is
+// the case: crotchet / minim / crotchet, onsets on 1, 2 and 4, counted
+// "1 2 (3) 4". It is four beats long, so exactly one position fits a 4/4 bar -
+// every other placement would cross the barline, which is the lesson - and at
+// that rarity a random draw would leave it out of whole phrases. So one bar is
+// reserved for it, and the rest are drawn normally.
+function rstompPlantFeatureShape(bars, level, grid) {
+    if (!level.featureShape) return bars;
+    const already = bars.some(specs => specs.length === level.featureShape.length
+        && specs.every((spec, i) => {
+            const unit = grid.units.find(entry => entry.key === level.featureShape[i]);
+            return unit && spec.value === unit.value && spec.isRest === unit.isRest && !spec.tied;
+        }));
+    if (already) return bars;
+    bars[Math.floor(Math.random() * bars.length)] = rstompShapeToSpecs(level.featureShape, grid);
+    return bars;
 }
 
 // A shape is a list of vocabulary keys, which is already a list of written
@@ -522,17 +647,21 @@ function generateRstompPhraseWithTie(level, grid) {
     const includesTie = Math.random() < (level.tieChance != null ? level.tieChance : 1);
     if (!includesTie) return generateRstompPhraseNormal(level, grid);
 
-    const candidateRuns = [];
+    const leadRuns = [];
+    const tailRuns = [];
     for (let n = 1; n <= grid.slotsPerBar; n++) {
-        if (rstompValueForSlots(n, grid.slotValue)
-            && buildRstompUnitShapes(grid, grid.slotsPerBar - n).length > 0) candidateRuns.push(n);
+        // r-runs sit at the END of their bar, so their lead fills from slot 0;
+        // s-runs sit at the START, so their tail begins at slot n.
+        if (!rstompValueForSlots(n, grid.slotValue)) continue;
+        if (buildRstompUnitShapes(grid, grid.slotsPerBar - n, 0).length > 0) leadRuns.push(n);
+        if (buildRstompUnitShapes(grid, grid.slotsPerBar - n, n).length > 0) tailRuns.push(n);
     }
     const rsPairs = [];
-    candidateRuns.forEach(r => candidateRuns.forEach(s => rsPairs.push([r, s])));
+    leadRuns.forEach(r => tailRuns.forEach(s => rsPairs.push([r, s])));
     const [r, s] = rsPairs[Math.floor(Math.random() * rsPairs.length)];
 
-    const leadShapes = buildRstompUnitShapes(grid, grid.slotsPerBar - r);
-    const tailShapes = buildRstompUnitShapes(grid, grid.slotsPerBar - s);
+    const leadShapes = buildRstompUnitShapes(grid, grid.slotsPerBar - r, 0);
+    const tailShapes = buildRstompUnitShapes(grid, grid.slotsPerBar - s, s);
     const leadShape = leadShapes[Math.floor(Math.random() * leadShapes.length)];
     const tailShape = tailShapes[Math.floor(Math.random() * tailShapes.length)];
 
