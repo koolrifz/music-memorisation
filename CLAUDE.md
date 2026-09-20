@@ -157,11 +157,33 @@ version, so nobody re-derives it from the code:
   the beat stream is derived from it. This is what makes within-bar ties and
   the long-hand device below expressible at all; beats alone can't tell a whole
   note from two tied half notes.
-- **Long-hand spelling is a teaching device, not an engraving rule.** Two tied
-  crotchets shown against a minim, a crotchet tied to a quaver shown against a
-  dotted crotchet — same counting under both. Strictly one generation at a time
-  (never four crotchets tied into a semibreve). It is sprinkled through existing
-  levels, never given levels of its own.
+- **The equivalency scaffold ("the long way") is a rite of passage, and it
+  comes down.** One written note spelled out as tied notes of the generation
+  below, so the student sees the two are the same length. A minim is the short
+  way; two tied crotchets are the long way. Rob: *"that is the point."*
+  - A level **landing a new note value** spells that value out — *every* way it
+    can be spelled — and once the student can see the equivalence the scaffold
+    is withdrawn. Rob: *"As soon as they can see that, we don't have to show it
+    to them anymore. They just need to pass that round. It's a level test of
+    equivalency."* It is **not** a permanent 10% garnish through every level.
+  - **The counting does not always match, and that is information.** Crotchet
+    tied to minim reads `1 (2 3)`, exactly as the dotted minim it demonstrates.
+    Minim tied to crotchet, and three tied crotchets, read `1 (2) (3)` — more
+    written notes, so more groups. Both belong in the scaffold round: the first
+    teaches that they are the same, the second teaches that the counting shows
+    you which spelling you are looking at.
+  - **One generation at a time, measured by VALUE not by count.** Pieces may be
+    the target's own base value or the one immediately below. A dotted minim may
+    be three tied crotchets (Rob's *"ludicrous mode"*); a semibreve may be two
+    tied minims but **never four tied crotchets** — two generations down.
+  - **It scales to every grid**, which is why it lives on the slot model rather
+    than in a table. Two semiquavers make a quaver for the same reason two
+    crotchets make a minim. Rob: *"All of this equivalency has to scale down
+    into subdivision."*
+  - Levels opt in with `spellOut` (which values to spell out) and
+    `longhandChance`. At most one note per phrase, never a note already tied
+    into. Parked: an **equivalency bonus round** where it goes deliberately
+    silly and lots of things get tied together.
 
 ## Level sequence — 21 levels, to sixteenth notes
 Designed against the standard reading and drum methods so a student who opens a
@@ -208,6 +230,15 @@ beat 1, which is most of Stage B.
 **Open question for Rob:** on Level 2 this means a level called "Half Notes and
 Rests" never shows two half notes in one bar — every bar is note+rest or
 rest+note. Two shapes total. Intended, or a side effect worth removing?
+
+### VexFlow does not draw dots from the duration string — attach them by hand
+`new VF.StaveNote({ duration: 'hd' })` gives the note the right **ticks** (the
+bar fills, no error is raised) but renders **no dot** — a dotted minim comes out
+looking exactly like a plain minim. `note.addDotToAll()` has to be called when
+`note.dots` is set. This is done in `renderRstompStaff`; anywhere else that
+builds a StaveNote from a dotted value needs the same line. Nothing shipping
+used a dotted value, so this was silent until the equivalency scaffold rendered
+one.
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
