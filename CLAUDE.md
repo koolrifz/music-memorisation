@@ -136,12 +136,23 @@ version, so nobody re-derives it from the code:
   length; the keypad is its distinct values.
   `1 2 3 4` / `1 + 2 + 3 + 4 +` / `1 e + a 2 e + a …` / `1 2 3 4 5 6` (6/8 in 6)
   / `1 + a 2 + a` (6/8 in 2).
+  **Built — this is how `rhythm-stomp-lab.js` works now.** Each level carries
+  `labels` and `slot` (the note value one slot is worth), and
+  `rstompGridFor(level)` derives slots-per-bar, the resolved vocabulary and the
+  VexFlow meter from them. The four shipping levels are all on the crotchet
+  grid; the quaver, 6/8 and semiquaver grids are tested but unused until
+  Stage B is built.
 - **6/8-in-6 and 6/8-in-2 are the same six-slot grid with different labels.**
   6/8 is taught as simple time first; in-2 is a later relabelling at speed.
 - **`+`, never `&`.** The counting has to transfer to handwriting, and a
   handwritten `&` looks like a `+` anyway.
 - **The bracket never crosses a barline** (see the convention section above) —
   the grouping unit is one written note or rest.
+- **The vocabulary names note VALUES, not slot counts.** How many slots a
+  crotchet covers depends on the level: one at Stage A, two once a slot is a
+  quaver. `RSTOMP_VOCABULARY` names the written note; the slot count is
+  resolved per level. A value that doesn't land on the grid (a dotted crotchet
+  on a crotchet grid) is dropped, never rounded.
 - **Note boundaries are explicit** — `rstompSpecBars` is the source of truth and
   the beat stream is derived from it. This is what makes within-bar ties and
   the long-hand device below expressible at all; beats alone can't tell a whole
@@ -180,6 +191,23 @@ Anacrusis (after B3), accent (after B5) and Mystery Rhythms (from A4) are
 slotted through existing levels rather than given levels of their own. The
 anacrusis is the biggest content hole — every generated phrase currently starts
 on beat 1, and a pick-up is the sharpest test of where beat 1 is.
+
+### One engraving rule was mislabelled — check before reusing it
+The generator used to reject two **adjacent** half notes in a bar, citing the
+design brief as engraving. The brief's rule is narrower: never **tie** two half
+notes in a bar, write a whole note instead. Two separately struck half notes,
+on beats 1 and 3, are ordinary notation and a different rhythm from a whole
+note.
+
+Behaviour is unchanged — the exclusion is now declared per level as
+`avoidRepeats: ['half-note']` and treated as level design, not engraving — but
+it is deliberately **not** generalised. The metric version of it ("two equal
+notes where one longer note would do") would throw out a pair of quavers on
+beat 1, which is most of Stage B.
+
+**Open question for Rob:** on Level 2 this means a level called "Half Notes and
+Rests" never shows two half notes in one bar — every bar is note+rest or
+rest+note. Two shapes total. Intended, or a side effect worth removing?
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
