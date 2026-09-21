@@ -678,8 +678,11 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 /* The canvas VexFlow draws carries a lot of empty space above and below the
    single visible staff line; clamping the height crops it back to the band
    the notes actually occupy (the SVG is pulled up by a negative margin in
-   renderRstompStaff to put that band in view). */
-.rstomp-staff { height: 60px; overflow: hidden; }
+   renderRstompStaff to put that band in view). The height here is only the
+   pre-render fallback - renderRstompStaff sets it from the measured band
+   (RSTOMP_STAFF_CROP_HEIGHT), which has to clear the foot of a tie curve
+   and the tail of a crotchet rest, not just the noteheads. */
+.rstomp-staff { height: 65px; overflow: hidden; }
 .rstomp-staff svg { display: block; }
 
 /* position: relative so .rstomp-count-token children can be placed at an
