@@ -119,10 +119,41 @@ const RSTOMP_VOCABULARY = {
 // then ties across the barline. Stage A runs to nine because it has three
 // values to introduce before that arc can start.
 const RSTOMP_LEVELS = [
+    /* A1-A4 ARE PLAYED ON THE TWO-BUTTON INTERFACE, A5 ONWARDS ON THE KEYPAD.
+       Rob's call, and the reason is sharper than "easier first".
+
+       THE DIGITS CARRY NO INFORMATION. Measured across all 29 levels, 400
+       phrases each: the digit sequence NEVER varies. It is always the level's
+       labels in order - "1 2 3 4 1 2 3 4..." - whatever the rhythm. Only the
+       bracket pattern changes, and it changes constantly (up to 400 distinct
+       patterns in 400 phrases). So the brackets are the whole test.
+
+       Which means the two interfaces ask the IDENTICAL question. "Does a new
+       note start here?" and "is this label inside a bracket or outside it?"
+       are the same question asked twice. The keypad does not test more
+       knowledge - it asks for more typing.
+
+       The real difference is RECOGNITION versus PRODUCTION. The two-button
+       cursor leads: it walks the phrase and the counting appears correctly in
+       front of the student, which is how the technique gets given away. The
+       keypad is led BY the student: they track their own position and produce
+       the whole string, with nothing telling them where they are. That is much
+       closer to writing counting under the notes by hand, which is the
+       transferable skill.
+
+       The handover is at A5 rather than at the quaver grid because B1 would
+       land a new interface, a new grid and a new key all on one level - three
+       new ideas at once. A5 introduces no new notation at all, so it has the
+       room, and the interface change becomes ITS one new idea.
+
+       A corollary worth recording: an intermediate tier where the student
+       types digits and the app supplies the brackets would be a test of
+       NOTHING, since the digits are positional. It was considered and
+       rejected on the measurement above. */
+
     // A1. The two-button walkthrough - the tutorial for the whole idea, and a
     // complete experience on its own for a child who can't yet write numerals
-    // (CLAUDE.md, "TWO interfaces"). Every level after it hands the student the
-    // keypad and asks them to write the counting themselves.
+    // (CLAUDE.md, "TWO interfaces").
     { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest'] },
@@ -130,12 +161,12 @@ const RSTOMP_LEVELS = [
     // A2. Two events in a bar - the first time anything happens twice.
     { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
-      pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'], scribe: true },
+      pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'] },
 
     // A3. Switching scale inside a bar.
     { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
-      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'], scribe: true },
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'] },
 
     // A4. THE QUARTER-NOTE MAP (brief S13.5). The beat itself, in every
     // position. Fifteen bar shapes - everything from four quarters down to one
@@ -147,11 +178,12 @@ const RSTOMP_LEVELS = [
     // exercise.
     { id: '4', label: 'Level 4: Quarter Notes and Rests', shortLabel: 'Quarter Notes and Rests',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
-      pool: ['quarter-note', 'quarter-rest'], scribe: true },
+      pool: ['quarter-note', 'quarter-rest'] },
 
-    // A5. The full crotchet vocabulary in one place. A sprinkle of long-hand
-    // starts here, now that a minim has a spelling (two tied crotchets) the
-    // student can read.
+    // A5. THE KEYPAD ARRIVES. No new notation - the whole crotchet vocabulary
+    // is already known - so the level's one new idea is that the student now
+    // writes the counting instead of answering it. A sprinkle of long-hand
+    // starts here too, now that a minim has a spelling the student can read.
     { id: '5', label: 'Level 5: Quarters, Halves and Wholes', shortLabel: 'Quarters, Halves, Wholes',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],

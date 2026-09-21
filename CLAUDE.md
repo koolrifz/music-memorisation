@@ -39,6 +39,35 @@ two-button game on the grounds that the keypad replaces it** — that would dele
 the only version young children can use, and the tutorial with it. Both can
 carry the same bonus stomp round.
 
+### The handover is at A5 — and the digits carry no information
+**A1–A4 are played on the two-button interface, A5–D8 on the keypad.**
+
+Measured across all 29 levels, 400 phrases each: **the digit sequence never
+varies.** It is always the level's labels in order — `1 2 3 4 1 2 3 4…` —
+whatever the rhythm. Only the bracket pattern changes, and it changes
+constantly (up to 400 distinct patterns in 400 phrases). **The brackets are the
+whole test.**
+
+So the two interfaces ask the *identical question*. "Does a new note start
+here?" and "is this label inside a bracket or outside it?" are the same question
+asked twice. The keypad does not test more knowledge — it asks for more typing.
+
+The real difference is **recognition versus production**:
+
+| | |
+|---|---|
+| **Two-button** | the cursor leads; the counting appears correctly in front of them. This is how the technique gets *given away*. |
+| **Keypad** | the student leads; they track their own position and produce the whole string. Closest a screen gets to writing it by hand. |
+
+**Why A5 and not B1.** Handing the keypad over at the quaver grid would land a
+new interface, a new grid and a new key on one level — three new ideas at once.
+A5 introduces no new notation, so it has the room, and the interface change
+becomes its one new idea.
+
+**Rejected, with a measurement:** an intermediate tier where the student types
+the digits and the app supplies the brackets would be a **test of nothing**,
+because the digits are positional. Don't build it.
+
 ## Counting convention — THE BRACKET NEVER CROSSES A BARLINE
 Read this before touching either interface. An earlier version of this file
 said the opposite (that a tie should be one bracket spanning the barline).
