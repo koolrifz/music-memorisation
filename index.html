@@ -481,6 +481,11 @@
 
         <div class="rstomp-strip-status">
             <span id="rstomp-strip-progress"></span>
+            <!-- Hear it before you write it. Listening is free and always
+                 available - it is not a hint that costs anything. -->
+            <button class="rstomp-listen-btn" id="rstomp-listen-btn" onclick="toggleRstompListen()">
+                <span id="rstomp-listen-icon">&#9654;</span> Hear it
+            </button>
             <button class="rstomp-fullview-btn" id="rstomp-fullview-btn" hidden onclick="openRstompFullView()">Full view</button>
         </div>
 
@@ -611,6 +616,7 @@
 
 <script src="script.js"></script>
 <script src="rhythm.js"></script>
+<script src="rhythm-audio.js"></script>
 <script src="rhythm-stomp-lab.js"></script>
 </body>
 </html>

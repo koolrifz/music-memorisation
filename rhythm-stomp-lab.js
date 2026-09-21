@@ -1408,6 +1408,7 @@ function startNewRstompPhrase() {
     rstompSlotsPerBeat = grid.slotsPerBeat;
     rstompBeamSlots = grid.beamSlots || grid.slotsPerBeat;
     renderRstompKeypad();
+    if (typeof rstompAudioStop === 'function') rstompAudioStop();
     rstompSpecBars = generateRstompPhrase(level);
     rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
     rstompPositions = buildRstompPositions(rstompPhrase);
@@ -1435,6 +1436,37 @@ function startNewRstompPhrase() {
 // "1 2 3 4 +"; the semiquaver grid adds "e" and "a", and 6/8 in 6 runs to 6.
 // Hardcoding four digits made every Stage B level unplayable by hand - the
 // student could see the "+" in the answer and had no key to type it.
+/* ---------- Hear it ----------
+   The phrase, played: the counting voice with the bracket's own accent, a
+   snare on every onset, a click on the beat and a loop under it. Free and
+   always available - Rob's call, and his reason: "if they want it to become a
+   jukebox that's their business... the byproduct of having fun is learning."
+
+   The tempo is the level's base, which is where the performance round's three
+   bonus tiers will start from (base, +20, +40). */
+const RSTOMP_BASE_BPM = { q: 90, '8': 80, '16': 60 };
+
+function rstompBaseBpm() {
+    return RSTOMP_BASE_BPM[rstompSlotValue] || 90;
+}
+
+function toggleRstompListen() {
+    const button = document.getElementById('rstomp-listen-btn');
+    const icon = document.getElementById('rstomp-listen-icon');
+    const rest = () => {
+        if (button) button.classList.remove('playing');
+        if (icon) icon.innerHTML = '&#9654;';
+    };
+    if (typeof rstompAudioRunning === 'function' && rstompAudioRunning()) {
+        rstompAudioStop(); rest(); return;
+    }
+    if (typeof rstompAudioPlayPhrase !== 'function') return;
+    const started = rstompAudioPlayPhrase({ bpm: rstompBaseBpm(), onStop: rest });
+    if (!started) return;
+    if (button) button.classList.add('playing');
+    if (icon) icon.innerHTML = '&#9632;';
+}
+
 function renderRstompKeypad() {
     const row = document.getElementById('rstomp-key-row-labels');
     if (!row) return;
