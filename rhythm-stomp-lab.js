@@ -214,14 +214,14 @@ const RSTOMP_LEVELS = [
     { id: '10', label: 'Level 10: Paired Quavers', shortLabel: 'Paired Quavers',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['quarter-note', 'quarter-rest', 'eighth-note'],
-      beamPairsOnly: true, scribe: true },
+      subdivideWholeBeats: true, scribe: true },
 
     // B2. Divided beats among sustained ones.
     { id: '11', label: 'Level 11: Quavers and Longer Notes', shortLabel: 'Quavers and Longer',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest',
              'quarter-note', 'quarter-rest', 'eighth-note'],
-      beamPairsOnly: true, scribe: true },
+      subdivideWholeBeats: true, scribe: true },
 
     // B3. An odd number of quavers in a beat, and the off-beat rest - the
     // first time a beat is not either whole or evenly halved.
@@ -322,6 +322,92 @@ const RSTOMP_LEVELS = [
       labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
       pool: ['dotted-half-note', 'dotted-half-rest', 'dotted-quarter-note', 'dotted-quarter-rest',
              'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      tieLevel: true, tieChance: 1, scribe: true },
+
+    /* ===================== STAGE D - the semiquaver =====================
+       Labels "1 e + a 2 e + a 3 e + a 4 e + a", TWO bars = 32 slots.
+
+       THE COUNTING HERE IS FULL GRID, and that is a decision worth stating
+       because the design brief now holds two rules that disagree.
+
+       Brief S13.12 settles the app's rule: every slot a note covers gets a
+       label, the onset's outside the bracket and the rest inside. A crotchet
+       at this grid is "1 (e + a)", exactly as a semibreve at the crotchet grid
+       is "1 (2 3 4)". The whole scribe interface rests on it - one label per
+       slot, graded per slot - and S13.10's phrase lengths are counted that way.
+
+       Brief S17.1, derived later from Rob's own marked MusicXML, says a
+       quaver ON the quaver grid takes ONE label: "we are already comfortable
+       with how quavers move". Under that rule the same crotchet would be "1".
+
+       These are not a contradiction, they are THE DENSITY DIAL (S16.0). Full
+       grid is the beginner's density - the drill, where every slot is tracked.
+       S17.1 is the competent reader's, the sparse marking an advanced player
+       writes by hand. The app teaches the first. Nothing here should be
+       "corrected" to S17.1 without deciding to change what the app is for.
+       ===================================================================== */
+
+    // D1. The Parent Rhythm. Four semiquavers, and beats kept whole - the beat
+    // either divides evenly or stays intact, so nothing obscures the division
+    // itself. Uneven beats are D3's job.
+    { id: '22', label: 'Level 22: Four Semiquavers', shortLabel: 'Four Semiquavers',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'sixteenth-note'],
+      subdivideWholeBeats: true, scribe: true },
+
+    // D2. Mixed with everything above.
+    { id: '23', label: 'Level 23: Semiquavers Mixed', shortLabel: 'Semiquavers Mixed',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['whole-note', 'half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
+             'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      scribe: true },
+
+    // D3. Worksheet patterns 1 and 2, taught as a pair because the pair is the
+    // lesson: the same three notes with the quaver at either end.
+    { id: '24', label: 'Level 24: Quaver and Two Semiquavers', shortLabel: 'Quaver + Two Semis',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: [{ notes: [{ slots: 2 }, { slots: 1 }, { slots: 1 }], positions: 'in-bar' },
+               { notes: [{ slots: 1 }, { slots: 1 }, { slots: 2 }], positions: 'in-bar' }],
+      scribe: true },
+
+    // D4. Ties at this grid - the long-hand drill one generation down again.
+    // Two semiquavers tied make a quaver; a semiquaver tied to a quaver makes
+    // a dotted quaver, which is the figure D5 then uses in plain notation.
+    { id: '25', label: 'Level 25: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'dotted-eighth-note',
+             'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      spellOut: ['8', '8d'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
+
+    // D5. Pattern 3 - dotted quaver then semiquaver. The pump's shape one
+    // generation down: two onsets three slots apart, starting on the beat.
+    { id: '26', label: 'Level 26: Dotted Quaver and Semiquaver', shortLabel: 'Dotted Quaver + Semi',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
+
+    // D6. Pattern 4 - reversed, and harder, because it IS a syncopation: the
+    // long note starts off the beat.
+    { id: '27', label: 'Level 27: Semiquaver and Dotted Quaver', shortLabel: 'Semi + Dotted Quaver',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: { notes: [{ slots: 1 }, { slots: 3 }], positions: 'in-bar' }, scribe: true },
+
+    // D7. Pattern 5 - semiquaver, quaver, semiquaver, counted "1 e (+) a".
+    // This is the figure Rob marked by hand in his MusicXML, and the only
+    // place a quaver has to be opened up to show where the next semiquaver
+    // falls (brief S17.1).
+    { id: '28', label: 'Level 28: Semiquaver Syncopation', shortLabel: 'Semiquaver Syncopation',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
+
+    // D8. Full review, with a tie over every barline.
+    { id: '29', label: 'Level 29: Semiquaver Review', shortLabel: 'Semiquaver Review',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
+             'dotted-eighth-note', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
       tieLevel: true, tieChance: 1, scribe: true }
 ];
 
@@ -358,6 +444,7 @@ function rstompGridFor(level) {
         beamSlots: level.beamSlots || null,
         avoidRepeats: level.avoidRepeats || [],
         metricLevels: rstompMetricLevels(labels.length),
+        subdivideWholeBeats: !!level.subdivideWholeBeats,
         // The vocabulary, resolved onto THIS level's grid. A value that
         // doesn't land on the grid is dropped rather than silently rounded.
         units: (level.pool || []).map(key => {
@@ -701,7 +788,15 @@ function handleRstompBackButton() {
 //     across beats 2 and 3 is ordinary syncopation, and it is the figure level
 //     A6 is built on. Silence has to show the beat; sound may hide it.
 //
-//  3. avoidRepeats - LEVEL DESIGN, not engraving, and declared per level.
+//  3. subdivideWholeBeats - LEVEL DESIGN. When a level is introducing a
+//     subdivision, the subdivided beats are kept WHOLE: a unit shorter than a
+//     beat may only appear as a run of EQUAL units that exactly fills one
+//     beat. So "paired quavers" really are paired, and "four semiquavers"
+//     really are four - the beat either divides evenly or stays intact, and
+//     nothing else is in the way of seeing that. Uneven beats are the next
+//     level's job, every time.
+//
+//  4. avoidRepeats - LEVEL DESIGN, not engraving, and declared per level.
 //     Listing a unit key stops two of them being generated back to back.
 //     It used to be hardcoded as "never two half notes in a row" and described
 //     as engraving, citing the design brief. The brief's rule is narrower:
@@ -724,25 +819,92 @@ function buildRstompUnitShapes(grid, targetSlots, startSlot) {
             if (unit.slots <= remainingSlots) build(remainingSlots - unit.slots, [...shape, unit.key]);
         });
     })(targetSlots, []);
+    return results.filter(shape => rstompShapeIsLegal(shape, targetSlots, startSlot, grid));
+}
 
+// The filters above, applied to one finished shape.
+function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
     const unitOf = key => grid.units.find(unit => unit.key === key);
+    const units = shape.map(unitOf);
     const isWholeBar = targetSlots === grid.slotsPerBar && !startSlot;
-    return results.filter(shape => {
-        const units = shape.map(unitOf);
-        if (isWholeBar && units.length > 1 && units.every(unit => unit.isRest)) return false;
-        let slot = startSlot || 0;
-        for (let i = 0; i < units.length; i++) {
-            // >= not >: a rest must align to the level of its OWN length too,
-            // or a half rest lands on beats 2-3.
-            if (units[i].isRest && grid.metricLevels.some(level =>
-                level >= units[i].slots
-                && Math.floor(slot / level) !== Math.floor((slot + units[i].slots - 1) / level)
-            )) return false;
-            if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
-            slot += units[i].slots;
+    if (isWholeBar && units.length > 1 && units.every(unit => unit.isRest)) return false;
+    if (grid.subdivideWholeBeats && !rstompBeatsStayWhole(units, startSlot || 0, grid)) return false;
+    let slot = startSlot || 0;
+    for (let i = 0; i < units.length; i++) {
+        // >= not >: a rest must align to the level of its OWN length too,
+        // or a half rest lands on beats 2-3.
+        if (units[i].isRest && grid.metricLevels.some(level =>
+            level >= units[i].slots
+            && Math.floor(slot / level) !== Math.floor((slot + units[i].slots - 1) / level)
+        )) return false;
+        if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
+        slot += units[i].slots;
+    }
+    return true;
+}
+
+/* -------------------------------------------------------------------------
+   PICK a shape rather than enumerate every shape.
+
+   buildRstompUnitShapes lists ALL the ways a run of slots can be filled, which
+   is fine at the crotchet grid (a bar has 15 to 42 of them) and ruinous at the
+   semiquaver grid, where one bar has over a HUNDRED THOUSAND. Built fresh for
+   every phrase that was a second of work on a desktop and a visible freeze on
+   a phone - for a list the generator then throws away after taking one entry.
+
+   So generation walks the bar instead, trying the vocabulary in a random order
+   and backtracking out of dead ends. One shape costs a walk of the bar rather
+   than an enumeration of the bar's entire shape space, and the result is drawn
+   from the same set. Enumeration is kept for the tests, which check the SET.
+   ------------------------------------------------------------------------- */
+function rstompPickUnitShape(grid, targetSlots, startSlot) {
+    const order = grid.units.slice();
+    const found = (function walk(remaining, slot, shape) {
+        if (remaining === 0) {
+            return rstompShapeIsLegal(shape, targetSlots, startSlot, grid) ? shape : null;
         }
-        return true;
-    });
+        for (let i = order.length - 1; i > 0; i--) {          // shuffle each step
+            const j = Math.floor(Math.random() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]];
+        }
+        for (const unit of order) {
+            if (unit.slots > remaining) continue;
+            if (unit.isRest && grid.metricLevels.some(level =>
+                level >= unit.slots
+                && Math.floor(slot / level) !== Math.floor((slot + unit.slots - 1) / level)
+            )) continue;
+            if (shape.length && unit.key === shape[shape.length - 1]
+                && grid.avoidRepeats.indexOf(unit.key) !== -1) continue;
+            const got = walk(remaining - unit.slots, slot + unit.slots, [...shape, unit.key]);
+            if (got) return got;
+        }
+        return null;
+    })(targetSlots, startSlot || 0, []);
+    return found;
+}
+
+// Every unit shorter than a beat must sit in a run of equal units that starts
+// on a beat and exactly fills it.
+function rstompBeatsStayWhole(units, startSlot, grid) {
+    let slot = startSlot;
+    for (let i = 0; i < units.length; i++) {
+        if (units[i].slots >= grid.slotsPerBeat) {
+            if (units[i].slots % grid.slotsPerBeat !== 0) return false;
+            slot += units[i].slots;
+            continue;
+        }
+        if (slot % grid.slotsPerBeat !== 0) return false;
+        let filled = 0;
+        while (i < units.length && filled < grid.slotsPerBeat) {
+            if (units[i].slots !== units[i === 0 ? 0 : i].slots) return false;
+            if (i > 0 && units[i].slots !== units[i - 1].slots && filled > 0) return false;
+            filled += units[i].slots;
+            if (filled < grid.slotsPerBeat) i++;
+        }
+        if (filled !== grid.slotsPerBeat) return false;
+        slot += grid.slotsPerBeat;
+    }
+    return true;
 }
 
 function buildRstompBarShapes(grid) {
@@ -760,19 +922,26 @@ function generateRstompPhrase(level) {
 // Variety rule (design brief §5 item 15): no bar shape repeats more than
 // twice across the phrase, never identical to the bar immediately before it.
 function generateRstompPhraseNormal(level, grid) {
-    const shapes = buildRstompBarShapes(grid);
-    const counts = new Array(shapes.length).fill(0);
-    const chosenIndices = [];
+    const used = {};
+    const shapes = [];
     for (let i = 0; i < grid.barsPerPhrase; i++) {
-        const allIndices = shapes.map((_, index) => index);
-        let candidates = allIndices.filter(index => counts[index] < 2 && index !== chosenIndices[i - 1]);
-        if (candidates.length === 0) candidates = allIndices.filter(index => index !== chosenIndices[i - 1]);
-        if (candidates.length === 0) candidates = allIndices;
-        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-        chosenIndices.push(chosen);
-        counts[chosen]++;
+        let shape = null;
+        // Variety rule (design brief S5 item 15): no bar shape more than twice
+        // across the phrase, never identical to the bar before it. A handful of
+        // redraws is enough - and on a thin level where it is not, the phrase
+        // is still legal, just less varied.
+        for (let tries = 0; tries < 12; tries++) {
+            const pick = rstompPickUnitShape(grid, grid.slotsPerBar, 0);
+            if (!pick) break;
+            const key = pick.join();
+            shape = pick;
+            if ((used[key] || 0) < 2 && key !== (shapes[i - 1] || []).join()) break;
+        }
+        if (!shape) shape = rstompPickUnitShape(grid, grid.slotsPerBar, 0) || [];
+        used[shape.join()] = (used[shape.join()] || 0) + 1;
+        shapes.push(shape);
     }
-    const bars = chosenIndices.map(index => rstompShapeToSpecs(shapes[index], grid));
+    const bars = shapes.map(shape => rstompShapeToSpecs(shape, grid));
     return rstompPlantFeatureShape(bars, level, grid);
 }
 
@@ -840,9 +1009,8 @@ function rstompFillGaps(placed, barStart, grid) {
         if (taken[slot]) { slot++; continue; }
         let end = slot;
         while (end < grid.slotsPerBar && !taken[end]) end++;
-        const shapes = buildRstompUnitShapes(grid, end - slot, slot);
-        if (!shapes.length) return null;              // this placement is unfillable
-        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        const shape = rstompPickUnitShape(grid, end - slot, slot);
+        if (!shape) return null;                      // this placement is unfillable
         let at = slot;
         rstompShapeToSpecs(shape, grid).forEach(spec => {
             out.push({ ...spec, start: barStart + at });
@@ -893,7 +1061,15 @@ function figureSlots(notes) {
     return notes.reduce((n, part) => n + part.slots, 0);
 }
 
+// A level may name SEVERAL figures - D3 teaches "quaver + two semiquavers"
+// and "two semiquavers + quaver" together, because the pair is the lesson.
+function rstompFiguresOf(level) {
+    return Array.isArray(level.figure) ? level.figure : [level.figure];
+}
+
 function generateRstompPhraseWithFigure(level, grid) {
+    const choices = rstompFiguresOf(level);
+    level = { ...level, figure: choices[Math.floor(Math.random() * choices.length)] };
     const positions = rstompFigurePositions(level, grid);
     // Try placements until one leaves a fillable bar. A figure sitting across
     // beat 4 can leave a single slot the level's vocabulary cannot fill.
@@ -940,28 +1116,27 @@ function generateRstompPhraseWithTie(level, grid) {
         // r-runs sit at the END of their bar, so their lead fills from slot 0;
         // s-runs sit at the START, so their tail begins at slot n.
         if (!rstompValueForSlots(n, grid.slotValue)) continue;
-        if (buildRstompUnitShapes(grid, grid.slotsPerBar - n, 0).length > 0) leadRuns.push(n);
-        if (buildRstompUnitShapes(grid, grid.slotsPerBar - n, n).length > 0) tailRuns.push(n);
+        if (rstompPickUnitShape(grid, grid.slotsPerBar - n, 0)) leadRuns.push(n);
+        if (rstompPickUnitShape(grid, grid.slotsPerBar - n, n)) tailRuns.push(n);
     }
     const rsPairs = [];
     leadRuns.forEach(r => tailRuns.forEach(s => rsPairs.push([r, s])));
     const [r, s] = rsPairs[Math.floor(Math.random() * rsPairs.length)];
 
-    const leadShapes = buildRstompUnitShapes(grid, grid.slotsPerBar - r, 0);
-    const tailShapes = buildRstompUnitShapes(grid, grid.slotsPerBar - s, s);
-    const leadShape = leadShapes[Math.floor(Math.random() * leadShapes.length)];
-    const tailShape = tailShapes[Math.floor(Math.random() * tailShapes.length)];
+    const leadShape = rstompPickUnitShape(grid, grid.slotsPerBar - r, 0) || [];
+    const tailShape = rstompPickUnitShape(grid, grid.slotsPerBar - s, s) || [];
 
     const tieValue = slots => rstompValueForSlots(slots, grid.slotValue);
     const barA = [...rstompShapeToSpecs(leadShape, grid), { slots: r, value: tieValue(r), isRest: false }];
     const barB = [{ slots: s, value: tieValue(s), isRest: false, tied: true }, ...rstompShapeToSpecs(tailShape, grid)];
 
-    const normalShapes = buildRstompBarShapes(grid);
     const spare = Math.max(0, grid.barsPerPhrase - 2);
     const pickNormalShape = previousShape => {
-        const candidates = normalShapes.filter(shape => shape.join() !== (previousShape || []).join());
-        const options = candidates.length ? candidates : normalShapes;
-        return options[Math.floor(Math.random() * options.length)];
+        for (let tries = 0; tries < 8; tries++) {
+            const shape = rstompPickUnitShape(grid, grid.slotsPerBar, 0);
+            if (shape && shape.join() !== (previousShape || []).join()) return shape;
+        }
+        return rstompPickUnitShape(grid, grid.slotsPerBar, 0) || [];
     };
     const normalBars = [];
     let previousShape = null;
