@@ -194,7 +194,7 @@ level teaches: design brief **§13**. Do not invent a level order from the code.
 |---|---|---|
 | **A — sustain and the bracket** | `1 2 3 4` | **BUILT, 9 levels** — see below |
 | **B — the quaver** | `1 + 2 + 3 + 4 +` | **BUILT, 10 levels** — see below |
-| **C — 6/8** | `1 2 3 4 5 6` then `1 + a 2 + a` | in 6 · in 2 at speed |
+| **C — 6/8 simple** | `1 2 3 4 5 6` | **BUILT, 2 levels** — see below |
 | **D — the semiquaver** | `1 e + a …` | four 16ths · mixed · patterns 1–2 · dotted 8th+16th · reversed · syncopation · review |
 
 ### Stage A — built, nine levels, brief §13.4
@@ -284,12 +284,42 @@ had no key to type it. Automated tests missed it because they called
 - Bar width is **per slot**, not per bar — a quaver-grid bar holds twice the
   events and needs twice the room.
 
+### Stage C — built, two levels, brief §13.7
+| # | Level | New idea |
+|---|---|---|
+| C1 | Six-eight counted in six | *Sometimes the quaver gets the beat* |
+| C2 | Dotted crotchets and ties | Grouping in threes |
+
+**Simple-time 6/8 comes before semiquavers**, with the quaver as the smallest
+value — Rob's decision. It returns after them as **Stage E**, relabelled
+`1 + a 2 + a` and counted in two at speed. Same six-slot grid, different labels.
+
+### THE BEAT IS NOT ALWAYS THE BEAM GROUP
+In 6/8 counted in six the counting names every quaver, so the beat is one slot
+— but quavers are still **beamed in threes**, because the dotted-crotchet pulse
+is what the eye reads. Every level before Stage C had the two identical, so
+beaming was derived from the beat. Levels now declare `beamSlots`, and only
+compound ones need to.
+
+### A bar's METRIC LEVELS, and why they are not always powers of two
+`rstompMetricLevels()` halves where it can and thirds where it cannot:
+
+| Grid | Levels |
+|---|---|
+| 4/4, crotchet slots | 4 · 2 · 1 |
+| 4/4, quaver slots | 8 · 4 · 2 · 1 |
+| **6/8** | **6 · 3 · 1** — not 6·3·2·1 |
+| semiquaver grid | 16 · 8 · 4 · 2 · 1 |
+
 ### Engraving rules for rests — notes are not bound by them
 - **An all-rest bar is written as one whole rest**, never as smaller rests added
   up. This is what forbids two half rests filling a bar, and a bar of four
   quarter rests.
-- **A rest N slots long starts on a multiple of N** — a half rest may cover
-  beats 1–2 or 3–4, never 2–3.
+- **A rest never straddles a coarser metric boundary.** A half rest may cover
+  beats 1–2 or 3–4, never 2–3. Stated against the bar's metric levels, not as
+  "a multiple of its own length" — the two agree on every binary grid, but the
+  old wording was **wrong in compound time**: it allowed a crotchet rest across
+  quavers 3–4 of a 6/8 bar, straddling the two groups.
 - **Notes are deliberately not restricted this way.** A minim across beats 2 and
   3 is ordinary syncopation and is exactly the figure A6 is built on. *Silence
   has to show the beat; sound is allowed to hide it.*
