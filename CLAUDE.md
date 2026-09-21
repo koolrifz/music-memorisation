@@ -162,7 +162,7 @@ half notes.
 | **Half tied to quarter** | `1 (2) (3)` — two brackets; a new written note starts on beat 3 |
 | Two halves tied | `1 (2) (3 4)` |
 | Whole note | `1 (2 3 4)` |
-| Half rest + two quarter rests | `(1 2) (3) (4)` — adjacent rests never merge |
+| Half rest + two quarter rests | `(1 2) (3) (4)` — what the app writes; `(1 2 3 4)` is **also accepted**, see below |
 | Whole tied to whole | `1 (2 3 4)` · `(1 2 3 4)` |
 | Half tied to whole | `3 (4)` · `(1 2 3 4)` |
 | Whole tied to half | `1 (2 3 4)` · `(1 2)` |
@@ -175,6 +175,47 @@ counting says how it is counted, and it is counted the same way.
 
 **Engraving rule:** a bar of 4/4 never holds four quarter rests — three at
 most, so the real beat stays findable.
+
+### CONSECUTIVE RESTS MAY SHARE ONE BRACKET
+Rob's revision of his own rule, made while playing Level 12: *"I have to break
+my rule. If there are consecutive rests of different value, they can be put
+under one large bracket. As long as they are notating which count is within the
+rest bracket, that's best."*
+
+A run of rests is **one continuous silence**. Nothing new happens anywhere
+inside it, and the counting's job is to name every count the silence covers —
+not to show where one written rest ends and the next begins. The notation above
+already says that.
+
+**Both forms are accepted, and so is any other way of dividing the run up.**
+For a bar of crotchet rest · two quaver rests · crotchet rest · crotchet, all of
+these are correct:
+
+```
+(1) (2) (+) (3) 4     one bracket per written rest - what the app reveals
+(1) (2 +) (3) 4       Rob's own, the two quaver rests merged
+(1 2 + 3) 4           the whole run merged
+```
+
+This is **"accept either", not "merged only"** — Rob's call. The app still
+writes and speaks one bracket per written rest, so nothing already learned
+became wrong and Stage A's `(1 2) (3) (4)` still reads exactly as his table
+says. The merging is a grading concession, not a change to what is taught.
+
+Four things it deliberately does **not** loosen, all still marked wrong:
+
+- a rest left **unbracketed** anywhere in the run;
+- a bracket left **hanging open** at the end of the run;
+- a bracket drawn **across a barline** — the run stops at the barline, because
+  the bracket never crosses one and that rule is the teaching;
+- a rest merged into the **hold bracket of a note** beside it. A note's held
+  beats and a rest are different things; only rest-to-rest merges.
+
+Implemented in `rstompNormaliseRestRuns()`, applied to both the student's marks
+and the target's before they are compared: inside a rest run the flags saying
+"a bracket opens here" and "a bracket closes here" are cleared on both sides, so
+however the run was divided it compares equal. Everything listed above survives
+because it is carried by a different flag, or by the run boundaries themselves.
 
 ### How the counting is SET — settled, don't re-open these
 
@@ -490,8 +531,10 @@ compound ones need to.
 - **Notes are deliberately not restricted this way.** A minim across beats 2 and
   3 is ordinary syncopation and is exactly the figure A6 is built on. *Silence
   has to show the beat; sound is allowed to hide it.*
-- Rests in a bar that also holds a note **do not merge** — Rob's own
-  `(1 2) (3) (4)` is a half rest followed by two quarter rests.
+- Rests in a bar that also holds a note are **written** one bracket each —
+  Rob's own `(1 2) (3) (4)` is a half rest followed by two quarter rests — but
+  a merged bracket is equally correct, see "CONSECUTIVE RESTS MAY SHARE ONE
+  BRACKET".
 
 ### One engraving rule was mislabelled — check before reusing it
 The generator used to reject two **adjacent** half notes in a bar, citing the
