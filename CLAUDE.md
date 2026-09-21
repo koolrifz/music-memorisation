@@ -7,6 +7,18 @@ A browser-based music-education app (single HTML page, no build step) teaching p
 
 **Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar. Notation rendering uses VexFlow 3.0.9 via CDN.
 
+**THE ENGRAVING STANDARD OUTRANKS ROB'S OWN RULES.** Rob's ruling, and it
+reframes most of this file: *"Most of my rules are actually the scaffolding
+tricks and tips to gain the knowledge."* The standard is the notation; his
+rules are the **scaffolding** — the bridging device from unawareness to
+mastery. Scaffolding may break the standard, but only where the break *is* the
+teaching, and only as a named exception recorded in `NOTATION_RULES.md`.
+
+**`NOTATION_RULES.md` is mandatory reading before touching any beaming or
+grouping code.** It holds the standard classical engraving conventions Rob
+supplied as authority, and the engine's measured standing against them. Code
+that violates them is a bug, not a style preference.
+
 ## The three games + two tools
 - **Staff Smash** (Game 1) — orientation drills: lines, spaces, mixed, staff numbers, then a Ledger Bonus Round. Uses a "SMASH grid" mechanic: a grid of mini-staves, tap the ones matching the announced target, density scales 3→6→9→12 cards as streaks build.
 - **Note Smash** (Game 2) — same SMASH grid mechanic, now with real letter names instead of raw line/space discrimination.
@@ -355,7 +367,7 @@ level teaches: design brief **§13**. Do not invent a level order from the code.
 | A3 | Whole and half mixed | Switching scale inside a bar |
 | A4 | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
 | A5 | Quarters, halves, wholes | Full crotchet vocabulary; long-hand sprinkled |
-| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4` |
+| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4`. The minim stays a minim: Rob's named exception to hiding beat 3 |
 | A7 | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
 | A8 | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
 | A9 | Ties across the barline | Any value crossing |
@@ -431,12 +443,38 @@ Rob's engraving rule, and it is about READING, not tidiness: the middle of the
 bar is the landmark the eye checks to know where it is, and a note sounding
 through it hides the one place a reader looks.
 
-> **A note may cross the middle of the bar only if it STARTS ON A BEAT.**
+> **A note may cross the middle of the bar only if it STARTS ON A MAIN BEAT.**
 
-That single test carries the whole rule, including Rob's one exception: a minim
-on beats 2–3 — the `1 2 (3) 4` figure Level 6 is built on — starts on a beat, so
-it is allowed to cover beat 3. Everything he ruled out fails it: a minim from
-the "and" of 1, and a syncopated crotchet from the "and" of 2.
+**This was tightened once and then reversed. The reversal is what stands.** A
+middle version read "only if it starts the bar", which split a minim on beats
+2–3 into two tied crotchets and respelled Level 6's figure with it. That was
+wrong, and it came from reading Rob's later "whole notes and some
+*non-syncopated* half notes" as excluding the beats-2–3 minim. His first
+statement is the ruling and it is explicit:
+
+> *"The only time beat 3 can be invisible would be when you have a crotchet
+> followed by a half note followed by another crotchet."*
+
+So **`♩ 𝄗 ♩` stands as written** — acceptable and preferable, and **not** to be
+turned into `♩ ♩⌣♩ ♩`. Level 6's figure is a minim, and always was.
+
+**MAIN beat, not counted beat.** In 6/8 counted in six the counting names every
+quaver, so the counted beat is one slot and *every* note would "start on a beat"
+— which would let a crotchet straddle the two dotted-crotchet beats, exactly
+what NOTATION_RULES.md §3 forbids. The test is the **beam group**, which is the
+felt beat at every grid: a crotchet in 4/4, a dotted crotchet in 6/8. (The
+original version of this rule used the counted beat and would have missed 6/8.)
+
+What still splits: a minim from the "and" of 1, a syncopated crotchet from the
+"and" of 2, and in 6/8 a crotchet across the two main beats.
+
+**The dotted minim, ruled on and needing no code.** Rob: *"A dotted minim can
+start on beat 1 or beat 2. It cannot start on beat 3 or 4. Think about your
+question in reverse: if you cannot place a note across the halfway point of a
+bar, then how can a dotted half note exist?"* Both starts are on a main beat so
+both stand; beats 3 and 4 are impossible anyway, because the bar ends first. The
+midpoint rule is about notes that start **off** the main beat — never about a
+value that legitimately spans the middle from one.
 
 **The note is not thrown away, it is RE-SPELLED.** Rob: *"my rule would have
 that tied across to an eighth."* `rstompShowBeatThree()` splits it at the middle
@@ -458,15 +496,30 @@ But that is very difficult to read."*
 **The counting follows for free.** A tie is a new written note, so beat 3 gets
 its own bracket instead of being swallowed by the one before it.
 
-**It self-limits to the grids it is for.** Where a slot IS a beat — all of Stage
-A, and 6/8 counted in six — every note starts on a beat, the test never fires
-and nothing changes. It bites at the quaver and semiquaver grids, which is
-where a note can start off the beat at all. Verified: 0 of 16,000 bars on all
-29 levels hide the middle.
+**It self-limits to the grids it is for.** Where a slot *is* the main beat —
+all of Stage A — every note starts on one, so the test never fires and Stage A
+is untouched. Measured, ties per 150 phrases: **A1–A4 zero, A6 zero, A8 zero**;
+A5 sits at 3% of bars, which is its long-hand scaffold alone. The rule bites at
+the quaver and semiquaver grids, and in 6/8 across the two main beats — the
+places a note can start off the main beat at all.
+
+**A level only ever spells the split with values it has taught.**
+`rstompLevelValueForSlots()` searches the level's own pool, not the whole value
+ladder — and where the pool can't spell the two halves, `rstompCanShowTheMiddle()`
+stops the generator producing that note at all rather than reaching for a value
+the level hasn't met.
+
+Verified: 0 of 16,000 bars on all 29 levels hide the middle, all 29 levels still
+generate 150/150 phrases, and every bar still fills its grid.
 
 ### Beaming, stems and bar width
 - Notes are beamed **by beat**, from each note's **actual position in the bar**.
-  Four quavers in 4/4 are two beamed pairs, not one group of four.
+  Four quavers in 4/4 are two beamed pairs, not one group of four. Standard
+  engraving would *permit* beaming across beats 1–2 and 3–4 (Rob quoted the rule
+  in full), but never across the midpoint — so beaming by beat is the stricter
+  choice and satisfies it. It is kept because the beam is what makes the beat
+  visible before the counting is read. **Open for Rob:** whether to relax it to
+  half-bar beams.
 - **Don't use `VF.Beam.generateBeams` for this.** It counts its groups from the
   start of each *run* of beamable notes rather than from the bar, so after a
   crotchet or a rest its counter restarts and the next two quavers get beamed
@@ -539,6 +592,40 @@ The grader itself was checked at the same time and is sound: 300 Level 7
 phrases typed with the engine's own answer all graded clean, and every bar
 shape the level generates reproduces Rob's worked-examples table.
 
+### Audited against the standard grouping rules — 2/4, 3/4, 6/8
+Rob supplied the full conventions (ABRSM/Trinity, classical engraving practice)
+and asked how we stack up. Measured over 3,200 generated bars:
+
+| Rule | Us |
+|---|---|
+| Never beam across a barline | structurally impossible — one voice per bar |
+| Beams never cross a beat group | 0 of ~2,000 |
+| Beam starts on a beat, unless preceded by a rest or dotted note | 0 faulty starts. Every off-beat start has its group's downbeat already taken by a rest or a held note, which the standard allows |
+| 16ths grouped by the beat, max one beat per beam | 0 over-long beams |
+| 6/8 beamed in two groups of three, never six, never pairs | 0 six-note beams; `beamSlots: 3` on C1/C2 |
+| 3/4 never beamed 3+3 | would beam in pairs (`beamSlots` = the beat) — correct |
+| 2/4 quavers in pairs; all four together is *permitted*, not required | we beam in pairs |
+| 4/4 beams across beats 1–2 *permitted*, not required | we beam by beat — stricter, and satisfies it |
+
+**One real fault, and it was in a meter we don't ship yet.** The midpoint rule
+was keyed to "the half-bar is a metric level", which is true in 3/4 as well —
+so three plain crotchets in 3/4 came out as `q 8 8~ q`. The middle of a 3/4 bar
+falls in the **middle of beat 2** and is no landmark at all. `rstompMiddleOfBar()`
+now requires the midpoint to be a **main beat** (a beam-group boundary) *and*
+each half to hold **more than one beat**. That keeps 4/4 and 6/8 exactly as they
+were, drops 3/4 (no half-bar landmark) and drops 2/4 (each half is a single
+beat, so `♪ ♩ ♪` is how anyone would write it, and Rob's 2/4 section gives no
+note-tying rule).
+
+6/8 was checked the other way too: a crotchet straddling the two
+dotted-crotchet beats **is** split, which is Rob's own 6/8 line — *"longer
+undotted notes that cross a main beat are usually rewritten with ties."*
+
+**Known and accepted:** the equivalency scaffold beams tied notes together
+inside a beat (two tied quavers spelling a crotchet). Strict engraving would
+just write the crotchet — the scaffold breaks that deliberately, to show the
+long way. See "the equivalency scaffold".
+
 ### Stage C — built, two levels, brief §13.7
 | # | Level | New idea |
 |---|---|---|
@@ -575,9 +662,12 @@ compound ones need to.
   "a multiple of its own length" — the two agree on every binary grid, but the
   old wording was **wrong in compound time**: it allowed a crotchet rest across
   quavers 3–4 of a 6/8 bar, straddling the two groups.
-- **Notes are deliberately not restricted this way.** A minim across beats 2 and
-  3 is ordinary syncopation and is exactly the figure A6 is built on. *Silence
-  has to show the beat; sound is allowed to hide it.*
+- **Notes are not restricted the same way, but they are not free either.**
+  Within each half of the bar a note may sit where it likes — a minim across
+  beats 1–2 or 3–4 needs no justification, and Rob confirmed a minim on beats
+  3–4 stays a minim. But **nothing may hide the middle of the bar unless it
+  starts on a main beat**: see "BEAT 3 MUST ALWAYS BE VISIBLE". A6's minim on
+  beats 2–3 is the named exception and stands as written.
 - **Two rests never share a beat** when one rest could say it. Three quaver
   rests in a row is not how anyone writes a bar — the two filling beat 4 are a
   crotchet rest. Rob, seeing it on Level 12: *"we would never see music written
@@ -629,6 +719,59 @@ looking exactly like a plain minim. `note.addDotToAll()` has to be called when
 builds a StaveNote from a dotted value needs the same line. Nothing shipping
 used a dotted value, so this was silent until the equivalency scaffold rendered
 one.
+
+## A ROUND IS EITHER SCAFFOLDING OR AT STANDARD
+Rob's governing distinction. It settles most arguments before they start:
+
+> *"If it's a scaffolding round and a half note is tied to a quarter and there
+> is a dotted half, well that's scaffolding. But in an at-standard round we use
+> no scaffolding and only standards."*
+
+- A **scaffolding round** may break the standard where the break *is* the
+  teaching. A level opts in with `spellOut` / `longhandChance`. A7 is one.
+- An **at-standard round** uses the standard and nothing else — no long way, no
+  demonstration ties. A8 is one, and that is why it must stay tie-free.
+
+"Is this notation correct?" is the wrong question on its own. Ask *which kind of
+round is this*, then apply the standard or the scaffold.
+
+## Every on-screen prompt has a NAME, and a level can override it
+Rob's request, because the scaffolding changes level by level and the wording
+has to change with it: *"Could we find every instance of that text box and give
+it a name and then I can fill in alternate text? Then I could teach through the
+rules for the level."*
+
+`RSTOMP_PROMPTS` holds the defaults; `rstompPrompt(name, vars)` resolves a
+level's own wording first and fills in `{braces}` at display time. A level
+overrides any line by name:
+
+```js
+{ id: '7', ..., prompts: { 'write-bar': 'Bar {bar} — two tied crotchets ARE a
+                                         minim. Count what you SEE.' } }
+```
+
+The names, and the variables each one can use:
+
+| name | where it shows | variables |
+|---|---|---|
+| `write-bar` | the standing instruction while writing a bar | `{bar}` |
+| `bracket-open` | while a bracket is open and unclosed | |
+| `all-written` | every bar written, submit is live | `{bars}` |
+| `revealed` | the answer is on screen after the third strike | |
+| `walk-beat` | the two-button tutorial's per-beat question | `{bar}` `{label}` |
+| `walk-done` | two-button, all beats answered | |
+| `nailed` | the phrase graded clean | `{points}` |
+| `miss-one` | first strike, exactly one bar wrong | |
+| `miss-some` | first strike, several bars wrong | `{n}` |
+| `name-one` | second strike, naming the one wrong bar | `{bar}` |
+| `name-some` | second strike, naming the wrong bars | `{bars}` |
+| `show-answer` | third strike, the answer revealed | |
+| `walk-retry` | two-button, naming the wrong bars | `{bars}` `{plural}` `{attempt}` |
+| `walk-answer` | two-button, the answer revealed | |
+
+**The defaults are placeholders and Rob will replace them. The names are the
+contract** — don't rename one without updating any level that overrides it, and
+don't add on-screen teaching copy as a bare string.
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").

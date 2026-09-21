@@ -121,6 +121,63 @@ const RSTOMP_VOCABULARY = {
 // isolated, mixed, tied inside the bar, the dotted form revealed, syncopation,
 // then ties across the barline. Stage A runs to nine because it has three
 // values to introduce before that arc can start.
+/* =========================================================================
+   EVERY PIECE OF ON-SCREEN TEACHING COPY HAS A NAME.
+   Rob's request, and the reason is the whole design: his rules are the
+   SCAFFOLDING - the bridging device that gets a student from unawareness to
+   mastery - and the scaffolding changes level by level. So the wording has to
+   change with it. A level can override any line below by name:
+
+       { id: '7', ..., prompts: { 'write-bar': 'Bar {bar} - two tied crotchets
+                                                are a minim. Count what you SEE.' } }
+
+   `{bar}` and the other braces are filled in at display time. The names, and
+   what each one is for:
+
+     write-bar       the standing instruction while writing a bar   {bar}
+     bracket-open    shown while a bracket is open and unclosed
+     all-written     every bar written, submit is now live          {bars}
+     revealed        the answer is on screen after the third strike
+     walk-beat       the two-button tutorial's per-beat question    {bar} {label}
+     walk-done       the two-button tutorial, all beats answered
+     nailed          the phrase graded clean                        {points}
+     miss-one        first strike, exactly one bar wrong
+     miss-some       first strike, several bars wrong               {n}
+     name-one        second strike, naming the one wrong bar        {bar}
+     name-some       second strike, naming the wrong bars           {bars}
+     show-answer     third strike, the answer revealed
+     walk-retry      two-button, naming the wrong bars              {bars} {plural} {attempt}
+     walk-answer     two-button, the answer revealed
+
+   Keep them short and functional until Rob replaces them - the defaults are
+   placeholders, the names are not.
+   ========================================================================= */
+const RSTOMP_PROMPTS = {
+    'write-bar':    'Bar {bar} — write the counting under the notes.',
+    'bracket-open': 'Bracket open — count the beats it holds for, then close it.',
+    'all-written':  'All {bars} bars written — check your answer below.',
+    'revealed':     "Here's the counting.",
+    'walk-beat':    'Bar {bar} · Beat {label} — does a new note start here?',
+    'walk-done':    'All filled in — check your answer below.',
+    'nailed':       'Nailed it! +{points}',
+    'miss-one':     "One bar isn't right. Can you find it before you submit again?",
+    'miss-some':    "{n} bars aren't right. Can you find them?",
+    'name-one':     "Bar {bar} isn't right — read it again.",
+    'name-some':    "Bars {bars} aren't right — read them again.",
+    'show-answer':  "Here's the counting — streak reset. New phrase next.",
+    'walk-retry':   'Bar{plural} {bars} - try again (attempt {attempt} of 3).',
+    'walk-answer':  "Here's the correct answer - new phrase next."
+};
+
+// The level's own wording if it has one, otherwise the default, with {braces}
+// filled in. A level teaches its own rule, so it gets to say its own line.
+function rstompPrompt(name, vars) {
+    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    const template = (level && level.prompts && level.prompts[name]) || RSTOMP_PROMPTS[name] || '';
+    return template.replace(/\{(\w+)\}/g, (whole, key) =>
+        (vars && Object.prototype.hasOwnProperty.call(vars, key)) ? vars[key] : whole);
+}
+
 const RSTOMP_LEVELS = [
     /* A1-A4 ARE PLAYED ON THE TWO-BUTTON INTERFACE, A5 ONWARDS ON THE KEYPAD.
        Rob's call, and the reason is sharper than "easier first".
@@ -196,7 +253,14 @@ const RSTOMP_LEVELS = [
     // figure one generation up: crotchet / minim / crotchet, onsets on 1, 2
     // and 4, counted "1 2 (3) 4". Syncopation does NOT wait for quavers - it
     // arrives here, where the student already has the vocabulary, and it seeds
-    // the anacrusis at the same time. Rob: "It really has to pop back in on
+    // the anacrusis at the same time.
+    //
+    // The minim STAYS A MINIM. It hides beat 3, and that is Rob's one named
+    // exception to the rule that nothing may: "the only time beat 3 can be
+    // invisible would be when you have a crotchet followed by a half note
+    // followed by another crotchet". It is acceptable and preferable, and is
+    // not to be turned into two tied crotchets - that was tried, on a
+    // misreading, and reversed. Rob: "It really has to pop back in on
     // beat 4. Beat 4 opens the door. It opens the door to beat 1. It's a
     // pickup beat."
     { id: '6', label: 'Level 6: Syncopation', shortLabel: 'Syncopation',
@@ -879,6 +943,51 @@ function rstompRestsMustCombine(grid, slot, firstSlots, secondSlots) {
         level >= merged && Math.floor(slot / level) !== Math.floor((slot + merged - 1) / level));
 }
 
+// Can this note sit here without hiding the middle of the bar, either because
+// it doesn't cross it, because it starts the bar, or because the level can
+// spell it as tied notes across the middle?
+// WHERE the middle of the bar is a landmark worth protecting, or null.
+//
+// Two conditions, and both are needed - checked against the standard grouping
+// rules for 2/4, 3/4 and 6/8:
+//
+//   - the midpoint must fall on a MAIN BEAT (a beam-group boundary). In 3/4
+//     the middle of the bar lands in the MIDDLE OF BEAT 2, which is no
+//     landmark at all: three plain crotchets came out as `q 8 8~ q`, which is
+//     nonsense. In 6/8 the same slot IS the second dotted-crotchet beat, so
+//     there it does apply - and Rob's 6/8 rule says exactly that, "longer
+//     undotted notes that cross a main beat are usually rewritten with ties".
+//   - each half must hold MORE THAN ONE beat. In 2/4 each half is a single
+//     beat, so there is no inner structure for a note to obscure, and
+//     `♪ ♩ ♪` is how anyone would write that bar. In 4/4 each half holds two
+//     beats and in 6/8 three, which is what makes the halfway line worth
+//     seeing.
+//
+// Everything shipping - 4/4 at all three grids, and 6/8 counted in six -
+// passes both, so this changes nothing today. It is what stops the rule
+// misfiring the moment a 3/4 or 2/4 level is added.
+function rstompMiddleOfBar(grid) {
+    // grid.beamSlots is null unless the level declares one - only compound
+    // levels do - so resolve it the same way startRstompLevel does. Reading it
+    // raw made `middle % null` NaN and silently switched the rule off for the
+    // whole of 4/4.
+    const beamSlots = grid.beamSlots || grid.slotsPerBeat;
+    const middle = grid.slotsPerBar / 2;
+    if (!Number.isInteger(middle)) return null;
+    if (middle % beamSlots !== 0) return null;
+    if (middle / grid.slotsPerBeat < 2) return null;
+    return middle;
+}
+
+function rstompCanShowTheMiddle(grid, slot, unit) {
+    const middle = rstompMiddleOfBar(grid);
+    if (middle === null) return true;
+    if (unit.isRest || slot % (grid.beamSlots || grid.slotsPerBeat) === 0) return true;
+    const end = slot + unit.slots;
+    if (slot >= middle || end <= middle) return true;
+    return Boolean(rstompSpellSpan(slot, middle, grid) && rstompSpellSpan(middle, end, grid));
+}
+
 function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
     const unitOf = key => grid.units.find(unit => unit.key === key);
     const units = shape.map(unitOf);
@@ -896,6 +1005,11 @@ function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
         if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
         if (i > 0 && units[i].isRest && units[i - 1].isRest
             && rstompRestsMustCombine(grid, slot - units[i - 1].slots, units[i - 1].slots, units[i].slots)) return false;
+        // A note that hides the middle of the bar is re-spelled as tied notes
+        // (rstompShowBeatThree). Where the level's own vocabulary can't spell
+        // the two halves, don't generate it at all rather than reach for a
+        // value the level hasn't taught.
+        if (!rstompCanShowTheMiddle(grid, slot, units[i])) return false;
         slot += units[i].slots;
     }
     return true;
@@ -944,6 +1058,7 @@ function rstompPickUnitShape(grid, targetSlots, startSlot) {
             const previous = shape.length ? unitOf(shape[shape.length - 1]) : null;
             if (previous && previous.isRest && unit.isRest
                 && rstompRestsMustCombine(grid, slot - previous.slots, previous.slots, unit.slots)) continue;
+            if (!rstompCanShowTheMiddle(grid, slot, unit)) continue;
             const got = walk(remaining - unit.slots, slot + unit.slots, [...shape, unit.key]);
             if (got) return got;
         }
@@ -985,11 +1100,22 @@ function buildRstompBarShapes(grid) {
 // and a note sounding through it hides the one place a reader checks to know
 // where they are.
 //
-// A note may cross the middle of the bar ONLY IF IT STARTS ON A BEAT. That one
-// test carries the whole rule, including Rob's single exception - a minim on
-// beats 2-3, the `1 2 (3) 4` figure Level 6 is built on, starts on a beat and
-// so is allowed to cover beat 3. Everything he ruled out fails it: a minim
-// from the "and" of 1, and a syncopated crotchet from the "and" of 2.
+// A note may cross the middle of the bar ONLY IF IT STARTS ON A MAIN BEAT.
+// That one test carries the whole rule, including Rob's single exception - a
+// minim on beats 2-3, the `1 2 (3) 4` figure Level 6 is built on: "the only
+// time beat 3 can be invisible would be when you have a crotchet followed by a
+// half note followed by another crotchet". It starts on a main beat, so it
+// stands as written. Everything he ruled out fails the test: a minim from the
+// "and" of 1, and a syncopated crotchet from the "and" of 2.
+//
+// MAIN beat, not counted beat. In 6/8 counted in six the counting names every
+// quaver, so every note would "start on a beat" and a crotchet could straddle
+// the two dotted-crotchet beats - which NOTATION_RULES.md forbids. The test is
+// the BEAM GROUP, which is the felt beat at every grid.
+//
+// A middle version of this read "starts the bar", which split the minim on
+// beats 2-3 and respelled Level 6 with it. That was a misreading of a later
+// message and has been reversed; the line quoted above is the ruling.
 //
 // The note is not thrown away, it is RE-SPELLED. Rob: "my rule would have that
 // tied across to an eighth." So it is split at the middle into two tied notes
@@ -1007,10 +1133,15 @@ function buildRstompBarShapes(grid) {
 // Stage A, and 6/8 counted in six - every note starts on a beat, so the test
 // never fires and nothing changes. It bites at the quaver and semiquaver
 // grids, which is where a note can start off the beat at all.
-function rstompValueForSlots(slots, slotValue) {
-    const found = Object.keys(RSTOMP_VOCABULARY).map(key => RSTOMP_VOCABULARY[key])
-        .find(entry => !entry.isRest && rstompSlotsFor(entry.value, slotValue) === slots);
-    return found ? found.value : null;
+// The single note THIS LEVEL teaches that lasts exactly `slots`, or null.
+// Distinct from rstompValueForSlots above, which searches the whole value
+// ladder: splitting a minim into two tied crotchets is no use on a level that
+// hasn't met the crotchet, so a span the level's own pool can't spell isn't
+// re-spelled at all - the generator is told not to produce it in the first
+// place (rstompCanShowTheMiddle).
+function rstompLevelValueForSlots(slots, grid) {
+    const unit = grid.units.find(entry => !entry.isRest && entry.slots === slots);
+    return unit ? unit.value : null;
 }
 
 // Spell a span as tied notes. One note where one value covers it; otherwise
@@ -1019,7 +1150,7 @@ function rstompValueForSlots(slots, slotValue) {
 // semiquaver of beat 1 to beat 3 is a dotted quaver tied to a crotchet tied to
 // a semiquaver, not one impossible note.
 function rstompSpellSpan(start, end, grid) {
-    const value = rstompValueForSlots(end - start, grid.slotValue);
+    const value = rstompLevelValueForSlots(end - start, grid);
     if (value) return [{ slots: end - start, value }];
     for (const level of grid.metricLevels) {
         const cut = Math.ceil((start + 1) / level) * level;
@@ -1033,15 +1164,16 @@ function rstompSpellSpan(start, end, grid) {
 }
 
 function rstompShowBeatThree(bars, grid) {
-    const middle = grid.slotsPerBar / 2;
-    if (grid.metricLevels.indexOf(middle) === -1) return bars;
+    const middle = rstompMiddleOfBar(grid);
+    if (middle === null) return bars;
     return bars.map(specs => {
         const out = [];
         let slot = 0;
         specs.forEach(spec => {
             const end = slot + spec.slots;
+            const mainBeat = grid.beamSlots || grid.slotsPerBeat;
             const hidesTheMiddle = !spec.isRest && slot < middle && end > middle
-                                   && slot % grid.slotsPerBeat !== 0;
+                                   && slot % mainBeat !== 0;
             const before = hidesTheMiddle ? rstompSpellSpan(slot, middle, grid) : null;
             const after = hidesTheMiddle ? rstompSpellSpan(middle, end, grid) : null;
             if (before && after) {
@@ -1769,29 +1901,30 @@ function updateRstompPrompt() {
     const el = document.getElementById('rstomp-prompt');
     if (!el) return;
 
-    // PLACEHOLDER COPY. Rob is writing the real instructional wording - see
-    // the design brief's note on §1 vs the walkthrough copy. Keep these
-    // functional and short until then; do not polish them, they're going.
+    // Every line here is a NAMED prompt - see RSTOMP_PROMPTS. The defaults are
+    // placeholders and Rob will replace them; the names are the contract, and a
+    // level overrides any of them with its own `prompts` block so it can teach
+    // its own rule in its own words.
     if (rstompScribe) {
-        if (rstompRevealed) { el.textContent = "Here's the counting."; return; }
-        if (rstompWriting && rstompWriting.inside) { el.textContent = 'Bracket open — count the beats it holds for, then close it.'; return; }
+        if (rstompRevealed) { el.textContent = rstompPrompt('revealed'); return; }
+        if (rstompWriting && rstompWriting.inside) { el.textContent = rstompPrompt('bracket-open'); return; }
         // Not "all four bars": Stage B phrases are two bars, and later stages
         // set their own length.
         if (rstompCursor >= rstompPositions.length) {
-            el.textContent = `All ${rstompPhrase.length} bars written — check your answer below.`;
+            el.textContent = rstompPrompt('all-written', { bars: rstompPhrase.length });
             return;
         }
         const bar = Math.floor(rstompCursor / rstompSlotsPerBar) + 1;
-        el.textContent = `Bar ${bar} — write the counting under the notes.`;
+        el.textContent = rstompPrompt('write-bar', { bar });
         return;
     }
 
     if (rstompCursor >= rstompPositions.length) {
-        el.textContent = "All filled in — check your answer below.";
+        el.textContent = rstompPrompt('walk-done');
         return;
     }
     const pos = rstompPositions[rstompCursor];
-    el.textContent = `Bar ${pos.barIndex + 1} · Beat ${rstompLabels[pos.slotIndex]} — does a new note start here?`;
+    el.textContent = rstompPrompt('walk-beat', { bar: pos.barIndex + 1, label: rstompLabels[pos.slotIndex] });
 }
 
 function updateRstompButtonStates() {
@@ -2190,6 +2323,11 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
                 // Nothing written inside it yet, so there is no span to
                 // centre across - park it on its own beat.
                 add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
+            } else if (startLayout.centredRest) {
+                // The glyph is centred in the bar, so its counting centres too -
+                // left-aligning to a centred rest would start the bracket at the
+                // middle of the bar and run it off the end.
+                add(run.text, (startLayout.pulseX(0) + startLayout.pulseX(rstompSlotsPerBar)) / 2, true, run.wrong);
             } else if (!owner.isOnset) {
                 // No glyph above this slot, so there is nothing to left-align
                 // to - centre across the span, whether or not the student
@@ -2216,7 +2354,9 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
         layouts.forEach((layout, position) => {
             buildRstompCountingTokens(barOffset + position).forEach(token => {
                 const owner = layout.beatOwner[token.startBeat];
-                if (token.kind === 'hold' && !owner.isOnset) {
+                if (layout.centredRest) {
+                    add(token.text, (layout.pulseX(0) + layout.pulseX(rstompSlotsPerBar)) / 2, true, false);
+                } else if (token.kind === 'hold' && !owner.isOnset) {
                     add(token.text, (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2, true, false);
                 } else {
                     add(token.text, layout.noteX[owner.specIndex], false, false);
@@ -2279,6 +2419,34 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
     while (fontSize > 10 && placeAt(fontSize) > 0.5) fontSize -= 1;
 }
 
+// WHICH NOTES SHARE A BEAM, as spec indices. One run per beam, runs of one
+// are dropped (a lone quaver keeps its flag). Split out of renderRstompStaff
+// so the compliance tests exercise the real thing rather than a copy of it -
+// see NOTATION_RULES.md.
+//
+// A run is a maximal set of adjacent beamable notes lying wholly inside one
+// beam group. A note that straddles a group boundary belongs to no group and
+// is beamed to nothing.
+function rstompBeamRuns(specs, beamSlots) {
+    const groupOf = (start, slots) => {
+        const first = Math.floor(start / beamSlots);
+        return first === Math.floor((start + slots - 1) / beamSlots) ? first : null;
+    };
+    const runs = [];
+    let run = [];
+    let slot = 0;
+    const flush = () => { if (run.length > 1) runs.push(run.map(item => item.index)); run = []; };
+    specs.forEach((spec, index) => {
+        const group = groupOf(slot, spec.slots);
+        const beamable = !spec.isRest && group !== null && RSTOMP_BEAMABLE.indexOf(spec.value) !== -1;
+        if (!beamable || (run.length && run[run.length - 1].group !== group)) flush();
+        if (beamable) run.push({ index, group });
+        slot += spec.slots;
+    });
+    flush();
+    return runs;
+}
+
 function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
     container.innerHTML = '';
     const VF = Vex.Flow;
@@ -2297,6 +2465,21 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         stave.setStyle({ strokeStyle: '#000000' });
         stave.setContext(context).draw();
 
+        // A WHOLE BAR OF SILENCE IS A WHOLE REST, CENTRED - whatever the metre.
+        // Rob: "In 6/8 the duration of a full bar is a dotted minim, but the
+        // notation still uses the whole-rest symbol. At that point the symbol
+        // is no longer a literal four-beat rest; it simply means rest for the
+        // entire bar." The generator keeps emitting the tick-correct value so
+        // the bar still adds up; only the drawing changes.
+        //
+        // Not in 4/4, and that is his distinction too: there the whole rest is
+        // an ORDINARY rest that happens to fill the bar, so it aligns like a
+        // note, on beat 1. Only where the glyph is BORROWED as a bar marker -
+        // where a whole rest is not the length of the bar - is it centred.
+        const barIsSilent = specs.length === 1 && specs[0].isRest && specs[0].slots === rstompSlotsPerBar;
+        const borrowedWholeRest = barIsSilent
+            && rstompSlotsFor('w', rstompSlotValue) !== rstompSlotsPerBar;
+
         const notes = specs.map(spec => {
             // The written note value travels on the spec itself - no lookup
             // table, and no way for the drawn note and the counted slots to
@@ -2307,7 +2490,8 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             // on a stave with only that line visible puts the beam in the same
             // space as the counting row.
             const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], stem_direction: 1,
-                duration: spec.isRest ? `${duration}r` : duration });
+                duration: borrowedWholeRest ? 'wr' : (spec.isRest ? `${duration}r` : duration) });
+            if (borrowedWholeRest) note.setCenterAlignment(true);
             // VexFlow reads the "d" suffix for TICKS but does not draw the dot
             // from it - a dotted minim comes out looking exactly like a plain
             // minim, with the bar still filling correctly and no error raised.
@@ -2318,7 +2502,11 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             return note;
         });
         const meter = rstompVoiceMeter();
-        const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den }).addTickables(notes);
+        const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den });
+        // A borrowed whole rest does not add up to the bar in ticks - it is a
+        // symbol, not a duration - so the bar cannot be tick-checked.
+        if (borrowedWholeRest) voice.setStrict(false);
+        voice.addTickables(notes);
         // Beam by BEAT, from each note's ACTUAL POSITION IN THE BAR - four
         // quavers in 4/4 are two beamed pairs, not one group of four, and the
         // beam is what makes the beat visible before the counting is read.
@@ -2334,22 +2522,8 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         //
         // A note that straddles a group boundary is beamed to nothing and
         // keeps its flag - there is no group it belongs to.
-        const groupOf = (start, slots) => {
-            const first = Math.floor(start / rstompBeamSlots);
-            return first === Math.floor((start + slots - 1) / rstompBeamSlots) ? first : null;
-        };
-        const beams = [];
-        let run = [];
-        let beamCursor = 0;
-        const flushBeam = () => { if (run.length > 1) beams.push(new VF.Beam(run.map(item => item.note))); run = []; };
-        specs.forEach((spec, index) => {
-            const group = groupOf(beamCursor, spec.slots);
-            const beamable = !spec.isRest && group !== null && RSTOMP_BEAMABLE.indexOf(spec.value) !== -1;
-            if (!beamable || (run.length && run[run.length - 1].group !== group)) flushBeam();
-            if (beamable) run.push({ note: notes[index], group });
-            beamCursor += spec.slots;
-        });
-        flushBeam();
+        const beams = rstompBeamRuns(specs, rstompBeamSlots)
+            .map(run => new VF.Beam(run.map(index => notes[index])));
         // The ideal, evenly-spaced slot grid (where the level's labels fall).
         // Everything below - the formatting width, where each note is put,
         // and where the counting row anchors - is stated against it.
@@ -2407,7 +2581,7 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             cumulativeSlots += spec.slots;
         });
 
-        return { specs, notes, noteX, pulseX, beatOwner };
+        return { specs, notes, noteX, pulseX, beatOwner, centredRest: borrowedWholeRest };
     });
 
     // Ties INSIDE a bar: any spec marked tied is the same note continuing
@@ -2458,7 +2632,7 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         container.style.height = `${RSTOMP_STAFF_CROP_HEIGHT}px`;
     }
 
-    return rendered.map(({ noteX, pulseX, beatOwner }) => ({ noteX, pulseX, beatOwner }));
+    return rendered.map(({ noteX, pulseX, beatOwner, centredRest }) => ({ noteX, pulseX, beatOwner, centredRest }));
 }
 
 /* ---------- Streak + feedback ---------- */
@@ -2510,7 +2684,7 @@ function handleRstompSuccess() {
     rstompScore += 4;
     rstompStreak++;
     updateRstompStreakDots();
-    showRstompFeedback('correct', 'Nailed it! +4');
+    showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
     if (rstompStreak >= 3) {
         setTimeout(showRstompLevelComplete, 800);
     } else {
@@ -2531,8 +2705,8 @@ function handleRstompScribeFailure(wrongBars) {
         rstompAttempt++;
         rstompWrongBars = [];
         showRstompFeedback('wrong', wrongBars.length === 1
-            ? "One bar isn't right. Can you find it before you submit again?"
-            : `${wrongBars.length} bars aren't right. Can you find them?`);
+            ? rstompPrompt('miss-one')
+            : rstompPrompt('miss-some', { n: wrongBars.length }));
         renderRstompBars();
         setTimeout(() => { rstompLocked = false; updateRstompButtonStates(); }, 700);
         return;
@@ -2542,8 +2716,8 @@ function handleRstompScribeFailure(wrongBars) {
         rstompAttempt++;
         rstompWrongBars = names;
         showRstompFeedback('wrong', wrongBars.length > 1
-            ? `Bars ${names.join(', ')} aren't right — read them again.`
-            : `Bar ${names[0]} isn't right — read it again.`);
+            ? rstompPrompt('name-some', { bars: names.join(', ') })
+            : rstompPrompt('name-one', { bar: names[0] }));
         renderRstompBars();
         setTimeout(() => {
             rstompRewindTo(wrongBars[0]);
@@ -2563,7 +2737,7 @@ function handleRstompScribeFailure(wrongBars) {
     rstompWrongBars = [];
     rstompStreak = 0;
     updateRstompStreakDots();
-    showRstompFeedback('wrong', "Here's the counting — streak reset. New phrase next.");
+    showRstompFeedback('wrong', rstompPrompt('show-answer'));
     renderRstompBars();
     updateRstompPrompt();
     setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 3200);
@@ -2576,7 +2750,10 @@ function handleRstompFailure(wrongBars) {
     playSound('wrong');
     if (rstompAttempt < 3) {
         rstompAttempt++;
-        showRstompFeedback('wrong', `Bar${wrongBars.length > 1 ? 's' : ''} ${wrongBars.map(index => index + 1).join(', ')} - try again (attempt ${rstompAttempt} of 3).`);
+        showRstompFeedback('wrong', rstompPrompt('walk-retry', {
+            plural: wrongBars.length > 1 ? 's' : '',
+            bars: wrongBars.map(index => index + 1).join(', '),
+            attempt: rstompAttempt }));
         setTimeout(() => {
             const wrongSet = new Set(wrongBars);
             rstompPositions.forEach((position, index) => {
@@ -2594,7 +2771,7 @@ function handleRstompFailure(wrongBars) {
             hideRstompFeedback();
         }, 1400);
     } else {
-        showRstompFeedback('wrong', "Here's the correct answer - new phrase next.");
+        showRstompFeedback('wrong', rstompPrompt('walk-answer'));
         const wrongSet = new Set(wrongBars);
         rstompPositions.forEach((position, index) => {
             if (wrongSet.has(position.barIndex)) rstompEntries[index] = rstompExpectedAnswer(position);
