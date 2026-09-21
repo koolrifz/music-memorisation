@@ -476,11 +476,15 @@
                 <div class="rstomp-counting" id="rstomp-counting"></div>
                 <div class="rstomp-caret" id="rstomp-caret" hidden></div>
             </div>
-            <button class="rstomp-jump-chip" id="rstomp-jump-chip" hidden onclick="jumpRstompToCursor()">Jump to cursor</button>
         </div>
 
+        <!-- Out of the strip, not floating over it. Pinned inside the scroll
+             frame it sat on top of the counting row and hid whatever was
+             underneath - which on a phone, where the chip appears at all, is
+             exactly the bars being written. -->
         <div class="rstomp-strip-status">
             <span id="rstomp-strip-progress"></span>
+            <button class="rstomp-jump-chip" id="rstomp-jump-chip" hidden onclick="jumpRstompToCursor()">Jump to cursor</button>
             <!-- Hear it before you write it. Listening is free and always
                  available - it is not a hint that costs anything. -->
             <button class="rstomp-listen-btn" id="rstomp-listen-btn" onclick="toggleRstompListen()">

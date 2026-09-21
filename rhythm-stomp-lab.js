@@ -855,6 +855,27 @@ function buildRstompUnitShapes(grid, targetSlots, startSlot) {
 }
 
 // The filters above, applied to one finished shape.
+// TWO RESTS NEVER SHARE A BEAT when one rest could say it. Three quaver rests
+// in a row is not how anyone writes a bar - the two filling beat 4 are a
+// crotchet rest. Rob, seeing it on Level 12: "we would never see music written
+// that way."
+//
+// Forced only where the combined rest would itself be legal, which is what
+// keeps it honest at the finer grids: two semiquaver rests straddling the
+// middle of a beat can't become a quaver rest (that rest would cross the
+// half-beat), so they stay as two. And it is scoped to ONE BEAT, never wider -
+// crotchet rests on beats 3 and 4 stay two rests rather than collapsing into a
+// half rest, which is what Rob's own worked example `(1 2) (3) (4)` needs.
+// Stage A and Stage C are untouched for the same reason: their slot IS their
+// beat, so two adjacent rests are never inside one.
+function rstompRestsMustCombine(grid, slot, firstSlots, secondSlots) {
+    const merged = firstSlots + secondSlots;
+    if (Math.floor(slot / grid.slotsPerBeat) !== Math.floor((slot + merged - 1) / grid.slotsPerBeat)) return false;
+    if (!grid.units.some(unit => unit.isRest && unit.slots === merged)) return false;
+    return !grid.metricLevels.some(level =>
+        level >= merged && Math.floor(slot / level) !== Math.floor((slot + merged - 1) / level));
+}
+
 function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
     const unitOf = key => grid.units.find(unit => unit.key === key);
     const units = shape.map(unitOf);
@@ -870,6 +891,8 @@ function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
             && Math.floor(slot / level) !== Math.floor((slot + units[i].slots - 1) / level)
         )) return false;
         if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
+        if (i > 0 && units[i].isRest && units[i - 1].isRest
+            && rstompRestsMustCombine(grid, slot - units[i - 1].slots, units[i - 1].slots, units[i].slots)) return false;
         slot += units[i].slots;
     }
     return true;
@@ -890,12 +913,20 @@ function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
    from the same set. Enumeration is kept for the tests, which check the SET.
    ------------------------------------------------------------------------- */
 function rstompPickUnitShape(grid, targetSlots, startSlot) {
-    const order = grid.units.slice();
+    const unitOf = key => grid.units.find(unit => unit.key === key);
     const found = (function walk(remaining, slot, shape) {
         if (remaining === 0) {
             return rstompShapeIsLegal(shape, targetSlots, startSlot, grid) ? shape : null;
         }
-        for (let i = order.length - 1; i > 0; i--) {          // shuffle each step
+        // Shuffle a LOCAL copy. One shared array, re-shuffled at every step,
+        // was being reordered by deeper calls while an outer loop was still
+        // iterating it - so units got skipped or tried twice and the walk was
+        // not exhaustive. It failed to fill a bar roughly once in ten thousand
+        // tries, rarely enough to look like nothing and often enough to fail a
+        // 8700-shape test run. Tightening the rest rules made dead ends more
+        // common and brought it out.
+        const order = grid.units.slice();
+        for (let i = order.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [order[i], order[j]] = [order[j], order[i]];
         }
@@ -907,6 +938,9 @@ function rstompPickUnitShape(grid, targetSlots, startSlot) {
             )) continue;
             if (shape.length && unit.key === shape[shape.length - 1]
                 && grid.avoidRepeats.indexOf(unit.key) !== -1) continue;
+            const previous = shape.length ? unitOf(shape[shape.length - 1]) : null;
+            if (previous && previous.isRest && unit.isRest
+                && rstompRestsMustCombine(grid, slot - previous.slots, previous.slots, unit.slots)) continue;
             const got = walk(remaining - unit.slots, slot + unit.slots, [...shape, unit.key]);
             if (got) return got;
         }

@@ -531,6 +531,17 @@ compound ones need to.
 - **Notes are deliberately not restricted this way.** A minim across beats 2 and
   3 is ordinary syncopation and is exactly the figure A6 is built on. *Silence
   has to show the beat; sound is allowed to hide it.*
+- **Two rests never share a beat** when one rest could say it. Three quaver
+  rests in a row is not how anyone writes a bar — the two filling beat 4 are a
+  crotchet rest. Rob, seeing it on Level 12: *"we would never see music written
+  that way."* It was in **13.3% of L12's bars** and up to 15.5% at L17.
+  Forced only where the combined rest would itself be legal, so two semiquaver
+  rests straddling the middle of a beat stay as two (a quaver rest there would
+  cross the half-beat), and scoped to **one beat, never wider** — crotchet
+  rests on beats 3 and 4 stay two rests rather than collapsing into a half
+  rest, which is what the worked example below needs. Stage A and Stage C are
+  untouched: their slot *is* their beat, so two adjacent rests are never inside
+  one. `rstompRestsMustCombine()`.
 - Rests in a bar that also holds a note are **written** one bracket each —
   Rob's own `(1 2) (3) (4)` is a half rest followed by two quarter rests — but
   a merged bracket is equally correct, see "CONSECUTIVE RESTS MAY SHARE ONE
@@ -552,6 +563,16 @@ beat 1, which is most of Stage B.
 **Open question for Rob:** on Level 2 this means a level called "Half Notes and
 Rests" never shows two half notes in one bar — every bar is note+rest or
 rest+note. Two shapes total. Intended, or a side effect worth removing?
+
+### The shape walk must shuffle a LOCAL copy
+`rstompPickUnitShape()` walks the bar trying the vocabulary in a random order.
+It used to re-shuffle **one shared array** at every step, so a deeper call
+reordered the array an outer loop was still iterating — units got skipped or
+tried twice and the walk was not exhaustive. It failed to fill a bar about
+**once in ten thousand** tries: rare enough to look like nothing, often enough
+to fail a single assertion in an 8,700-shape test run. Tightening the rest
+rules made dead ends more common and brought it out. Each call now shuffles its
+own copy; 87,000 shapes across all 29 levels, no failures.
 
 ### VexFlow does not draw dots from the duration string — attach them by hand
 `new VF.StaveNote({ duration: 'hd' })` gives the note the right **ticks** (the
