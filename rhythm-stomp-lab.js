@@ -76,6 +76,9 @@ function rstompValueForSlots(slots, slotValue) {
    two once quavers arrive. The slot count is worked out per level.
    ========================================================================= */
 
+// The values that carry a flag, and so can be beamed to a neighbour.
+const RSTOMP_BEAMABLE = ['8', '8d', '16'];
+
 const RSTOMP_VOCABULARY = {
     'whole-note': { value: 'w', isRest: false },
     'whole-rest': { value: 'w', isRest: true },
@@ -977,12 +980,89 @@ function buildRstompBarShapes(grid) {
     return buildRstompUnitShapes(grid, grid.slotsPerBar, 0);
 }
 
+// BEAT 3 MUST ALWAYS BE VISIBLE. Rob's engraving rule, and it is a rule about
+// READING, not tidiness: the middle of the bar is the landmark the eye needs,
+// and a note sounding through it hides the one place a reader checks to know
+// where they are.
+//
+// A note may cross the middle of the bar ONLY IF IT STARTS ON A BEAT. That one
+// test carries the whole rule, including Rob's single exception - a minim on
+// beats 2-3, the `1 2 (3) 4` figure Level 6 is built on, starts on a beat and
+// so is allowed to cover beat 3. Everything he ruled out fails it: a minim
+// from the "and" of 1, and a syncopated crotchet from the "and" of 2.
+//
+// The note is not thrown away, it is RE-SPELLED. Rob: "my rule would have that
+// tied across to an eighth." So it is split at the middle into two tied notes
+// and the rhythm is untouched - a minim from the "and" of 1 becomes a dotted
+// crotchet tied to a quaver, with the tie landing exactly on beat 3. His own
+// worked bar comes out
+//
+//     quaver rest . crotchet . quaver-tied-to-quaver . crotchet . quaver
+//
+// which is the whole bar syncopated with a clean break at the halfway line.
+// The counting follows for free: a tie is a new written note, so beat 3 gets
+// its own bracket instead of being swallowed by the one before it.
+//
+// It self-limits to the grids it is meant for. Where a slot IS a beat - all of
+// Stage A, and 6/8 counted in six - every note starts on a beat, so the test
+// never fires and nothing changes. It bites at the quaver and semiquaver
+// grids, which is where a note can start off the beat at all.
+function rstompValueForSlots(slots, slotValue) {
+    const found = Object.keys(RSTOMP_VOCABULARY).map(key => RSTOMP_VOCABULARY[key])
+        .find(entry => !entry.isRest && rstompSlotsFor(entry.value, slotValue) === slots);
+    return found ? found.value : null;
+}
+
+// Spell a span as tied notes. One note where one value covers it; otherwise
+// cut at the coarsest metric boundary inside the span and spell each side,
+// which is how any span gets written: a note running from the second
+// semiquaver of beat 1 to beat 3 is a dotted quaver tied to a crotchet tied to
+// a semiquaver, not one impossible note.
+function rstompSpellSpan(start, end, grid) {
+    const value = rstompValueForSlots(end - start, grid.slotValue);
+    if (value) return [{ slots: end - start, value }];
+    for (const level of grid.metricLevels) {
+        const cut = Math.ceil((start + 1) / level) * level;
+        if (cut > start && cut < end) {
+            const before = rstompSpellSpan(start, cut, grid);
+            const after = rstompSpellSpan(cut, end, grid);
+            if (before && after) return before.concat(after);
+        }
+    }
+    return null;
+}
+
+function rstompShowBeatThree(bars, grid) {
+    const middle = grid.slotsPerBar / 2;
+    if (grid.metricLevels.indexOf(middle) === -1) return bars;
+    return bars.map(specs => {
+        const out = [];
+        let slot = 0;
+        specs.forEach(spec => {
+            const end = slot + spec.slots;
+            const hidesTheMiddle = !spec.isRest && slot < middle && end > middle
+                                   && slot % grid.slotsPerBeat !== 0;
+            const before = hidesTheMiddle ? rstompSpellSpan(slot, middle, grid) : null;
+            const after = hidesTheMiddle ? rstompSpellSpan(middle, end, grid) : null;
+            if (before && after) {
+                before.concat(after).forEach((piece, index) => out.push(Object.assign({}, spec, {
+                    slots: piece.slots, value: piece.value, tied: index === 0 ? spec.tied : true
+                })));
+            } else {
+                out.push(spec);
+            }
+            slot = end;
+        });
+        return out;
+    });
+}
+
 function generateRstompPhrase(level) {
     const grid = rstompGridFor(level);
     const bars = level.figure ? generateRstompPhraseWithFigure(level, grid)
                : level.tieLevel ? generateRstompPhraseWithTie(level, grid)
                : generateRstompPhraseNormal(level, grid);
-    return rstompApplyLonghand(bars, level, grid);
+    return rstompShowBeatThree(rstompApplyLonghand(bars, level, grid), grid);
 }
 
 // Variety rule (design brief §5 item 15): no bar shape repeats more than
@@ -2239,14 +2319,37 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         });
         const meter = rstompVoiceMeter();
         const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den }).addTickables(notes);
-        // Beam by BEAT, not by adjacency - four quavers in 4/4 are two beamed
-        // pairs, not one group of four, and the beam is what makes the beat
-        // visible before the counting is read. The group length is the beat,
-        // which the grid already knows.
-        const beams = VF.Beam.generateBeams(notes, {
-            stem_direction: 1,
-            groups: [new VF.Fraction(rstompBeamSlots, RSTOMP_VALUE_DENOMINATOR[rstompSlotValue])]
+        // Beam by BEAT, from each note's ACTUAL POSITION IN THE BAR - four
+        // quavers in 4/4 are two beamed pairs, not one group of four, and the
+        // beam is what makes the beat visible before the counting is read.
+        //
+        // Built here rather than by VF.Beam.generateBeams, which counts its
+        // groups from the start of each RUN of beamable notes instead of from
+        // the bar: after a crotchet or a rest its counter restarts, and the
+        // next two quavers get beamed wherever they happen to sit. Measured at
+        // 310 of 2119 beams joining notes from different beats, and 19 of 40
+        // on the Pump level. A beam across beat 3 hides the middle of the bar
+        // exactly as a note sounding through it does, which is the rule
+        // rstompShowBeatThree exists to keep.
+        //
+        // A note that straddles a group boundary is beamed to nothing and
+        // keeps its flag - there is no group it belongs to.
+        const groupOf = (start, slots) => {
+            const first = Math.floor(start / rstompBeamSlots);
+            return first === Math.floor((start + slots - 1) / rstompBeamSlots) ? first : null;
+        };
+        const beams = [];
+        let run = [];
+        let beamCursor = 0;
+        const flushBeam = () => { if (run.length > 1) beams.push(new VF.Beam(run.map(item => item.note))); run = []; };
+        specs.forEach((spec, index) => {
+            const group = groupOf(beamCursor, spec.slots);
+            const beamable = !spec.isRest && group !== null && RSTOMP_BEAMABLE.indexOf(spec.value) !== -1;
+            if (!beamable || (run.length && run[run.length - 1].group !== group)) flushBeam();
+            if (beamable) run.push({ note: notes[index], group });
+            beamCursor += spec.slots;
         });
+        flushBeam();
         // The ideal, evenly-spaced slot grid (where the level's labels fall).
         // Everything below - the formatting width, where each note is put,
         // and where the counting row anchors - is stated against it.
