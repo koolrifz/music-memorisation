@@ -1,8 +1,21 @@
 # Notation Rules — beaming & grouping
 
-**Authority.** Rob supplied these as the standard Western classical engraving
-conventions (ABRSM/Trinity theory, professional practice). They are mandatory
-for the notation engine. Read this before touching any beaming or grouping
+**Authority, and how it sits against Rob's own rules.** These are the standard
+Western classical engraving conventions (ABRSM/Trinity theory, professional
+practice), supplied by Rob as mandatory for the notation engine. Where they meet
+one of his own rules, **the standard wins** — in his words:
+
+> *"If A8 is an 'at standard' and not a staged scaffolding, then we observe the
+> new standard rules that supersede probably most of my rules. Most of my rules
+> are actually the scaffolding tricks and tips to gain the knowledge."*
+
+His rules are the **scaffolding**: the bridging device that gets a student from
+unawareness to mastery. They are kept, and they are allowed to break the
+standard — but only where that break is the teaching, and only as a **named
+exception** recorded here. The standard is the notation; the scaffolding is the
+route to reading it.
+
+They are mandatory Read this before touching any beaming or grouping
 code. Anything that produces beaming or rest placement violating them is a bug,
 not a style preference.
 
@@ -109,7 +122,8 @@ Apply to every time signature.
 # Where Kool Riffs stands
 
 Measured by `notation-compliance.js` — 20 rules, 4,800 generated bars plus
-constructed cases. **17 pass, 2 deviations, 1 open question, 0 failures.**
+constructed cases. **18 pass, 1 accepted exception, 1 open question, 0
+deviations, 0 failures.**
 
 Kool Riffs ships **4/4 only** (crotchet, quaver and semiquaver grids) and **6/8
 counted in six**. 2/4 and 3/4 are not shipped; they are tested because the
@@ -138,30 +152,21 @@ before one is.
 | 4 | no rest starts weak and hides a strong beat | 0 |
 | 4 | whole-bar rest in simple time is a semibreve rest | correct |
 
-## Deviations — for Rob to rule on
+## Accepted exception — ruled on by Rob
 
-### D1. Beams and ties are mixed — 596 beams over 4,800 bars
-§2 says don't. We do, in one place on purpose: **the equivalency scaffold**
-writes a crotchet the long way as two tied quavers, and they beam together
-inside the beat. Strict engraving would simply write the crotchet — the scaffold
-breaks that deliberately, because seeing the long way *is* the teaching.
+### A1. Beams and ties are mixed — ~600 beams over 4,800 bars
+§2 says don't. We do, in exactly one place and on purpose: **the equivalency
+scaffold** writes a crotchet the long way as two tied quavers, and they beam
+together inside the beat. Strict engraving would simply write the crotchet.
 
-*Question:* leave the scaffold as the documented exception, flag its tied notes
-instead of beaming them, or something else? Note the scaffold is the only source
-— midpoint splits are never beamed, because the two halves fall in different
-beam groups.
+**Rob's ruling: keep it.** *"The scaffolding we are building are my rules to
+help a student get from a position of unawareness to one of mastery… the
+bridging device designed to get them to read better. So I'm supporting keeping
+them and using them as opportunities for teaching."*
 
-### D2. A whole-bar rest in 6/8 is written as a dotted minim rest, not a semibreve rest
-§4 says a whole-bar rest is always a semibreve rest, whatever the metre. We
-write `hd` (dotted minim rest) because that is what fills a 6/8 bar in ticks,
-and VexFlow validates the bar strictly.
-
-*Question:* worth fixing? It is a rendering-only change — keep the dotted minim
-rest for the tick count and draw a semibreve rest glyph — but it needs VexFlow's
-strict-voice check relaxed for that bar.
-
-Related and already known: our whole rest is **not centred** in the bar. It
-renders at beat 1's position, like a whole note. Same question.
+The scaffold is the only source — midpoint splits are never beamed, because the
+two halves fall in different beam groups. Any *new* mixing of beams and ties
+that is not the scaffold is a bug.
 
 ## Open question
 
@@ -175,14 +180,20 @@ beats inside a half-bar. We follow §3 — so a minim on beats 3–4 stands, and
 *Question:* is §3 the operative rule, or do you want notes restricted at
 **every** beat? The second reading would rewrite a great deal of Stage A.
 
-## Consequences already logged, awaiting a decision
+## Resolved
 
-- **A8 now carries ties in 15% of its bars.** Its design is "the scaffold comes
-  down — the dotted minim written plainly", but a minim on beats 2–3 is now two
-  tied crotchets by engraving. Not a bug; a consequence of the midpoint rule.
-  Should A8 be kept tie-free?
-- **A6's figure is now spelled `q q q~ q`.** The rhythm and the counting are
-  unchanged (`1 2 (3) 4`, in 300 of 300 phrases); only the spelling moved.
+- **A8 carries ties in 15% of its bars, and that is correct.** A8 is *at
+  standard*, not a staged scaffold, so the engraving rule governs: a minim on
+  beats 2–3 is two tied crotchets. Rob's ruling. A8's own point — the dotted
+  minim written plainly, with no `spellOut` — is untouched.
+- **A6's figure is spelled `q q q~ q`.** Rhythm and counting unchanged
+  (`1 2 (3) 4`, in 300 of 300 phrases); only the spelling moved.
+- **A whole bar of silence is a centred semibreve rest in 6/8** (Rob: *"the
+  symbol is no longer acting as a literal four-beat rest; it simply means rest
+  for the entire bar"*). The generator still stores the tick-correct value so
+  the bar adds up; the renderer borrows the whole-rest glyph and centres it.
+  In 4/4 the whole rest is an *ordinary* rest that happens to fill the bar, so
+  it stays aligned on beat 1 — Rob's own distinction.
 
 ## Not yet applicable
 - 9/8 and 12/8 — `rstompMiddleOfBar()` already handles them correctly (12/8 has

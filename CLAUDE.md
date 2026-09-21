@@ -7,6 +7,13 @@ A browser-based music-education app (single HTML page, no build step) teaching p
 
 **Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar. Notation rendering uses VexFlow 3.0.9 via CDN.
 
+**THE ENGRAVING STANDARD OUTRANKS ROB'S OWN RULES.** Rob's ruling, and it
+reframes most of this file: *"Most of my rules are actually the scaffolding
+tricks and tips to gain the knowledge."* The standard is the notation; his
+rules are the **scaffolding** — the bridging device from unawareness to
+mastery. Scaffolding may break the standard, but only where the break *is* the
+teaching, and only as a named exception recorded in `NOTATION_RULES.md`.
+
 **`NOTATION_RULES.md` is mandatory reading before touching any beaming or
 grouping code.** It holds the standard classical engraving conventions Rob
 supplied as authority, and the engine's measured standing against them. Code
@@ -693,6 +700,44 @@ looking exactly like a plain minim. `note.addDotToAll()` has to be called when
 builds a StaveNote from a dotted value needs the same line. Nothing shipping
 used a dotted value, so this was silent until the equivalency scaffold rendered
 one.
+
+## Every on-screen prompt has a NAME, and a level can override it
+Rob's request, because the scaffolding changes level by level and the wording
+has to change with it: *"Could we find every instance of that text box and give
+it a name and then I can fill in alternate text? Then I could teach through the
+rules for the level."*
+
+`RSTOMP_PROMPTS` holds the defaults; `rstompPrompt(name, vars)` resolves a
+level's own wording first and fills in `{braces}` at display time. A level
+overrides any line by name:
+
+```js
+{ id: '7', ..., prompts: { 'write-bar': 'Bar {bar} — two tied crotchets ARE a
+                                         minim. Count what you SEE.' } }
+```
+
+The names, and the variables each one can use:
+
+| name | where it shows | variables |
+|---|---|---|
+| `write-bar` | the standing instruction while writing a bar | `{bar}` |
+| `bracket-open` | while a bracket is open and unclosed | |
+| `all-written` | every bar written, submit is live | `{bars}` |
+| `revealed` | the answer is on screen after the third strike | |
+| `walk-beat` | the two-button tutorial's per-beat question | `{bar}` `{label}` |
+| `walk-done` | two-button, all beats answered | |
+| `nailed` | the phrase graded clean | `{points}` |
+| `miss-one` | first strike, exactly one bar wrong | |
+| `miss-some` | first strike, several bars wrong | `{n}` |
+| `name-one` | second strike, naming the one wrong bar | `{bar}` |
+| `name-some` | second strike, naming the wrong bars | `{bars}` |
+| `show-answer` | third strike, the answer revealed | |
+| `walk-retry` | two-button, naming the wrong bars | `{bars}` `{plural}` `{attempt}` |
+| `walk-answer` | two-button, the answer revealed | |
+
+**The defaults are placeholders and Rob will replace them. The names are the
+contract** — don't rename one without updating any level that overrides it, and
+don't add on-screen teaching copy as a bare string.
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").

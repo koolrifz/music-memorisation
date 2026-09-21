@@ -121,6 +121,63 @@ const RSTOMP_VOCABULARY = {
 // isolated, mixed, tied inside the bar, the dotted form revealed, syncopation,
 // then ties across the barline. Stage A runs to nine because it has three
 // values to introduce before that arc can start.
+/* =========================================================================
+   EVERY PIECE OF ON-SCREEN TEACHING COPY HAS A NAME.
+   Rob's request, and the reason is the whole design: his rules are the
+   SCAFFOLDING - the bridging device that gets a student from unawareness to
+   mastery - and the scaffolding changes level by level. So the wording has to
+   change with it. A level can override any line below by name:
+
+       { id: '7', ..., prompts: { 'write-bar': 'Bar {bar} - two tied crotchets
+                                                are a minim. Count what you SEE.' } }
+
+   `{bar}` and the other braces are filled in at display time. The names, and
+   what each one is for:
+
+     write-bar       the standing instruction while writing a bar   {bar}
+     bracket-open    shown while a bracket is open and unclosed
+     all-written     every bar written, submit is now live          {bars}
+     revealed        the answer is on screen after the third strike
+     walk-beat       the two-button tutorial's per-beat question    {bar} {label}
+     walk-done       the two-button tutorial, all beats answered
+     nailed          the phrase graded clean                        {points}
+     miss-one        first strike, exactly one bar wrong
+     miss-some       first strike, several bars wrong               {n}
+     name-one        second strike, naming the one wrong bar        {bar}
+     name-some       second strike, naming the wrong bars           {bars}
+     show-answer     third strike, the answer revealed
+     walk-retry      two-button, naming the wrong bars              {bars} {plural} {attempt}
+     walk-answer     two-button, the answer revealed
+
+   Keep them short and functional until Rob replaces them - the defaults are
+   placeholders, the names are not.
+   ========================================================================= */
+const RSTOMP_PROMPTS = {
+    'write-bar':    'Bar {bar} — write the counting under the notes.',
+    'bracket-open': 'Bracket open — count the beats it holds for, then close it.',
+    'all-written':  'All {bars} bars written — check your answer below.',
+    'revealed':     "Here's the counting.",
+    'walk-beat':    'Bar {bar} · Beat {label} — does a new note start here?',
+    'walk-done':    'All filled in — check your answer below.',
+    'nailed':       'Nailed it! +{points}',
+    'miss-one':     "One bar isn't right. Can you find it before you submit again?",
+    'miss-some':    "{n} bars aren't right. Can you find them?",
+    'name-one':     "Bar {bar} isn't right — read it again.",
+    'name-some':    "Bars {bars} aren't right — read them again.",
+    'show-answer':  "Here's the counting — streak reset. New phrase next.",
+    'walk-retry':   'Bar{plural} {bars} - try again (attempt {attempt} of 3).',
+    'walk-answer':  "Here's the correct answer - new phrase next."
+};
+
+// The level's own wording if it has one, otherwise the default, with {braces}
+// filled in. A level teaches its own rule, so it gets to say its own line.
+function rstompPrompt(name, vars) {
+    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    const template = (level && level.prompts && level.prompts[name]) || RSTOMP_PROMPTS[name] || '';
+    return template.replace(/\{(\w+)\}/g, (whole, key) =>
+        (vars && Object.prototype.hasOwnProperty.call(vars, key)) ? vars[key] : whole);
+}
+
 const RSTOMP_LEVELS = [
     /* A1-A4 ARE PLAYED ON THE TWO-BUTTON INTERFACE, A5 ONWARDS ON THE KEYPAD.
        Rob's call, and the reason is sharper than "easier first".
@@ -1830,29 +1887,30 @@ function updateRstompPrompt() {
     const el = document.getElementById('rstomp-prompt');
     if (!el) return;
 
-    // PLACEHOLDER COPY. Rob is writing the real instructional wording - see
-    // the design brief's note on §1 vs the walkthrough copy. Keep these
-    // functional and short until then; do not polish them, they're going.
+    // Every line here is a NAMED prompt - see RSTOMP_PROMPTS. The defaults are
+    // placeholders and Rob will replace them; the names are the contract, and a
+    // level overrides any of them with its own `prompts` block so it can teach
+    // its own rule in its own words.
     if (rstompScribe) {
-        if (rstompRevealed) { el.textContent = "Here's the counting."; return; }
-        if (rstompWriting && rstompWriting.inside) { el.textContent = 'Bracket open — count the beats it holds for, then close it.'; return; }
+        if (rstompRevealed) { el.textContent = rstompPrompt('revealed'); return; }
+        if (rstompWriting && rstompWriting.inside) { el.textContent = rstompPrompt('bracket-open'); return; }
         // Not "all four bars": Stage B phrases are two bars, and later stages
         // set their own length.
         if (rstompCursor >= rstompPositions.length) {
-            el.textContent = `All ${rstompPhrase.length} bars written — check your answer below.`;
+            el.textContent = rstompPrompt('all-written', { bars: rstompPhrase.length });
             return;
         }
         const bar = Math.floor(rstompCursor / rstompSlotsPerBar) + 1;
-        el.textContent = `Bar ${bar} — write the counting under the notes.`;
+        el.textContent = rstompPrompt('write-bar', { bar });
         return;
     }
 
     if (rstompCursor >= rstompPositions.length) {
-        el.textContent = "All filled in — check your answer below.";
+        el.textContent = rstompPrompt('walk-done');
         return;
     }
     const pos = rstompPositions[rstompCursor];
-    el.textContent = `Bar ${pos.barIndex + 1} · Beat ${rstompLabels[pos.slotIndex]} — does a new note start here?`;
+    el.textContent = rstompPrompt('walk-beat', { bar: pos.barIndex + 1, label: rstompLabels[pos.slotIndex] });
 }
 
 function updateRstompButtonStates() {
@@ -2251,6 +2309,11 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
                 // Nothing written inside it yet, so there is no span to
                 // centre across - park it on its own beat.
                 add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
+            } else if (startLayout.centredRest) {
+                // The glyph is centred in the bar, so its counting centres too -
+                // left-aligning to a centred rest would start the bracket at the
+                // middle of the bar and run it off the end.
+                add(run.text, (startLayout.pulseX(0) + startLayout.pulseX(rstompSlotsPerBar)) / 2, true, run.wrong);
             } else if (!owner.isOnset) {
                 // No glyph above this slot, so there is nothing to left-align
                 // to - centre across the span, whether or not the student
@@ -2277,7 +2340,9 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
         layouts.forEach((layout, position) => {
             buildRstompCountingTokens(barOffset + position).forEach(token => {
                 const owner = layout.beatOwner[token.startBeat];
-                if (token.kind === 'hold' && !owner.isOnset) {
+                if (layout.centredRest) {
+                    add(token.text, (layout.pulseX(0) + layout.pulseX(rstompSlotsPerBar)) / 2, true, false);
+                } else if (token.kind === 'hold' && !owner.isOnset) {
                     add(token.text, (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2, true, false);
                 } else {
                     add(token.text, layout.noteX[owner.specIndex], false, false);
@@ -2386,6 +2451,21 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         stave.setStyle({ strokeStyle: '#000000' });
         stave.setContext(context).draw();
 
+        // A WHOLE BAR OF SILENCE IS A WHOLE REST, CENTRED - whatever the metre.
+        // Rob: "In 6/8 the duration of a full bar is a dotted minim, but the
+        // notation still uses the whole-rest symbol. At that point the symbol
+        // is no longer a literal four-beat rest; it simply means rest for the
+        // entire bar." The generator keeps emitting the tick-correct value so
+        // the bar still adds up; only the drawing changes.
+        //
+        // Not in 4/4, and that is his distinction too: there the whole rest is
+        // an ORDINARY rest that happens to fill the bar, so it aligns like a
+        // note, on beat 1. Only where the glyph is BORROWED as a bar marker -
+        // where a whole rest is not the length of the bar - is it centred.
+        const barIsSilent = specs.length === 1 && specs[0].isRest && specs[0].slots === rstompSlotsPerBar;
+        const borrowedWholeRest = barIsSilent
+            && rstompSlotsFor('w', rstompSlotValue) !== rstompSlotsPerBar;
+
         const notes = specs.map(spec => {
             // The written note value travels on the spec itself - no lookup
             // table, and no way for the drawn note and the counted slots to
@@ -2396,7 +2476,8 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             // on a stave with only that line visible puts the beam in the same
             // space as the counting row.
             const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], stem_direction: 1,
-                duration: spec.isRest ? `${duration}r` : duration });
+                duration: borrowedWholeRest ? 'wr' : (spec.isRest ? `${duration}r` : duration) });
+            if (borrowedWholeRest) note.setCenterAlignment(true);
             // VexFlow reads the "d" suffix for TICKS but does not draw the dot
             // from it - a dotted minim comes out looking exactly like a plain
             // minim, with the bar still filling correctly and no error raised.
@@ -2407,7 +2488,11 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             return note;
         });
         const meter = rstompVoiceMeter();
-        const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den }).addTickables(notes);
+        const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den });
+        // A borrowed whole rest does not add up to the bar in ticks - it is a
+        // symbol, not a duration - so the bar cannot be tick-checked.
+        if (borrowedWholeRest) voice.setStrict(false);
+        voice.addTickables(notes);
         // Beam by BEAT, from each note's ACTUAL POSITION IN THE BAR - four
         // quavers in 4/4 are two beamed pairs, not one group of four, and the
         // beam is what makes the beat visible before the counting is read.
@@ -2482,7 +2567,7 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             cumulativeSlots += spec.slots;
         });
 
-        return { specs, notes, noteX, pulseX, beatOwner };
+        return { specs, notes, noteX, pulseX, beatOwner, centredRest: borrowedWholeRest };
     });
 
     // Ties INSIDE a bar: any spec marked tied is the same note continuing
@@ -2533,7 +2618,7 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         container.style.height = `${RSTOMP_STAFF_CROP_HEIGHT}px`;
     }
 
-    return rendered.map(({ noteX, pulseX, beatOwner }) => ({ noteX, pulseX, beatOwner }));
+    return rendered.map(({ noteX, pulseX, beatOwner, centredRest }) => ({ noteX, pulseX, beatOwner, centredRest }));
 }
 
 /* ---------- Streak + feedback ---------- */
@@ -2585,7 +2670,7 @@ function handleRstompSuccess() {
     rstompScore += 4;
     rstompStreak++;
     updateRstompStreakDots();
-    showRstompFeedback('correct', 'Nailed it! +4');
+    showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
     if (rstompStreak >= 3) {
         setTimeout(showRstompLevelComplete, 800);
     } else {
@@ -2606,8 +2691,8 @@ function handleRstompScribeFailure(wrongBars) {
         rstompAttempt++;
         rstompWrongBars = [];
         showRstompFeedback('wrong', wrongBars.length === 1
-            ? "One bar isn't right. Can you find it before you submit again?"
-            : `${wrongBars.length} bars aren't right. Can you find them?`);
+            ? rstompPrompt('miss-one')
+            : rstompPrompt('miss-some', { n: wrongBars.length }));
         renderRstompBars();
         setTimeout(() => { rstompLocked = false; updateRstompButtonStates(); }, 700);
         return;
@@ -2617,8 +2702,8 @@ function handleRstompScribeFailure(wrongBars) {
         rstompAttempt++;
         rstompWrongBars = names;
         showRstompFeedback('wrong', wrongBars.length > 1
-            ? `Bars ${names.join(', ')} aren't right — read them again.`
-            : `Bar ${names[0]} isn't right — read it again.`);
+            ? rstompPrompt('name-some', { bars: names.join(', ') })
+            : rstompPrompt('name-one', { bar: names[0] }));
         renderRstompBars();
         setTimeout(() => {
             rstompRewindTo(wrongBars[0]);
@@ -2638,7 +2723,7 @@ function handleRstompScribeFailure(wrongBars) {
     rstompWrongBars = [];
     rstompStreak = 0;
     updateRstompStreakDots();
-    showRstompFeedback('wrong', "Here's the counting — streak reset. New phrase next.");
+    showRstompFeedback('wrong', rstompPrompt('show-answer'));
     renderRstompBars();
     updateRstompPrompt();
     setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 3200);
@@ -2651,7 +2736,10 @@ function handleRstompFailure(wrongBars) {
     playSound('wrong');
     if (rstompAttempt < 3) {
         rstompAttempt++;
-        showRstompFeedback('wrong', `Bar${wrongBars.length > 1 ? 's' : ''} ${wrongBars.map(index => index + 1).join(', ')} - try again (attempt ${rstompAttempt} of 3).`);
+        showRstompFeedback('wrong', rstompPrompt('walk-retry', {
+            plural: wrongBars.length > 1 ? 's' : '',
+            bars: wrongBars.map(index => index + 1).join(', '),
+            attempt: rstompAttempt }));
         setTimeout(() => {
             const wrongSet = new Set(wrongBars);
             rstompPositions.forEach((position, index) => {
@@ -2669,7 +2757,7 @@ function handleRstompFailure(wrongBars) {
             hideRstompFeedback();
         }, 1400);
     } else {
-        showRstompFeedback('wrong', "Here's the correct answer - new phrase next.");
+        showRstompFeedback('wrong', rstompPrompt('walk-answer'));
         const wrongSet = new Set(wrongBars);
         rstompPositions.forEach((position, index) => {
             if (wrongSet.has(position.barIndex)) rstompEntries[index] = rstompExpectedAnswer(position);
