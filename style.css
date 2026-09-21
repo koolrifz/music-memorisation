@@ -648,7 +648,11 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rstomp-header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 46px auto 8px; padding: 0 4px; }
 .rstomp-header-label { font-weight: 900; color: var(--accent-teal); font-size: 14px; line-height: 1.25; }
 
-.rstomp-prompt { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-teal); background: rgba(45,212,191,0.1); border: 2px solid var(--accent-teal); border-radius: 12px; padding: 10px 12px; }
+/* THE GUIDE. Rob: "that's exactly what that rectangle is - it's there with you
+   for the whole game, it's a guide", and it needed to stand out more. Gold, to
+   match the streak dots: the two things that speak to the student for the whole
+   level now read as one voice, and nothing else on the screen is gold. */
+.rstomp-prompt { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-gold); background: rgba(255,200,0,0.12); border: 2px solid var(--accent-gold); border-radius: 12px; padding: 10px 12px; }
 
 /* The whole phrase on one continuous line. The strip is the ONLY thing that
    scrolls sideways - the prompt, buttons and everything else stay put at
@@ -663,12 +667,29 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     overflow-x: auto; overflow-y: hidden;
     scrollbar-width: thin;
 }
-/* Only meaningful when the phrase overruns: fades the cut-off edge so it
-   reads as "there is more music here", not as a bar that stops mid-air. */
-.rstomp-strip.scrollable::after {
-    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 24px;
-    background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.95));
-    pointer-events: none;
+/* "THERE IS MORE MUSIC HERE" - WITHOUT PAINTING OVER THE MUSIC.
+
+   This used to be a 24px white gradient to 0.95 opacity, position:absolute
+   right:0 - meant to hug the VISIBLE right edge. It doesn't. An absolutely
+   positioned child of a SCROLLING container is placed against the padding box
+   and then scrolls with the content, so the band is pinned to one point in the
+   music (clientWidth from the content's left edge) and TRAVELS LEFT ACROSS THE
+   PHRASE as the student scrolls, bleaching whatever note it is over. At scroll
+   offset S it shows up at clientWidth - S.
+
+   Rob hit it on Level 7: "something's overlaying the screen... there's a
+   crotchet, a half note tied to a crotchet, and the three four of that tie is
+   very misty." He was at count 13 of 16, so it had drifted onto his tie.
+   Reproduced: a tied crotchet, its stem, its tie curve and its counting digit
+   all washed to grey, with black notes either side, a third of the way across
+   the strip. On a tie level an invisible tie is the whole level.
+
+   An inset shadow says the same thing and cannot drift: it paints against the
+   border box, so it does not scroll with the content, and it darkens the white
+   paper rather than washing the black ink - contrast goes UP where the
+   gradient sent it to nothing. */
+.rstomp-strip.scrollable {
+    box-shadow: inset -10px 0 9px -9px rgba(28, 44, 62, 0.75);
 }
 /* Centred so a phrase that doesn't need the full width sits in the middle
    of the strip rather than stranded against the left edge; when it IS wider
@@ -738,11 +759,17 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 }
 .rstomp-strip-status > * { white-space: nowrap; }
 #rstomp-strip-progress { flex: 1 1 auto; }
+/* Rob: "I don't know why Full score is darkened - it should look like it's
+   ready to be pressed, not one that's already been depressed." It was grey on
+   grey next to two live teal controls, so it read as disabled. Same pill as
+   Hear it and Jump to cursor. */
 .rstomp-fullview-btn {
-    background: none; border: 2px solid #526b85; color: var(--text-muted);
-    border-radius: 10px; padding: 5px 14px; font-family: inherit;
+    background: rgba(45, 212, 191, 0.14); border: 1px solid rgba(45, 212, 191, 0.5);
+    color: #5eead4;
+    border-radius: 999px; padding: 4px 14px; font-family: inherit;
     font-size: 12px; font-weight: 800; cursor: pointer; touch-action: manipulation;
 }
+.rstomp-fullview-btn:hover { background: rgba(45, 212, 191, 0.24); }
 
 .rstomp-fullview-box {
     background: var(--bg-panel); border-radius: 18px; padding: 20px;
@@ -807,6 +834,7 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 
 .rstomp-undo-btn { align-self: center; background: none; border: 2px solid #526b85; color: var(--text-muted); border-radius: 10px; padding: 6px 18px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
 .rstomp-undo-btn:disabled { opacity: 0.35; cursor: default; }
+.rstomp-step-row { display: flex; gap: 10px; justify-content: center; margin-top: 6px; }
 
 .rstomp-feedback { width: 100%; max-width: 640px; margin: 4px auto; text-align: center; font-weight: 900; padding: 6px; border-radius: 10px; }
 .rstomp-feedback.correct { background: rgba(88,204,2,0.18); color: var(--accent-green); }

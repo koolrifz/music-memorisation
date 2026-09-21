@@ -516,7 +516,14 @@
                     <small>held, or silent</small>
                 </button>
             </div>
-            <button class="rstomp-undo-btn" id="rstomp-undo-btn" onclick="undoRstomp()">↺ Undo</button>
+            <!-- Undo backs up one count; Restart clears the phrase. Rob,
+                 hunting a wrong bar on L7: "in order to find them I need to
+                 undo... we have to back through the whole thing, one undo at
+                 a time, or we should just be able to start." -->
+            <div class="rstomp-step-row">
+                <button class="rstomp-undo-btn" id="rstomp-undo-btn" onclick="undoRstomp()">↺ Undo</button>
+                <button class="rstomp-undo-btn" id="rstomp-restart-btn" onclick="restartRstompPhrase()">⟲ Restart</button>
+            </div>
         </div>
 
         <div class="rstomp-controls rstomp-keypad" id="rstomp-controls-keypad" hidden>
@@ -529,6 +536,9 @@
                 <button class="rstomp-key rstomp-key-bracket" id="rstomp-key-open" onclick="rstompKey('(')">(</button>
                 <button class="rstomp-key rstomp-key-bracket" id="rstomp-key-close" onclick="rstompKey(')')">)</button>
                 <button class="rstomp-key rstomp-key-erase" id="rstomp-key-erase" onclick="rstompKey('erase')">⌫</button>
+            </div>
+            <div class="rstomp-step-row">
+                <button class="rstomp-undo-btn" id="rstomp-scribe-restart-btn" onclick="restartRstompPhrase()">⟲ Restart</button>
             </div>
         </div>
 

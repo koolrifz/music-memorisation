@@ -2015,6 +2015,11 @@ function stampRstomp(answer) {
             return;
         }
         hideRstompFeedback();
+        // The answer, played back as the thing it means: a snare crack for an
+        // onset, a brush swish for held or silent. Rob's request, and it is the
+        // lesson made audible - the two buttons and the two sounds draw the
+        // same distinction the notation does.
+        if (typeof rstompAudioTap === 'function') rstompAudioTap(answer === 'play' ? 'play' : 'hold');
     }
 
     rstompEntries[rstompCursor] = answer;
@@ -2036,6 +2041,29 @@ function rstompWalkHint(position) {
     if (mode === 'play') return { answer: 'PLAY', because: 'a new note starts on this count.' };
     if (mode === 'rest') return { answer: 'NOTHING NEW', because: 'this count is silent, nothing is sounding.' };
     return { answer: 'NOTHING NEW', because: 'the note before is still ringing through this count.' };
+}
+
+// Clear the phrase and start writing it again, SAME phrase - not a new one.
+// Rob, hunting a wrong bar on Level 7: "in order to find them I need to undo...
+// I guess we have to back through the whole thing, one undo button at a time,
+// or we should just be able to start." Undoing sixteen counts to reach bar 3 is
+// a punishment for looking, and looking is the skill.
+//
+// It is deliberately NOT a new phrase and NOT a free pass: the attempt ladder,
+// the streak and the tutorial's miss count all stand, because the phrase in
+// front of them is the one they got wrong.
+function restartRstompPhrase() {
+    if (rstompLocked) return;
+    rstompEntries = new Array(rstompPositions.length).fill(null);
+    rstompUndoStack = [];
+    rstompCursor = 0;
+    rstompWriting = { groups: [], inside: false };
+    rstompFollowing = true;
+    hideRstompFeedback();
+    renderRstompBars();
+    followRstompCursor();
+    updateRstompPrompt();
+    updateRstompButtonStates();
 }
 
 function undoRstomp() {
@@ -2100,6 +2128,8 @@ function updateRstompButtonStates() {
         if (open) open.disabled = rstompLocked || full || rstompWriting.inside;
         if (close) close.disabled = rstompLocked || !rstompWriting.inside;
         if (erase) erase.disabled = rstompLocked || !rstompWriting.groups.length;
+        const restart = document.getElementById('rstomp-scribe-restart-btn');
+        if (restart) restart.disabled = rstompLocked || !rstompWriting.groups.length;
         // Submit is live as soon as every bar is accounted for, even
         // with a bracket left hanging open. Refusing to submit would hide
         // the mistake; marking it wrong is the honest answer.
@@ -2110,6 +2140,8 @@ function updateRstompButtonStates() {
     document.getElementById('rstomp-play-btn').disabled = rstompLocked || done;
     document.getElementById('rstomp-bracket-btn').disabled = rstompLocked || done;
     document.getElementById('rstomp-undo-btn').disabled = rstompLocked || rstompUndoStack.length === 0;
+    const restart = document.getElementById('rstomp-restart-btn');
+    if (restart) restart.disabled = rstompLocked || rstompUndoStack.length === 0;
     document.getElementById('rstomp-submit-button').disabled = rstompLocked || !done;
 }
 

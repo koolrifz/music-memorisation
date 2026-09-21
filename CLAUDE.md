@@ -552,6 +552,87 @@ missing.
   one behind it. Stopping restores the view to the writing cursor, unless the
   student had scrolled away on purpose.
 
+### The two buttons SOUND like what they mean — snare and brush
+Rob, playing Level 4: *"When I press Play it would be nice to hear a sound like
+a snare drum. And when it says Nothing New? Just a whisper, like a brush sound
+from drums. Shhh. Swish."* Then the whole level, spoken as drums: *"Swish,
+crack, crack, swish, swish, swish, crack."*
+
+It is not decoration. **A crack is an onset and a swish is sustain**, which is
+exactly the distinction the two buttons ask about — so the student hears the
+answer they just gave in the same terms the notation uses, and the level starts
+to sound like the thing it is teaching.
+
+`raudioBrush()` is deliberately not a quiet snare: no pitched body at all (the
+snare's triangle thump is what makes it a *hit*), a swell rather than a crack
+(up over 60ms), and a lower, wider band than the snare's 1900Hz — a wire brush
+is air, not skin. `rstompAudioTap()` plays it immediately rather than through
+the lookahead scheduler, because a button is not music in time and must not
+disturb a phrase that happens to be playing.
+
+**Only a correct tap sounds.** A refused tap gets the wrong-answer tone, not a
+drum — the drum is the reward for reading it right.
+
+### Restart, not sixteen undos
+Rob, hunting a wrong bar on Level 7: *"In order to find them I need to undo… I
+guess we have to back through the whole thing, one undo button at a time, or we
+should just be able to start. There should be a button there: Restart."*
+
+`restartRstompPhrase()` clears the counting and puts the cursor back on count 1.
+It is on both interfaces — Undo and Restart side by side on the two-button row,
+Restart under the keypad, which is where he hit it.
+
+**It is the SAME phrase, not a new one**, and it is not a free pass: the attempt
+ladder, the streak and the tutorial's miss count all stand. The phrase in front
+of them is the one they got wrong; only the typing is thrown away.
+
+### The strip's edge fade DRIFTED INTO THE MIDDLE OF THE MUSIC
+Rob on Level 7: *"Something's overlaying the screen… there's a crotchet, a half
+note tied to a crotchet, and the three four of that tie is very misty."*
+
+It was not the tie, and it was not an edge effect either — **the first diagnosis
+(that it only bleached the right-hand edge) was wrong, and his screenshot is
+what disproved it.** The wash was sitting a third of the way across the strip,
+nowhere near an edge.
+
+`.rstomp-strip.scrollable::after` was a 24px white gradient to 0.95 opacity,
+`position: absolute; right: 0`, meant to hug the visible right edge and say
+"there is more music here". But an absolutely positioned child of a **scrolling
+container is positioned against the padding box and then scrolls with the
+content.** So the band is pinned to one point in the music — `clientWidth` from
+the content's left edge — and as the student scrolls it *travels left across the
+phrase*, bleaching whatever note it happens to be over. At scroll offset S it
+appears at `clientWidth − S`. Rob was at count 13 of 16, so it had drifted onto
+his tie; measured in the repro it landed on a tied crotchet, its stem, its tie
+curve and its counting digit, all washed to grey with black notes either side.
+
+So it was never "the last thing on screen fades" — **any note could be the misty
+one, and which one changed as you scrolled.**
+
+Now an inset `box-shadow` on the strip itself. It says the same thing and cannot
+drift, because an inset shadow paints against the border box and does not scroll
+with the content; and it darkens the white paper rather than washing the black
+ink, so contrast goes **up** where the gradient sent it to nothing.
+
+**The general rule, and this is the second instance: nothing decorative may sit
+on top of the notation.** The music and the counting are the content; chrome
+goes beside them or behind them, never over them. (The crop window that clipped
+tie curves was the same lesson — and on a tie level, an invisible tie is the
+whole level.)
+
+### The guide box is GOLD, and Full view is live
+Two of Rob's Level 6 notes, both about what the screen is telling him:
+
+- *"Bar 1 — write the counting under the notes… I think it just needs to stand
+  out a little bit more. Because it's got to be the guide. That's exactly what
+  that rectangle is. It's there with you for the whole game."* It is now gold,
+  matching the streak dots — the two things that speak to the student for the
+  whole level read as one voice, and nothing else on the screen is gold.
+- *"I don't know why Full score is darkened. Full score should be a button that
+  looks like it's ready to be pressed, not one that's already been depressed."*
+  It was grey-on-grey beside two live teal controls, so it read as disabled.
+  Same pill as Hear it and Jump to cursor now.
+
 ### The keypad is the level's labels — never hardcode it
 `renderRstompKeypad()` builds it from the level's label array: `1 2 3 4` at the
 crotchet grid, `1 2 3 4 +` at the quaver grid, plus `e` and `a` at the

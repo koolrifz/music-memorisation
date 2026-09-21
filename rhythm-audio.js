@@ -193,6 +193,54 @@ function raudioSnare(when, accent) {
     raudioTone(when, accent ? 190 : 170, 0.05, accent ? 0.26 : 0.18, 'triangle', 'rhythm');
 }
 
+/* THE BRUSH. Rob, on the two-button interface: "when I press Play it would be
+   nice to hear a sound like a snare drum, and when it says Nothing New, just a
+   whisper - like a brush sound from drums. Shhh. Swish." Then the whole level,
+   spoken as drums: "swish, crack, crack, swish, swish, swish, crack."
+
+   That is not decoration, it is the lesson made audible. A crack is an onset
+   and a swish is sustain, which is exactly the distinction the two buttons ask
+   about - so the student hears the answer they just gave in the same terms the
+   notation uses.
+
+   It has to sound like a brush and not like a quiet snare, so: no pitched body
+   at all (the snare's triangle thump is what makes it a hit), a longer and
+   softer envelope that swells rather than cracks, and a lower, wider band than
+   the snare's 1900Hz - a wire brush is air, not skin. */
+function raudioBrush(when) {
+    const ctx = raudioCtx;
+    const dur = 0.22;
+    const frames = Math.ceil(ctx.sampleRate * (dur + 0.02));
+    const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; filter.frequency.value = 3400; filter.Q.value = 0.5;
+    const amp = ctx.createGain();
+    // A swell, not a hit: up over 60ms, away over the rest.
+    amp.gain.setValueAtTime(0.0001, when);
+    amp.gain.linearRampToValueAtTime(0.16, when + 0.06);
+    amp.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    src.connect(filter).connect(amp).connect(raudioOut('rhythm'));
+    src.start(when); src.stop(when + dur + 0.02);
+}
+
+// One tap, one sound, right now - the answer the student just gave, played
+// back as the thing it means. Separate from the phrase scheduler: this is not
+// music in time, it is a button, so it wants no lookahead and must not disturb
+// a phrase that happens to be playing.
+function rstompAudioTap(kind) {
+    const ctx = rstompAudio();
+    if (!ctx) return false;
+    const when = ctx.currentTime + 0.005;
+    try {
+        if (kind === 'play') raudioSnare(when, true);
+        else raudioBrush(when);
+    } catch (err) { /* a dud tap sound must never block the answer */ }
+    return true;
+}
+
 // The backing track. Its own quieter bus, and a softer kick besides - a
 // backing track that competes with the rhythm is not a backing track.
 function raudioKick(when)  { const t = raudioCtx;
