@@ -193,7 +193,7 @@ level teaches: design brief **§13**. Do not invent a level order from the code.
 | Stage | Labels | Levels |
 |---|---|---|
 | **A — sustain and the bracket** | `1 2 3 4` | **BUILT, 9 levels** — see below |
-| **B — the quaver** | `1 + 2 + 3 + 4 +` | paired 8ths · mixed · single 8th · dotted quarter · syncopa · mixed + ties |
+| **B — the quaver** | `1 + 2 + 3 + 4 +` | **BUILT, 10 levels** — see below |
 | **C — 6/8** | `1 2 3 4 5 6` then `1 + a 2 + a` | in 6 · in 2 at speed |
 | **D — the semiquaver** | `1 e + a …` | four 16ths · mixed · patterns 1–2 · dotted 8th+16th · reversed · syncopation · review |
 
@@ -232,6 +232,57 @@ Anacrusis (after B3), accent (after B5) and Mystery Rhythms are slotted through
 existing levels rather than given levels of their own. **The anacrusis is the
 biggest content hole** — every generated phrase still starts on beat 1, and a
 pick-up is the sharpest test of where beat 1 is.
+
+### Stage B — built, ten levels, brief §13.6
+**Ten, not six.** An earlier version of this table said six; §13.6 is the later
+revision and carries Rob's own instruction — *"I think we need to develop a
+whole series around that area and spend some time there."* Stage B is the
+centre of gravity of the whole pillar.
+
+| # | Level | New idea |
+|---|---|---|
+| B1 | Paired quavers | **The beat divides** |
+| B2 | Quavers and longer notes | Divided beats among sustained ones |
+| B3 | Single quaver + quaver rest | An odd number of quavers in a beat |
+| B4 | Ties inside the bar | The long-hand drill, one generation down |
+| B5 | **The Pump** | Dotted crotchet + quaver, on the downbeat |
+| B6 | **The Pumps I** | The five positions that fit inside a bar |
+| B7 | **The Pumps II** | The three that cross the barline |
+| B8 | **Syncopation I** | Quaver / crotchet / quaver, every position |
+| B9 | **Syncopation II** | The figure anywhere, pumps in the vocabulary |
+| B10 | Review | Ties over every barline |
+
+### Figure displacement is a MECHANIC, not four hand-built levels
+A level names a figure and which positions to use; the generator walks it
+through the grid and **splits any note that runs over a barline into a tie**.
+The pumps split into B6/B7 for exactly that reason — five positions fit inside
+a bar, three do not. **A new named figure costs one line of config.**
+
+The pump is a dotted crotchet then a quaver: two onsets, always three quavers
+apart. **Even positions are DOWN–up, odd positions are up–DOWN** — the gap
+never changes, only whether each onset lands on a beat. Rob: *"in order to find
+an upbeat, you have to know exactly where the downbeat is."*
+
+### Phrase length is per level — keep the typing burden flat
+Stage A is 4 bars (16 slots), Stage B is 2 bars (16 slots). Four bars of
+semiquavers would be 64 slots, unreadable on a phone and brutal against an
+all-or-nothing gate. Set `bars` on the level; brief §13.10 has the table.
+
+### The keypad is the level's labels — never hardcode it
+`renderRstompKeypad()` builds it from the level's label array: `1 2 3 4` at the
+crotchet grid, `1 2 3 4 +` at the quaver grid, plus `e` and `a` at the
+semiquaver grid. This was hardcoded to four digits and **made every Stage B
+level unplayable by hand** — the student could see the `+` in the answer and
+had no key to type it. Automated tests missed it because they called
+`rstompKey()` directly; there is now a browser test that clicks real buttons.
+
+### Beaming, stems and bar width
+- Notes are beamed **by beat**, using the beat length the grid derives from the
+  label array. Four quavers in 4/4 are two beamed pairs, not one group of four.
+- **Stems are forced up.** On a one-line rhythm staff VexFlow sends them down,
+  which puts the beam in the same space as the counting row.
+- Bar width is **per slot**, not per bar — a quaver-grid bar holds twice the
+  events and needs twice the room.
 
 ### Engraving rules for rests — notes are not bound by them
 - **An all-rest bar is written as one whole rest**, never as smaller rests added
