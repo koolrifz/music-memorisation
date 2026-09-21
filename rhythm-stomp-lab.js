@@ -80,9 +80,11 @@ const RSTOMP_VOCABULARY = {
     'whole-note': { value: 'w', isRest: false },
     'whole-rest': { value: 'w', isRest: true },
     'dotted-half-note': { value: 'hd', isRest: false },
+    'dotted-half-rest': { value: 'hd', isRest: true },
     'half-note': { value: 'h', isRest: false },
     'half-rest': { value: 'h', isRest: true },
     'dotted-quarter-note': { value: 'qd', isRest: false },
+    'dotted-quarter-rest': { value: 'qd', isRest: true },
     'quarter-note': { value: 'q', isRest: false },
     'quarter-rest': { value: 'q', isRest: true },
     'dotted-eighth-note': { value: '8d', isRest: false },
@@ -284,6 +286,42 @@ const RSTOMP_LEVELS = [
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
              'quarter-rest', 'eighth-note', 'eighth-rest'],
+      tieLevel: true, tieChance: 1, scribe: true },
+
+    /* ===================== STAGE C - 6/8 in simple time =====================
+       Labels "1 2 3 4 5 6", FOUR bars (24 slots, brief S13.10).
+
+       Rob's decision: SIMPLE-TIME 6/8 COMES BEFORE SEMIQUAVERS, with the
+       quaver as the smallest value. 6/8 is taught as six beats in a bar first;
+       it returns after the semiquaver as Stage E, relabelled "1 + a 2 + a" and
+       counted in two at speed. The two are the same six-slot grid.
+
+       Two things here are not true anywhere else in the pillar:
+
+       THE BEAT IS NOT THE BEAM GROUP. The counting names every quaver, so the
+       beat is one slot - but quavers are still beamed in THREES, because the
+       dotted-crotchet pulse is what the eye reads. Every earlier level had the
+       two the same, so `beamSlots` exists for this.
+
+       THE BAR DIVIDES BY THREE. Its metric levels are 6-3-1, not 6-3-2-1, and
+       that changes where a rest may sit: a crotchet rest may cover quavers 1-2
+       or 2-3 of a group, but never 3-4, because that straddles the two groups.
+       "A multiple of its own length" would have allowed exactly that, which is
+       why the rule is stated against the bar's metric levels instead.
+       ===================================================================== */
+
+    // C1. Sometimes the quaver gets the beat.
+    { id: '20', label: 'Level 20: Six-Eight, Counted in Six', shortLabel: 'Six-Eight in Six',
+      labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
+      pool: ['dotted-half-rest', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      scribe: true },
+
+    // C2. Grouping in threes: the dotted crotchet fills a whole group, and
+    // ties join them.
+    { id: '21', label: 'Level 21: Six-Eight, Dotted Crotchets and Ties', shortLabel: 'Six-Eight Groups',
+      labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
+      pool: ['dotted-half-note', 'dotted-half-rest', 'dotted-quarter-note', 'dotted-quarter-rest',
+             'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
       tieLevel: true, tieChance: 1, scribe: true }
 ];
 
@@ -312,7 +350,14 @@ function rstompGridFor(level) {
             return next > 0 ? next : 1;
         })(),
         barsPerPhrase: level.bars || RSTOMP_BARS_PER_PHRASE,
+        // The BEAM GROUP, which is not always the beat. In 6/8 counted in six
+        // the beat is a quaver but quavers are still beamed in threes - the
+        // dotted-crotchet pulse is what the eye reads even when the counting
+        // names every quaver. Simple time has no such split, so this defaults
+        // to the beat and only compound levels declare it.
+        beamSlots: level.beamSlots || null,
         avoidRepeats: level.avoidRepeats || [],
+        metricLevels: rstompMetricLevels(labels.length),
         // The vocabulary, resolved onto THIS level's grid. A value that
         // doesn't land on the grid is dropped rather than silently rounded.
         units: (level.pool || []).map(key => {
@@ -328,6 +373,22 @@ function rstompGridFor(level) {
 // denominator is always right: 4 crotchet slots reads as 4/4, 8 quaver slots
 // as 8/8 (the same bar), 6 quaver slots as 6/8.
 const RSTOMP_VALUE_DENOMINATOR = { w: 1, h: 2, q: 4, '8': 8, '16': 16, '32': 32 };
+
+// The metric levels of a bar, coarsest first: the whole bar, then each way it
+// divides. 4/4 on the crotchet grid is 4-2-1; 6/8 is 6-3-1. Halving where it
+// can and thirding where it cannot is what makes compound time come out right.
+function rstompMetricLevels(slotsPerBar) {
+    const out = [];
+    let n = slotsPerBar;
+    while (n >= 1) {
+        out.push(n);
+        if (n === 1) break;
+        if (n % 2 === 0) n /= 2;
+        else if (n % 3 === 0) n /= 3;
+        else break;
+    }
+    return out;
+}
 
 function rstompVoiceMeter() {
     return { num: rstompSlotsPerBar, den: RSTOMP_VALUE_DENOMINATOR[rstompSlotValue] };
@@ -502,6 +563,7 @@ let rstompLabels = RSTOMP_LABELS_BEAT;
 let rstompSlotsPerBar = RSTOMP_LABELS_BEAT.length;
 let rstompSlotValue = 'q';
 let rstompSlotsPerBeat = 1;
+let rstompBeamSlots = 1;
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
 let rstompUndoStack = [];
 let rstompCursor = 0;
@@ -628,12 +690,16 @@ function handleRstompBackButton() {
 //     rests, and level A4's map needs bars holding three adjacent quarter
 //     rests. Rests in a bar that has any note in it do not merge.
 //
-//  2. A REST SITS ON ITS OWN BOUNDARY - engraving. A rest N slots long starts
-//     on a multiple of N, so a half rest may cover beats 1-2 or 3-4 but never
-//     2-3. NOTES ARE NOT RESTRICTED THIS WAY, and that asymmetry is real: a
-//     minim across beats 2 and 3 is ordinary syncopation, and it is exactly
-//     the figure level A6 is built on. Silence has to show the beat; sound is
-//     allowed to hide it.
+//  2. A REST NEVER STRADDLES A COARSER METRIC BOUNDARY - engraving. A half
+//     rest may cover beats 1-2 or 3-4 but never 2-3, because 2-3 straddles the
+//     middle of the bar. Stated against the bar's metric levels rather than as
+//     "a multiple of its own length", which is the same thing in simple time
+//     but wrong in compound: in 6/8 a crotchet rest may sit on quavers 1-2 or
+//     2-3 of a group but never across the 3/4 boundary between the groups,
+//     and "a multiple of 2" would have allowed exactly that.
+//     NOTES ARE NOT RESTRICTED THIS WAY, and the asymmetry is real: a minim
+//     across beats 2 and 3 is ordinary syncopation, and it is the figure level
+//     A6 is built on. Silence has to show the beat; sound may hide it.
 //
 //  3. avoidRepeats - LEVEL DESIGN, not engraving, and declared per level.
 //     Listing a unit key stops two of them being generated back to back.
@@ -666,7 +732,12 @@ function buildRstompUnitShapes(grid, targetSlots, startSlot) {
         if (isWholeBar && units.length > 1 && units.every(unit => unit.isRest)) return false;
         let slot = startSlot || 0;
         for (let i = 0; i < units.length; i++) {
-            if (units[i].isRest && slot % units[i].slots !== 0) return false;
+            // >= not >: a rest must align to the level of its OWN length too,
+            // or a half rest lands on beats 2-3.
+            if (units[i].isRest && grid.metricLevels.some(level =>
+                level >= units[i].slots
+                && Math.floor(slot / level) !== Math.floor((slot + units[i].slots - 1) / level)
+            )) return false;
             if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
             slot += units[i].slots;
         }
@@ -1160,6 +1231,7 @@ function startNewRstompPhrase() {
     rstompSlotsPerBar = grid.slotsPerBar;
     rstompSlotValue = grid.slotValue;
     rstompSlotsPerBeat = grid.slotsPerBeat;
+    rstompBeamSlots = grid.beamSlots || grid.slotsPerBeat;
     renderRstompKeypad();
     rstompSpecBars = generateRstompPhrase(level);
     rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
@@ -1770,7 +1842,7 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         // which the grid already knows.
         const beams = VF.Beam.generateBeams(notes, {
             stem_direction: 1,
-            groups: [new VF.Fraction(rstompSlotsPerBeat, RSTOMP_VALUE_DENOMINATOR[rstompSlotValue])]
+            groups: [new VF.Fraction(rstompBeamSlots, RSTOMP_VALUE_DENOMINATOR[rstompSlotValue])]
         });
         new VF.Formatter().joinVoices([voice]).format([voice], perBarWidth - 60);
         voice.draw(context, stave);
