@@ -703,20 +703,30 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 }
 @media (prefers-reduced-motion: reduce) { .rstomp-caret { transition: none; } }
 
-/* Absolutely positioned inside the scroll container, so it stays pinned to
-   the visible frame while the notation scrolls underneath it. */
+/* Lives in the status row BELOW the strip, not floating over it. It used to be
+   absolutely positioned inside the scroll frame, which pinned it over the
+   counting row and hid the bars being written - and it only ever appears when
+   the phrase is too wide to fit, i.e. on a phone, which is exactly when there
+   is no room to spare. */
 .rstomp-jump-chip {
-    position: absolute; left: 50%; transform: translateX(-50%); bottom: 6px;
     background: var(--bg-dark); color: var(--accent-teal); border: 1px solid var(--accent-teal);
     border-radius: 20px; padding: 5px 14px; font-family: inherit;
     font-size: 12px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+    white-space: nowrap;
 }
 
+/* Holds the count, the jump chip, Hear it and Full view. On a phone all four
+   at once don't fit on one line, so it wraps rather than squeezing words onto
+   two lines inside each button - and the chip is only ever on screen when the
+   phrase is scrolled away from the cursor, so three is the usual case. */
 .rstomp-strip-status {
     width: 100%; max-width: 960px; margin: 6px auto 0;
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
     font-size: 12px; font-weight: 700; color: var(--text-muted);
 }
+.rstomp-strip-status > * { white-space: nowrap; }
+#rstomp-strip-progress { flex: 1 1 auto; }
 .rstomp-fullview-btn {
     background: none; border: 2px solid #526b85; color: var(--text-muted);
     border-radius: 10px; padding: 5px 14px; font-family: inherit;
