@@ -560,6 +560,40 @@ The grader itself was checked at the same time and is sound: 300 Level 7
 phrases typed with the engine's own answer all graded clean, and every bar
 shape the level generates reproduces Rob's worked-examples table.
 
+### Audited against the standard grouping rules — 2/4, 3/4, 6/8
+Rob supplied the full conventions (ABRSM/Trinity, classical engraving practice)
+and asked how we stack up. Measured over 3,200 generated bars:
+
+| Rule | Us |
+|---|---|
+| Never beam across a barline | structurally impossible — one voice per bar |
+| Beams never cross a beat group | 0 of ~2,000 |
+| Beam starts on a beat, unless preceded by a rest or dotted note | 0 faulty starts. Every off-beat start has its group's downbeat already taken by a rest or a held note, which the standard allows |
+| 16ths grouped by the beat, max one beat per beam | 0 over-long beams |
+| 6/8 beamed in two groups of three, never six, never pairs | 0 six-note beams; `beamSlots: 3` on C1/C2 |
+| 3/4 never beamed 3+3 | would beam in pairs (`beamSlots` = the beat) — correct |
+| 2/4 quavers in pairs; all four together is *permitted*, not required | we beam in pairs |
+| 4/4 beams across beats 1–2 *permitted*, not required | we beam by beat — stricter, and satisfies it |
+
+**One real fault, and it was in a meter we don't ship yet.** The midpoint rule
+was keyed to "the half-bar is a metric level", which is true in 3/4 as well —
+so three plain crotchets in 3/4 came out as `q 8 8~ q`. The middle of a 3/4 bar
+falls in the **middle of beat 2** and is no landmark at all. `rstompMiddleOfBar()`
+now requires the midpoint to be a **main beat** (a beam-group boundary) *and*
+each half to hold **more than one beat**. That keeps 4/4 and 6/8 exactly as they
+were, drops 3/4 (no half-bar landmark) and drops 2/4 (each half is a single
+beat, so `♪ ♩ ♪` is how anyone would write it, and Rob's 2/4 section gives no
+note-tying rule).
+
+6/8 was checked the other way too: a crotchet straddling the two
+dotted-crotchet beats **is** split, which is Rob's own 6/8 line — *"longer
+undotted notes that cross a main beat are usually rewritten with ties."*
+
+**Known and accepted:** the equivalency scaffold beams tied notes together
+inside a beat (two tied quavers spelling a crotchet). Strict engraving would
+just write the crotchet — the scaffold breaks that deliberately, to show the
+long way. See "the equivalency scaffold".
+
 ### Stage C — built, two levels, brief §13.7
 | # | Level | New idea |
 |---|---|---|

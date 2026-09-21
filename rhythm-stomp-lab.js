@@ -888,9 +888,42 @@ function rstompRestsMustCombine(grid, slot, firstSlots, secondSlots) {
 // Can this note sit here without hiding the middle of the bar, either because
 // it doesn't cross it, because it starts the bar, or because the level can
 // spell it as tied notes across the middle?
-function rstompCanShowTheMiddle(grid, slot, unit) {
+// WHERE the middle of the bar is a landmark worth protecting, or null.
+//
+// Two conditions, and both are needed - checked against the standard grouping
+// rules for 2/4, 3/4 and 6/8:
+//
+//   - the midpoint must fall on a MAIN BEAT (a beam-group boundary). In 3/4
+//     the middle of the bar lands in the MIDDLE OF BEAT 2, which is no
+//     landmark at all: three plain crotchets came out as `q 8 8~ q`, which is
+//     nonsense. In 6/8 the same slot IS the second dotted-crotchet beat, so
+//     there it does apply - and Rob's 6/8 rule says exactly that, "longer
+//     undotted notes that cross a main beat are usually rewritten with ties".
+//   - each half must hold MORE THAN ONE beat. In 2/4 each half is a single
+//     beat, so there is no inner structure for a note to obscure, and
+//     `♪ ♩ ♪` is how anyone would write that bar. In 4/4 each half holds two
+//     beats and in 6/8 three, which is what makes the halfway line worth
+//     seeing.
+//
+// Everything shipping - 4/4 at all three grids, and 6/8 counted in six -
+// passes both, so this changes nothing today. It is what stops the rule
+// misfiring the moment a 3/4 or 2/4 level is added.
+function rstompMiddleOfBar(grid) {
+    // grid.beamSlots is null unless the level declares one - only compound
+    // levels do - so resolve it the same way startRstompLevel does. Reading it
+    // raw made `middle % null` NaN and silently switched the rule off for the
+    // whole of 4/4.
+    const beamSlots = grid.beamSlots || grid.slotsPerBeat;
     const middle = grid.slotsPerBar / 2;
-    if (grid.metricLevels.indexOf(middle) === -1) return true;
+    if (!Number.isInteger(middle)) return null;
+    if (middle % beamSlots !== 0) return null;
+    if (middle / grid.slotsPerBeat < 2) return null;
+    return middle;
+}
+
+function rstompCanShowTheMiddle(grid, slot, unit) {
+    const middle = rstompMiddleOfBar(grid);
+    if (middle === null) return true;
     if (unit.isRest || slot === 0) return true;
     const end = slot + unit.slots;
     if (slot >= middle || end <= middle) return true;
@@ -1062,8 +1095,8 @@ function rstompSpellSpan(start, end, grid) {
 }
 
 function rstompShowBeatThree(bars, grid) {
-    const middle = grid.slotsPerBar / 2;
-    if (grid.metricLevels.indexOf(middle) === -1) return bars;
+    const middle = rstompMiddleOfBar(grid);
+    if (middle === null) return bars;
     return bars.map(specs => {
         const out = [];
         let slot = 0;
