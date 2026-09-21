@@ -1970,7 +1970,21 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
                 // Nothing written inside it yet, so there is no span to
                 // centre across - park it on its own beat.
                 add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
-            } else if (run.bracketed && !owner.isOnset) {
+            } else if (!owner.isOnset) {
+                // No glyph above this slot, so there is nothing to left-align
+                // to - centre across the span, whether or not the student
+                // bracketed it. The `run.bracketed &&` that used to be part
+                // of this test contradicted the rule stated above, and cost
+                // Rob a Stage B level: an UNbracketed digit written on a
+                // held slot fell through to rule 1 and was drawn at the
+                // notehead of the note holding through it - i.e. exactly on
+                // top of that note's own onset digit, pixel for pixel. The
+                // student could no longer see what they had written, and
+                // every label after it was one position out of step with
+                // what they meant. Writing an unbracketed digit on a held
+                // slot is a real mistake and still marks wrong; it just has
+                // to be VISIBLE, because finding your own mistake is the
+                // skill this interface is built around.
                 const endLayout = layoutFor(run.endSlot) || layouts[layouts.length - 1];
                 const endBeat = layoutFor(run.endSlot) ? (run.endSlot % rstompSlotsPerBar) + 1 : rstompSlotsPerBar;
                 add(run.text, (startLayout.pulseX(startBeat) + endLayout.pulseX(endBeat)) / 2, true, run.wrong);

@@ -332,6 +332,29 @@ of the stave's real note area, which bunched every bar's notes into its
 left-hand two thirds and left a band of white space before each barline. It
 is now the note area itself (`getNoteEndX() - getNoteStartX() - 10`).
 
+### The counting row's alignment rule is "IS THERE A GLYPH ABOVE THIS TOKEN?"
+Not "is it a bracket?" — the comment above `renderRstompCountingRow` has said
+so all along, but the code asked `run.bracketed && !owner.isOnset`. So an
+**unbracketed** digit written on a held slot fell through to rule 1 and was
+drawn at the notehead of the note holding through it — **exactly on top of
+that note's own onset digit, pixel for pixel** (measured: both at x 89.8 on
+Level 10).
+
+It cost a Stage B level. Writing a bare `3` on the held half of a crotchet
+made the `3` vanish under the `2`, so every label after it was one position
+out of step with what the student meant, and the level looked like it was
+mis-tracking the grid. It is a real mistake and still marks wrong — it just
+has to be **visible**, because finding your own mistake is the skill this
+interface is built around. The test is now `!owner.isOnset` alone. Swept
+every scribe level, 25 phrases each, correct answer and all-bare-labels
+wrong answer: zero overlap anywhere.
+
+**A crotchet at the quaver grid is `2 (+)`.** Onset outside, held slot
+bracketed — the same rule as `1 (2 3 4)` for a semibreve, one generation
+down. B1 is the first level where a crotchet stops being one slot, so it is
+the first place this bites. Dropping the held slot would break one-key-
+per-slot typing and make B3 (single quaver + quaver rest) unwritable.
+
 ### The staff's crop window has to clear the TIE, not the noteheads
 The 130px VexFlow canvas is cropped back to the band the music occupies. That
 crop used to be a fixed `-30px` against a 60px window — visible to canvas
