@@ -196,7 +196,13 @@ const RSTOMP_LEVELS = [
     // figure one generation up: crotchet / minim / crotchet, onsets on 1, 2
     // and 4, counted "1 2 (3) 4". Syncopation does NOT wait for quavers - it
     // arrives here, where the student already has the vocabulary, and it seeds
-    // the anacrusis at the same time. Rob: "It really has to pop back in on
+    // the anacrusis at the same time.
+    //
+    // The minim is WRITTEN as two tied crotchets, because it would otherwise
+    // hide beat 3 (see rstompShowBeatThree). Rhythm and counting are unchanged
+    // - "1 2 (3) 4" either way - and the tie now says in the notation exactly
+    // what the bracket says in the counting: beat 3 is not re-struck. Ties are
+    // not new to the student here; A5 already sprinkles long-hand. Rob: "It really has to pop back in on
     // beat 4. Beat 4 opens the door. It opens the door to beat 1. It's a
     // pickup beat."
     { id: '6', label: 'Level 6: Syncopation', shortLabel: 'Syncopation',
@@ -879,6 +885,18 @@ function rstompRestsMustCombine(grid, slot, firstSlots, secondSlots) {
         level >= merged && Math.floor(slot / level) !== Math.floor((slot + merged - 1) / level));
 }
 
+// Can this note sit here without hiding the middle of the bar, either because
+// it doesn't cross it, because it starts the bar, or because the level can
+// spell it as tied notes across the middle?
+function rstompCanShowTheMiddle(grid, slot, unit) {
+    const middle = grid.slotsPerBar / 2;
+    if (grid.metricLevels.indexOf(middle) === -1) return true;
+    if (unit.isRest || slot === 0) return true;
+    const end = slot + unit.slots;
+    if (slot >= middle || end <= middle) return true;
+    return Boolean(rstompSpellSpan(slot, middle, grid) && rstompSpellSpan(middle, end, grid));
+}
+
 function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
     const unitOf = key => grid.units.find(unit => unit.key === key);
     const units = shape.map(unitOf);
@@ -896,6 +914,11 @@ function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
         if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
         if (i > 0 && units[i].isRest && units[i - 1].isRest
             && rstompRestsMustCombine(grid, slot - units[i - 1].slots, units[i - 1].slots, units[i].slots)) return false;
+        // A note that hides the middle of the bar is re-spelled as tied notes
+        // (rstompShowBeatThree). Where the level's own vocabulary can't spell
+        // the two halves, don't generate it at all rather than reach for a
+        // value the level hasn't taught.
+        if (!rstompCanShowTheMiddle(grid, slot, units[i])) return false;
         slot += units[i].slots;
     }
     return true;
@@ -944,6 +967,7 @@ function rstompPickUnitShape(grid, targetSlots, startSlot) {
             const previous = shape.length ? unitOf(shape[shape.length - 1]) : null;
             if (previous && previous.isRest && unit.isRest
                 && rstompRestsMustCombine(grid, slot - previous.slots, previous.slots, unit.slots)) continue;
+            if (!rstompCanShowTheMiddle(grid, slot, unit)) continue;
             const got = walk(remaining - unit.slots, slot + unit.slots, [...shape, unit.key]);
             if (got) return got;
         }
@@ -1007,10 +1031,15 @@ function buildRstompBarShapes(grid) {
 // Stage A, and 6/8 counted in six - every note starts on a beat, so the test
 // never fires and nothing changes. It bites at the quaver and semiquaver
 // grids, which is where a note can start off the beat at all.
-function rstompValueForSlots(slots, slotValue) {
-    const found = Object.keys(RSTOMP_VOCABULARY).map(key => RSTOMP_VOCABULARY[key])
-        .find(entry => !entry.isRest && rstompSlotsFor(entry.value, slotValue) === slots);
-    return found ? found.value : null;
+// The single note THIS LEVEL teaches that lasts exactly `slots`, or null.
+// Distinct from rstompValueForSlots above, which searches the whole value
+// ladder: splitting a minim into two tied crotchets is no use on a level that
+// hasn't met the crotchet, so a span the level's own pool can't spell isn't
+// re-spelled at all - the generator is told not to produce it in the first
+// place (rstompCanShowTheMiddle).
+function rstompLevelValueForSlots(slots, grid) {
+    const unit = grid.units.find(entry => !entry.isRest && entry.slots === slots);
+    return unit ? unit.value : null;
 }
 
 // Spell a span as tied notes. One note where one value covers it; otherwise
@@ -1019,7 +1048,7 @@ function rstompValueForSlots(slots, slotValue) {
 // semiquaver of beat 1 to beat 3 is a dotted quaver tied to a crotchet tied to
 // a semiquaver, not one impossible note.
 function rstompSpellSpan(start, end, grid) {
-    const value = rstompValueForSlots(end - start, grid.slotValue);
+    const value = rstompLevelValueForSlots(end - start, grid);
     if (value) return [{ slots: end - start, value }];
     for (const level of grid.metricLevels) {
         const cut = Math.ceil((start + 1) / level) * level;
@@ -1040,8 +1069,7 @@ function rstompShowBeatThree(bars, grid) {
         let slot = 0;
         specs.forEach(spec => {
             const end = slot + spec.slots;
-            const hidesTheMiddle = !spec.isRest && slot < middle && end > middle
-                                   && slot % grid.slotsPerBeat !== 0;
+            const hidesTheMiddle = !spec.isRest && slot < middle && end > middle && slot !== 0;
             const before = hidesTheMiddle ? rstompSpellSpan(slot, middle, grid) : null;
             const after = hidesTheMiddle ? rstompSpellSpan(middle, end, grid) : null;
             if (before && after) {
