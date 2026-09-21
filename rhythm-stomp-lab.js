@@ -2499,15 +2499,27 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
                 // Nothing written inside it yet, so there is no span to
                 // centre across - park it on its own beat.
                 add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
-            } else if (startLayout.centredRest) {
-                // The glyph is centred in the bar, so its counting centres too -
-                // left-aligning to a centred rest would start the bracket at the
-                // middle of the bar and run it off the end.
-                add(run.text, (startLayout.pulseX(0) + startLayout.pulseX(rstompSlotsPerBar)) / 2, true, run.wrong);
-            } else if (!owner.isOnset) {
+            } else if (startLayout.centredRest || !owner.isOnset) {
                 // No glyph above this slot, so there is nothing to left-align
                 // to - centre across the span, whether or not the student
-                // bracketed it. The `run.bracketed &&` that used to be part
+                // bracketed it.
+                //
+                // A CENTRED REST TAKES THIS RULE TOO, for the same reason: a
+                // whole-bar rest hangs in the middle of the bar and belongs to
+                // every slot, so no single slot has a glyph over it. It used
+                // to get a branch of its own that drew the token at the bar's
+                // centre - right for the one run that IS the whole bar, and
+                // wrong for every other, because they all landed on that one
+                // point. A student who wrote six separate labels in a 6/8
+                // whole-rest bar got five of them stacked on one pixel
+                // (measured at x 517.5, C1 and C2). Anchoring the onset token
+                // at noteX was no better: a centred rest's noteX is the bar
+                // centre, so the token sat three slots from the label it was.
+                // The span rule handles both - for a run covering the whole
+                // bar it gives exactly the old centred position, and for
+                // anything shorter it spreads across the slots written.
+                //
+                // The `run.bracketed &&` that used to be part
                 // of this test contradicted the rule stated above, and cost
                 // Rob a Stage B level: an UNbracketed digit written on a
                 // held slot fell through to rule 1 and was drawn at the
@@ -2530,9 +2542,7 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
         layouts.forEach((layout, position) => {
             buildRstompCountingTokens(barOffset + position).forEach(token => {
                 const owner = layout.beatOwner[token.startBeat];
-                if (layout.centredRest) {
-                    add(token.text, (layout.pulseX(0) + layout.pulseX(rstompSlotsPerBar)) / 2, true, false);
-                } else if (token.kind === 'hold' && !owner.isOnset) {
+                if (layout.centredRest || (token.kind === 'hold' && !owner.isOnset)) {   // as above
                     add(token.text, (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2, true, false);
                 } else {
                     add(token.text, layout.noteX[owner.specIndex], false, false);

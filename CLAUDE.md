@@ -692,6 +692,20 @@ interface is built around. The test is now `!owner.isOnset` alone. Swept
 every scribe level, 25 phrases each, correct answer and all-bare-labels
 wrong answer: zero overlap anywhere.
 
+**A CENTRED REST TAKES THE SAME RULE, and this was a second stack.** A
+whole-bar rest in 6/8 hangs in the middle of the bar and belongs to every slot,
+so no single slot has a glyph over it — but it had a branch of its own that drew
+the token at the bar's centre. Right for the one run that *is* the whole bar;
+wrong for every other, because they all landed on that same point. A student
+writing six separate labels in a 6/8 whole-rest bar got **five of them stacked
+on one pixel** (measured at x 517.5, C1 and C2). Anchoring the onset token at
+`noteX` instead is no better — a centred rest's `noteX` *is* the bar centre, so
+the token sits three slots away from the label it is. The span rule handles
+both: for a run covering the whole bar it gives exactly the old centred
+position, and for anything shorter it spreads across the slots written. Swept
+all 25 scribe levels, correct answer and all-bare-labels wrong answer: zero
+overlap anywhere.
+
 **A crotchet at the quaver grid is `2 (+)`.** Onset outside, held slot
 bracketed — the same rule as `1 (2 3 4)` for a semibreve, one generation
 down. B1 is the first level where a crotchet stops being one slot, so it is
