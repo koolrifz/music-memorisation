@@ -458,6 +458,33 @@ Stage A is 4 bars (16 slots), Stage B is 2 bars (16 slots). Four bars of
 semiquavers would be 64 slots, unreadable on a phone and brutal against an
 all-or-nothing gate. Set `bars` on the level; brief §13.10 has the table.
 
+### The tutorial's counting is TYPED OUT, one label per answer
+It used to wait for a note's whole group to be answered before any of it
+appeared, on the reasoning that half a group would put an unfinished bracket on
+screen. On Level 1 that means a semibreve's `1 (2 3 4)` lands in one lump on the
+fourth tap and nothing happens on the first three. Rob, playing it: *"counting
+not being produced as typed; only when you get to beat 4 does it all show."*
+
+`buildRstompCountingTokens()` now takes the answered **prefix**, so a group
+still being built shows its opening bracket with no closing one:
+
+```
+tap 1  PLAY          1
+tap 2  NOTHING NEW   1 (2
+tap 3  NOTHING NEW   1 (2 3
+tap 4  NOTHING NEW   1 (2 3 4)
+```
+
+That is exactly how the keypad already draws a bracket the student has opened
+and not yet closed, so the two interfaces still agree on what an unfinished
+group looks like.
+
+**Unchanged, and worth knowing:** the student's answer on a note's FIRST beat
+decides plain-vs-bracketed; the grouping itself comes from the written note. So
+a wrong "PLAY" on beat 3 of a semibreve still draws inside the bracket rather
+than showing what they actually said. Grading catches it — the display doesn't.
+**Open for Rob:** whether the tutorial should show the wrong answer as given.
+
 ### The keypad is the level's labels — never hardcode it
 `renderRstompKeypad()` builds it from the level's label array: `1 2 3 4` at the
 crotchet grid, `1 2 3 4 +` at the quaver grid, plus `e` and `a` at the
