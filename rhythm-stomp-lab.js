@@ -195,9 +195,102 @@ const RSTOMP_LEVELS = [
     { id: '9', label: 'Level 9: Ties Across the Barline', shortLabel: 'Ties Across the Barline',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      tieLevel: true, tieChance: 1, scribe: true },
+
+    /* ===================== STAGE B - the quaver =====================
+       Labels "1 + 2 + 3 + 4 +", TWO bars (design brief S13.10: 2 bars of
+       quavers is 16 slots, the same typing burden as 4 bars of crotchets).
+
+       THE CENTRE OF GRAVITY OF THE WHOLE PILLAR, and ten levels on Rob's
+       instruction: "I think we need to develop a whole series around that
+       area and spend some time there." The first subdivision of the beat is
+       where the real work is; everything finer is the same skill smaller.
+       ================================================================= */
+
+    // B1. The beat divides. Quavers against the crotchet they split - the
+    // contrast is the lesson, so a level of quavers alone would teach less.
+    { id: '10', label: 'Level 10: Paired Quavers', shortLabel: 'Paired Quavers',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['quarter-note', 'quarter-rest', 'eighth-note'],
+      beamPairsOnly: true, scribe: true },
+
+    // B2. Divided beats among sustained ones.
+    { id: '11', label: 'Level 11: Quavers and Longer Notes', shortLabel: 'Quavers and Longer',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest',
+             'quarter-note', 'quarter-rest', 'eighth-note'],
+      beamPairsOnly: true, scribe: true },
+
+    // B3. An odd number of quavers in a beat, and the off-beat rest - the
+    // first time a beat is not either whole or evenly halved.
+    { id: '12', label: 'Level 12: Single Quavers and Quaver Rests', shortLabel: 'Single Quavers',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'half-rest', 'quarter-note', 'quarter-rest',
+             'eighth-note', 'eighth-rest'], scribe: true },
+
+    // B4. Ties at this grid - the long-hand drill one generation down. Two
+    // quavers tied make a crotchet; a quaver tied to a crotchet makes a
+    // dotted crotchet, which is the figure B5 then uses in plain notation.
+    { id: '13', label: 'Level 13: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
+             'eighth-note', 'eighth-rest'],
+      spellOut: ['q', 'qd'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
+
+    // B5. THE PUMP, introduced on the downbeat. Rob's named figure: a dotted
+    // crotchet then a quaver, two onsets always three quavers apart. On beat 1
+    // the quaver lands on the "+" of 2, ANTICIPATING beat 3 - that flip into
+    // the second strong beat is the funk in it.
+    { id: '14', label: 'Level 14: The Pump', shortLabel: 'The Pump',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'downbeat' }, scribe: true },
+
+    // B6. THE PUMPS I - the five positions that fit inside a bar.
+    { id: '15', label: 'Level 15: The Pumps Walk the Bar', shortLabel: 'Pumps in the Bar',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
+
+    // B7. THE PUMPS II - the three that cross the barline, where the dotted
+    // crotchet has to be written as a tie because a written note cannot cross
+    // a barline either. Same rule as the counting bracket, and here it is the
+    // lesson rather than an inconvenience.
+    { id: '16', label: 'Level 16: Pumps Across the Barline', shortLabel: 'Pumps Across the Bar',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'crossing' }, scribe: true },
+
+    // B8. SYNCOPATION I - quaver / crotchet / quaver, the A6 figure now at
+    // quaver resolution, walked through every position it fits.
+    { id: '17', label: 'Level 17: Syncopation', shortLabel: 'Syncopation',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'in-bar' },
+      scribe: true },
+
+    // B9. SYNCOPATION II - the syncopation figure anywhere, including across
+    // the barline, with the pumps already in the vocabulary.
+    { id: '18', label: 'Level 18: Syncopation and Pumps', shortLabel: 'Syncopation + Pumps',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
+             'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'all' },
+      scribe: true },
+
+    // B10. Barline ties and review - everything Stage B has taught, with a
+    // tie over every barline.
+    { id: '19', label: 'Level 19: Quaver Review', shortLabel: 'Quaver Review',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
+             'quarter-rest', 'eighth-note', 'eighth-rest'],
       tieLevel: true, tieChance: 1, scribe: true }
 ];
 
+// Default bars per phrase. Stages set their own so the TYPING BURDEN stays
+// roughly constant (design brief S13.10): 4 bars of crotchets and 2 bars of
+// quavers are both 16 slots. Four bars of semiquavers would be 64, which is
+// unreadable on a phone and brutal against an all-or-nothing gate.
 const RSTOMP_BARS_PER_PHRASE = 4;
 
 // Everything the rest of the file needs to know about the active level's
@@ -210,6 +303,15 @@ function rstompGridFor(level) {
         labels,
         slotValue,
         slotsPerBar: labels.length,
+        // How many slots make one BEAT, read off the label array itself: the
+        // gap to the next numeral. "1 + 2 +" is 2 slots to a beat, "1 e + a"
+        // is 4, "1 + a" (compound, in 2) is 3, "1 2 3 4" is 1. Nothing extra
+        // to declare - the labels already say what the beat is.
+        slotsPerBeat: (() => {
+            const next = labels.findIndex((l, i) => i > 0 && /^[0-9]/.test(l));
+            return next > 0 ? next : 1;
+        })(),
+        barsPerPhrase: level.bars || RSTOMP_BARS_PER_PHRASE,
         avoidRepeats: level.avoidRepeats || [],
         // The vocabulary, resolved onto THIS level's grid. A value that
         // doesn't land on the grid is dropped rather than silently rounded.
@@ -399,6 +501,7 @@ let rstompPositions = [];       // flat [{barIndex, slotIndex}] - one per slot i
 let rstompLabels = RSTOMP_LABELS_BEAT;
 let rstompSlotsPerBar = RSTOMP_LABELS_BEAT.length;
 let rstompSlotValue = 'q';
+let rstompSlotsPerBeat = 1;
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
 let rstompUndoStack = [];
 let rstompCursor = 0;
@@ -577,7 +680,9 @@ function buildRstompBarShapes(grid) {
 
 function generateRstompPhrase(level) {
     const grid = rstompGridFor(level);
-    const bars = level.tieLevel ? generateRstompPhraseWithTie(level, grid) : generateRstompPhraseNormal(level, grid);
+    const bars = level.figure ? generateRstompPhraseWithFigure(level, grid)
+               : level.tieLevel ? generateRstompPhraseWithTie(level, grid)
+               : generateRstompPhraseNormal(level, grid);
     return rstompApplyLonghand(bars, level, grid);
 }
 
@@ -587,7 +692,7 @@ function generateRstompPhraseNormal(level, grid) {
     const shapes = buildRstompBarShapes(grid);
     const counts = new Array(shapes.length).fill(0);
     const chosenIndices = [];
-    for (let i = 0; i < RSTOMP_BARS_PER_PHRASE; i++) {
+    for (let i = 0; i < grid.barsPerPhrase; i++) {
         const allIndices = shapes.map((_, index) => index);
         let candidates = allIndices.filter(index => counts[index] < 2 && index !== chosenIndices[i - 1]);
         if (candidates.length === 0) candidates = allIndices.filter(index => index !== chosenIndices[i - 1]);
@@ -626,6 +731,117 @@ function rstompShapeToSpecs(shape, grid) {
         const unit = grid.units.find(entry => entry.key === key);
         return { slots: unit.slots, value: unit.value, isRest: unit.isRest };
     });
+}
+
+/* =========================================================================
+   FIGURE DISPLACEMENT — one mechanic, many levels
+
+   Take a short rhythmic figure, walk it through every position in the grid,
+   and have the student count each placement. That is ALL the pump levels and
+   both syncopation levels (design brief S13.6b); adding a new named figure
+   costs one line of config, not a new level design.
+
+   THE PUMPS are Rob's name for a dotted crotchet followed by a quaver - two
+   onsets, always exactly three quavers apart, "everywhere in music". Eight
+   positions exist in 4/4 at the quaver grid; five sit inside a bar and three
+   cross the barline, which is the split between B6 and B7.
+
+   The pattern underneath, which is the whole teaching payload: EVEN POSITIONS
+   ARE DOWN-UP, ODD POSITIONS ARE UP-DOWN. The gap between the onsets never
+   changes; what changes is only whether each onset lands on a beat. Rob: "in
+   order to find an upbeat, you have to know exactly where the downbeat is."
+
+   A figure that crosses a barline is SPLIT INTO A TIE, because a written note
+   cannot cross one. That is not a special case bolted on - it is the same rule
+   that makes the counting bracket stop at the barline, and at B7 it is the
+   lesson rather than an inconvenience.
+   ========================================================================= */
+
+// Fill one bar's free slots around whatever is already placed in it.
+function rstompFillGaps(placed, barStart, grid) {
+    const taken = new Array(grid.slotsPerBar).fill(false);
+    placed.forEach(spec => {
+        for (let k = 0; k < spec.slots; k++) taken[spec.start - barStart + k] = true;
+    });
+    const out = placed.slice();
+    let slot = 0;
+    while (slot < grid.slotsPerBar) {
+        if (taken[slot]) { slot++; continue; }
+        let end = slot;
+        while (end < grid.slotsPerBar && !taken[end]) end++;
+        const shapes = buildRstompUnitShapes(grid, end - slot, slot);
+        if (!shapes.length) return null;              // this placement is unfillable
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        let at = slot;
+        rstompShapeToSpecs(shape, grid).forEach(spec => {
+            out.push({ ...spec, start: barStart + at });
+            at += spec.slots;
+        });
+        slot = end;
+    }
+    return out.sort((a, b) => a.start - b.start);
+}
+
+// Lay a figure's notes down from an absolute start slot, splitting any note
+// that runs over a barline into two tied notes.
+function rstompPlaceFigure(figure, at, grid) {
+    const out = [];
+    let slot = at;
+    figure.forEach(part => {
+        let left = part.slots;
+        let tied = false;
+        while (left > 0) {
+            const room = grid.slotsPerBar - (slot % grid.slotsPerBar);
+            const take = Math.min(left, room);
+            const value = rstompValueForSlots(take, grid.slotValue);
+            if (!value) return null;
+            out.push({ slots: take, value, isRest: !!part.isRest, tied, start: slot });
+            slot += take; left -= take; tied = true;
+        }
+    });
+    return out.some(x => !x.value) ? null : out;
+}
+
+function rstompFigurePositions(level, grid) {
+    const total = figureSlots(level.figure.notes);
+    const span = grid.slotsPerBar * grid.barsPerPhrase;
+    const want = level.figure.positions || 'all';
+    const out = [];
+    for (let at = 0; at + total <= span; at++) {
+        const crosses = Math.floor(at / grid.slotsPerBar)
+                     !== Math.floor((at + total - 1) / grid.slotsPerBar);
+        if (want === 'downbeat' && (crosses || at % grid.slotsPerBar !== 0)) continue;
+        if (want === 'in-bar' && crosses) continue;
+        if (want === 'crossing' && !crosses) continue;
+        out.push(at);
+    }
+    return out;
+}
+
+function figureSlots(notes) {
+    return notes.reduce((n, part) => n + part.slots, 0);
+}
+
+function generateRstompPhraseWithFigure(level, grid) {
+    const positions = rstompFigurePositions(level, grid);
+    // Try placements until one leaves a fillable bar. A figure sitting across
+    // beat 4 can leave a single slot the level's vocabulary cannot fill.
+    const order = positions.slice().sort(() => Math.random() - 0.5);
+    for (const at of order) {
+        const figure = rstompPlaceFigure(level.figure.notes, at, grid);
+        if (!figure) continue;
+        const bars = [];
+        let good = true;
+        for (let b = 0; b < grid.barsPerPhrase && good; b++) {
+            const barStart = b * grid.slotsPerBar;
+            const mine = figure.filter(x => x.start >= barStart && x.start < barStart + grid.slotsPerBar);
+            const filled = rstompFillGaps(mine, barStart, grid);
+            if (!filled) { good = false; break; }
+            bars.push(filled.map(({ start, ...spec }) => spec));
+        }
+        if (good) return bars;
+    }
+    return generateRstompPhraseNormal(level, grid);
 }
 
 // A tied note can sit on ANY barline. It used to be restricted to the 0/1
@@ -670,21 +886,25 @@ function generateRstompPhraseWithTie(level, grid) {
     const barB = [{ slots: s, value: tieValue(s), isRest: false, tied: true }, ...rstompShapeToSpecs(tailShape, grid)];
 
     const normalShapes = buildRstompBarShapes(grid);
+    const spare = Math.max(0, grid.barsPerPhrase - 2);
     const pickNormalShape = previousShape => {
         const candidates = normalShapes.filter(shape => shape.join() !== (previousShape || []).join());
         const options = candidates.length ? candidates : normalShapes;
         return options[Math.floor(Math.random() * options.length)];
     };
-    const normalShape1 = pickNormalShape(null);
-    const normalShape2 = pickNormalShape(normalShape1);
-    const normalBars = [rstompShapeToSpecs(normalShape1, grid), rstompShapeToSpecs(normalShape2, grid)];
+    const normalBars = [];
+    let previousShape = null;
+    for (let i = 0; i < spare; i++) {
+        previousShape = pickNormalShape(previousShape);
+        normalBars.push(rstompShapeToSpecs(previousShape, grid));
+    }
 
     // The tied pair occupies boundary/boundary+1; the remaining bars take
     // the untied ones in order.
-    const boundary = Math.floor(Math.random() * (RSTOMP_BARS_PER_PHRASE - 1));
+    const boundary = Math.floor(Math.random() * (grid.barsPerPhrase - 1));
     const bars = [];
     let nextNormal = 0;
-    for (let index = 0; index < RSTOMP_BARS_PER_PHRASE; index++) {
+    for (let index = 0; index < grid.barsPerPhrase; index++) {
         if (index === boundary) bars.push(barA);
         else if (index === boundary + 1) bars.push(barB);
         else bars.push(normalBars[nextNormal++]);
@@ -939,6 +1159,8 @@ function startNewRstompPhrase() {
     rstompLabels = grid.labels;
     rstompSlotsPerBar = grid.slotsPerBar;
     rstompSlotValue = grid.slotValue;
+    rstompSlotsPerBeat = grid.slotsPerBeat;
+    renderRstompKeypad();
     rstompSpecBars = generateRstompPhrase(level);
     rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
     rstompPositions = buildRstompPositions(rstompPhrase);
@@ -961,6 +1183,36 @@ function startNewRstompPhrase() {
 // ever on screen. The two-button row is not a legacy path - it is the
 // tutorial interface, and deleting it would take the only version a child who
 // can't yet write numerals can play (see CLAUDE.md).
+// The keypad IS the level's distinct labels, in the order they first appear.
+// At the crotchet grid that is "1 2 3 4"; at the quaver grid it is
+// "1 2 3 4 +"; the semiquaver grid adds "e" and "a", and 6/8 in 6 runs to 6.
+// Hardcoding four digits made every Stage B level unplayable by hand - the
+// student could see the "+" in the answer and had no key to type it.
+function renderRstompKeypad() {
+    const row = document.getElementById('rstomp-key-row-labels');
+    if (!row) return;
+    // Numerals first, in order, then the off-beat labels in the order they
+    // fall inside a beat: "1 2 3 4 +" at the quaver grid, "1 2 3 4 e + a" at
+    // the semiquaver grid. First-appearance order alone would sit the "+"
+    // between 1 and 2, which reads as part of the count rather than a key.
+    const seen = [];
+    rstompLabels.forEach(label => { if (seen.indexOf(label) === -1) seen.push(label); });
+    const numerals = seen.filter(l => /^[0-9]/.test(l));
+    const offbeats = seen.filter(l => !/^[0-9]/.test(l))
+        .sort((a, b) => rstompLabels.indexOf(a) - rstompLabels.indexOf(b));
+    seen.length = 0;
+    seen.push(...numerals, ...offbeats);
+    row.innerHTML = '';
+    seen.forEach(label => {
+        const key = document.createElement('button');
+        key.className = 'rstomp-key';
+        key.dataset.digit = label;
+        key.textContent = label;
+        key.onclick = () => rstompKey(label);
+        row.appendChild(key);
+    });
+}
+
 function applyRstompInterface() {
     const twoButton = document.getElementById('rstomp-controls-twobutton');
     const keypad = document.getElementById('rstomp-controls-keypad');
@@ -1009,7 +1261,12 @@ function updateRstompPrompt() {
     if (rstompScribe) {
         if (rstompRevealed) { el.textContent = "Here's the counting."; return; }
         if (rstompWriting && rstompWriting.inside) { el.textContent = 'Bracket open — count the beats it holds for, then close it.'; return; }
-        if (rstompCursor >= rstompPositions.length) { el.textContent = 'All four bars written — check your answer below.'; return; }
+        // Not "all four bars": Stage B phrases are two bars, and later stages
+        // set their own length.
+        if (rstompCursor >= rstompPositions.length) {
+            el.textContent = `All ${rstompPhrase.length} bars written — check your answer below.`;
+            return;
+        }
         const bar = Math.floor(rstompCursor / rstompSlotsPerBar) + 1;
         el.textContent = `Bar ${bar} — write the counting under the notes.`;
         return;
@@ -1039,7 +1296,7 @@ function updateRstompButtonStates() {
         if (open) open.disabled = rstompLocked || full || rstompWriting.inside;
         if (close) close.disabled = rstompLocked || !rstompWriting.inside;
         if (erase) erase.disabled = rstompLocked || !rstompWriting.groups.length;
-        // Submit is live as soon as all four bars are accounted for, even
+        // Submit is live as soon as every bar is accounted for, even
         // with a bracket left hanging open. Refusing to submit would hide
         // the mistake; marking it wrong is the honest answer.
         document.getElementById('rstomp-submit-button').disabled = rstompLocked || !full;
@@ -1070,8 +1327,13 @@ function updateRstompButtonStates() {
 // writing it IS the game rather than a readout of two-button answers. The
 // cost is scrolling sooner on a phone, which is exactly what the strip and
 // the full view are for.
-const RSTOMP_MIN_BAR_WIDTH = 140;
-const RSTOMP_MAX_BAR_WIDTH = 190;   // above this bars just look sparse on a big screen
+// Bar width is PER SLOT, not per bar. A bar of the quaver grid holds twice
+// the events of a crotchet-grid bar and needs twice the room; at the old flat
+// 140 the noteheads collided and the counting row underneath was unreadable.
+// 35px a slot reproduces the widths Stage A was tuned at (4 slots -> 140).
+const RSTOMP_MIN_SLOT_WIDTH = 35;
+const RSTOMP_MAX_SLOT_WIDTH = 48;   // above this bars just look sparse on a big screen
+const RSTOMP_MIN_BAR_WIDTH = 140;   // the floor a single bar is still legible at
 const RSTOMP_CURSOR_ANCHOR = 0.3;   // where the cursor parks after a scroll; the rest is look-ahead
 
 let rstompLayouts = [];
@@ -1084,7 +1346,9 @@ let rstompStripListenersReady = false;
 function rstompBarWidth(barCount) {
     const strip = document.getElementById('rstomp-strip');
     const available = (strip ? strip.clientWidth : 360) - 12; // strip's own padding
-    return Math.max(RSTOMP_MIN_BAR_WIDTH, Math.min(RSTOMP_MAX_BAR_WIDTH, available / barCount));
+    const min = RSTOMP_MIN_SLOT_WIDTH * rstompSlotsPerBar;
+    const max = RSTOMP_MAX_SLOT_WIDTH * rstompSlotsPerBar;
+    return Math.max(min, Math.min(max, available / barCount));
 }
 
 function renderRstompBars() {
@@ -1209,7 +1473,7 @@ function openRstompFullView() {
     // whole layout exists to get rid of, so the largest divisor that fits
     // wins rather than simply the most bars that fit.
     const available = host.clientWidth;
-    const capacity = Math.max(1, Math.floor(available / RSTOMP_MIN_BAR_WIDTH));
+    const capacity = Math.max(1, Math.floor(available / (RSTOMP_MIN_SLOT_WIDTH * rstompSlotsPerBar)));
     const barCount = rstompPhrase.length;
     let barsPerSystem = 1;
     for (let size = barCount; size >= 1; size--) {
@@ -1483,7 +1747,12 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             // table, and no way for the drawn note and the counted slots to
             // disagree, since the generator set both from the same unit.
             const duration = spec.value;
-            const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+            // Stems always UP on a one-line rhythm staff. Left to VexFlow the
+            // notehead sits on the middle line and the stem is sent DOWN, which
+            // on a stave with only that line visible puts the beam in the same
+            // space as the counting row.
+            const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], stem_direction: 1,
+                duration: spec.isRest ? `${duration}r` : duration });
             // VexFlow reads the "d" suffix for TICKS but does not draw the dot
             // from it - a dotted minim comes out looking exactly like a plain
             // minim, with the bar still filling correctly and no error raised.
@@ -1495,8 +1764,17 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         });
         const meter = rstompVoiceMeter();
         const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den }).addTickables(notes);
+        // Beam by BEAT, not by adjacency - four quavers in 4/4 are two beamed
+        // pairs, not one group of four, and the beam is what makes the beat
+        // visible before the counting is read. The group length is the beat,
+        // which the grid already knows.
+        const beams = VF.Beam.generateBeams(notes, {
+            stem_direction: 1,
+            groups: [new VF.Fraction(rstompSlotsPerBeat, RSTOMP_VALUE_DENOMINATOR[rstompSlotValue])]
+        });
         new VF.Formatter().joinVoices([voice]).format([voice], perBarWidth - 60);
         voice.draw(context, stave);
+        beams.forEach(beam => beam.setContext(context).draw());
 
         // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) -
         // the real onset a Play token or a non-whole-bar Rest bracket

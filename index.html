@@ -507,12 +507,11 @@
         </div>
 
         <div class="rstomp-controls rstomp-keypad" id="rstomp-controls-keypad" hidden>
-            <div class="rstomp-key-row">
-                <button class="rstomp-key" data-digit="1" onclick="rstompKey('1')">1</button>
-                <button class="rstomp-key" data-digit="2" onclick="rstompKey('2')">2</button>
-                <button class="rstomp-key" data-digit="3" onclick="rstompKey('3')">3</button>
-                <button class="rstomp-key" data-digit="4" onclick="rstompKey('4')">4</button>
-            </div>
+            <!-- Built from the level's label array by renderRstompKeypad(),
+                 because THE KEYPAD IS THE LEVEL'S DISTINCT LABELS: "1 2 3 4"
+                 at the crotchet grid, "1 + 2 + 3 + 4 +" gives 1 2 3 4 +, and
+                 the semiquaver grid adds e and a. -->
+            <div class="rstomp-key-row" id="rstomp-key-row-labels"></div>
             <div class="rstomp-key-row">
                 <button class="rstomp-key rstomp-key-bracket" id="rstomp-key-open" onclick="rstompKey('(')">(</button>
                 <button class="rstomp-key rstomp-key-bracket" id="rstomp-key-close" onclick="rstompKey(')')">)</button>
