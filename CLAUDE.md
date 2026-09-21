@@ -265,6 +265,35 @@ version, so nobody re-derives it from the code:
     into. Parked: an **equivalency bonus round** where it goes deliberately
     silly and lots of things get tied together.
 
+## The counting voice is PITCHED BY BEAT — Rob's rule
+The placeholder voice sounds a scale degree, and the degree says **which beat
+of the bar you are in**, not which syllable it is:
+
+| Beat | Degree |
+|---|---|
+| everything in beat 1 | **tonic** |
+| everything in beat 2 | **supertonic** |
+| everything in beat 3 | **mediant** |
+| everything in beat 4 | **subdominant** |
+
+**A subdivision keeps its beat's pitch.** The "and" of 3 sounds the mediant,
+exactly like the 3 it belongs to — so the ear is told where in the bar it is
+before the counting is read. In 4/4 that is the major tetrachord Rob heard and
+named; 6/8 counted in six simply runs on up the scale to the submediant.
+
+The pitch used to be keyed off the SYLLABLE, which put `e + a` in a register of
+their own and said nothing about position in the bar. Rob's rule replaces it.
+`RAUDIO_DEGREE_HZ` holds the scale; the beat travels on the accent map, so the
+audio and the page still come from the same groups.
+
+Three things carry information in the placeholder, and they are deliberately
+separate: **pitch** = which beat · **timbre** (square vs sine) = beat itself or
+subdivision · **loudness** = struck vs held/rested.
+
+**Open, for when the real voice lands:** a recorded syllable has its own pitch,
+so playing recordings alone would throw this away. Either keep a pitched layer
+under the voice or accept losing it — ask Rob.
+
 ## Level sequence — to sixteenth notes
 Designed against the standard reading and drum methods so a student who opens a
 band book finds themselves somewhere recognisable. Full table with what each
