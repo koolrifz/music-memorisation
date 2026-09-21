@@ -426,9 +426,56 @@ level unplayable by hand** — the student could see the `+` in the answer and
 had no key to type it. Automated tests missed it because they called
 `rstompKey()` directly; there is now a browser test that clicks real buttons.
 
+### BEAT 3 MUST ALWAYS BE VISIBLE
+Rob's engraving rule, and it is about READING, not tidiness: the middle of the
+bar is the landmark the eye checks to know where it is, and a note sounding
+through it hides the one place a reader looks.
+
+> **A note may cross the middle of the bar only if it STARTS ON A BEAT.**
+
+That single test carries the whole rule, including Rob's one exception: a minim
+on beats 2–3 — the `1 2 (3) 4` figure Level 6 is built on — starts on a beat, so
+it is allowed to cover beat 3. Everything he ruled out fails it: a minim from
+the "and" of 1, and a syncopated crotchet from the "and" of 2.
+
+**The note is not thrown away, it is RE-SPELLED.** Rob: *"my rule would have
+that tied across to an eighth."* `rstompShowBeatThree()` splits it at the middle
+into tied notes, so the rhythm is untouched and the tie lands exactly on beat 3.
+Where one value can't cover a piece, `rstompSpellSpan()` cuts again at the
+coarsest metric boundary inside it — a note from the second semiquaver of beat 1
+to beat 3 is a dotted quaver tied to a crotchet tied to a semiquaver, not one
+impossible note.
+
+Rob's own worked bar, the whole thing syncopated:
+
+```
+𝄾  ♩  ♪⌣♪  ♩  ♪        counted  (1) + (2) + (3) + (4) +
+```
+
+*"In the olden days they would have just written two crotchets on the upbeat.
+But that is very difficult to read."*
+
+**The counting follows for free.** A tie is a new written note, so beat 3 gets
+its own bracket instead of being swallowed by the one before it.
+
+**It self-limits to the grids it is for.** Where a slot IS a beat — all of Stage
+A, and 6/8 counted in six — every note starts on a beat, the test never fires
+and nothing changes. It bites at the quaver and semiquaver grids, which is
+where a note can start off the beat at all. Verified: 0 of 16,000 bars on all
+29 levels hide the middle.
+
 ### Beaming, stems and bar width
-- Notes are beamed **by beat**, using the beat length the grid derives from the
-  label array. Four quavers in 4/4 are two beamed pairs, not one group of four.
+- Notes are beamed **by beat**, from each note's **actual position in the bar**.
+  Four quavers in 4/4 are two beamed pairs, not one group of four.
+- **Don't use `VF.Beam.generateBeams` for this.** It counts its groups from the
+  start of each *run* of beamable notes rather than from the bar, so after a
+  crotchet or a rest its counter restarts and the next two quavers get beamed
+  wherever they happen to sit. Measured at **310 of 2,119 beams joining notes
+  from different beats**, and 19 of 40 on the Pump level. A beam across beat 3
+  hides the middle of the bar exactly as a note through it does, which is the
+  rule above. `renderRstompStaff` now walks the specs and beams runs that share
+  a beam group; a note straddling a group boundary is beamed to nothing and
+  keeps its flag. Verified: 0 of 2,079.
 - **Stems are forced up.** On a one-line rhythm staff VexFlow sends them down,
   which puts the beam in the same space as the counting row.
 - Bar width is **per slot**, not per bar — a quaver-grid bar holds twice the
