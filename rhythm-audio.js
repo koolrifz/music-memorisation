@@ -240,9 +240,15 @@ function raudioSyllable(when, label, strong) {
 // rested and is spoken soft. This is why the audio matches the page: both
 // come from the same groups.
 function rstompAudioAccentMap() {
-    return rstompGroupsToSlotMarks(rstompTargetGroups()).map(mark => ({
+    // Each mark is one LABEL, and a label no longer means a slot - a crotchet
+    // at the quaver grid is counted `2` and lasts two slots. So each one
+    // carries the slot it is written on, and the schedule times it from that.
+    // Nothing is spoken on a slot that carries no label, which is the point:
+    // you don't say "and" when nothing happens on it.
+    return rstompGroupsToSlotMarks(rstompTargetGroups()).map((mark, index) => ({
         label: mark.slice(0, mark.length - 3),
-        strong: mark[mark.length - 3] !== 'b'
+        strong: mark[mark.length - 3] !== 'b',
+        slot: rstompPositions[index] ? rstompPositions[index].absolute : index
     }));
 }
 
@@ -306,12 +312,12 @@ function rstompAudioPhraseEvents(options) {
         offset = beats * slotSec * rstompSlotsPerBeat;
     }
 
-    map.forEach((slot, index) => {
-        const at = offset + index * slotSec;
-        if (opt.counting) events.push({ at, play: t => raudioSyllable(t, slot.label, slot.strong) });
-        if (opt.snare && slot.strong) events.push({ at, play: t => raudioSnare(t, index % rstompSlotsPerBar === 0) });
-        if (opt.click && index % rstompSlotsPerBeat === 0)
-            events.push({ at, play: t => raudioClick(t, index % rstompSlotsPerBar === 0) });
+    map.forEach(label => {
+        const at = offset + label.slot * slotSec;
+        if (opt.counting) events.push({ at, play: t => raudioSyllable(t, label.label, label.strong) });
+        if (opt.snare && label.strong) events.push({ at, play: t => raudioSnare(t, label.slot % rstompSlotsPerBar === 0) });
+        if (opt.click && label.slot % rstompSlotsPerBeat === 0)
+            events.push({ at, play: t => raudioClick(t, label.slot % rstompSlotsPerBar === 0) });
     });
 
     if (opt.loop)

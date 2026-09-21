@@ -42,15 +42,26 @@ carry the same bonus stomp round.
 ### The handover is at A5 — and the digits carry no information
 **A1–A4 are played on the two-button interface, A5–D8 on the keypad.**
 
-Measured across all 29 levels, 400 phrases each: **the digit sequence never
+Measured at 400 phrases a level: **through Stage A the digit sequence never
 varies.** It is always the level's labels in order — `1 2 3 4 1 2 3 4…` —
-whatever the rhythm. Only the bracket pattern changes, and it changes
-constantly (up to 400 distinct patterns in 400 phrases). **The brackets are the
+whatever the rhythm, because on the crotchet grid every slot is a beat and every
+beat is counted. Only the bracket pattern changes, and it changes constantly (up
+to 399 distinct patterns in 400 phrases). **Through Stage A the brackets are the
 whole test.**
 
-So the two interfaces ask the *identical question*. "Does a new note start
-here?" and "is this label inside a bracket or outside it?" are the same question
-asked twice. The keypad does not test more knowledge — it asks for more typing.
+So *within Stage A* the two interfaces ask the identical question. "Does a new
+note start here?" and "is this label inside a bracket or outside it?" are the
+same question asked twice, and the keypad asks for more typing rather than more
+knowledge. The handover sits at A5, inside that range, so this is the reasoning
+that matters for it and it still holds.
+
+**From B1 it stops being true**, and deliberately so. Once the beat divides, a
+label is written on every beat and wherever an event starts (see "WHICH SLOTS
+GET A LABEL"), so the digits move with the rhythm: **125** distinct digit
+sequences in 400 phrases at L10, 189 at L13, **400 out of 400** at L24 and L28.
+Stage C drops back to 1, because 6/8 counted in six makes every slot a beat
+again. From Stage B the keypad genuinely tests more than the brackets — knowing
+that a crotchet gets no "and" is exactly what the level is teaching.
 
 The real difference is **recognition versus production**:
 
@@ -64,9 +75,47 @@ new interface, a new grid and a new key on one level — three new ideas at once
 A5 introduces no new notation, so it has the room, and the interface change
 becomes its one new idea.
 
-**Rejected, with a measurement:** an intermediate tier where the student types
-the digits and the app supplies the brackets would be a **test of nothing**,
-because the digits are positional. Don't build it.
+**Rejected for Stage A, with a measurement:** an intermediate tier where the
+student types the digits and the app supplies the brackets is a **test of
+nothing** *through Stage A*, because there the digits are positional. From
+Stage B the digits carry real information, so the same tier would be a real
+test. Still unbuilt — ask Rob before building it.
+
+## WHICH SLOTS GET A LABEL — every beat, and every event
+Read this together with the bracket convention below; the two of them *are*
+the counting.
+
+> **A label is written on every BEAT, and wherever a note or rest STARTS.
+> Nothing is written on an off-beat slot that no event begins on.**
+
+**This was reversed once, on Rob's call, after he tested Stage B on a phone.**
+The app used to write a label on *every slot*, so a crotchet on beat 2 of a
+quaver-grid bar came out `2 (+)`. It is `2`. You count the beat; you don't say
+"and" when nothing happens on it.
+
+Two things follow, and they are the whole reason for the change:
+
+- **A note's counting doesn't change when the grid gets finer.** A minim is
+  `1 (2)` on the crotchet grid, on the quaver grid and on the semiquaver grid
+  alike. What a student learns in Stage A is still what they write in Stage D.
+- **The typing collapses.** A quaver-grid bar goes from 8 labels to 6; the
+  browser test that types a whole semiquaver phrase by clicking went from
+  **50 taps to 20**. Stage D is playable on a phone because of this.
+
+It also removes a collision: at the quaver grid `♩` and `♪𝄾` both used to read
+`2 (+)`. They now read `2` and `2 (+)` — which is what makes B3 ("single quaver
++ quaver rest") worth a level at all.
+
+**Rob's worked-examples table below is unaffected.** Every example in it sits on
+the crotchet grid, where every slot *is* a beat and the two rules agree exactly.
+That is why the difference stayed invisible until B1 — and why the A5 handover
+argument, which is entirely inside Stage A, still stands.
+
+`buildRstompPositions()` is the one place the rule lives; `rstompTargetGroups()`
+applies the same test, and the audio times each label from the slot its position
+carries. **Labels and slots are no longer one-to-one** — anything mapping
+between them (grading, the caret, the counting row's x, the rewind) must go
+through `rstompPositions`, never through `index * slotsPerBar` arithmetic.
 
 ## Counting convention — THE BRACKET NEVER CROSSES A BARLINE
 Read this before touching either interface. An earlier version of this file
@@ -168,7 +217,9 @@ version, so nobody re-derives it from the code:
   **Built — this is how `rhythm-stomp-lab.js` works now.** Each level carries
   `labels` and `slot` (the note value one slot is worth), and
   `rstompGridFor(level)` derives slots-per-bar, the resolved vocabulary and the
-  VexFlow meter from them. The four shipping levels are all on the crotchet
+  VexFlow meter from them. The label array defines the **grid**; which of its
+  positions actually get written is the separate rule above ("WHICH SLOTS GET A
+  LABEL"), and from Stage B those are not the same set. The four shipping levels are all on the crotchet
   grid; the quaver, 6/8 and semiquaver grids are tested but unused until
   Stage B is built.
 - **6/8-in-6 and 6/8-in-2 are the same six-slot grid with different labels.**
