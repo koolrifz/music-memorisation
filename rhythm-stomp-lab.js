@@ -1343,6 +1343,54 @@ function rstompGroupsToSlotMarks(groups) {
     return marks;
 }
 
+// Which labels belong to a REST, in the same order as rstompPositions - built
+// by the same rule as rstompTargetGroups, so the two can't disagree.
+function rstompLabelIsRest() {
+    const flags = [];
+    rstompSpecBars.forEach(specs => {
+        let beat = 0;
+        specs.forEach(spec => {
+            for (let k = 0; k < spec.slots; k++) {
+                if (k === 0 || (beat + k) % rstompSlotsPerBeat === 0) flags.push(Boolean(spec.isRest));
+            }
+            beat += spec.slots;
+        });
+    });
+    return flags;
+}
+
+// CONSECUTIVE RESTS MAY SHARE ONE BRACKET. Rob's revision of his own rule: a
+// run of rests is one continuous silence, so `(1) (2 +) (3)` and
+// `(1) (2) (+) (3)` are both right, and so is any other way of dividing the
+// run up. Nothing new happens anywhere inside it, and the counting's job is to
+// name every count the silence covers - not to show where one written rest
+// ends and the next begins. The notation above already says that.
+//
+// Both sides of the comparison are normalised the same way: inside a rest run,
+// the flags that say "a bracket opens here" and "a bracket closes here" are
+// cleared, so however the student divided the run it compares equal. What
+// survives untouched is everything that still has to be right -
+//
+//   - every label in the run must be BRACKETED (an unbracketed one still fails)
+//   - the run's FIRST label must open a bracket, and its LAST must close one,
+//     so a bracket left hanging open is still wrong
+//   - a run stops at the barline, so a bracket drawn across one still fails -
+//     the bracket never crosses a barline, and that rule is the teaching
+//   - a rest never merges with the hold bracket of a note beside it, because
+//     the note's labels are not in the run
+function rstompNormaliseRestRuns(marks) {
+    const isRest = rstompLabelIsRest();
+    return marks.map((mark, index) => {
+        if (!isRest[index]) return mark;
+        const bar = rstompPositions[index] ? rstompPositions[index].barIndex : -1;
+        const sameBar = other => rstompPositions[other] && rstompPositions[other].barIndex === bar;
+        const chars = mark.split('');
+        if (index > 0 && isRest[index - 1] && sameBar(index - 1)) chars[chars.length - 2] = '-';
+        if (isRest[index + 1] && sameBar(index + 1)) chars[chars.length - 1] = '-';
+        return chars.join('');
+    });
+}
+
 function rstompWrittenBeats() {
     return rstompWriting ? rstompWriting.groups.reduce((total, group) => total + group.digits.length, 0) : 0;
 }
@@ -1419,8 +1467,8 @@ function rstompKey(key) {
 // Compare beat by beat, then blame whole bars. Extra beats written past the
 // end of the phrase land on the last bar rather than vanishing.
 function rstompWrongBarsFor(writing) {
-    const mine = rstompGroupsToSlotMarks(writing.groups);
-    const theirs = rstompGroupsToSlotMarks(rstompTargetGroups());
+    const mine = rstompNormaliseRestRuns(rstompGroupsToSlotMarks(writing.groups));
+    const theirs = rstompNormaliseRestRuns(rstompGroupsToSlotMarks(rstompTargetGroups()));
     const wrong = new Set();
     // One mark per LABEL, not per slot - a label's bar comes from the
     // position it was written on, since a bar no longer holds a fixed
