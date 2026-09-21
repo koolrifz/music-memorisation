@@ -7,6 +7,11 @@ A browser-based music-education app (single HTML page, no build step) teaching p
 
 **Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar. Notation rendering uses VexFlow 3.0.9 via CDN.
 
+**`NOTATION_RULES.md` is mandatory reading before touching any beaming or
+grouping code.** It holds the standard classical engraving conventions Rob
+supplied as authority, and the engine's measured standing against them. Code
+that violates them is a bug, not a style preference.
+
 ## The three games + two tools
 - **Staff Smash** (Game 1) — orientation drills: lines, spaces, mixed, staff numbers, then a Ledger Bonus Round. Uses a "SMASH grid" mechanic: a grid of mini-staves, tap the ones matching the announced target, density scales 3→6→9→12 cards as streaks build.
 - **Note Smash** (Game 2) — same SMASH grid mechanic, now with real letter names instead of raw line/space discrimination.
