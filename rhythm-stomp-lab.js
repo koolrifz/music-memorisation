@@ -146,8 +146,9 @@ const RSTOMP_VOCABULARY = {
      name-one        second strike, naming the one wrong bar        {bar}
      name-some       second strike, naming the wrong bars           {bars}
      show-answer     third strike, the answer revealed
-     walk-retry      two-button, naming the wrong bars              {bars} {plural} {attempt}
-     walk-answer     two-button, the answer revealed
+     walk-wrong      two-button, first wrong tap on a count
+     walk-hint       two-button, a repeat wrong tap on the same count  {answer} {because}
+     walk-missed     two-button, the walk finished but needed help     {n}
 
    Keep them short and functional until Rob replaces them - the defaults are
    placeholders, the names are not.
@@ -165,8 +166,9 @@ const RSTOMP_PROMPTS = {
     'name-one':     "Bar {bar} isn't right — read it again.",
     'name-some':    "Bars {bars} aren't right — read them again.",
     'show-answer':  "Here's the counting — streak reset. New phrase next.",
-    'walk-retry':   'Bar{plural} {bars} - try again (attempt {attempt} of 3).',
-    'walk-answer':  "Here's the correct answer - new phrase next."
+    'walk-wrong':   'Not quite — look again at the note the cursor is on.',
+    'walk-hint':    "Look again — it's {answer}: {because}",
+    'walk-missed':  'Good — but you needed {n} put right. Walk a clean one to build the streak.'
 };
 
 // The level's own wording if it has one, otherwise the default, with {braces}
@@ -751,6 +753,7 @@ let rstompSlotValue = 'q';
 let rstompSlotsPerBeat = 1;
 let rstompBeamSlots = 1;
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
+let rstompWalkMisses = [];      // parallel to rstompPositions: wrong taps at each, in the tutorial
 let rstompUndoStack = [];
 let rstompCursor = 0;
 let rstompAttempt = 1;
@@ -1811,6 +1814,7 @@ function startNewRstompPhrase() {
     rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
     rstompPositions = buildRstompPositions(rstompSpecBars);
     rstompEntries = new Array(rstompPositions.length).fill(null);
+    rstompWalkMisses = new Array(rstompPositions.length).fill(0);
     rstompWriting = { groups: [], inside: false };
     rstompRevealed = null;
     rstompWrongBars = [];
@@ -1854,6 +1858,7 @@ function toggleRstompListen() {
     const rest = () => {
         if (button) button.classList.remove('playing');
         if (icon) icon.innerHTML = '&#9654;';
+        stopRstompPlayhead();
     };
     if (typeof rstompAudioRunning === 'function' && rstompAudioRunning()) {
         rstompAudioStop(); rest(); return;
@@ -1863,6 +1868,82 @@ function toggleRstompListen() {
     if (!started) return;
     if (button) button.classList.add('playing');
     if (icon) icon.innerHTML = '&#9632;';
+    startRstompPlayhead();
+}
+
+/* ---------- The playhead: hearing it and seeing it are the same thing ----------
+
+   "Hear it" used to play into an unmoving page. On a phone that is worse than
+   useless: portrait fits about a bar, so the student hears four bars go by
+   while looking at one, with no way to tell which sound belongs to which note.
+   The whole point of the button is to connect the sound to the notation, and
+   that connection is exactly what was missing.
+
+   So playback drives a second mark along the staff and scrolls the strip to
+   keep it on screen. It is NOT the caret: the caret is where the student is
+   writing and must stay put while they listen, so the two are separate
+   elements in separate colours and the caret is left alone.
+
+   The clock is the AUDIO clock, read every animation frame - see
+   rstompAudioPlayhead(). Page time would drift against the sound within a
+   phrase, which is the whole reason rhythm-audio.js exists. */
+
+let rstompPlayheadFrame = null;
+let rstompPlayheadScrollTimer = null;
+
+function startRstompPlayhead() {
+    if (typeof rstompAudioPlayhead !== 'function') return;
+    stopRstompPlayhead();
+    const tick = () => {
+        const slot = rstompAudioPlayhead();
+        if (slot === null) { stopRstompPlayhead(); return; }
+        drawRstompPlayhead(slot);
+        rstompPlayheadFrame = requestAnimationFrame(tick);
+    };
+    rstompPlayheadFrame = requestAnimationFrame(tick);
+}
+
+function stopRstompPlayhead() {
+    if (rstompPlayheadFrame !== null) { cancelAnimationFrame(rstompPlayheadFrame); rstompPlayheadFrame = null; }
+    const mark = document.getElementById('rstomp-playhead');
+    if (mark) mark.hidden = true;
+    // Back to where they were writing - listening should not cost them their
+    // place. Respects a student who scrolled off on purpose, because
+    // followRstompCursor() no-ops once rstompFollowing is false.
+    followRstompCursor();
+}
+
+function drawRstompPlayhead(slot) {
+    const mark = document.getElementById('rstomp-playhead');
+    if (!mark || !rstompLayouts.length) return;
+    const total = rstompPhrase.length * rstompSlotsPerBar;
+    // Parked on the first note through the count-in (slot < 0) and on the last
+    // one through the ring-out, so it never shoots off either end of the staff.
+    const here = Math.max(0, Math.min(slot, total - 0.001));
+    const barIndex = Math.min(rstompLayouts.length - 1, Math.floor(here / rstompSlotsPerBar));
+    const layout = rstompLayouts[barIndex];
+    if (!layout) return;
+    const x = layout.pulseX(here - barIndex * rstompSlotsPerBar);
+    mark.hidden = false;
+    mark.style.left = `${x - 1.5}px`;
+    scrollRstompToPlayhead(x);
+}
+
+// Same band idea as followRstompCursor, but it fires while the music runs, so
+// it anchors further left: a student reading along needs the bar AHEAD of the
+// sound, not the one behind it.
+function scrollRstompToPlayhead(x) {
+    const strip = document.getElementById('rstomp-strip');
+    if (!strip) return;
+    const visible = strip.clientWidth;
+    if (rstompTotalWidth <= visible) return;
+    if (x >= strip.scrollLeft + visible * 0.05 && x <= strip.scrollLeft + visible * 0.6) return;
+    const target = Math.max(0, Math.min(x - visible * 0.2, rstompTotalWidth - visible));
+    if (Math.abs(target - strip.scrollLeft) < 1) return;
+    rstompProgrammaticScroll = true;
+    strip.scrollTo({ left: target, behavior: 'smooth' });
+    clearTimeout(rstompPlayheadScrollTimer);
+    rstompPlayheadScrollTimer = setTimeout(() => { rstompProgrammaticScroll = false; }, 450);
 }
 
 function renderRstompKeypad() {
@@ -1901,8 +1982,46 @@ function applyRstompInterface() {
 
 // One tap commits the answer AND advances the cursor - no separate
 // mode-select-then-stamp step, which is the whole point of this rebuild.
+//
+// THE TWO-BUTTON INTERFACE IS A TUTORIAL ROUND (CLAUDE.md, "TWO interfaces"),
+// so a wrong answer is caught HERE, at the tap, not at the end of the phrase.
+// Rob: "alert them when they've made a mistake and suggest the correct answer
+// after repeated mistakes. Every problem is an opportunity."
+//
+// A wrong tap is refused - not recorded, cursor does not move - so the
+// counting on screen never shows something the student didn't mean, and they
+// cannot walk four bars away from a mistake made on beat 2. The FIRST miss on
+// a count says only that it is wrong, because finding it yourself is the
+// skill. The second and every one after names the button and says why: being
+// stuck with no way forward teaches nothing.
+//
+// It also settles the open question about the display. The old worry was that
+// a wrong "PLAY" on beat 3 of a semibreve still drew inside the bracket,
+// because the grouping comes from the written note and only the first beat's
+// answer decides plain-vs-bracketed - so the page showed something the student
+// had not said. A refused tap is never drawn at all, so the display and the
+// answer can no longer disagree.
 function stampRstomp(answer) {
     if (rstompLocked || rstompCursor >= rstompPositions.length) return;
+
+    if (!rstompScribe) {
+        const position = rstompPositions[rstompCursor];
+        if (answer !== rstompExpectedAnswer(position)) {
+            rstompWalkMisses[rstompCursor] = (rstompWalkMisses[rstompCursor] || 0) + 1;
+            playSound('wrong');
+            showRstompFeedback('wrong', rstompWalkMisses[rstompCursor] === 1
+                ? rstompPrompt('walk-wrong')
+                : rstompPrompt('walk-hint', rstompWalkHint(position)));
+            return;
+        }
+        hideRstompFeedback();
+        // The answer, played back as the thing it means: a snare crack for an
+        // onset, a brush swish for held or silent. Rob's request, and it is the
+        // lesson made audible - the two buttons and the two sounds draw the
+        // same distinction the notation does.
+        if (typeof rstompAudioTap === 'function') rstompAudioTap(answer === 'play' ? 'play' : 'hold');
+    }
+
     rstompEntries[rstompCursor] = answer;
     rstompUndoStack.push(rstompCursor);
     rstompCursor++;
@@ -1913,8 +2032,43 @@ function stampRstomp(answer) {
     updateRstompButtonStates();
 }
 
+// What to say once "wrong" on its own has stopped helping. The three cases are
+// the three things a slot can be, and each gets the reason rather than just the
+// answer - "NOTHING NEW" with no "because" is a button to press, not a thing
+// learned.
+function rstompWalkHint(position) {
+    const mode = rstompPhrase[position.barIndex][position.slotIndex];
+    if (mode === 'play') return { answer: 'PLAY', because: 'a new note starts on this count.' };
+    if (mode === 'rest') return { answer: 'NOTHING NEW', because: 'this count is silent, nothing is sounding.' };
+    return { answer: 'NOTHING NEW', because: 'the note before is still ringing through this count.' };
+}
+
+// Clear the phrase and start writing it again, SAME phrase - not a new one.
+// Rob, hunting a wrong bar on Level 7: "in order to find them I need to undo...
+// I guess we have to back through the whole thing, one undo button at a time,
+// or we should just be able to start." Undoing sixteen counts to reach bar 3 is
+// a punishment for looking, and looking is the skill.
+//
+// It is deliberately NOT a new phrase and NOT a free pass: the attempt ladder,
+// the streak and the tutorial's miss count all stand, because the phrase in
+// front of them is the one they got wrong.
+function restartRstompPhrase() {
+    if (rstompLocked) return;
+    rstompEntries = new Array(rstompPositions.length).fill(null);
+    rstompUndoStack = [];
+    rstompCursor = 0;
+    rstompWriting = { groups: [], inside: false };
+    rstompFollowing = true;
+    hideRstompFeedback();
+    renderRstompBars();
+    followRstompCursor();
+    updateRstompPrompt();
+    updateRstompButtonStates();
+}
+
 function undoRstomp() {
     if (rstompLocked || rstompUndoStack.length === 0) return;
+    hideRstompFeedback();   // stepping back clears a hint left over from the count being left
     const index = rstompUndoStack.pop();
     rstompEntries[index] = null;
     rstompCursor = index;
@@ -1974,6 +2128,8 @@ function updateRstompButtonStates() {
         if (open) open.disabled = rstompLocked || full || rstompWriting.inside;
         if (close) close.disabled = rstompLocked || !rstompWriting.inside;
         if (erase) erase.disabled = rstompLocked || !rstompWriting.groups.length;
+        const restart = document.getElementById('rstomp-scribe-restart-btn');
+        if (restart) restart.disabled = rstompLocked || !rstompWriting.groups.length;
         // Submit is live as soon as every bar is accounted for, even
         // with a bracket left hanging open. Refusing to submit would hide
         // the mistake; marking it wrong is the honest answer.
@@ -1984,6 +2140,8 @@ function updateRstompButtonStates() {
     document.getElementById('rstomp-play-btn').disabled = rstompLocked || done;
     document.getElementById('rstomp-bracket-btn').disabled = rstompLocked || done;
     document.getElementById('rstomp-undo-btn').disabled = rstompLocked || rstompUndoStack.length === 0;
+    const restart = document.getElementById('rstomp-restart-btn');
+    if (restart) restart.disabled = rstompLocked || rstompUndoStack.length === 0;
     document.getElementById('rstomp-submit-button').disabled = rstompLocked || !done;
 }
 
@@ -2373,15 +2531,27 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
                 // Nothing written inside it yet, so there is no span to
                 // centre across - park it on its own beat.
                 add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
-            } else if (startLayout.centredRest) {
-                // The glyph is centred in the bar, so its counting centres too -
-                // left-aligning to a centred rest would start the bracket at the
-                // middle of the bar and run it off the end.
-                add(run.text, (startLayout.pulseX(0) + startLayout.pulseX(rstompSlotsPerBar)) / 2, true, run.wrong);
-            } else if (!owner.isOnset) {
+            } else if (startLayout.centredRest || !owner.isOnset) {
                 // No glyph above this slot, so there is nothing to left-align
                 // to - centre across the span, whether or not the student
-                // bracketed it. The `run.bracketed &&` that used to be part
+                // bracketed it.
+                //
+                // A CENTRED REST TAKES THIS RULE TOO, for the same reason: a
+                // whole-bar rest hangs in the middle of the bar and belongs to
+                // every slot, so no single slot has a glyph over it. It used
+                // to get a branch of its own that drew the token at the bar's
+                // centre - right for the one run that IS the whole bar, and
+                // wrong for every other, because they all landed on that one
+                // point. A student who wrote six separate labels in a 6/8
+                // whole-rest bar got five of them stacked on one pixel
+                // (measured at x 517.5, C1 and C2). Anchoring the onset token
+                // at noteX was no better: a centred rest's noteX is the bar
+                // centre, so the token sat three slots from the label it was.
+                // The span rule handles both - for a run covering the whole
+                // bar it gives exactly the old centred position, and for
+                // anything shorter it spreads across the slots written.
+                //
+                // The `run.bracketed &&` that used to be part
                 // of this test contradicted the rule stated above, and cost
                 // Rob a Stage B level: an UNbracketed digit written on a
                 // held slot fell through to rule 1 and was drawn at the
@@ -2404,9 +2574,7 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
         layouts.forEach((layout, position) => {
             buildRstompCountingTokens(barOffset + position).forEach(token => {
                 const owner = layout.beatOwner[token.startBeat];
-                if (layout.centredRest) {
-                    add(token.text, (layout.pulseX(0) + layout.pulseX(rstompSlotsPerBar)) / 2, true, false);
-                } else if (token.kind === 'hold' && !owner.isOnset) {
+                if (layout.centredRest || (token.kind === 'hold' && !owner.isOnset)) {   // as above
                     add(token.text, (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2, true, false);
                 } else {
                     add(token.text, layout.noteX[owner.specIndex], false, false);
@@ -2720,13 +2888,13 @@ function submitRstompPhrase() {
     }
     if (rstompCursor < rstompPositions.length) return;
     rstompLocked = true;
-    const wrongBarsSet = new Set();
-    rstompPositions.forEach((position, index) => {
-        if (rstompEntries[index] !== rstompExpectedAnswer(position)) wrongBarsSet.add(position.barIndex);
-    });
-    const wrongBars = [...wrongBarsSet].sort((a, b) => a - b);
-    if (wrongBars.length === 0) handleRstompSuccess();
-    else handleRstompFailure(wrongBars);
+    // Every answer on screen is right - the tutorial refuses a wrong tap, so a
+    // finished walk cannot contain one. What is graded is whether they needed
+    // telling. A phrase walked with nothing put right is the mastery check;
+    // anything else completed correctly but did not prove it.
+    const missed = rstompWalkMisses.reduce((n, count) => n + (count ? 1 : 0), 0);
+    if (missed === 0) handleRstompSuccess();
+    else handleRstompWalkMisses(missed);
 }
 
 function handleRstompSuccess() {
@@ -2793,44 +2961,25 @@ function handleRstompScribeFailure(wrongBars) {
     setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 3200);
 }
 
-// Same shape as rhythm.js: attempts 1-2 clear only the wrong bar(s) for
-// re-entry, correct bars stay as-is; attempt 3 reveals the answer and
-// resets the streak.
-function handleRstompFailure(wrongBars) {
+// THE TUTORIAL HAS NO THREE-STRIKE LADDER, and the reason is that it no longer
+// needs one. The ladder on the keypad exists so the student can hunt for their
+// own mistake - one strike says how many bars are wrong, the next names them,
+// the third shows the answer. None of that applies here, because the mistake
+// was caught and explained at the tap that made it: there is nothing left to
+// hunt for and nothing left to reveal.
+//
+// So the rule of three keeps its meaning by measuring the only thing left to
+// measure: three phrases walked WITHOUT needing correction, in a row. A phrase
+// that needed telling resets the streak. That is stricter than the old ladder
+// on paper, and it has to be - the in-the-moment help is the concession, and
+// if the streak survived it too the gate would confirm nothing (CLAUDE.md:
+// "make them actually prove it").
+function handleRstompWalkMisses(missed) {
     playSound('wrong');
-    if (rstompAttempt < 3) {
-        rstompAttempt++;
-        showRstompFeedback('wrong', rstompPrompt('walk-retry', {
-            plural: wrongBars.length > 1 ? 's' : '',
-            bars: wrongBars.map(index => index + 1).join(', '),
-            attempt: rstompAttempt }));
-        setTimeout(() => {
-            const wrongSet = new Set(wrongBars);
-            rstompPositions.forEach((position, index) => {
-                if (wrongSet.has(position.barIndex)) rstompEntries[index] = null;
-            });
-            rstompUndoStack = rstompUndoStack.filter(index => !wrongSet.has(rstompPositions[index].barIndex));
-            const nextNull = rstompEntries.findIndex(value => value === null);
-            rstompCursor = nextNull === -1 ? rstompPositions.length : nextNull;
-            rstompLocked = false;
-            rstompFollowing = true;
-            renderRstompBars();
-            followRstompCursor();   // the cursor has jumped back to the first wrong bar; go with it
-            updateRstompPrompt();
-            updateRstompButtonStates();
-            hideRstompFeedback();
-        }, 1400);
-    } else {
-        showRstompFeedback('wrong', rstompPrompt('walk-answer'));
-        const wrongSet = new Set(wrongBars);
-        rstompPositions.forEach((position, index) => {
-            if (wrongSet.has(position.barIndex)) rstompEntries[index] = rstompExpectedAnswer(position);
-        });
-        renderRstompBars();
-        rstompStreak = 0;
-        updateRstompStreakDots();
-        setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 2200);
-    }
+    rstompStreak = 0;
+    updateRstompStreakDots();
+    showRstompFeedback('wrong', rstompPrompt('walk-missed', { n: missed }));
+    setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 2200);
 }
 
 function showRstompLevelComplete() {
