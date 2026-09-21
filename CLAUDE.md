@@ -188,20 +188,43 @@ counting says how it is counted, and it is counted the same way.
 **Engraving rule:** a bar of 4/4 never holds four quarter rests — three at
 most, so the real beat stays findable.
 
-### CONSECUTIVE RESTS MAY SHARE ONE BRACKET
-Rob's revision of his own rule, made while playing Level 12: *"I have to break
-my rule. If there are consecutive rests of different value, they can be put
-under one large bracket. As long as they are notating which count is within the
-rest bracket, that's best."*
+### A RUN OF "NOTHING NEW HAPPENS" MAY SHARE ONE BRACKET
+Rob's revision of his own rule, made twice — for **rests** on Level 12 and for
+**a note and its tied continuation** on Level 13:
 
-A run of rests is **one continuous silence**. Nothing new happens anywhere
-inside it, and the counting's job is to name every count the silence covers —
-not to show where one written rest ends and the next begins. The notation above
-already says that.
+> *"I have to break my rule. If there are consecutive rests of different value,
+> they can be put under one large bracket. As long as they are notating which
+> count is within the rest bracket, that's best."*
 
-**Both forms are accepted, and so is any other way of dividing the run up.**
-For a bar of crotchet rest · two quaver rests · crotchet rest · crotchet, all of
-these are correct:
+> *"Also accepted, because this is chunking the same concept."*
+
+A run of rests is **one continuous silence**; a note and the notes tied into it
+are **one continuous sound**. Either way nothing is re-struck anywhere inside
+the run, so the student may show the written-note boundaries or chunk the whole
+thing, and both are right. The counting's job is to name every count the run
+covers — not to show where one written note or rest ends and the next begins.
+The notation above already says that.
+
+Rob's Level 13 bar — quaver rest, dotted crotchet tied to a quaver, quaver,
+crotchet — is the case that extended it:
+
+```
+(1) + (2) (3) + 4     one bracket per written note, what the app reveals
+(1) + (2 3) + 4       the sustain chunked through the tie
+```
+
+**SOUND AND SILENCE DO NOT MERGE WITH EACH OTHER.** A rest run and a hold run
+side by side stay two brackets: a note's held beats and a rest are different
+things, and only like joins like.
+
+**A consequence worth knowing:** two tied minims may now be counted `1 (2 3 4)`
+— exactly as a semibreve is. That *is* the equivalency the scaffold teaches, so
+it is consistent, but it means the "more written notes, so more groups"
+information in the worked-examples table is now optional rather than required.
+The app still reveals the un-chunked form, so what is *taught* is unchanged.
+
+**Every way of dividing a run is accepted.** For a bar of crotchet rest · two
+quaver rests · crotchet rest · crotchet, all of these are correct:
 
 ```
 (1) (2) (+) (3) 4     one bracket per written rest - what the app reveals
@@ -210,9 +233,10 @@ these are correct:
 ```
 
 This is **"accept either", not "merged only"** — Rob's call. The app still
-writes and speaks one bracket per written rest, so nothing already learned
-became wrong and Stage A's `(1 2) (3) (4)` still reads exactly as his table
-says. The merging is a grading concession, not a change to what is taught.
+writes and speaks one bracket per written note or rest, so nothing already
+learned became wrong and Stage A's `(1 2) (3) (4)` still reads exactly as his
+table says. The merging is a grading concession, not a change to what is
+taught.
 
 Four things it deliberately does **not** loosen, all still marked wrong:
 
@@ -220,14 +244,18 @@ Four things it deliberately does **not** loosen, all still marked wrong:
 - a bracket left **hanging open** at the end of the run;
 - a bracket drawn **across a barline** — the run stops at the barline, because
   the bracket never crosses one and that rule is the teaching;
-- a rest merged into the **hold bracket of a note** beside it. A note's held
-  beats and a rest are different things; only rest-to-rest merges.
+- a rest merged into the **hold bracket of a note** beside it, or vice versa —
+  only like joins like;
+- an **onset digit swallowed into the bracket**. The onset sits outside, always;
+  that is the rule everything else rests on.
 
-Implemented in `rstompNormaliseRestRuns()`, applied to both the student's marks
-and the target's before they are compared: inside a rest run the flags saying
-"a bracket opens here" and "a bracket closes here" are cleared on both sides, so
-however the run was divided it compares equal. Everything listed above survives
-because it is carried by a different flag, or by the run boundaries themselves.
+Implemented in `rstompNormaliseSustainRuns()`, applied to both the student's
+marks and the target's before they are compared. `rstompLabelKinds()` labels
+every counting position `onset` | `hold` | `rest`; inside a run of one kind, the
+flags saying "a bracket opens here" and "a bracket closes here" are cleared on
+both sides, so however the run was divided it compares equal. Everything listed
+above survives because it is carried by a different flag, by the kind, or by the
+run's own boundaries.
 
 ### How the counting is SET — settled, don't re-open these
 

@@ -1591,21 +1591,47 @@ function rstompGroupsToSlotMarks(groups) {
 
 // Which labels belong to a REST, in the same order as rstompPositions - built
 // by the same rule as rstompTargetGroups, so the two can't disagree.
-function rstompLabelIsRest() {
-    const flags = [];
+function rstompLabelKinds() {
+    const kinds = [];
     rstompSpecBars.forEach(specs => {
         let beat = 0;
         specs.forEach(spec => {
+            let first = true;
             for (let k = 0; k < spec.slots; k++) {
-                if (k === 0 || (beat + k) % rstompSlotsPerBeat === 0) flags.push(Boolean(spec.isRest));
+                if (k === 0 || (beat + k) % rstompSlotsPerBeat === 0) {
+                    // A rest is silence. A note's OWN first label is its onset
+                    // and is written outside the bracket - unless the note is
+                    // tied into, in which case there is no onset to write and
+                    // every one of its labels is still sustain.
+                    kinds.push(spec.isRest ? 'rest' : ((first && !spec.tied) ? 'onset' : 'hold'));
+                    first = false;
+                }
             }
             beat += spec.slots;
         });
     });
-    return flags;
+    return kinds;
 }
 
-// CONSECUTIVE RESTS MAY SHARE ONE BRACKET. Rob's revision of his own rule: a
+// A RUN OF "NOTHING NEW HAPPENS" MAY SHARE ONE BRACKET. Rob's revision of his
+// own rule, made twice: first for consecutive rests on Level 12, then for a
+// note and its tied continuation on Level 13 - "also accepted, because this is
+// chunking the same concept".
+//
+// A run of rests is one continuous silence; a note and the notes tied into it
+// are one continuous sound. Either way nothing is re-struck anywhere inside
+// the run, so the student may show the written-note boundaries or chunk the
+// whole thing, and both are right. On Rob's Level 13 bar - quaver rest, dotted
+// crotchet tied to a quaver, quaver, crotchet - these are the same answer:
+//
+//     (1) + (2) (3) + 4     one bracket per written note, what the app reveals
+//     (1) + (2 3) + 4       the sustain chunked through the tie
+//
+// SOUND AND SILENCE DO NOT MERGE WITH EACH OTHER. A rest run and a hold run
+// sitting side by side stay two brackets - a note's held beats and a rest are
+// different things, and only like joins like.
+//
+// Rob's revision of his own rule: a
 // run of rests is one continuous silence, so `(1) (2 +) (3)` and
 // `(1) (2) (+) (3)` are both right, and so is any other way of dividing the
 // run up. Nothing new happens anywhere inside it, and the counting's job is to
@@ -1624,15 +1650,20 @@ function rstompLabelIsRest() {
 //     the bracket never crosses a barline, and that rule is the teaching
 //   - a rest never merges with the hold bracket of a note beside it, because
 //     the note's labels are not in the run
-function rstompNormaliseRestRuns(marks) {
-    const isRest = rstompLabelIsRest();
+function rstompNormaliseSustainRuns(marks) {
+    const kinds = rstompLabelKinds();
     return marks.map((mark, index) => {
-        if (!isRest[index]) return mark;
+        const kind = kinds[index];
+        if (kind !== 'rest' && kind !== 'hold') return mark;
         const bar = rstompPositions[index] ? rstompPositions[index].barIndex : -1;
-        const sameBar = other => rstompPositions[other] && rstompPositions[other].barIndex === bar;
+        // Same KIND, same bar. A hold never merges with a rest beside it -
+        // sound and silence are different things - and neither crosses a
+        // barline, because the bracket never does.
+        const joins = other => kinds[other] === kind
+            && rstompPositions[other] && rstompPositions[other].barIndex === bar;
         const chars = mark.split('');
-        if (index > 0 && isRest[index - 1] && sameBar(index - 1)) chars[chars.length - 2] = '-';
-        if (isRest[index + 1] && sameBar(index + 1)) chars[chars.length - 1] = '-';
+        if (index > 0 && joins(index - 1)) chars[chars.length - 2] = '-';
+        if (joins(index + 1)) chars[chars.length - 1] = '-';
         return chars.join('');
     });
 }
@@ -1713,8 +1744,8 @@ function rstompKey(key) {
 // Compare beat by beat, then blame whole bars. Extra beats written past the
 // end of the phrase land on the last bar rather than vanishing.
 function rstompWrongBarsFor(writing) {
-    const mine = rstompNormaliseRestRuns(rstompGroupsToSlotMarks(writing.groups));
-    const theirs = rstompNormaliseRestRuns(rstompGroupsToSlotMarks(rstompTargetGroups()));
+    const mine = rstompNormaliseSustainRuns(rstompGroupsToSlotMarks(writing.groups));
+    const theirs = rstompNormaliseSustainRuns(rstompGroupsToSlotMarks(rstompTargetGroups()));
     const wrong = new Set();
     // One mark per LABEL, not per slot - a label's bar comes from the
     // position it was written on, since a bar no longer holds a fixed
