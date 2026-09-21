@@ -313,6 +313,41 @@ had no key to type it. Automated tests missed it because they called
 - Bar width is **per slot**, not per bar — a quaver-grid bar holds twice the
   events and needs twice the room.
 
+### Notes sit ON the slot grid — VexFlow's own spacing is wrong here
+VexFlow spaces notes proportionally by duration (a softmax curve). That is
+right for engraved music and wrong for this staff, which is read against a
+counting row that is an even grid and a caret that marks a SLOT. Left to
+VexFlow the two disagree: measured across 30 phrases a level, the caret sat
+up to **38px** from the notehead it was marking at Stage A, **49px** at the
+quaver grid and **88px** at the semiquaver grid — more than three slots, so
+the caret was pointing at the wrong note while the student wrote. This is
+what "can't write the quaver counting accurately" turned out to be.
+`renderRstompStaff` now formats as usual and then moves every note onto its
+own slot (one uniform inset, so no notehead sits flush against a barline),
+which makes `noteX` and `pulseX` agree by construction rather than by
+nudging afterwards. Residual offset: a constant 12px on every level.
+
+The justify width was wrong too — a flat `perBarWidth - 60`, about 28% short
+of the stave's real note area, which bunched every bar's notes into its
+left-hand two thirds and left a band of white space before each barline. It
+is now the note area itself (`getNoteEndX() - getNoteStartX() - 10`).
+
+### The staff's crop window has to clear the TIE, not the noteheads
+The 130px VexFlow canvas is cropped back to the band the music occupies. That
+crop used to be a fixed `-30px` against a 60px window — visible to canvas
+y=90. But a tie curve reaches **y=93** and a crotchet rest **y=100.5**, so
+ties rendered as clipped stubs and rests lost their tails. On **Level 7
+("ties inside the bar") an invisible tie is the whole level**: the student
+reads two separate crotchets, writes `1 2` where the answer is `1 (2)`, and
+is told the bar is wrong with counting that looks right to them. The window
+is now y=40 to y=105 (`RSTOMP_STAFF_CROP_TOP` / `_HEIGHT`), stated as
+constants rather than measured per render so the strip's height never
+changes under the student mid-phrase.
+
+The grader itself was checked at the same time and is sound: 300 Level 7
+phrases typed with the engine's own answer all graded clean, and every bar
+shape the level generates reproduces Rob's worked-examples table.
+
 ### Stage C — built, two levels, brief §13.7
 | # | Level | New idea |
 |---|---|---|

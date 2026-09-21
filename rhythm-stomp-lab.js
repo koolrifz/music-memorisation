@@ -1647,6 +1647,16 @@ const RSTOMP_MAX_SLOT_WIDTH = 48;   // above this bars just look sparse on a big
 const RSTOMP_MIN_BAR_WIDTH = 140;   // the floor a single bar is still legible at
 const RSTOMP_CURSOR_ANCHOR = 0.3;   // where the cursor parks after a scroll; the rest is look-ahead
 
+// The visible band of the 130px VexFlow canvas, in canvas coordinates. The
+// stave sits at y=20; measured over 40 phrases on each of the 29 levels, the
+// drawn content runs from y=42.6 (the top of a beamed group's beam) down to
+// y=100.5 (the tail of a crotchet rest, the deepest thing on the staff - a
+// tie curve reaches 93). Rounded out to a window with a little air either
+// side, and stated as constants rather than measured per render so the
+// strip's height never changes under the student mid-phrase.
+const RSTOMP_STAFF_CROP_TOP = 40;
+const RSTOMP_STAFF_CROP_HEIGHT = 65;
+
 let rstompLayouts = [];
 let rstompTotalWidth = 0;
 let rstompFollowing = true;
@@ -2083,24 +2093,50 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             stem_direction: 1,
             groups: [new VF.Fraction(rstompBeamSlots, RSTOMP_VALUE_DENOMINATOR[rstompSlotValue])]
         });
-        new VF.Formatter().joinVoices([voice]).format([voice], perBarWidth - 60);
-        voice.draw(context, stave);
-        beams.forEach(beam => beam.setContext(context).draw());
-
-        // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) -
-        // the real onset a Play token or a non-whole-bar Rest bracket
-        // left-aligns to (see renderRstompCountingRow for the alignment
-        // rules this layout serves). Already in the shared canvas's one
-        // coordinate space (position's own x offset baked in), so a second
-        // bar's positions need no further adjustment.
-        const noteX = notes.map(note => note.getAbsoluteX());
-
-        // The ideal, evenly-spaced slot grid (where the level's labels fall),
-        // independent of where any glyph actually landed - this is what a
-        // Hold-continuation bracket (no glyph of its own) centers across.
+        // The ideal, evenly-spaced slot grid (where the level's labels fall).
+        // Everything below - the formatting width, where each note is put,
+        // and where the counting row anchors - is stated against it.
         const trueStartX = stave.getNoteStartX();
         const trueEndX = stave.getNoteEndX();
         const pulseX = slotFraction => trueStartX + (slotFraction / rstompSlotsPerBar) * (trueEndX - trueStartX);
+
+        // Justify across the stave's REAL note area. The old flat
+        // `perBarWidth - 60` was ~28% short of it, which left every bar's
+        // notes bunched into its left-hand two thirds with a band of white
+        // space before the barline - the first thing Rob saw on a phone.
+        new VF.Formatter().joinVoices([voice]).format([voice], trueEndX - trueStartX - 10);
+
+        // Then put every note ON its slot. VexFlow spaces proportionally by
+        // duration (softmax), which is right for engraved music and wrong
+        // here: this staff exists to be read against a counting row that is
+        // an even grid, so a note that starts on beat 3 has to be at beat
+        // 3's x, not at 44% of the bar. Placing them on the grid is what
+        // makes "every number sits under the thing it counts" true by
+        // construction rather than by nudging afterwards.
+        // The inset is the first note's own natural offset from the stave's
+        // note start - kept uniform so the spacing between slots stays
+        // exactly even, and so no notehead sits flush against a barline.
+        const inset = notes.length ? notes[0].getAbsoluteX() - trueStartX : 0;
+        let slotCursor = 0;
+        notes.forEach((note, index) => {
+            const tickContext = note.getTickContext();
+            tickContext.setX(tickContext.getX() + (pulseX(slotCursor) + inset) - note.getAbsoluteX());
+            slotCursor += specs[index].slots;
+        });
+
+        voice.draw(context, stave);
+        beams.forEach(beam => beam.setContext(context).draw());
+
+        // Read back the rendered x of each note (getAbsoluteX) - the real
+        // onset a Play token or a non-whole-bar Rest bracket left-aligns to
+        // (see renderRstompCountingRow for the alignment rules this layout
+        // serves). Since the placement pass above, this is the note's slot
+        // position plus the uniform inset, so it agrees with pulseX by
+        // construction. Still read back rather than recomputed, so the
+        // counting can never disagree with what was actually drawn. Already
+        // in the shared canvas's one coordinate space (position's own x
+        // offset baked in), so a second bar's positions need no adjustment.
+        const noteX = notes.map(note => note.getAbsoluteX());
 
         // Which spec (note/rest object) owns each beat, and whether that
         // beat is the spec's own onset (has a glyph) or a continuation
@@ -2151,8 +2187,19 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         if (lastNote) new VF.StaveTie({ first_note: lastNote, first_indices: [0] }).setContext(context).draw();
     }
 
+    // VexFlow draws on a 130px canvas of which the music only ever occupies
+    // a band in the middle; the container crops back to that band. The crop
+    // used to be -30px against a 60px window, i.e. visible down to y=90 -
+    // but a tie curve reaches y=93 and a crotchet rest y=100.5, so ties came
+    // out as clipped stubs and rests lost their tails, while 15px of empty
+    // air was wasted above the beams. On Level 7, whose whole subject is
+    // ties inside the bar, an invisible tie is the level: the student reads
+    // two separate crotchets and writes "1 2" where the answer is "1 (2)".
     const svg = container.querySelector('svg');
-    if (svg) svg.style.marginTop = '-30px';
+    if (svg) {
+        svg.style.marginTop = `${-RSTOMP_STAFF_CROP_TOP}px`;
+        container.style.height = `${RSTOMP_STAFF_CROP_HEIGHT}px`;
+    }
 
     return rendered.map(({ noteX, pulseX, beatOwner }) => ({ noteX, pulseX, beatOwner }));
 }
