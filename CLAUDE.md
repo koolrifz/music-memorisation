@@ -367,7 +367,7 @@ level teaches: design brief **§13**. Do not invent a level order from the code.
 | A3 | Whole and half mixed | Switching scale inside a bar |
 | A4 | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
 | A5 | Quarters, halves, wholes | Full crotchet vocabulary; long-hand sprinkled |
-| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4`, the minim written as two tied crotchets so beat 3 stays visible |
+| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4`. The minim stays a minim: Rob's named exception to hiding beat 3 |
 | A7 | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
 | A8 | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
 | A9 | Ties across the barline | Any value crossing |
@@ -443,22 +443,35 @@ Rob's engraving rule, and it is about READING, not tidiness: the middle of the
 bar is the landmark the eye checks to know where it is, and a note sounding
 through it hides the one place a reader looks.
 
-> **A note may cross the middle of the bar only if it STARTS THE BAR.**
+> **A note may cross the middle of the bar only if it STARTS ON A MAIN BEAT.**
 
-**This was tightened once.** An earlier version of this section said "only if it
-starts on a beat", which let a minim on beats 2–3 stand. Rob corrected it with
-the standard engraving rule stated in full: the exceptions are the ones that are
-*unambiguous* — the **whole note**, and the **dotted minim starting on beat 1**.
-A half note that straddles the midpoint is the syncopated one, and is not among
-them. "Starts the bar" is exactly that list, since those are the only values
-that cross the middle from slot 0.
+**This was tightened once and then reversed. The reversal is what stands.** A
+middle version read "only if it starts the bar", which split a minim on beats
+2–3 into two tied crotchets and respelled Level 6's figure with it. That was
+wrong, and it came from reading Rob's later "whole notes and some
+*non-syncopated* half notes" as excluding the beats-2–3 minim. His first
+statement is the ruling and it is explicit:
 
-So a minim on beats 2–3 is now written as **two tied crotchets**, and Level 6's
-figure with it. The rhythm and the counting are unchanged — `1 2 (3) 4` either
-way — but the tie now says in the notation what the bracket says in the
-counting: beat 3 is not re-struck. Everything else that crosses is split too: a
-minim from the "and" of 1, a syncopated crotchet from the "and" of 2, a dotted
-minim from beat 2.
+> *"The only time beat 3 can be invisible would be when you have a crotchet
+> followed by a half note followed by another crotchet."*
+
+So **`♩ 𝄗 ♩` stands as written** — acceptable and preferable, and **not** to be
+turned into `♩ ♩⌣♩ ♩`. Level 6's figure is a minim, and always was.
+
+**MAIN beat, not counted beat.** In 6/8 counted in six the counting names every
+quaver, so the counted beat is one slot and *every* note would "start on a beat"
+— which would let a crotchet straddle the two dotted-crotchet beats, exactly
+what NOTATION_RULES.md §3 forbids. The test is the **beam group**, which is the
+felt beat at every grid: a crotchet in 4/4, a dotted crotchet in 6/8. (The
+original version of this rule used the counted beat and would have missed 6/8.)
+
+What still splits: a minim from the "and" of 1, a syncopated crotchet from the
+"and" of 2, and in 6/8 a crotchet across the two main beats.
+
+**Open, not yet ruled on:** a dotted minim on beats 2–4 (`♩ ♩·`). It crosses the
+middle and starts on a main beat, so it currently stands. Rob has named the
+whole note, the dotted minim from beat 1, and the beats-2–3 minim as exceptions,
+but not this one; standard practice is genuinely split on it.
 
 **The note is not thrown away, it is RE-SPELLED.** Rob: *"my rule would have
 that tied across to an eighth."* `rstompShowBeatThree()` splits it at the middle
@@ -480,14 +493,18 @@ But that is very difficult to read."*
 **The counting follows for free.** A tie is a new written note, so beat 3 gets
 its own bracket instead of being swallowed by the one before it.
 
+**It self-limits to the grids it is for.** Where a slot *is* the main beat —
+all of Stage A — every note starts on one, so the test never fires and Stage A
+is untouched. Measured, ties per 150 phrases: **A1–A4 zero, A6 zero, A8 zero**;
+A5 sits at 3% of bars, which is its long-hand scaffold alone. The rule bites at
+the quaver and semiquaver grids, and in 6/8 across the two main beats — the
+places a note can start off the main beat at all.
+
 **A level only ever spells the split with values it has taught.**
 `rstompLevelValueForSlots()` searches the level's own pool, not the whole value
 ladder — and where the pool can't spell the two halves, `rstompCanShowTheMiddle()`
 stops the generator producing that note at all rather than reaching for a value
-the level hasn't met. This is what keeps A1–A4 clean: they have nothing to split
-a minim into, and nothing that needs splitting. Measured, ties per 150 phrases:
-**A1–A4 zero**, A5 onward non-zero — and A5 already sprinkles long-hand ties by
-design, so the tie is not new there either.
+the level hasn't met.
 
 Verified: 0 of 16,000 bars on all 29 levels hide the middle, all 29 levels still
 generate 150/150 phrases, and every bar still fills its grid.
@@ -644,11 +661,10 @@ compound ones need to.
   quavers 3–4 of a 6/8 bar, straddling the two groups.
 - **Notes are not restricted the same way, but they are not free either.**
   Within each half of the bar a note may sit where it likes — a minim across
-  beats 1–2 or 3–4 needs no justification. But **nothing may hide the middle of
-  the bar**: see "BEAT 3 MUST ALWAYS BE VISIBLE". An earlier version of this
-  line said sound was allowed to hide the beat and named A6's minim on beats
-  2–3 as proof; Rob reversed that with the standard engraving rule, and that
-  minim is now written as two tied crotchets.
+  beats 1–2 or 3–4 needs no justification, and Rob confirmed a minim on beats
+  3–4 stays a minim. But **nothing may hide the middle of the bar unless it
+  starts on a main beat**: see "BEAT 3 MUST ALWAYS BE VISIBLE". A6's minim on
+  beats 2–3 is the named exception and stands as written.
 - **Two rests never share a beat** when one rest could say it. Three quaver
   rests in a row is not how anyone writes a bar — the two filling beat 4 are a
   crotchet rest. Rob, seeing it on Level 12: *"we would never see music written

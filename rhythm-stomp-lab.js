@@ -255,11 +255,12 @@ const RSTOMP_LEVELS = [
     // arrives here, where the student already has the vocabulary, and it seeds
     // the anacrusis at the same time.
     //
-    // The minim is WRITTEN as two tied crotchets, because it would otherwise
-    // hide beat 3 (see rstompShowBeatThree). Rhythm and counting are unchanged
-    // - "1 2 (3) 4" either way - and the tie now says in the notation exactly
-    // what the bracket says in the counting: beat 3 is not re-struck. Ties are
-    // not new to the student here; A5 already sprinkles long-hand. Rob: "It really has to pop back in on
+    // The minim STAYS A MINIM. It hides beat 3, and that is Rob's one named
+    // exception to the rule that nothing may: "the only time beat 3 can be
+    // invisible would be when you have a crotchet followed by a half note
+    // followed by another crotchet". It is acceptable and preferable, and is
+    // not to be turned into two tied crotchets - that was tried, on a
+    // misreading, and reversed. Rob: "It really has to pop back in on
     // beat 4. Beat 4 opens the door. It opens the door to beat 1. It's a
     // pickup beat."
     { id: '6', label: 'Level 6: Syncopation', shortLabel: 'Syncopation',
@@ -981,7 +982,7 @@ function rstompMiddleOfBar(grid) {
 function rstompCanShowTheMiddle(grid, slot, unit) {
     const middle = rstompMiddleOfBar(grid);
     if (middle === null) return true;
-    if (unit.isRest || slot === 0) return true;
+    if (unit.isRest || slot % (grid.beamSlots || grid.slotsPerBeat) === 0) return true;
     const end = slot + unit.slots;
     if (slot >= middle || end <= middle) return true;
     return Boolean(rstompSpellSpan(slot, middle, grid) && rstompSpellSpan(middle, end, grid));
@@ -1099,11 +1100,22 @@ function buildRstompBarShapes(grid) {
 // and a note sounding through it hides the one place a reader checks to know
 // where they are.
 //
-// A note may cross the middle of the bar ONLY IF IT STARTS ON A BEAT. That one
-// test carries the whole rule, including Rob's single exception - a minim on
-// beats 2-3, the `1 2 (3) 4` figure Level 6 is built on, starts on a beat and
-// so is allowed to cover beat 3. Everything he ruled out fails it: a minim
-// from the "and" of 1, and a syncopated crotchet from the "and" of 2.
+// A note may cross the middle of the bar ONLY IF IT STARTS ON A MAIN BEAT.
+// That one test carries the whole rule, including Rob's single exception - a
+// minim on beats 2-3, the `1 2 (3) 4` figure Level 6 is built on: "the only
+// time beat 3 can be invisible would be when you have a crotchet followed by a
+// half note followed by another crotchet". It starts on a main beat, so it
+// stands as written. Everything he ruled out fails the test: a minim from the
+// "and" of 1, and a syncopated crotchet from the "and" of 2.
+//
+// MAIN beat, not counted beat. In 6/8 counted in six the counting names every
+// quaver, so every note would "start on a beat" and a crotchet could straddle
+// the two dotted-crotchet beats - which NOTATION_RULES.md forbids. The test is
+// the BEAM GROUP, which is the felt beat at every grid.
+//
+// A middle version of this read "starts the bar", which split the minim on
+// beats 2-3 and respelled Level 6 with it. That was a misreading of a later
+// message and has been reversed; the line quoted above is the ruling.
 //
 // The note is not thrown away, it is RE-SPELLED. Rob: "my rule would have that
 // tied across to an eighth." So it is split at the middle into two tied notes
@@ -1159,7 +1171,9 @@ function rstompShowBeatThree(bars, grid) {
         let slot = 0;
         specs.forEach(spec => {
             const end = slot + spec.slots;
-            const hidesTheMiddle = !spec.isRest && slot < middle && end > middle && slot !== 0;
+            const mainBeat = grid.beamSlots || grid.slotsPerBeat;
+            const hidesTheMiddle = !spec.isRest && slot < middle && end > middle
+                                   && slot % mainBeat !== 0;
             const before = hidesTheMiddle ? rstompSpellSpan(slot, middle, grid) : null;
             const after = hidesTheMiddle ? rstompSpellSpan(middle, end, grid) : null;
             if (before && after) {

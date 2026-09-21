@@ -122,8 +122,8 @@ Apply to every time signature.
 # Where Kool Riffs stands
 
 Measured by `notation-compliance.js` — 20 rules, 4,800 generated bars plus
-constructed cases. **18 pass, 1 accepted exception, 1 open question, 0
-deviations, 0 failures.**
+constructed cases. **18 pass, 2 accepted exceptions, 0 deviations, 0
+failures.** No open questions.
 
 Kool Riffs ships **4/4 only** (crotchet, quaver and semiquaver grids) and **6/8
 counted in six**. 2/4 and 3/4 are not shipped; they are tested because the
@@ -147,14 +147,30 @@ before one is.
 | 5.6.3 | quaver + two semis beam together inside the beat | 3-note beam |
 | 5.6.3 | no beam group crosses a beat | 0 |
 | 2 | beam starts on a beat, or its downbeat is taken | 0 loose starts |
-| 3 | no note hides the midpoint | 0 of 4,800 bars |
+| 3 | no note hides the midpoint unless it starts on a main beat | 0 of 4,800 bars |
 | 4 | simple time never uses a dotted rest | 0 |
 | 4 | no rest starts weak and hides a strong beat | 0 |
 | 4 | whole-bar rest in simple time is a semibreve rest | correct |
 
-## Accepted exception — ruled on by Rob
+## Accepted exceptions — ruled on by Rob
 
-### A1. Beams and ties are mixed — ~600 beams over 4,800 bars
+### A1. `♩ 𝄗 ♩` may hide beat 3 — ~400 bars of 4,800
+§3 protects the midpoint of a 4/4 bar. One figure is exempt, by Rob's explicit
+ruling:
+
+> *"The only time beat 3 can be invisible would be when you have a crotchet
+> followed by a half note followed by another crotchet."*
+
+It is *"acceptable and preferable, and is not to be changed into quarter quarter
+tied to quarter quarter."* The test is **starts on a main beat** — which admits
+that figure and nothing else. A minim from the "and" of 1 and a syncopated
+crotchet from the "and" of 2 still split and tie.
+
+This was got wrong once. A later write-up listed the exceptions as "whole notes
+and some *non-syncopated* half notes", which was read as excluding this minim;
+the figure was split and Level 6 respelled. Reversed. **The ruling above wins.**
+
+### A2. Beams and ties are mixed — ~600 beams over 4,800 bars
 §2 says don't. We do, in exactly one place and on purpose: **the equivalency
 scaffold** writes a crotchet the long way as two tied quavers, and they beam
 together inside the beat. Strict engraving would simply write the crotchet.
@@ -168,26 +184,41 @@ The scaffold is the only source — midpoint splits are never beamed, because th
 two halves fall in different beam groups. Any *new* mixing of beams and ties
 that is not the scaffold is a bug.
 
-## Open question
-
-### Q1. Notes spanning a beat inside a half-bar — 1,451 of 4,800 bars
+## Resolved: Q1 — notes spanning a beat inside a half-bar
 §2 says "when a single note value would cross a beat boundary and hide a main
 beat, split it and tie". §3 then qualifies it per metre: in 4/4 only the
 midpoint is protected, and a note "up to the value of a minim" may span two
-beats inside a half-bar. We follow §3 — so a minim on beats 3–4 stands, and
-`rh h` (half rest, half note) is left alone.
+beats inside a half-bar.
 
-*Question:* is §3 the operative rule, or do you want notes restricted at
-**every** beat? The second reading would rewrite a great deal of Stage A.
+**Rob's ruling: §3 is operative.** *"A minim on beats 3–4 should stay a minim —
+standard practice writes it that way."* So `𝄼 𝄗` is left as written, and a
+minim on beats 1–2 likewise. ~1,770 of 4,800 bars use this, which is most of
+Stage A.
 
-## Resolved
+## Also resolved
 
-- **A8 carries ties in 15% of its bars, and that is correct.** A8 is *at
-  standard*, not a staged scaffold, so the engraving rule governs: a minim on
-  beats 2–3 is two tied crotchets. Rob's ruling. A8's own point — the dotted
-  minim written plainly, with no `spellOut` — is untouched.
-- **A6's figure is spelled `q q q~ q`.** Rhythm and counting unchanged
-  (`1 2 (3) 4`, in 300 of 300 phrases); only the spelling moved.
+- **Stage A carries no engraving ties at all.** On the crotchet grid every note
+  starts on a main beat, so the midpoint rule never fires. Measured ties per 150
+  phrases: **A1–A4 zero, A6 zero, A8 zero.** A5 sits at 3% of bars, which is its
+  long-hand scaffold alone. A8 is tie-free, as its design intends — the earlier
+  note saying it carried ties in 15% of bars was written while the rule was
+  wrongly narrowed, and no longer applies.
+- **A6's figure is `q h q`,** counted `1 2 (3) 4`, in 300 of 300 phrases. It was
+  briefly respelled as `q q q~ q` on the misreading above; reverted.
+- **A whole bar of silence is a centred semibreve rest in 6/8** (Rob: *"the
+  symbol is no longer acting as a literal four-beat rest; it simply means rest
+  for the entire bar"*). The generator still stores the tick-correct value so
+  the bar adds up; the renderer borrows the whole-rest glyph and centres it.
+  In 4/4 the whole rest is an *ordinary* rest that happens to fill the bar, so
+  it stays aligned on beat 1 — Rob's own distinction.
+
+## Still open
+
+- **A dotted minim on beats 2–4 (`♩ ♩·`).** It crosses the middle and starts on
+  a main beat, so it currently stands as written. Rob has named the whole note,
+  the dotted minim from beat 1, and the beats-2–3 minim as exceptions — but not
+  this one, and standard practice is genuinely split on it. Only reachable at
+  the quaver and semiquaver grids.
 - **A whole bar of silence is a centred semibreve rest in 6/8** (Rob: *"the
   symbol is no longer acting as a literal four-beat rest; it simply means rest
   for the entire bar"*). The generator still stores the tick-correct value so
