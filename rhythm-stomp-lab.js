@@ -13,88 +13,676 @@
    straight into the game, matching the rest of the app.
    ========================================= */
 
-const RSTOMP_PATTERNS = {
-    'whole-note': ['play', 'hold', 'hold', 'hold'],
-    'whole-rest': ['rest', 'rest', 'rest', 'rest'],
-    'half-note': ['play', 'hold'],
-    'half-rest': ['rest', 'rest']
+/* =========================================================================
+   THE SLOT GRID — what makes a level
+
+   A level is defined by ONE ARRAY OF COUNTING LABELS (CLAUDE.md, "Counting
+   engine"). The array's length is how many slots a bar holds; its distinct
+   values are the keypad. Everything else about the level's grid falls out
+   of it:
+
+     ['1','2','3','4']                    4 slots, a slot is a crotchet
+     ['1','+','2','+','3','+','4','+']    8 slots, a slot is a quaver
+     ['1','e','+','a', ...]              16 slots, a slot is a semiquaver
+     ['1','2','3','4','5','6']            6 slots, 6/8 counted in 6
+     ['1','+','a','2','+','a']            6 slots, 6/8 counted in 2
+
+   The last two are THE SAME SIX-SLOT GRID with different labels, which is
+   exactly how 6/8 is taught: as simple time first, relabelled at speed later.
+   ========================================================================= */
+
+const RSTOMP_LABELS_BEAT = ['1', '2', '3', '4'];
+const RSTOMP_LABELS_QUAVER = ['1', '+', '2', '+', '3', '+', '4', '+'];
+const RSTOMP_LABELS_SEMIQUAVER = [
+    '1', 'e', '+', 'a', '2', 'e', '+', 'a', '3', 'e', '+', 'a', '4', 'e', '+', 'a'
+];
+const RSTOMP_LABELS_SIX_IN_SIX = ['1', '2', '3', '4', '5', '6'];
+const RSTOMP_LABELS_SIX_IN_TWO = ['1', '+', 'a', '2', '+', 'a'];
+
+// Note values, largest last, each one twice the one before it. This ladder is
+// the only place the arithmetic of note values lives.
+const RSTOMP_VALUE_LADDER = ['32', '16', '8', 'q', 'h', 'w'];
+
+// How many slots a written note value covers, at a level whose slot is
+// `slotValue`. Returns null when the value doesn't land on this level's grid -
+// a dotted crotchet on a crotchet grid is 1.5 slots, which is not a thing the
+// student can write, and the answer is to teach it on a quaver grid instead.
+function rstompSlotsFor(value, slotValue) {
+    const dotted = value.slice(-1) === 'd';
+    const base = dotted ? value.slice(0, -1) : value;
+    const steps = RSTOMP_VALUE_LADDER.indexOf(base) - RSTOMP_VALUE_LADDER.indexOf(slotValue);
+    if (steps < 0) return null;
+    const slots = Math.pow(2, steps) * (dotted ? 1.5 : 1);
+    return Number.isInteger(slots) ? slots : null;
+}
+
+// The inverse: the single written note that lasts exactly `slots`, or null if
+// no single note does and it has to be spelled as a tie. Used by the tie
+// generator, which picks a length first and needs the notehead second.
+function rstompValueForSlots(slots, slotValue) {
+    return RSTOMP_VALUE_LADDER.reduce((found, base) => {
+        if (found) return found;
+        if (rstompSlotsFor(base, slotValue) === slots) return base;
+        if (rstompSlotsFor(base + 'd', slotValue) === slots) return base + 'd';
+        return null;
+    }, null);
+}
+
+/* =========================================================================
+   THE VOCABULARY
+   One entry per written note or rest the generator can reach for. An entry
+   names a NOTE VALUE, not a number of slots, because how many slots a
+   crotchet covers depends on what a slot is at this level: one at Stage A,
+   two once quavers arrive. The slot count is worked out per level.
+   ========================================================================= */
+
+const RSTOMP_VOCABULARY = {
+    'whole-note': { value: 'w', isRest: false },
+    'whole-rest': { value: 'w', isRest: true },
+    'dotted-half-note': { value: 'hd', isRest: false },
+    'dotted-half-rest': { value: 'hd', isRest: true },
+    'half-note': { value: 'h', isRest: false },
+    'half-rest': { value: 'h', isRest: true },
+    'dotted-quarter-note': { value: 'qd', isRest: false },
+    'dotted-quarter-rest': { value: 'qd', isRest: true },
+    'quarter-note': { value: 'q', isRest: false },
+    'quarter-rest': { value: 'q', isRest: true },
+    'dotted-eighth-note': { value: '8d', isRest: false },
+    'eighth-note': { value: '8', isRest: false },
+    'eighth-rest': { value: '8', isRest: true },
+    'sixteenth-note': { value: '16', isRest: false },
+    'sixteenth-rest': { value: '16', isRest: true }
 };
 
 // Counting rounds are untimed at every level (the eventual Performing round
 // is where timing pressure lives, per the design brief) - so no timing
 // field exists here yet.
-// Level 3's pool, once the half-note-adjacency and rest-adjacency
-// engraving rules both apply, only actually produces 4 valid bar shapes:
-// a lone whole note, a lone whole rest, half-note+half-rest, and
-// half-rest+half-note - by design, not a bug. It's genuinely a thin
-// "mixed" level at this stage (testing whether a student can switch
-// between whole-note-scale and half-note-scale thinking within one
-// level, not new combinatorics) - the pool grows once quarter notes
-// arrive at a future level.
+//
+// STAGE A - sustain and the bracket. Labels "1 2 3 4", 4 bars.
+// Built to design brief S13.4. DO NOT re-derive this order from the code or
+// from a drum method: S13.1 records a reversal. The canon opens on the quarter
+// note because it is percussion-shaped - one strike per beat IS the pulse for
+// a drummer. These are wind and string players, for whom four quarters is four
+// separate attacks and a whole note is one sustained sound, which is both
+// easier and what a beginner should be doing anyway. And a bar of whole notes
+// and whole rests has exactly two possible shapes:
+//
+//     1 (2 3 4)      a whole note
+//     (1 2 3 4)      a whole rest
+//
+// which is the most constrained place the bracket can possibly be introduced,
+// and the contrast teaches the one rule everything else rests on: the onset
+// digit sits OUTSIDE the bracket for a note and INSIDE it for a rest.
+//
+// Every level after A3 follows the stage template (S13.3): the new value
+// isolated, mixed, tied inside the bar, the dotted form revealed, syncopation,
+// then ties across the barline. Stage A runs to nine because it has three
+// values to introduce before that arc can start.
 const RSTOMP_LEVELS = [
-    // Level 1 is the two-button walkthrough - the tutorial for the whole
-    // idea, and a complete experience on its own for a child who can't yet
-    // write numerals (CLAUDE.md, "TWO interfaces"). Every level after it
-    // hands the student the keypad and asks them to write the counting
-    // themselves, which is the transferable skill.
-    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests', pool: ['whole-note', 'whole-rest'] },
-    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests', pool: ['half-note', 'half-rest'], scribe: true },
-    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], scribe: true },
-    // tieLevel/tieChance: see generateRstompPhraseWithTie. Every phrase at
-    // this level carries a tie (tieChance 1), matching the original design
-    // brief's level 4 - ties are introduced right after whole/half, using
-    // only durations already taught, per Rob's "a tie is just how we make
-    // really long notes" framing.
-    { id: '4', label: 'Level 4: Ties Across the Barline', shortLabel: 'Ties Across the Barline', pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], tieLevel: true, tieChance: 1, scribe: true }
+    /* A1-A4 ARE PLAYED ON THE TWO-BUTTON INTERFACE, A5 ONWARDS ON THE KEYPAD.
+       Rob's call, and the reason is sharper than "easier first".
+
+       THE DIGITS CARRY NO INFORMATION. Measured across all 29 levels, 400
+       phrases each: the digit sequence NEVER varies. It is always the level's
+       labels in order - "1 2 3 4 1 2 3 4..." - whatever the rhythm. Only the
+       bracket pattern changes, and it changes constantly (up to 400 distinct
+       patterns in 400 phrases). So the brackets are the whole test.
+
+       Which means the two interfaces ask the IDENTICAL question. "Does a new
+       note start here?" and "is this label inside a bracket or outside it?"
+       are the same question asked twice. The keypad does not test more
+       knowledge - it asks for more typing.
+
+       The real difference is RECOGNITION versus PRODUCTION. The two-button
+       cursor leads: it walks the phrase and the counting appears correctly in
+       front of the student, which is how the technique gets given away. The
+       keypad is led BY the student: they track their own position and produce
+       the whole string, with nothing telling them where they are. That is much
+       closer to writing counting under the notes by hand, which is the
+       transferable skill.
+
+       The handover is at A5 rather than at the quaver grid because B1 would
+       land a new interface, a new grid and a new key all on one level - three
+       new ideas at once. A5 introduces no new notation at all, so it has the
+       room, and the interface change becomes ITS one new idea.
+
+       A corollary worth recording: an intermediate tier where the student
+       types digits and the app supplies the brackets would be a test of
+       NOTHING, since the digits are positional. It was considered and
+       rejected on the measurement above. */
+
+    // A1. The two-button walkthrough - the tutorial for the whole idea, and a
+    // complete experience on its own for a child who can't yet write numerals
+    // (CLAUDE.md, "TWO interfaces").
+    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest'] },
+
+    // A2. Two events in a bar - the first time anything happens twice.
+    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'] },
+
+    // A3. Switching scale inside a bar.
+    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'] },
+
+    // A4. THE QUARTER-NOTE MAP (brief S13.5). The beat itself, in every
+    // position. Fifteen bar shapes - everything from four quarters down to one
+    // quarter, that one quarter in each of the four places - with the all-rest
+    // bar excluded by the engraving rule. SEVEN of the fifteen do not start on
+    // a struck beat 1, which is the "find beat 1 with no note on it" drill and
+    // the reason this level cannot be skipped. Quarters ALONE are trivial;
+    // quarters with rests in every position are the fundamental reading
+    // exercise.
+    { id: '4', label: 'Level 4: Quarter Notes and Rests', shortLabel: 'Quarter Notes and Rests',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['quarter-note', 'quarter-rest'] },
+
+    // A5. THE KEYPAD ARRIVES. No new notation - the whole crotchet vocabulary
+    // is already known - so the level's one new idea is that the student now
+    // writes the counting instead of answering it. A sprinkle of long-hand
+    // starts here too, now that a minim has a spelling the student can read.
+    { id: '5', label: 'Level 5: Quarters, Halves and Wholes', shortLabel: 'Quarters, Halves, Wholes',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      spellOut: ['h'], longhandChance: 0.15, scribe: true },
+
+    // A6. THE DOUBLED SYNCOPATION (brief S13.5a). The classic syncopation
+    // figure one generation up: crotchet / minim / crotchet, onsets on 1, 2
+    // and 4, counted "1 2 (3) 4". Syncopation does NOT wait for quavers - it
+    // arrives here, where the student already has the vocabulary, and it seeds
+    // the anacrusis at the same time. Rob: "It really has to pop back in on
+    // beat 4. Beat 4 opens the door. It opens the door to beat 1. It's a
+    // pickup beat."
+    { id: '6', label: 'Level 6: Syncopation', shortLabel: 'Syncopation',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      featureShape: ['quarter-note', 'half-note', 'quarter-note'], scribe: true },
+
+    // A7. THE LONG-HAND DRILL - the level test of equivalency. Ties sit here
+    // rather than back at whole notes on Rob's correction: the quarter is the
+    // unit everything is built from, so once quarters exist you can tie two
+    // into a half, three into a dotted half, or a half to a quarter - every
+    // long-hand device becomes available at once. Teaching the tie at whole
+    // notes gives one trick; teaching it here gives the whole toolkit.
+    // spellOutEvery, so the short way and the long way appear in the same line
+    // to be read against each other. This is also where the dotted minim is
+    // first seen, as the thing three tied crotchets add up to.
+    { id: '7', label: 'Level 7: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest', 'dotted-half-note', 'quarter-note', 'quarter-rest'],
+      spellOut: ['h', 'hd'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
+
+    // A8. The shortcut A7 revealed, now in ordinary use. The scaffold comes
+    // down: no spellOut here, so the dotted minim is written as a dotted minim.
+    { id: '8', label: 'Level 8: Dotted Half Notes', shortLabel: 'Dotted Half Notes',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      scribe: true },
+
+    // A9. Any value crossing the barline. tieLevel/tieChance: see
+    // generateRstompPhraseWithTie. Every phrase carries a tie, using only
+    // durations already taught, per Rob's "a tie is just how we make really
+    // long notes" framing.
+    { id: '9', label: 'Level 9: Ties Across the Barline', shortLabel: 'Ties Across the Barline',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
+      tieLevel: true, tieChance: 1, scribe: true },
+
+    /* ===================== STAGE B - the quaver =====================
+       Labels "1 + 2 + 3 + 4 +", TWO bars (design brief S13.10: 2 bars of
+       quavers is 16 slots, the same typing burden as 4 bars of crotchets).
+
+       THE CENTRE OF GRAVITY OF THE WHOLE PILLAR, and ten levels on Rob's
+       instruction: "I think we need to develop a whole series around that
+       area and spend some time there." The first subdivision of the beat is
+       where the real work is; everything finer is the same skill smaller.
+       ================================================================= */
+
+    // B1. The beat divides. Quavers against the crotchet they split - the
+    // contrast is the lesson, so a level of quavers alone would teach less.
+    { id: '10', label: 'Level 10: Paired Quavers', shortLabel: 'Paired Quavers',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['quarter-note', 'quarter-rest', 'eighth-note'],
+      subdivideWholeBeats: true, scribe: true },
+
+    // B2. Divided beats among sustained ones.
+    { id: '11', label: 'Level 11: Quavers and Longer Notes', shortLabel: 'Quavers and Longer',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest',
+             'quarter-note', 'quarter-rest', 'eighth-note'],
+      subdivideWholeBeats: true, scribe: true },
+
+    // B3. An odd number of quavers in a beat, and the off-beat rest - the
+    // first time a beat is not either whole or evenly halved.
+    { id: '12', label: 'Level 12: Single Quavers and Quaver Rests', shortLabel: 'Single Quavers',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'half-rest', 'quarter-note', 'quarter-rest',
+             'eighth-note', 'eighth-rest'], scribe: true },
+
+    // B4. Ties at this grid - the long-hand drill one generation down. Two
+    // quavers tied make a crotchet; a quaver tied to a crotchet makes a
+    // dotted crotchet, which is the figure B5 then uses in plain notation.
+    { id: '13', label: 'Level 13: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
+             'eighth-note', 'eighth-rest'],
+      spellOut: ['q', 'qd'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
+
+    // B5. THE PUMP, introduced on the downbeat. Rob's named figure: a dotted
+    // crotchet then a quaver, two onsets always three quavers apart. On beat 1
+    // the quaver lands on the "+" of 2, ANTICIPATING beat 3 - that flip into
+    // the second strong beat is the funk in it.
+    { id: '14', label: 'Level 14: The Pump', shortLabel: 'The Pump',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'downbeat' }, scribe: true },
+
+    // B6. THE PUMPS I - the five positions that fit inside a bar.
+    { id: '15', label: 'Level 15: The Pumps Walk the Bar', shortLabel: 'Pumps in the Bar',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
+
+    // B7. THE PUMPS II - the three that cross the barline, where the dotted
+    // crotchet has to be written as a tie because a written note cannot cross
+    // a barline either. Same rule as the counting bracket, and here it is the
+    // lesson rather than an inconvenience.
+    { id: '16', label: 'Level 16: Pumps Across the Barline', shortLabel: 'Pumps Across the Bar',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'crossing' }, scribe: true },
+
+    // B8. SYNCOPATION I - quaver / crotchet / quaver, the A6 figure now at
+    // quaver resolution, walked through every position it fits.
+    { id: '17', label: 'Level 17: Syncopation', shortLabel: 'Syncopation',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'in-bar' },
+      scribe: true },
+
+    // B9. SYNCOPATION II - the syncopation figure anywhere, including across
+    // the barline, with the pumps already in the vocabulary.
+    { id: '18', label: 'Level 18: Syncopation and Pumps', shortLabel: 'Syncopation + Pumps',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
+             'eighth-note', 'eighth-rest'],
+      figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'all' },
+      scribe: true },
+
+    // B10. Barline ties and review - everything Stage B has taught, with a
+    // tie over every barline.
+    { id: '19', label: 'Level 19: Quaver Review', shortLabel: 'Quaver Review',
+      labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
+      pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
+             'quarter-rest', 'eighth-note', 'eighth-rest'],
+      tieLevel: true, tieChance: 1, scribe: true },
+
+    /* ===================== STAGE C - 6/8 in simple time =====================
+       Labels "1 2 3 4 5 6", FOUR bars (24 slots, brief S13.10).
+
+       Rob's decision: SIMPLE-TIME 6/8 COMES BEFORE SEMIQUAVERS, with the
+       quaver as the smallest value. 6/8 is taught as six beats in a bar first;
+       it returns after the semiquaver as Stage E, relabelled "1 + a 2 + a" and
+       counted in two at speed. The two are the same six-slot grid.
+
+       Two things here are not true anywhere else in the pillar:
+
+       THE BEAT IS NOT THE BEAM GROUP. The counting names every quaver, so the
+       beat is one slot - but quavers are still beamed in THREES, because the
+       dotted-crotchet pulse is what the eye reads. Every earlier level had the
+       two the same, so `beamSlots` exists for this.
+
+       THE BAR DIVIDES BY THREE. Its metric levels are 6-3-1, not 6-3-2-1, and
+       that changes where a rest may sit: a crotchet rest may cover quavers 1-2
+       or 2-3 of a group, but never 3-4, because that straddles the two groups.
+       "A multiple of its own length" would have allowed exactly that, which is
+       why the rule is stated against the bar's metric levels instead.
+       ===================================================================== */
+
+    // C1. Sometimes the quaver gets the beat.
+    { id: '20', label: 'Level 20: Six-Eight, Counted in Six', shortLabel: 'Six-Eight in Six',
+      labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
+      pool: ['dotted-half-rest', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      scribe: true },
+
+    // C2. Grouping in threes: the dotted crotchet fills a whole group, and
+    // ties join them.
+    { id: '21', label: 'Level 21: Six-Eight, Dotted Crotchets and Ties', shortLabel: 'Six-Eight Groups',
+      labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
+      pool: ['dotted-half-note', 'dotted-half-rest', 'dotted-quarter-note', 'dotted-quarter-rest',
+             'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
+      tieLevel: true, tieChance: 1, scribe: true },
+
+    /* ===================== STAGE D - the semiquaver =====================
+       Labels "1 e + a 2 e + a 3 e + a 4 e + a", TWO bars = 32 slots.
+
+       THE COUNTING HERE IS FULL GRID, and that is a decision worth stating
+       because the design brief now holds two rules that disagree.
+
+       Brief S13.12 settles the app's rule: every slot a note covers gets a
+       label, the onset's outside the bracket and the rest inside. A crotchet
+       at this grid is "1 (e + a)", exactly as a semibreve at the crotchet grid
+       is "1 (2 3 4)". The whole scribe interface rests on it - one label per
+       slot, graded per slot - and S13.10's phrase lengths are counted that way.
+
+       Brief S17.1, derived later from Rob's own marked MusicXML, says a
+       quaver ON the quaver grid takes ONE label: "we are already comfortable
+       with how quavers move". Under that rule the same crotchet would be "1".
+
+       These are not a contradiction, they are THE DENSITY DIAL (S16.0). Full
+       grid is the beginner's density - the drill, where every slot is tracked.
+       S17.1 is the competent reader's, the sparse marking an advanced player
+       writes by hand. The app teaches the first. Nothing here should be
+       "corrected" to S17.1 without deciding to change what the app is for.
+       ===================================================================== */
+
+    // D1. The Parent Rhythm. Four semiquavers, and beats kept whole - the beat
+    // either divides evenly or stays intact, so nothing obscures the division
+    // itself. Uneven beats are D3's job.
+    { id: '22', label: 'Level 22: Four Semiquavers', shortLabel: 'Four Semiquavers',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'sixteenth-note'],
+      subdivideWholeBeats: true, scribe: true },
+
+    // D2. Mixed with everything above.
+    { id: '23', label: 'Level 23: Semiquavers Mixed', shortLabel: 'Semiquavers Mixed',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['whole-note', 'half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
+             'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      scribe: true },
+
+    // D3. Worksheet patterns 1 and 2, taught as a pair because the pair is the
+    // lesson: the same three notes with the quaver at either end.
+    { id: '24', label: 'Level 24: Quaver and Two Semiquavers', shortLabel: 'Quaver + Two Semis',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: [{ notes: [{ slots: 2 }, { slots: 1 }, { slots: 1 }], positions: 'in-bar' },
+               { notes: [{ slots: 1 }, { slots: 1 }, { slots: 2 }], positions: 'in-bar' }],
+      scribe: true },
+
+    // D4. Ties at this grid - the long-hand drill one generation down again.
+    // Two semiquavers tied make a quaver; a semiquaver tied to a quaver makes
+    // a dotted quaver, which is the figure D5 then uses in plain notation.
+    { id: '25', label: 'Level 25: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'dotted-eighth-note',
+             'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      spellOut: ['8', '8d'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
+
+    // D5. Pattern 3 - dotted quaver then semiquaver. The pump's shape one
+    // generation down: two onsets three slots apart, starting on the beat.
+    { id: '26', label: 'Level 26: Dotted Quaver and Semiquaver', shortLabel: 'Dotted Quaver + Semi',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
+
+    // D6. Pattern 4 - reversed, and harder, because it IS a syncopation: the
+    // long note starts off the beat.
+    { id: '27', label: 'Level 27: Semiquaver and Dotted Quaver', shortLabel: 'Semi + Dotted Quaver',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: { notes: [{ slots: 1 }, { slots: 3 }], positions: 'in-bar' }, scribe: true },
+
+    // D7. Pattern 5 - semiquaver, quaver, semiquaver, counted "1 e (+) a".
+    // This is the figure Rob marked by hand in his MusicXML, and the only
+    // place a quaver has to be opened up to show where the next semiquaver
+    // falls (brief S17.1).
+    { id: '28', label: 'Level 28: Semiquaver Syncopation', shortLabel: 'Semiquaver Syncopation',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
+
+    // D8. Full review, with a tie over every barline.
+    { id: '29', label: 'Level 29: Semiquaver Review', shortLabel: 'Semiquaver Review',
+      labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
+      pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
+             'dotted-eighth-note', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
+      tieLevel: true, tieChance: 1, scribe: true }
 ];
 
-// Beats-in-a-run -> VexFlow duration string. Only what levels 1-2 actually
-// need (a lone 4-beat note/rest, or two 2-beat ones) - no reason to bring
-// in rhythm.js's fuller map (dotted values, quavers) before a level needs it.
-const RSTOMP_DURATION_FOR_BEATS = { 1: 'q', 2: 'h', 4: 'w' };
+// Default bars per phrase. Stages set their own so the TYPING BURDEN stays
+// roughly constant (design brief S13.10): 4 bars of crotchets and 2 bars of
+// quavers are both 16 slots. Four bars of semiquavers would be 64, which is
+// unreadable on a phone and brutal against an all-or-nothing gate.
+const RSTOMP_BARS_PER_PHRASE = 4;
+
+// Everything the rest of the file needs to know about the active level's
+// grid, derived from its label array in one place so no function has to
+// reach back into RSTOMP_LEVELS to ask how long a bar is.
+function rstompGridFor(level) {
+    const labels = level.labels || RSTOMP_LABELS_BEAT;
+    const slotValue = level.slot || 'q';
+    return {
+        labels,
+        slotValue,
+        slotsPerBar: labels.length,
+        // How many slots make one BEAT, read off the label array itself: the
+        // gap to the next numeral. "1 + 2 +" is 2 slots to a beat, "1 e + a"
+        // is 4, "1 + a" (compound, in 2) is 3, "1 2 3 4" is 1. Nothing extra
+        // to declare - the labels already say what the beat is.
+        slotsPerBeat: (() => {
+            const next = labels.findIndex((l, i) => i > 0 && /^[0-9]/.test(l));
+            return next > 0 ? next : 1;
+        })(),
+        barsPerPhrase: level.bars || RSTOMP_BARS_PER_PHRASE,
+        // The BEAM GROUP, which is not always the beat. In 6/8 counted in six
+        // the beat is a quaver but quavers are still beamed in threes - the
+        // dotted-crotchet pulse is what the eye reads even when the counting
+        // names every quaver. Simple time has no such split, so this defaults
+        // to the beat and only compound levels declare it.
+        beamSlots: level.beamSlots || null,
+        avoidRepeats: level.avoidRepeats || [],
+        metricLevels: rstompMetricLevels(labels.length),
+        subdivideWholeBeats: !!level.subdivideWholeBeats,
+        // The vocabulary, resolved onto THIS level's grid. A value that
+        // doesn't land on the grid is dropped rather than silently rounded.
+        units: (level.pool || []).map(key => {
+            const entry = RSTOMP_VOCABULARY[key];
+            const slots = entry ? rstompSlotsFor(entry.value, slotValue) : null;
+            return slots ? { key, value: entry.value, isRest: entry.isRest, slots } : null;
+        }).filter(Boolean)
+    };
+}
+
+// What VexFlow needs to know about how full a bar is. Total ticks is all a
+// Voice actually cares about, so slots-per-bar over the slot's own
+// denominator is always right: 4 crotchet slots reads as 4/4, 8 quaver slots
+// as 8/8 (the same bar), 6 quaver slots as 6/8.
+const RSTOMP_VALUE_DENOMINATOR = { w: 1, h: 2, q: 4, '8': 8, '16': 16, '32': 32 };
+
+// The metric levels of a bar, coarsest first: the whole bar, then each way it
+// divides. 4/4 on the crotchet grid is 4-2-1; 6/8 is 6-3-1. Halving where it
+// can and thirding where it cannot is what makes compound time come out right.
+function rstompMetricLevels(slotsPerBar) {
+    const out = [];
+    let n = slotsPerBar;
+    while (n >= 1) {
+        out.push(n);
+        if (n === 1) break;
+        if (n % 2 === 0) n /= 2;
+        else if (n % 3 === 0) n /= 3;
+        else break;
+    }
+    return out;
+}
+
+function rstompVoiceMeter() {
+    return { num: rstompSlotsPerBar, den: RSTOMP_VALUE_DENOMINATOR[rstompSlotValue] };
+}
+
+/* =========================================================================
+   THE EQUIVALENCY SCAFFOLD  ("the long way")
+
+   One written note, spelled out as several tied notes, so the student sees
+   that the two are the same length. A minim is the short way; two tied
+   crotchets are the long way. Rob: "that is the point."
+
+   IT IS SCAFFOLDING, AND IT COMES DOWN. This is not a permanent 10% garnish
+   sprinkled through every level. A level that is LANDING a new note value
+   spells that value out - every way it can be spelled - as a rite of passage.
+   Once the student can see the equivalence, the scaffold is withdrawn and
+   later levels show the plain note only. Rob: "As soon as they can see that,
+   we don't have to show it to them anymore. They just need to pass that
+   round. It's a level test of equivalency."
+
+   It recurs at every subdivision, which is why it lives on the grid rather
+   than in a table: two quavers make a crotchet at Stage B for exactly the
+   reason two crotchets make a minim at Stage A, and two semiquavers make a
+   quaver at Stage D. Rob: "All of this equivalency has to scale down into
+   subdivision."
+
+   ONE GENERATION AT A TIME. The pieces may be the target's own base value or
+   the one immediately below it, never further. So a dotted minim may be
+   spelled crotchet+minim, minim+crotchet, or - Rob's "ludicrous mode" -
+   three tied crotchets. A semibreve may be two tied minims, but NEVER four
+   tied crotchets: crotchets are two generations below a semibreve, and that
+   is a different (and much worse) picture.
+
+   The counting is NOT always identical, and that is information rather than a
+   defect. Short-note-first spellings read identically to the plain note
+   (crotchet tied to minim is "1 (2 3)", so is a dotted minim). The others
+   do not, because they are more written notes and every written note gets its
+   own group: two tied minims read "1 (2) (3 4)" where a semibreve reads
+   "1 (2 3 4)". Both belong in the scaffold round - the first teaches that
+   they are the same, the second teaches that the counting shows you which
+   spelling you are looking at.
+   ========================================================================= */
+
+// The piece values allowed when spelling out `value`: its own base, and the
+// one generation below. A dotted minim's base is the minim, so its pieces may
+// be minims and crotchets.
+function rstompSpellingPieces(value, slotValue) {
+    const base = value.slice(-1) === 'd' ? value.slice(0, -1) : value;
+    const index = RSTOMP_VALUE_LADDER.indexOf(base);
+    return [RSTOMP_VALUE_LADDER[index], RSTOMP_VALUE_LADDER[index - 1]]
+        .filter(Boolean)
+        .map(piece => ({ value: piece, slots: rstompSlotsFor(piece, slotValue) }))
+        .filter(piece => piece.slots);
+}
+
+// Every way to write `value` as two or more tied notes, one generation down.
+// Order matters: crotchet+minim and minim+crotchet are different pictures and
+// count differently, and Rob wants both when a dotted minim is being landed.
+function rstompLonghandSpellings(value, slotValue) {
+    const total = rstompSlotsFor(value, slotValue);
+    const pieces = rstompSpellingPieces(value, slotValue);
+    if (!total) return [];
+    const out = [];
+    (function build(remaining, run) {
+        if (remaining === 0) { if (run.length > 1) out.push(run); return; }
+        pieces.forEach(piece => {
+            if (piece.slots <= remaining) build(remaining - piece.slots, [...run, piece]);
+        });
+    })(total, []);
+    return out;
+}
+
+// Rewrite one spec as its long-hand spelling: the first piece is struck, every
+// piece after it is tied into. Nothing else about the bar moves, because the
+// total slot count is unchanged by construction.
+function rstompSpellOutSpec(spec, spelling) {
+    return spelling.map((piece, index) => ({
+        slots: piece.slots,
+        value: piece.value,
+        isRest: false,
+        tied: index > 0 ? true : spec.tied
+    }));
+}
+
+// Apply the scaffold to a generated phrase, in place of one plain note. A
+// level opts in with `spellOut` (which values it is landing) and
+// `longhandChance`. At most one note per phrase is spelled out - the device
+// is a pointed comparison, not a texture - and a note already tied into is
+// never chosen, since spelling out a continuation teaches nothing.
+function rstompApplyLonghand(bars, level, grid) {
+    if (!level.spellOut || !level.spellOut.length) return bars;
+    const chance = level.longhandChance != null ? level.longhandChance : 0;
+
+    const candidates = [];
+    bars.forEach((specs, barIndex) => specs.forEach((spec, specIndex) => {
+        if (spec.isRest || spec.tied) return;
+        if (level.spellOut.indexOf(spec.value) === -1) return;
+        const spellings = rstompLonghandSpellings(spec.value, grid.slotValue);
+        if (spellings.length) candidates.push({ barIndex, specIndex, spellings });
+    }));
+    if (!candidates.length) return bars;
+
+    // Two modes, because a sprinkle and a drill want different things.
+    //
+    // SPRINKLE (the default): one note in the phrase, at `longhandChance`. The
+    // device is a pointed comparison against the plain notation around it, so
+    // more than one at a time blurs it.
+    //
+    // DRILL (`spellOutEvery`): each eligible note is rolled independently, so
+    // one phrase carries several and the short way and the long way sit side
+    // by side in the same line. This is what a level whose whole job is
+    // equivalency needs - A7, where two tied crotchets and a plain minim have
+    // to be readable against each other.
+    const chosen = level.spellOutEvery
+        ? candidates.filter(() => Math.random() < chance)
+        : (Math.random() < chance ? [candidates[Math.floor(Math.random() * candidates.length)]] : []);
+
+    // Right to left, so an earlier rewrite doesn't shift a later one's index.
+    chosen.slice().sort((a, b) => b.barIndex - a.barIndex || b.specIndex - a.specIndex)
+        .forEach(pick => {
+            const spelling = pick.spellings[Math.floor(Math.random() * pick.spellings.length)];
+            const specs = bars[pick.barIndex];
+            bars[pick.barIndex] = [
+                ...specs.slice(0, pick.specIndex),
+                ...rstompSpellOutSpec(specs[pick.specIndex], spelling),
+                ...specs.slice(pick.specIndex + 1)
+            ];
+        });
+    return bars;
+}
 
 /* =========================================================================
    NOTE BOUNDARIES ARE EXPLICIT
    A phrase is a list of bars; a bar is a list of SPECS, one per written note
-   or rest: { beats, isRest, tied }. `tied` means this note is tied into from
-   the note before it - it is drawn, but never re-struck.
+   or rest: { slots, value, isRest, tied }. `tied` means this note is tied
+   into from the note before it - it is drawn, but never re-struck.
 
    Beats alone cannot carry this. Two half notes tied inside a bar and a
-   single whole note have the identical beat stream (play/hold/hold/hold), and
+   single whole note have the identical slot stream (play/hold/hold/hold), and
    Rob's counting tells them apart: "1(2)(34)" against "1(234)". The same
    ambiguity blocks the long-hand spelling device in the design brief (two
    tied crotchets shown against a minim). Specs are the fix, and everything
-   else - the beat stream, the counting, the notation - derives from them.
+   else - the slot stream, the counting, the notation - derives from them.
    ========================================================================= */
 
-const RSTOMP_SPEC_FOR_PATTERN = {
-    'whole-note': { beats: 4, isRest: false },
-    'whole-rest': { beats: 4, isRest: true },
-    'half-note': { beats: 2, isRest: false },
-    'half-rest': { beats: 2, isRest: true }
-};
-
-// Specs -> the per-beat stream the two-button interface answers against. A
-// tied note's first beat is a Hold, not a Play: it is the same note still
+// Specs -> the per-slot stream the two-button interface answers against. A
+// tied note's first slot is a Hold, not a Play: it is the same note still
 // sounding, so nothing new starts there.
-function rstompSpecsToBeats(specs) {
-    const beats = [];
+function rstompSpecsToSlots(specs) {
+    const stream = [];
     specs.forEach(spec => {
-        for (let k = 0; k < spec.beats; k++) {
-            beats.push(spec.isRest ? 'rest' : (k === 0 && !spec.tied ? 'play' : 'hold'));
+        for (let k = 0; k < spec.slots; k++) {
+            stream.push(spec.isRest ? 'rest' : (k === 0 && !spec.tied ? 'play' : 'hold'));
         }
     });
-    return beats;
+    return stream;
 }
 
 function rstompSpecsToPhrase(specBars) {
-    return specBars.map(rstompSpecsToBeats);
+    return specBars.map(rstompSpecsToSlots);
 }
 
 let rstompSelectedLevel = '1';
-let rstompSpecBars = [];        // SOURCE OF TRUTH: 4 bars, each a list of {beats,isRest,tied}
-let rstompPhrase = [];          // derived beat stream: 4 bars, each 4 of 'play'/'hold'/'rest'
-let rstompPositions = [];       // flat [{barIndex, beatIndex}] - 16 for a 4-bar phrase, level 1 has no subdivisions
+let rstompSpecBars = [];        // SOURCE OF TRUTH: bars, each a list of {slots,value,isRest,tied}
+let rstompPhrase = [];          // derived slot stream: bars, each slotsPerBar of 'play'/'hold'/'rest'
+let rstompPositions = [];       // flat [{barIndex, slotIndex}] - one per slot in the phrase
+
+// The active level's grid, set when a phrase is generated. Held here rather
+// than looked up per call so that drawing, scoring and the counting row all
+// read the same three numbers without reaching back into RSTOMP_LEVELS.
+let rstompLabels = RSTOMP_LABELS_BEAT;
+let rstompSlotsPerBar = RSTOMP_LABELS_BEAT.length;
+let rstompSlotValue = 'q';
+let rstompSlotsPerBeat = 1;
+let rstompBeamSlots = 1;
 let rstompEntries = [];         // parallel to rstompPositions: null, 'play', or 'bracket'
 let rstompUndoStack = [];
 let rstompCursor = 0;
@@ -203,69 +791,336 @@ function handleRstompBackButton() {
 
 /* ---------- Phrase generator ---------- */
 
-// Every way to concatenate a level's pool patterns so their beat-lengths
-// sum to exactly targetBeats - same approach as rhythm.js's
+// Every way to concatenate a level's vocabulary units so their slot-lengths
+// sum to exactly targetSlots - same approach as rhythm.js's
 // buildRhythmUnitShapes, ported rather than shared since this file is
-// deliberately independent of rhythm.js. Not hardcoded to a full 4-beat
-// bar: the tie generator below reuses this at shorter targets to fill the
-// beats on either side of a tied note within a single bar. Two adjacent
-// rest-units always collapse into one longer rest in real notation (no
-// onset to tell them apart), so any shape with more than 1 rest-unit in a
-// row is filtered out - standard engraving, not level-specific. Same for
-// two adjacent half notes (design brief §4, level 3) - that's a whole
-// note, never generate the redundant two-half-notes shape.
-function buildRstompUnitShapes(pool, targetBeats) {
+// deliberately independent of rhythm.js. Not hardcoded to a full bar: the
+// tie generator below reuses this at shorter targets to fill the slots on
+// either side of a tied note within a single bar.
+//
+// Three filters run over the results, and they are NOT the same kind of rule.
+//
+//  1. AN ALL-REST BAR IS ONE REST - engraving. A bar of nothing is written as
+//     a whole rest, never as smaller rests added up. This is the rule that
+//     kills two half rests filling a bar, and a bar of four quarter rests
+//     (CLAUDE.md's "three at most, so the real beat stays findable"). It
+//     replaces an older "no two adjacent rests anywhere" rule, which was too
+//     strong: Rob's own "(1 2) (3) (4)" is a half rest followed by TWO quarter
+//     rests, and level A4's map needs bars holding three adjacent quarter
+//     rests. Rests in a bar that has any note in it do not merge.
+//
+//  2. A REST NEVER STRADDLES A COARSER METRIC BOUNDARY - engraving. A half
+//     rest may cover beats 1-2 or 3-4 but never 2-3, because 2-3 straddles the
+//     middle of the bar. Stated against the bar's metric levels rather than as
+//     "a multiple of its own length", which is the same thing in simple time
+//     but wrong in compound: in 6/8 a crotchet rest may sit on quavers 1-2 or
+//     2-3 of a group but never across the 3/4 boundary between the groups,
+//     and "a multiple of 2" would have allowed exactly that.
+//     NOTES ARE NOT RESTRICTED THIS WAY, and the asymmetry is real: a minim
+//     across beats 2 and 3 is ordinary syncopation, and it is the figure level
+//     A6 is built on. Silence has to show the beat; sound may hide it.
+//
+//  3. subdivideWholeBeats - LEVEL DESIGN. When a level is introducing a
+//     subdivision, the subdivided beats are kept WHOLE: a unit shorter than a
+//     beat may only appear as a run of EQUAL units that exactly fills one
+//     beat. So "paired quavers" really are paired, and "four semiquavers"
+//     really are four - the beat either divides evenly or stays intact, and
+//     nothing else is in the way of seeing that. Uneven beats are the next
+//     level's job, every time.
+//
+//  4. avoidRepeats - LEVEL DESIGN, not engraving, and declared per level.
+//     Listing a unit key stops two of them being generated back to back.
+//     It used to be hardcoded as "never two half notes in a row" and described
+//     as engraving, citing the design brief. The brief's rule is narrower:
+//     never TIE two half notes in a bar - write a whole note instead. Two
+//     SEPARATELY STRUCK half notes, on beats 1 and 3, are ordinary notation
+//     and a different rhythm from a whole note. So it is a level-design choice
+//     - it keeps A2's content out of A3's "mixed" bars - and it is declared on
+//     the levels that want it rather than generalised, because the metric
+//     version of it would wrongly throw out a pair of quavers on beat 1.
+//
+// `startSlot` is where this run of units begins INSIDE its bar, and it matters
+// for rule 2. The tie generator fills the slots after a tied-in note, so its
+// tail starts partway through the bar; validating those rests as though they
+// began at beat 1 let a half rest land on beats 2-3.
+function buildRstompUnitShapes(grid, targetSlots, startSlot) {
     const results = [];
-    (function build(remainingBeats, shape) {
-        if (remainingBeats === 0) { results.push(shape); return; }
-        pool.forEach(key => {
-            const length = RSTOMP_PATTERNS[key].length;
-            if (length <= remainingBeats) build(remainingBeats - length, [...shape, key]);
+    (function build(remainingSlots, shape) {
+        if (remainingSlots === 0) { results.push(shape); return; }
+        grid.units.forEach(unit => {
+            if (unit.slots <= remainingSlots) build(remainingSlots - unit.slots, [...shape, unit.key]);
         });
-    })(targetBeats, []);
-    const isRestPattern = key => RSTOMP_PATTERNS[key].every(mode => mode === 'rest');
-    return results.filter(shape => {
-        let run = 0;
-        for (let i = 0; i < shape.length; i++) {
-            run = isRestPattern(shape[i]) ? run + 1 : 0;
-            if (run > 1) return false;
-            if (shape[i] === 'half-note' && shape[i - 1] === 'half-note') return false;
-        }
-        return true;
-    });
+    })(targetSlots, []);
+    return results.filter(shape => rstompShapeIsLegal(shape, targetSlots, startSlot, grid));
 }
 
-function buildRstompBarShapes(pool) {
-    return buildRstompUnitShapes(pool, 4);
+// The filters above, applied to one finished shape.
+function rstompShapeIsLegal(shape, targetSlots, startSlot, grid) {
+    const unitOf = key => grid.units.find(unit => unit.key === key);
+    const units = shape.map(unitOf);
+    const isWholeBar = targetSlots === grid.slotsPerBar && !startSlot;
+    if (isWholeBar && units.length > 1 && units.every(unit => unit.isRest)) return false;
+    if (grid.subdivideWholeBeats && !rstompBeatsStayWhole(units, startSlot || 0, grid)) return false;
+    let slot = startSlot || 0;
+    for (let i = 0; i < units.length; i++) {
+        // >= not >: a rest must align to the level of its OWN length too,
+        // or a half rest lands on beats 2-3.
+        if (units[i].isRest && grid.metricLevels.some(level =>
+            level >= units[i].slots
+            && Math.floor(slot / level) !== Math.floor((slot + units[i].slots - 1) / level)
+        )) return false;
+        if (i > 0 && shape[i] === shape[i - 1] && grid.avoidRepeats.indexOf(shape[i]) !== -1) return false;
+        slot += units[i].slots;
+    }
+    return true;
+}
+
+/* -------------------------------------------------------------------------
+   PICK a shape rather than enumerate every shape.
+
+   buildRstompUnitShapes lists ALL the ways a run of slots can be filled, which
+   is fine at the crotchet grid (a bar has 15 to 42 of them) and ruinous at the
+   semiquaver grid, where one bar has over a HUNDRED THOUSAND. Built fresh for
+   every phrase that was a second of work on a desktop and a visible freeze on
+   a phone - for a list the generator then throws away after taking one entry.
+
+   So generation walks the bar instead, trying the vocabulary in a random order
+   and backtracking out of dead ends. One shape costs a walk of the bar rather
+   than an enumeration of the bar's entire shape space, and the result is drawn
+   from the same set. Enumeration is kept for the tests, which check the SET.
+   ------------------------------------------------------------------------- */
+function rstompPickUnitShape(grid, targetSlots, startSlot) {
+    const order = grid.units.slice();
+    const found = (function walk(remaining, slot, shape) {
+        if (remaining === 0) {
+            return rstompShapeIsLegal(shape, targetSlots, startSlot, grid) ? shape : null;
+        }
+        for (let i = order.length - 1; i > 0; i--) {          // shuffle each step
+            const j = Math.floor(Math.random() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]];
+        }
+        for (const unit of order) {
+            if (unit.slots > remaining) continue;
+            if (unit.isRest && grid.metricLevels.some(level =>
+                level >= unit.slots
+                && Math.floor(slot / level) !== Math.floor((slot + unit.slots - 1) / level)
+            )) continue;
+            if (shape.length && unit.key === shape[shape.length - 1]
+                && grid.avoidRepeats.indexOf(unit.key) !== -1) continue;
+            const got = walk(remaining - unit.slots, slot + unit.slots, [...shape, unit.key]);
+            if (got) return got;
+        }
+        return null;
+    })(targetSlots, startSlot || 0, []);
+    return found;
+}
+
+// Every unit shorter than a beat must sit in a run of equal units that starts
+// on a beat and exactly fills it.
+function rstompBeatsStayWhole(units, startSlot, grid) {
+    let slot = startSlot;
+    for (let i = 0; i < units.length; i++) {
+        if (units[i].slots >= grid.slotsPerBeat) {
+            if (units[i].slots % grid.slotsPerBeat !== 0) return false;
+            slot += units[i].slots;
+            continue;
+        }
+        if (slot % grid.slotsPerBeat !== 0) return false;
+        let filled = 0;
+        while (i < units.length && filled < grid.slotsPerBeat) {
+            if (units[i].slots !== units[i === 0 ? 0 : i].slots) return false;
+            if (i > 0 && units[i].slots !== units[i - 1].slots && filled > 0) return false;
+            filled += units[i].slots;
+            if (filled < grid.slotsPerBeat) i++;
+        }
+        if (filled !== grid.slotsPerBeat) return false;
+        slot += grid.slotsPerBeat;
+    }
+    return true;
+}
+
+function buildRstompBarShapes(grid) {
+    return buildRstompUnitShapes(grid, grid.slotsPerBar, 0);
 }
 
 function generateRstompPhrase(level) {
-    return level.tieLevel ? generateRstompPhraseWithTie(level) : generateRstompPhraseNormal(level);
+    const grid = rstompGridFor(level);
+    const bars = level.figure ? generateRstompPhraseWithFigure(level, grid)
+               : level.tieLevel ? generateRstompPhraseWithTie(level, grid)
+               : generateRstompPhraseNormal(level, grid);
+    return rstompApplyLonghand(bars, level, grid);
 }
 
 // Variety rule (design brief §5 item 15): no bar shape repeats more than
-// twice across the 4 bars, never identical to the bar immediately before it.
-function generateRstompPhraseNormal(level) {
-    const shapes = buildRstompBarShapes(level.pool);
-    const counts = new Array(shapes.length).fill(0);
-    const chosenIndices = [];
-    for (let i = 0; i < 4; i++) {
-        const allIndices = shapes.map((_, index) => index);
-        let candidates = allIndices.filter(index => counts[index] < 2 && index !== chosenIndices[i - 1]);
-        if (candidates.length === 0) candidates = allIndices.filter(index => index !== chosenIndices[i - 1]);
-        if (candidates.length === 0) candidates = allIndices;
-        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-        chosenIndices.push(chosen);
-        counts[chosen]++;
+// twice across the phrase, never identical to the bar immediately before it.
+function generateRstompPhraseNormal(level, grid) {
+    const used = {};
+    const shapes = [];
+    for (let i = 0; i < grid.barsPerPhrase; i++) {
+        let shape = null;
+        // Variety rule (design brief S5 item 15): no bar shape more than twice
+        // across the phrase, never identical to the bar before it. A handful of
+        // redraws is enough - and on a thin level where it is not, the phrase
+        // is still legal, just less varied.
+        for (let tries = 0; tries < 12; tries++) {
+            const pick = rstompPickUnitShape(grid, grid.slotsPerBar, 0);
+            if (!pick) break;
+            const key = pick.join();
+            shape = pick;
+            if ((used[key] || 0) < 2 && key !== (shapes[i - 1] || []).join()) break;
+        }
+        if (!shape) shape = rstompPickUnitShape(grid, grid.slotsPerBar, 0) || [];
+        used[shape.join()] = (used[shape.join()] || 0) + 1;
+        shapes.push(shape);
     }
-    return chosenIndices.map(index => rstompShapeToSpecs(shapes[index]));
+    const bars = shapes.map(shape => rstompShapeToSpecs(shape, grid));
+    return rstompPlantFeatureShape(bars, level, grid);
 }
 
-// A shape is a list of pattern keys, which is already a list of written
-// notes - the beats were only ever a flattening of it. Keeping the specs is
-// what lets a tie inside a bar exist at all.
-function rstompShapeToSpecs(shape) {
-    return shape.map(key => ({ ...RSTOMP_SPEC_FOR_PATTERN[key] }));
+// A level built AROUND one figure has to be sure the figure turns up. A6 is
+// the case: crotchet / minim / crotchet, onsets on 1, 2 and 4, counted
+// "1 2 (3) 4". It is four beats long, so exactly one position fits a 4/4 bar -
+// every other placement would cross the barline, which is the lesson - and at
+// that rarity a random draw would leave it out of whole phrases. So one bar is
+// reserved for it, and the rest are drawn normally.
+function rstompPlantFeatureShape(bars, level, grid) {
+    if (!level.featureShape) return bars;
+    const already = bars.some(specs => specs.length === level.featureShape.length
+        && specs.every((spec, i) => {
+            const unit = grid.units.find(entry => entry.key === level.featureShape[i]);
+            return unit && spec.value === unit.value && spec.isRest === unit.isRest && !spec.tied;
+        }));
+    if (already) return bars;
+    bars[Math.floor(Math.random() * bars.length)] = rstompShapeToSpecs(level.featureShape, grid);
+    return bars;
+}
+
+// A shape is a list of vocabulary keys, which is already a list of written
+// notes - the slot stream was only ever a flattening of it. Keeping the specs
+// is what lets a tie inside a bar exist at all.
+function rstompShapeToSpecs(shape, grid) {
+    return shape.map(key => {
+        const unit = grid.units.find(entry => entry.key === key);
+        return { slots: unit.slots, value: unit.value, isRest: unit.isRest };
+    });
+}
+
+/* =========================================================================
+   FIGURE DISPLACEMENT — one mechanic, many levels
+
+   Take a short rhythmic figure, walk it through every position in the grid,
+   and have the student count each placement. That is ALL the pump levels and
+   both syncopation levels (design brief S13.6b); adding a new named figure
+   costs one line of config, not a new level design.
+
+   THE PUMPS are Rob's name for a dotted crotchet followed by a quaver - two
+   onsets, always exactly three quavers apart, "everywhere in music". Eight
+   positions exist in 4/4 at the quaver grid; five sit inside a bar and three
+   cross the barline, which is the split between B6 and B7.
+
+   The pattern underneath, which is the whole teaching payload: EVEN POSITIONS
+   ARE DOWN-UP, ODD POSITIONS ARE UP-DOWN. The gap between the onsets never
+   changes; what changes is only whether each onset lands on a beat. Rob: "in
+   order to find an upbeat, you have to know exactly where the downbeat is."
+
+   A figure that crosses a barline is SPLIT INTO A TIE, because a written note
+   cannot cross one. That is not a special case bolted on - it is the same rule
+   that makes the counting bracket stop at the barline, and at B7 it is the
+   lesson rather than an inconvenience.
+   ========================================================================= */
+
+// Fill one bar's free slots around whatever is already placed in it.
+function rstompFillGaps(placed, barStart, grid) {
+    const taken = new Array(grid.slotsPerBar).fill(false);
+    placed.forEach(spec => {
+        for (let k = 0; k < spec.slots; k++) taken[spec.start - barStart + k] = true;
+    });
+    const out = placed.slice();
+    let slot = 0;
+    while (slot < grid.slotsPerBar) {
+        if (taken[slot]) { slot++; continue; }
+        let end = slot;
+        while (end < grid.slotsPerBar && !taken[end]) end++;
+        const shape = rstompPickUnitShape(grid, end - slot, slot);
+        if (!shape) return null;                      // this placement is unfillable
+        let at = slot;
+        rstompShapeToSpecs(shape, grid).forEach(spec => {
+            out.push({ ...spec, start: barStart + at });
+            at += spec.slots;
+        });
+        slot = end;
+    }
+    return out.sort((a, b) => a.start - b.start);
+}
+
+// Lay a figure's notes down from an absolute start slot, splitting any note
+// that runs over a barline into two tied notes.
+function rstompPlaceFigure(figure, at, grid) {
+    const out = [];
+    let slot = at;
+    figure.forEach(part => {
+        let left = part.slots;
+        let tied = false;
+        while (left > 0) {
+            const room = grid.slotsPerBar - (slot % grid.slotsPerBar);
+            const take = Math.min(left, room);
+            const value = rstompValueForSlots(take, grid.slotValue);
+            if (!value) return null;
+            out.push({ slots: take, value, isRest: !!part.isRest, tied, start: slot });
+            slot += take; left -= take; tied = true;
+        }
+    });
+    return out.some(x => !x.value) ? null : out;
+}
+
+function rstompFigurePositions(level, grid) {
+    const total = figureSlots(level.figure.notes);
+    const span = grid.slotsPerBar * grid.barsPerPhrase;
+    const want = level.figure.positions || 'all';
+    const out = [];
+    for (let at = 0; at + total <= span; at++) {
+        const crosses = Math.floor(at / grid.slotsPerBar)
+                     !== Math.floor((at + total - 1) / grid.slotsPerBar);
+        if (want === 'downbeat' && (crosses || at % grid.slotsPerBar !== 0)) continue;
+        if (want === 'in-bar' && crosses) continue;
+        if (want === 'crossing' && !crosses) continue;
+        out.push(at);
+    }
+    return out;
+}
+
+function figureSlots(notes) {
+    return notes.reduce((n, part) => n + part.slots, 0);
+}
+
+// A level may name SEVERAL figures - D3 teaches "quaver + two semiquavers"
+// and "two semiquavers + quaver" together, because the pair is the lesson.
+function rstompFiguresOf(level) {
+    return Array.isArray(level.figure) ? level.figure : [level.figure];
+}
+
+function generateRstompPhraseWithFigure(level, grid) {
+    const choices = rstompFiguresOf(level);
+    level = { ...level, figure: choices[Math.floor(Math.random() * choices.length)] };
+    const positions = rstompFigurePositions(level, grid);
+    // Try placements until one leaves a fillable bar. A figure sitting across
+    // beat 4 can leave a single slot the level's vocabulary cannot fill.
+    const order = positions.slice().sort(() => Math.random() - 0.5);
+    for (const at of order) {
+        const figure = rstompPlaceFigure(level.figure.notes, at, grid);
+        if (!figure) continue;
+        const bars = [];
+        let good = true;
+        for (let b = 0; b < grid.barsPerPhrase && good; b++) {
+            const barStart = b * grid.slotsPerBar;
+            const mine = figure.filter(x => x.start >= barStart && x.start < barStart + grid.slotsPerBar);
+            const filled = rstompFillGaps(mine, barStart, grid);
+            if (!filled) { good = false; break; }
+            bars.push(filled.map(({ start, ...spec }) => spec));
+        }
+        if (good) return bars;
+    }
+    return generateRstompPhraseNormal(level, grid);
 }
 
 // A tied note can sit on ANY barline. It used to be restricted to the 0/1
@@ -274,51 +1129,60 @@ function rstompShapeToSpecs(shape) {
 // across a row break. The whole phrase now renders as one continuous strip
 // on a single canvas (see renderRstompStaff), so that restriction is gone.
 //
-// r beats of the tied note sit at the end of the first bar (a Play plus
-// r-1 Holds), s beats sit at the start of the second bar as pure Hold -
+// r slots of the tied note sit at the end of the first bar (a Play plus
+// r-1 Holds), s slots sit at the start of the second bar as pure Hold -
 // no onset there, since it's the same note continuing, not a new attack.
 // That leading Hold-with-no-Play is exactly how a fresh bar's own content
-// is told apart from a tie continuation (every pool pattern starts with
-// Play or Rest, never Hold - see RSTOMP_PATTERNS). r/s are only ever
-// picked from beat-counts that leave the *rest* of their bar fillable by
-// this level's pool.
-function generateRstompPhraseWithTie(level) {
+// is told apart from a tie continuation (every vocabulary unit starts with
+// Play or Rest, never Hold). r/s are only ever picked from slot-counts that
+// are writable as a single note AND leave the *rest* of their bar fillable
+// by this level's vocabulary - a tie is two written notes, so both halves
+// have to be notes that exist.
+function generateRstompPhraseWithTie(level, grid) {
     const includesTie = Math.random() < (level.tieChance != null ? level.tieChance : 1);
-    if (!includesTie) return generateRstompPhraseNormal(level);
+    if (!includesTie) return generateRstompPhraseNormal(level, grid);
 
-    const pool = level.pool;
-    const candidateRuns = [];
-    for (let n = 1; n <= 4; n++) {
-        if (buildRstompUnitShapes(pool, 4 - n).length > 0) candidateRuns.push(n);
+    const leadRuns = [];
+    const tailRuns = [];
+    for (let n = 1; n <= grid.slotsPerBar; n++) {
+        // r-runs sit at the END of their bar, so their lead fills from slot 0;
+        // s-runs sit at the START, so their tail begins at slot n.
+        if (!rstompValueForSlots(n, grid.slotValue)) continue;
+        if (rstompPickUnitShape(grid, grid.slotsPerBar - n, 0)) leadRuns.push(n);
+        if (rstompPickUnitShape(grid, grid.slotsPerBar - n, n)) tailRuns.push(n);
     }
     const rsPairs = [];
-    candidateRuns.forEach(r => candidateRuns.forEach(s => rsPairs.push([r, s])));
+    leadRuns.forEach(r => tailRuns.forEach(s => rsPairs.push([r, s])));
     const [r, s] = rsPairs[Math.floor(Math.random() * rsPairs.length)];
 
-    const leadShapes = buildRstompUnitShapes(pool, 4 - r);
-    const tailShapes = buildRstompUnitShapes(pool, 4 - s);
-    const leadShape = leadShapes[Math.floor(Math.random() * leadShapes.length)];
-    const tailShape = tailShapes[Math.floor(Math.random() * tailShapes.length)];
+    const leadShape = rstompPickUnitShape(grid, grid.slotsPerBar - r, 0) || [];
+    const tailShape = rstompPickUnitShape(grid, grid.slotsPerBar - s, s) || [];
 
-    const barA = [...rstompShapeToSpecs(leadShape), { beats: r, isRest: false }];
-    const barB = [{ beats: s, isRest: false, tied: true }, ...rstompShapeToSpecs(tailShape)];
+    const tieValue = slots => rstompValueForSlots(slots, grid.slotValue);
+    const barA = [...rstompShapeToSpecs(leadShape, grid), { slots: r, value: tieValue(r), isRest: false }];
+    const barB = [{ slots: s, value: tieValue(s), isRest: false, tied: true }, ...rstompShapeToSpecs(tailShape, grid)];
 
-    const normalShapes = buildRstompBarShapes(level.pool);
+    const spare = Math.max(0, grid.barsPerPhrase - 2);
     const pickNormalShape = previousShape => {
-        const candidates = normalShapes.filter(shape => shape.join() !== (previousShape || []).join());
-        const options = candidates.length ? candidates : normalShapes;
-        return options[Math.floor(Math.random() * options.length)];
+        for (let tries = 0; tries < 8; tries++) {
+            const shape = rstompPickUnitShape(grid, grid.slotsPerBar, 0);
+            if (shape && shape.join() !== (previousShape || []).join()) return shape;
+        }
+        return rstompPickUnitShape(grid, grid.slotsPerBar, 0) || [];
     };
-    const normalShape1 = pickNormalShape(null);
-    const normalShape2 = pickNormalShape(normalShape1);
-    const normalBars = [rstompShapeToSpecs(normalShape1), rstompShapeToSpecs(normalShape2)];
+    const normalBars = [];
+    let previousShape = null;
+    for (let i = 0; i < spare; i++) {
+        previousShape = pickNormalShape(previousShape);
+        normalBars.push(rstompShapeToSpecs(previousShape, grid));
+    }
 
-    // The tied pair occupies boundary/boundary+1; the remaining slots take
-    // the untied bars in order.
-    const boundary = Math.floor(Math.random() * 3);
+    // The tied pair occupies boundary/boundary+1; the remaining bars take
+    // the untied ones in order.
+    const boundary = Math.floor(Math.random() * (grid.barsPerPhrase - 1));
     const bars = [];
     let nextNormal = 0;
-    for (let index = 0; index < 4; index++) {
+    for (let index = 0; index < grid.barsPerPhrase; index++) {
         if (index === boundary) bars.push(barA);
         else if (index === boundary + 1) bars.push(barB);
         else bars.push(normalBars[nextNormal++]);
@@ -326,20 +1190,19 @@ function generateRstompPhraseWithTie(level) {
     return bars;
 }
 
-// Levels 1-2 are both a flat 4x4 grid (4 bars, 4 undivided beats each, no
-// subdivisions) - so a position's flat index is just barIndex*4+beatIndex.
-// A future level with subdivided beats (quavers etc.) would need
-// rhythm.js's more general position-lookup approach; not needed yet.
+// One position per slot. How many slots a bar holds is the active level's
+// label-array length, so this is the same function whether a slot is a
+// crotchet, a quaver or a semiquaver - which is the point of the grid.
 function buildRstompPositions(phrase) {
     const positions = [];
     phrase.forEach((bar, barIndex) => {
-        for (let beatIndex = 0; beatIndex < 4; beatIndex++) positions.push({ barIndex, beatIndex });
+        for (let slotIndex = 0; slotIndex < rstompSlotsPerBar; slotIndex++) positions.push({ barIndex, slotIndex });
     });
     return positions;
 }
 
 function rstompExpectedAnswer(position) {
-    const mode = rstompPhrase[position.barIndex][position.beatIndex];
+    const mode = rstompPhrase[position.barIndex][position.slotIndex];
     return mode === 'play' ? 'play' : 'bracket';
 }
 
@@ -404,7 +1267,7 @@ function rstompTargetGroups() {
         let beat = 0;
         specs.forEach(spec => {
             const digits = [];
-            for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
+            for (let k = 0; k < spec.slots; k++) digits.push(rstompLabels[beat + k]);
             if (!spec.isRest && !spec.tied) {
                 // Struck: the onset digit is written plainly, its held beats
                 // bracketed. A one-beat note has no held beats, so no bracket.
@@ -413,7 +1276,7 @@ function rstompTargetGroups() {
             } else {
                 groups.push({ bracketed: true, closed: true, kind: spec.isRest ? 'rest' : 'hold', digits });
             }
-            beat += spec.beats;
+            beat += spec.slots;
         });
     });
     return groups;
@@ -523,10 +1386,10 @@ function rstompWrongBarsFor(writing) {
     const theirs = rstompGroupsToSlotMarks(rstompTargetGroups());
     const wrong = new Set();
     for (let slot = 0; slot < theirs.length; slot++) {
-        if (mine[slot] !== theirs[slot]) wrong.add(Math.floor(slot / 4));
+        if (mine[slot] !== theirs[slot]) wrong.add(Math.floor(slot / rstompSlotsPerBar));
     }
     for (let extra = theirs.length; extra < mine.length; extra++) {
-        wrong.add(Math.min(rstompPhrase.length - 1, Math.floor(extra / 4)));
+        wrong.add(Math.min(rstompPhrase.length - 1, Math.floor(extra / rstompSlotsPerBar)));
     }
     return [...wrong].sort((a, b) => a - b);
 }
@@ -538,11 +1401,11 @@ function rstompWrongBarsFor(writing) {
 // splicing, and it never leaves the student editing around an answer that no
 // longer lines up.
 function rstompRewindTo(barIndex) {
-    const keepBeats = barIndex * 4;
+    const keepSlots = barIndex * rstompSlotsPerBar;
     const rebuilt = { groups: [], inside: false };
     let used = 0;
     for (const group of rstompWriting.groups) {
-        if (used + group.digits.length > keepBeats) break;
+        if (used + group.digits.length > keepSlots) break;
         rebuilt.groups.push(group);
         used += group.digits.length;
     }
@@ -570,6 +1433,14 @@ function startRstompLevel() {
 
 function startNewRstompPhrase() {
     const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    const grid = rstompGridFor(level);
+    rstompLabels = grid.labels;
+    rstompSlotsPerBar = grid.slotsPerBar;
+    rstompSlotValue = grid.slotValue;
+    rstompSlotsPerBeat = grid.slotsPerBeat;
+    rstompBeamSlots = grid.beamSlots || grid.slotsPerBeat;
+    renderRstompKeypad();
+    if (typeof rstompAudioStop === 'function') rstompAudioStop();
     rstompSpecBars = generateRstompPhrase(level);
     rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
     rstompPositions = buildRstompPositions(rstompPhrase);
@@ -592,6 +1463,67 @@ function startNewRstompPhrase() {
 // ever on screen. The two-button row is not a legacy path - it is the
 // tutorial interface, and deleting it would take the only version a child who
 // can't yet write numerals can play (see CLAUDE.md).
+// The keypad IS the level's distinct labels, in the order they first appear.
+// At the crotchet grid that is "1 2 3 4"; at the quaver grid it is
+// "1 2 3 4 +"; the semiquaver grid adds "e" and "a", and 6/8 in 6 runs to 6.
+// Hardcoding four digits made every Stage B level unplayable by hand - the
+// student could see the "+" in the answer and had no key to type it.
+/* ---------- Hear it ----------
+   The phrase, played: the counting voice with the bracket's own accent, a
+   snare on every onset, a click on the beat and a loop under it. Free and
+   always available - Rob's call, and his reason: "if they want it to become a
+   jukebox that's their business... the byproduct of having fun is learning."
+
+   The tempo is the level's base, which is where the performance round's three
+   bonus tiers will start from (base, +20, +40). */
+const RSTOMP_BASE_BPM = { q: 90, '8': 80, '16': 60 };
+
+function rstompBaseBpm() {
+    return RSTOMP_BASE_BPM[rstompSlotValue] || 90;
+}
+
+function toggleRstompListen() {
+    const button = document.getElementById('rstomp-listen-btn');
+    const icon = document.getElementById('rstomp-listen-icon');
+    const rest = () => {
+        if (button) button.classList.remove('playing');
+        if (icon) icon.innerHTML = '&#9654;';
+    };
+    if (typeof rstompAudioRunning === 'function' && rstompAudioRunning()) {
+        rstompAudioStop(); rest(); return;
+    }
+    if (typeof rstompAudioPlayPhrase !== 'function') return;
+    const started = rstompAudioPlayPhrase({ bpm: rstompBaseBpm(), onStop: rest });
+    if (!started) return;
+    if (button) button.classList.add('playing');
+    if (icon) icon.innerHTML = '&#9632;';
+}
+
+function renderRstompKeypad() {
+    const row = document.getElementById('rstomp-key-row-labels');
+    if (!row) return;
+    // Numerals first, in order, then the off-beat labels in the order they
+    // fall inside a beat: "1 2 3 4 +" at the quaver grid, "1 2 3 4 e + a" at
+    // the semiquaver grid. First-appearance order alone would sit the "+"
+    // between 1 and 2, which reads as part of the count rather than a key.
+    const seen = [];
+    rstompLabels.forEach(label => { if (seen.indexOf(label) === -1) seen.push(label); });
+    const numerals = seen.filter(l => /^[0-9]/.test(l));
+    const offbeats = seen.filter(l => !/^[0-9]/.test(l))
+        .sort((a, b) => rstompLabels.indexOf(a) - rstompLabels.indexOf(b));
+    seen.length = 0;
+    seen.push(...numerals, ...offbeats);
+    row.innerHTML = '';
+    seen.forEach(label => {
+        const key = document.createElement('button');
+        key.className = 'rstomp-key';
+        key.dataset.digit = label;
+        key.textContent = label;
+        key.onclick = () => rstompKey(label);
+        row.appendChild(key);
+    });
+}
+
 function applyRstompInterface() {
     const twoButton = document.getElementById('rstomp-controls-twobutton');
     const keypad = document.getElementById('rstomp-controls-keypad');
@@ -640,8 +1572,13 @@ function updateRstompPrompt() {
     if (rstompScribe) {
         if (rstompRevealed) { el.textContent = "Here's the counting."; return; }
         if (rstompWriting && rstompWriting.inside) { el.textContent = 'Bracket open — count the beats it holds for, then close it.'; return; }
-        if (rstompCursor >= rstompPositions.length) { el.textContent = 'All four bars written — check your answer below.'; return; }
-        const bar = Math.floor(rstompCursor / 4) + 1;
+        // Not "all four bars": Stage B phrases are two bars, and later stages
+        // set their own length.
+        if (rstompCursor >= rstompPositions.length) {
+            el.textContent = `All ${rstompPhrase.length} bars written — check your answer below.`;
+            return;
+        }
+        const bar = Math.floor(rstompCursor / rstompSlotsPerBar) + 1;
         el.textContent = `Bar ${bar} — write the counting under the notes.`;
         return;
     }
@@ -651,7 +1588,7 @@ function updateRstompPrompt() {
         return;
     }
     const pos = rstompPositions[rstompCursor];
-    el.textContent = `Bar ${pos.barIndex + 1} · Beat ${pos.beatIndex + 1} — does a new note start here?`;
+    el.textContent = `Bar ${pos.barIndex + 1} · Beat ${rstompLabels[pos.slotIndex]} — does a new note start here?`;
 }
 
 function updateRstompButtonStates() {
@@ -670,7 +1607,7 @@ function updateRstompButtonStates() {
         if (open) open.disabled = rstompLocked || full || rstompWriting.inside;
         if (close) close.disabled = rstompLocked || !rstompWriting.inside;
         if (erase) erase.disabled = rstompLocked || !rstompWriting.groups.length;
-        // Submit is live as soon as all four bars are accounted for, even
+        // Submit is live as soon as every bar is accounted for, even
         // with a bracket left hanging open. Refusing to submit would hide
         // the mistake; marking it wrong is the honest answer.
         document.getElementById('rstomp-submit-button').disabled = rstompLocked || !full;
@@ -701,8 +1638,13 @@ function updateRstompButtonStates() {
 // writing it IS the game rather than a readout of two-button answers. The
 // cost is scrolling sooner on a phone, which is exactly what the strip and
 // the full view are for.
-const RSTOMP_MIN_BAR_WIDTH = 140;
-const RSTOMP_MAX_BAR_WIDTH = 190;   // above this bars just look sparse on a big screen
+// Bar width is PER SLOT, not per bar. A bar of the quaver grid holds twice
+// the events of a crotchet-grid bar and needs twice the room; at the old flat
+// 140 the noteheads collided and the counting row underneath was unreadable.
+// 35px a slot reproduces the widths Stage A was tuned at (4 slots -> 140).
+const RSTOMP_MIN_SLOT_WIDTH = 35;
+const RSTOMP_MAX_SLOT_WIDTH = 48;   // above this bars just look sparse on a big screen
+const RSTOMP_MIN_BAR_WIDTH = 140;   // the floor a single bar is still legible at
 const RSTOMP_CURSOR_ANCHOR = 0.3;   // where the cursor parks after a scroll; the rest is look-ahead
 
 let rstompLayouts = [];
@@ -715,7 +1657,9 @@ let rstompStripListenersReady = false;
 function rstompBarWidth(barCount) {
     const strip = document.getElementById('rstomp-strip');
     const available = (strip ? strip.clientWidth : 360) - 12; // strip's own padding
-    return Math.max(RSTOMP_MIN_BAR_WIDTH, Math.min(RSTOMP_MAX_BAR_WIDTH, available / barCount));
+    const min = RSTOMP_MIN_SLOT_WIDTH * rstompSlotsPerBar;
+    const max = RSTOMP_MAX_SLOT_WIDTH * rstompSlotsPerBar;
+    return Math.max(min, Math.min(max, available / barCount));
 }
 
 function renderRstompBars() {
@@ -745,7 +1689,7 @@ function updateRstompCaret() {
     const position = rstompPositions[rstompCursor];
     const layout = rstompLayouts[position.barIndex];
     if (!layout) return;
-    caret.style.left = `${layout.pulseX(position.beatIndex) - 1.5}px`;
+    caret.style.left = `${layout.pulseX(position.slotIndex) - 1.5}px`;
 }
 
 // Scroll-follows-cursor, the way an editor follows a caret: only move once
@@ -761,7 +1705,7 @@ function followRstompCursor() {
     const layout = rstompLayouts[position.barIndex];
     if (!layout) return;
 
-    const x = layout.pulseX(position.beatIndex);
+    const x = layout.pulseX(position.slotIndex);
     if (x >= strip.scrollLeft + visible * 0.12 && x <= strip.scrollLeft + visible * 0.62) return;
 
     const target = Math.max(0, Math.min(x - visible * RSTOMP_CURSOR_ANCHOR, rstompTotalWidth - visible));
@@ -840,7 +1784,7 @@ function openRstompFullView() {
     // whole layout exists to get rid of, so the largest divisor that fits
     // wins rather than simply the most bars that fit.
     const available = host.clientWidth;
-    const capacity = Math.max(1, Math.floor(available / RSTOMP_MIN_BAR_WIDTH));
+    const capacity = Math.max(1, Math.floor(available / (RSTOMP_MIN_SLOT_WIDTH * rstompSlotsPerBar)));
     const barCount = rstompPhrase.length;
     let barsPerSystem = 1;
     for (let size = barCount; size >= 1; size--) {
@@ -896,25 +1840,25 @@ function buildRstompCountingTokens(barIndex) {
         // answered - showing half a group would put a bracket on screen the
         // student hasn't finished building.
         let answered = true;
-        for (let k = 0; k < spec.beats; k++) {
-            if (rstompEntries[barIndex * 4 + beat + k] == null) { answered = false; break; }
+        for (let k = 0; k < spec.slots; k++) {
+            if (rstompEntries[barIndex * rstompSlotsPerBar + beat + k] == null) { answered = false; break; }
         }
         if (!answered) break;
 
         const digits = [];
-        for (let k = 0; k < spec.beats; k++) digits.push(String(beat + k + 1));
+        for (let k = 0; k < spec.slots; k++) digits.push(rstompLabels[beat + k]);
         // The student's own answer decides plain-vs-bracketed on the first
         // beat; the grouping comes from the written note. That keeps the row
         // honest to what they typed while still delineating the notation.
-        if (rstompEntries[barIndex * 4 + beat] === 'play') {
+        if (rstompEntries[barIndex * rstompSlotsPerBar + beat] === 'play') {
             tokens.push({ text: digits[0], startBeat: beat, endBeat: beat, kind: 'play' });
             if (digits.length > 1) {
-                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: beat + 1, endBeat: beat + spec.beats - 1, kind: 'hold' });
+                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: beat + 1, endBeat: beat + spec.slots - 1, kind: 'hold' });
             }
         } else {
-            tokens.push({ text: `(${digits.join(' ')})`, startBeat: beat, endBeat: beat + spec.beats - 1, kind: spec.isRest ? 'rest' : 'hold' });
+            tokens.push({ text: `(${digits.join(' ')})`, startBeat: beat, endBeat: beat + spec.slots - 1, kind: spec.isRest ? 'rest' : 'hold' });
         }
-        beat += spec.beats;
+        beat += spec.slots;
     }
     return tokens;
 }
@@ -981,7 +1925,7 @@ function buildRstompScribeRuns() {
             empty: group.digits.length === 0,
             startSlot: slot,
             endSlot: slot + span,
-            wrong: wrong.has(Math.floor(slot / 4)) || wrong.has(Math.floor((slot + span) / 4))
+            wrong: wrong.has(Math.floor(slot / rstompSlotsPerBar)) || wrong.has(Math.floor((slot + span) / rstompSlotsPerBar))
         });
         slot += group.digits.length;
     });
@@ -1006,11 +1950,11 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
     if (rstompScribe) {
         // Absolute slot -> the layout showing it, or null when that bar isn't
         // in this container (the full view renders one system at a time).
-        const layoutFor = slot => layouts[Math.floor(slot / 4) - barOffset] || null;
+        const layoutFor = slot => layouts[Math.floor(slot / rstompSlotsPerBar) - barOffset] || null;
         buildRstompScribeRuns().forEach(run => {
             const startLayout = layoutFor(run.startSlot);
             if (!startLayout) return;
-            const startBeat = run.startSlot % 4;
+            const startBeat = run.startSlot % rstompSlotsPerBar;
             const owner = startLayout.beatOwner[startBeat];
             if (run.empty) {
                 // Nothing written inside it yet, so there is no span to
@@ -1018,7 +1962,7 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
                 add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
             } else if (run.bracketed && !owner.isOnset) {
                 const endLayout = layoutFor(run.endSlot) || layouts[layouts.length - 1];
-                const endBeat = layoutFor(run.endSlot) ? (run.endSlot % 4) + 1 : 4;
+                const endBeat = layoutFor(run.endSlot) ? (run.endSlot % rstompSlotsPerBar) + 1 : rstompSlotsPerBar;
                 add(run.text, (startLayout.pulseX(startBeat) + endLayout.pulseX(endBeat)) / 2, true, run.wrong);
             } else {
                 add(run.text, startLayout.noteX[owner.specIndex], false, run.wrong);
@@ -1110,12 +2054,38 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         stave.setContext(context).draw();
 
         const notes = specs.map(spec => {
-            const duration = RSTOMP_DURATION_FOR_BEATS[spec.beats];
-            return new VF.StaveNote({ clef: 'treble', keys: ['b/4'], duration: spec.isRest ? `${duration}r` : duration });
+            // The written note value travels on the spec itself - no lookup
+            // table, and no way for the drawn note and the counted slots to
+            // disagree, since the generator set both from the same unit.
+            const duration = spec.value;
+            // Stems always UP on a one-line rhythm staff. Left to VexFlow the
+            // notehead sits on the middle line and the stem is sent DOWN, which
+            // on a stave with only that line visible puts the beam in the same
+            // space as the counting row.
+            const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], stem_direction: 1,
+                duration: spec.isRest ? `${duration}r` : duration });
+            // VexFlow reads the "d" suffix for TICKS but does not draw the dot
+            // from it - a dotted minim comes out looking exactly like a plain
+            // minim, with the bar still filling correctly and no error raised.
+            // The modifier has to be attached by hand. Silent until a dotted
+            // value reaches a level, which is A5 (dotted minim) and all of
+            // Stage B, so it is caught here rather than there.
+            if (note.dots) note.addDotToAll();
+            return note;
         });
-        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(notes);
+        const meter = rstompVoiceMeter();
+        const voice = new VF.Voice({ num_beats: meter.num, beat_value: meter.den }).addTickables(notes);
+        // Beam by BEAT, not by adjacency - four quavers in 4/4 are two beamed
+        // pairs, not one group of four, and the beam is what makes the beat
+        // visible before the counting is read. The group length is the beat,
+        // which the grid already knows.
+        const beams = VF.Beam.generateBeams(notes, {
+            stem_direction: 1,
+            groups: [new VF.Fraction(rstompBeamSlots, RSTOMP_VALUE_DENOMINATOR[rstompSlotValue])]
+        });
         new VF.Formatter().joinVoices([voice]).format([voice], perBarWidth - 60);
         voice.draw(context, stave);
+        beams.forEach(beam => beam.setContext(context).draw());
 
         // Read back VexFlow's OWN rendered x for each note (getAbsoluteX) -
         // the real onset a Play token or a non-whole-bar Rest bracket
@@ -1125,23 +2095,23 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         // bar's positions need no further adjustment.
         const noteX = notes.map(note => note.getAbsoluteX());
 
-        // The ideal, evenly-spaced beat grid (true beat 1/2/3/4 positions),
+        // The ideal, evenly-spaced slot grid (where the level's labels fall),
         // independent of where any glyph actually landed - this is what a
         // Hold-continuation bracket (no glyph of its own) centers across.
         const trueStartX = stave.getNoteStartX();
         const trueEndX = stave.getNoteEndX();
-        const pulseX = beatFraction => trueStartX + (beatFraction / 4) * (trueEndX - trueStartX);
+        const pulseX = slotFraction => trueStartX + (slotFraction / rstompSlotsPerBar) * (trueEndX - trueStartX);
 
         // Which spec (note/rest object) owns each beat, and whether that
         // beat is the spec's own onset (has a glyph) or a continuation
         // (doesn't) - a bar whose own beat 0 is 'hold' (a tie continuing
         // from the previous bar) still gets a real onset glyph and real
         // noteX here, same as any other spec; it just isn't a Play.
-        const beatOwner = new Array(4);
-        let cumulativeBeats = 0;
+        const beatOwner = new Array(rstompSlotsPerBar);
+        let cumulativeSlots = 0;
         specs.forEach((spec, index) => {
-            for (let k = 0; k < spec.beats; k++) beatOwner[cumulativeBeats + k] = { specIndex: index, isOnset: k === 0 };
-            cumulativeBeats += spec.beats;
+            for (let k = 0; k < spec.slots; k++) beatOwner[cumulativeSlots + k] = { specIndex: index, isOnset: k === 0 };
+            cumulativeSlots += spec.slots;
         });
 
         return { specs, notes, noteX, pulseX, beatOwner };

@@ -39,6 +39,35 @@ two-button game on the grounds that the keypad replaces it** — that would dele
 the only version young children can use, and the tutorial with it. Both can
 carry the same bonus stomp round.
 
+### The handover is at A5 — and the digits carry no information
+**A1–A4 are played on the two-button interface, A5–D8 on the keypad.**
+
+Measured across all 29 levels, 400 phrases each: **the digit sequence never
+varies.** It is always the level's labels in order — `1 2 3 4 1 2 3 4…` —
+whatever the rhythm. Only the bracket pattern changes, and it changes
+constantly (up to 400 distinct patterns in 400 phrases). **The brackets are the
+whole test.**
+
+So the two interfaces ask the *identical question*. "Does a new note start
+here?" and "is this label inside a bracket or outside it?" are the same question
+asked twice. The keypad does not test more knowledge — it asks for more typing.
+
+The real difference is **recognition versus production**:
+
+| | |
+|---|---|
+| **Two-button** | the cursor leads; the counting appears correctly in front of them. This is how the technique gets *given away*. |
+| **Keypad** | the student leads; they track their own position and produce the whole string. Closest a screen gets to writing it by hand. |
+
+**Why A5 and not B1.** Handing the keypad over at the quaver grid would land a
+new interface, a new grid and a new key on one level — three new ideas at once.
+A5 introduces no new notation, so it has the room, and the interface change
+becomes its one new idea.
+
+**Rejected, with a measurement:** an intermediate tier where the student types
+the digits and the app supplies the brackets would be a **test of nothing**,
+because the digits are positional. Don't build it.
+
 ## Counting convention — THE BRACKET NEVER CROSSES A BARLINE
 Read this before touching either interface. An earlier version of this file
 said the opposite (that a tie should be one bracket spanning the barline).
@@ -136,50 +165,221 @@ version, so nobody re-derives it from the code:
   length; the keypad is its distinct values.
   `1 2 3 4` / `1 + 2 + 3 + 4 +` / `1 e + a 2 e + a …` / `1 2 3 4 5 6` (6/8 in 6)
   / `1 + a 2 + a` (6/8 in 2).
+  **Built — this is how `rhythm-stomp-lab.js` works now.** Each level carries
+  `labels` and `slot` (the note value one slot is worth), and
+  `rstompGridFor(level)` derives slots-per-bar, the resolved vocabulary and the
+  VexFlow meter from them. The four shipping levels are all on the crotchet
+  grid; the quaver, 6/8 and semiquaver grids are tested but unused until
+  Stage B is built.
 - **6/8-in-6 and 6/8-in-2 are the same six-slot grid with different labels.**
   6/8 is taught as simple time first; in-2 is a later relabelling at speed.
 - **`+`, never `&`.** The counting has to transfer to handwriting, and a
   handwritten `&` looks like a `+` anyway.
 - **The bracket never crosses a barline** (see the convention section above) —
   the grouping unit is one written note or rest.
+- **The vocabulary names note VALUES, not slot counts.** How many slots a
+  crotchet covers depends on the level: one at Stage A, two once a slot is a
+  quaver. `RSTOMP_VOCABULARY` names the written note; the slot count is
+  resolved per level. A value that doesn't land on the grid (a dotted crotchet
+  on a crotchet grid) is dropped, never rounded.
 - **Note boundaries are explicit** — `rstompSpecBars` is the source of truth and
   the beat stream is derived from it. This is what makes within-bar ties and
   the long-hand device below expressible at all; beats alone can't tell a whole
   note from two tied half notes.
-- **Long-hand spelling is a teaching device, not an engraving rule.** Two tied
-  crotchets shown against a minim, a crotchet tied to a quaver shown against a
-  dotted crotchet — same counting under both. Strictly one generation at a time
-  (never four crotchets tied into a semibreve). It is sprinkled through existing
-  levels, never given levels of its own.
+- **The equivalency scaffold ("the long way") is a rite of passage, and it
+  comes down.** One written note spelled out as tied notes of the generation
+  below, so the student sees the two are the same length. A minim is the short
+  way; two tied crotchets are the long way. Rob: *"that is the point."*
+  - A level **landing a new note value** spells that value out — *every* way it
+    can be spelled — and once the student can see the equivalence the scaffold
+    is withdrawn. Rob: *"As soon as they can see that, we don't have to show it
+    to them anymore. They just need to pass that round. It's a level test of
+    equivalency."* It is **not** a permanent 10% garnish through every level.
+  - **The counting does not always match, and that is information.** Crotchet
+    tied to minim reads `1 (2 3)`, exactly as the dotted minim it demonstrates.
+    Minim tied to crotchet, and three tied crotchets, read `1 (2) (3)` — more
+    written notes, so more groups. Both belong in the scaffold round: the first
+    teaches that they are the same, the second teaches that the counting shows
+    you which spelling you are looking at.
+  - **One generation at a time, measured by VALUE not by count.** Pieces may be
+    the target's own base value or the one immediately below. A dotted minim may
+    be three tied crotchets (Rob's *"ludicrous mode"*); a semibreve may be two
+    tied minims but **never four tied crotchets** — two generations down.
+  - **It scales to every grid**, which is why it lives on the slot model rather
+    than in a table. Two semiquavers make a quaver for the same reason two
+    crotchets make a minim. Rob: *"All of this equivalency has to scale down
+    into subdivision."*
+  - Levels opt in with `spellOut` (which values to spell out) and
+    `longhandChance`. At most one note per phrase, never a note already tied
+    into. Parked: an **equivalency bonus round** where it goes deliberately
+    silly and lots of things get tied together.
 
-## Level sequence — 21 levels, to sixteenth notes
+## Level sequence — to sixteenth notes
 Designed against the standard reading and drum methods so a student who opens a
 band book finds themselves somewhere recognisable. Full table with what each
 level teaches: design brief **§13**. Do not invent a level order from the code.
 
 | Stage | Labels | Levels |
 |---|---|---|
-| **A — the beat** | `1 2 3 4` | quarters · halves · wholes · mixed · dotted half · barline ties |
-| **B — the quaver** | `1 + 2 + 3 + 4 +` | paired 8ths · mixed · single 8th · dotted quarter · syncopa · mixed + ties |
-| **C — 6/8** | `1 2 3 4 5 6` then `1 + a 2 + a` | in 6 · in 2 at speed |
+| **A — sustain and the bracket** | `1 2 3 4` | **BUILT, 9 levels** — see below |
+| **B — the quaver** | `1 + 2 + 3 + 4 +` | **BUILT, 10 levels** — see below |
+| **C — 6/8 simple** | `1 2 3 4 5 6` | **BUILT, 2 levels** — see below |
 | **D — the semiquaver** | `1 e + a …` | four 16ths · mixed · patterns 1–2 · dotted 8th+16th · reversed · syncopation · review |
 
-Three things to know before touching `RSTOMP_LEVELS`:
+### Stage A — built, nine levels, brief §13.4
+| # | Level | New idea |
+|---|---|---|
+| A1 | Whole notes and rests | The bar, the beat numbers, **the bracket**. Exactly two possible bars. |
+| A2 | Half notes and rests | Two events in a bar |
+| A3 | Whole and half mixed | Switching scale inside a bar |
+| A4 | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
+| A5 | Quarters, halves, wholes | Full crotchet vocabulary; long-hand sprinkled |
+| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4` |
+| A7 | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
+| A8 | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
+| A9 | Ties across the barline | Any value crossing |
 
-- **It starts at the quarter note, not the whole note.** A bar of quarters is
-  `1 2 3 4` with no brackets at all, so the student learns the keypad and the
-  grid before meeting the bracket. A whole note is `1 (2 3 4)` — that put the
-  hardest idea in the notation in bar one of level one.
-- **The four levels that exist today become A3, A2, A4 and A6** — reordered,
-  not rewritten. Seventeen levels do not exist yet.
-- **Stage B is the centre of gravity**, six levels. That first subdivision of
-  the beat is where the real work is; everything finer is the same skill at a
-  smaller scale.
+**It opens on whole notes, NOT the quarter note.** An earlier version of this
+file said the opposite; brief §13.1 records that as a reversal, for two reasons:
 
-Anacrusis (after B3), accent (after B5) and Mystery Rhythms (from A4) are
-slotted through existing levels rather than given levels of their own. The
-anacrusis is the biggest content hole — every generated phrase currently starts
-on beat 1, and a pick-up is the sharpest test of where beat 1 is.
+- **The canon is percussion-shaped.** Drum and band methods open on the quarter
+  note because for a drummer one strike per beat *is* the pulse. These are wind
+  and string players, for whom four quarters is four separate attacks and a
+  whole note is one sustained sound — which is both physically easier and what a
+  beginner should be doing anyway.
+- **A bar of whole notes and whole rests has exactly two shapes**, `1 (2 3 4)`
+  and `(1 2 3 4)`. That is the most constrained place the bracket can be
+  introduced, and the contrast teaches the rule everything rests on: the onset
+  digit sits **outside** the bracket for a note and **inside** it for a rest.
+
+Stage A runs to nine because it has three values to introduce before the stage
+template (§13.3) can start. Every later stage repeats that six-step arc: the new
+value isolated · mixed · ties inside the bar · the dotted form · syncopation ·
+ties across the barline.
+
+Anacrusis (after B3), accent (after B5) and Mystery Rhythms are slotted through
+existing levels rather than given levels of their own. **The anacrusis is the
+biggest content hole** — every generated phrase still starts on beat 1, and a
+pick-up is the sharpest test of where beat 1 is.
+
+### Stage B — built, ten levels, brief §13.6
+**Ten, not six.** An earlier version of this table said six; §13.6 is the later
+revision and carries Rob's own instruction — *"I think we need to develop a
+whole series around that area and spend some time there."* Stage B is the
+centre of gravity of the whole pillar.
+
+| # | Level | New idea |
+|---|---|---|
+| B1 | Paired quavers | **The beat divides** |
+| B2 | Quavers and longer notes | Divided beats among sustained ones |
+| B3 | Single quaver + quaver rest | An odd number of quavers in a beat |
+| B4 | Ties inside the bar | The long-hand drill, one generation down |
+| B5 | **The Pump** | Dotted crotchet + quaver, on the downbeat |
+| B6 | **The Pumps I** | The five positions that fit inside a bar |
+| B7 | **The Pumps II** | The three that cross the barline |
+| B8 | **Syncopation I** | Quaver / crotchet / quaver, every position |
+| B9 | **Syncopation II** | The figure anywhere, pumps in the vocabulary |
+| B10 | Review | Ties over every barline |
+
+### Figure displacement is a MECHANIC, not four hand-built levels
+A level names a figure and which positions to use; the generator walks it
+through the grid and **splits any note that runs over a barline into a tie**.
+The pumps split into B6/B7 for exactly that reason — five positions fit inside
+a bar, three do not. **A new named figure costs one line of config.**
+
+The pump is a dotted crotchet then a quaver: two onsets, always three quavers
+apart. **Even positions are DOWN–up, odd positions are up–DOWN** — the gap
+never changes, only whether each onset lands on a beat. Rob: *"in order to find
+an upbeat, you have to know exactly where the downbeat is."*
+
+### Phrase length is per level — keep the typing burden flat
+Stage A is 4 bars (16 slots), Stage B is 2 bars (16 slots). Four bars of
+semiquavers would be 64 slots, unreadable on a phone and brutal against an
+all-or-nothing gate. Set `bars` on the level; brief §13.10 has the table.
+
+### The keypad is the level's labels — never hardcode it
+`renderRstompKeypad()` builds it from the level's label array: `1 2 3 4` at the
+crotchet grid, `1 2 3 4 +` at the quaver grid, plus `e` and `a` at the
+semiquaver grid. This was hardcoded to four digits and **made every Stage B
+level unplayable by hand** — the student could see the `+` in the answer and
+had no key to type it. Automated tests missed it because they called
+`rstompKey()` directly; there is now a browser test that clicks real buttons.
+
+### Beaming, stems and bar width
+- Notes are beamed **by beat**, using the beat length the grid derives from the
+  label array. Four quavers in 4/4 are two beamed pairs, not one group of four.
+- **Stems are forced up.** On a one-line rhythm staff VexFlow sends them down,
+  which puts the beam in the same space as the counting row.
+- Bar width is **per slot**, not per bar — a quaver-grid bar holds twice the
+  events and needs twice the room.
+
+### Stage C — built, two levels, brief §13.7
+| # | Level | New idea |
+|---|---|---|
+| C1 | Six-eight counted in six | *Sometimes the quaver gets the beat* |
+| C2 | Dotted crotchets and ties | Grouping in threes |
+
+**Simple-time 6/8 comes before semiquavers**, with the quaver as the smallest
+value — Rob's decision. It returns after them as **Stage E**, relabelled
+`1 + a 2 + a` and counted in two at speed. Same six-slot grid, different labels.
+
+### THE BEAT IS NOT ALWAYS THE BEAM GROUP
+In 6/8 counted in six the counting names every quaver, so the beat is one slot
+— but quavers are still **beamed in threes**, because the dotted-crotchet pulse
+is what the eye reads. Every level before Stage C had the two identical, so
+beaming was derived from the beat. Levels now declare `beamSlots`, and only
+compound ones need to.
+
+### A bar's METRIC LEVELS, and why they are not always powers of two
+`rstompMetricLevels()` halves where it can and thirds where it cannot:
+
+| Grid | Levels |
+|---|---|
+| 4/4, crotchet slots | 4 · 2 · 1 |
+| 4/4, quaver slots | 8 · 4 · 2 · 1 |
+| **6/8** | **6 · 3 · 1** — not 6·3·2·1 |
+| semiquaver grid | 16 · 8 · 4 · 2 · 1 |
+
+### Engraving rules for rests — notes are not bound by them
+- **An all-rest bar is written as one whole rest**, never as smaller rests added
+  up. This is what forbids two half rests filling a bar, and a bar of four
+  quarter rests.
+- **A rest never straddles a coarser metric boundary.** A half rest may cover
+  beats 1–2 or 3–4, never 2–3. Stated against the bar's metric levels, not as
+  "a multiple of its own length" — the two agree on every binary grid, but the
+  old wording was **wrong in compound time**: it allowed a crotchet rest across
+  quavers 3–4 of a 6/8 bar, straddling the two groups.
+- **Notes are deliberately not restricted this way.** A minim across beats 2 and
+  3 is ordinary syncopation and is exactly the figure A6 is built on. *Silence
+  has to show the beat; sound is allowed to hide it.*
+- Rests in a bar that also holds a note **do not merge** — Rob's own
+  `(1 2) (3) (4)` is a half rest followed by two quarter rests.
+
+### One engraving rule was mislabelled — check before reusing it
+The generator used to reject two **adjacent** half notes in a bar, citing the
+design brief as engraving. The brief's rule is narrower: never **tie** two half
+notes in a bar, write a whole note instead. Two separately struck half notes,
+on beats 1 and 3, are ordinary notation and a different rhythm from a whole
+note.
+
+Behaviour is unchanged — the exclusion is now declared per level as
+`avoidRepeats: ['half-note']` and treated as level design, not engraving — but
+it is deliberately **not** generalised. The metric version of it ("two equal
+notes where one longer note would do") would throw out a pair of quavers on
+beat 1, which is most of Stage B.
+
+**Open question for Rob:** on Level 2 this means a level called "Half Notes and
+Rests" never shows two half notes in one bar — every bar is note+rest or
+rest+note. Two shapes total. Intended, or a side effect worth removing?
+
+### VexFlow does not draw dots from the duration string — attach them by hand
+`new VF.StaveNote({ duration: 'hd' })` gives the note the right **ticks** (the
+bar fills, no error is raised) but renders **no dot** — a dotted minim comes out
+looking exactly like a plain minim. `note.addDotToAll()` has to be called when
+`note.dots` is set. This is done in `renderRstompStaff`; anywhere else that
+builds a StaveNote from a dotted value needs the same line. Nothing shipping
+used a dotted value, so this was silent until the equivalency scaffold rendered
+one.
 
 ## Naming conventions (don't drift from these)
 The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
