@@ -212,13 +212,40 @@ Stage A.
   In 4/4 the whole rest is an *ordinary* rest that happens to fill the bar, so
   it stays aligned on beat 1 — Rob's own distinction.
 
-## Still open
+## A ROUND IS EITHER SCAFFOLDING OR AT STANDARD
+Rob's governing distinction, and it settles most arguments before they start:
 
-- **A dotted minim on beats 2–4 (`♩ ♩·`).** It crosses the middle and starts on
-  a main beat, so it currently stands as written. Rob has named the whole note,
-  the dotted minim from beat 1, and the beats-2–3 minim as exceptions — but not
-  this one, and standard practice is genuinely split on it. Only reachable at
-  the quaver and semiquaver grids.
+> *"If it's a scaffolding round and a half note is tied to a quarter and there
+> is a dotted half, well that's scaffolding. But in an at-standard round we use
+> no scaffolding and only standards."*
+
+- A **scaffolding round** may break the standard where the break *is* the
+  teaching — the equivalency scaffold writing a crotchet the long way, a minim
+  spelled as two tied crotchets so the student can see they are the same length.
+  A level opts in with `spellOut` / `longhandChance`.
+- An **at-standard round** uses the standard and nothing else. No long way, no
+  demonstration ties. A8 is one: the dotted minim written plainly.
+
+So "is this notation correct?" is the wrong question on its own. The right one
+is *which kind of round is this*, and then the standard or the scaffold applies.
+
+## Resolved: the dotted minim
+> *"A dotted minim can start on beat 1 or beat 2. It cannot start on beat 3 or
+> 4. Think about your question in reverse: if you cannot place a note across the
+> halfway point of a bar, then how can a dotted half note exist?"*
+
+Decisive, and it needed no code — "starts on a main beat" already permits both,
+and the bar's own length forbids the rest:
+
+```
+dotted minim on beats 1–3   hd q    stands
+dotted minim on beats 2–4   q hd    stands
+starting on beat 3 or 4             impossible - the bar ends first
+dotted minim from the "and" of 1    SPLIT, as any off-beat crossing is
+```
+
+The reasoning generalises: the midpoint rule is about notes that *start off the
+main beat*, never about a value that legitimately spans the middle from one.
 - **A whole bar of silence is a centred semibreve rest in 6/8** (Rob: *"the
   symbol is no longer acting as a literal four-beat rest; it simply means rest
   for the entire bar"*). The generator still stores the tick-correct value so

@@ -468,10 +468,13 @@ original version of this rule used the counted beat and would have missed 6/8.)
 What still splits: a minim from the "and" of 1, a syncopated crotchet from the
 "and" of 2, and in 6/8 a crotchet across the two main beats.
 
-**Open, not yet ruled on:** a dotted minim on beats 2–4 (`♩ ♩·`). It crosses the
-middle and starts on a main beat, so it currently stands. Rob has named the
-whole note, the dotted minim from beat 1, and the beats-2–3 minim as exceptions,
-but not this one; standard practice is genuinely split on it.
+**The dotted minim, ruled on and needing no code.** Rob: *"A dotted minim can
+start on beat 1 or beat 2. It cannot start on beat 3 or 4. Think about your
+question in reverse: if you cannot place a note across the halfway point of a
+bar, then how can a dotted half note exist?"* Both starts are on a main beat so
+both stand; beats 3 and 4 are impossible anyway, because the bar ends first. The
+midpoint rule is about notes that start **off** the main beat — never about a
+value that legitimately spans the middle from one.
 
 **The note is not thrown away, it is RE-SPELLED.** Rob: *"my rule would have
 that tied across to an eighth."* `rstompShowBeatThree()` splits it at the middle
@@ -716,6 +719,21 @@ looking exactly like a plain minim. `note.addDotToAll()` has to be called when
 builds a StaveNote from a dotted value needs the same line. Nothing shipping
 used a dotted value, so this was silent until the equivalency scaffold rendered
 one.
+
+## A ROUND IS EITHER SCAFFOLDING OR AT STANDARD
+Rob's governing distinction. It settles most arguments before they start:
+
+> *"If it's a scaffolding round and a half note is tied to a quarter and there
+> is a dotted half, well that's scaffolding. But in an at-standard round we use
+> no scaffolding and only standards."*
+
+- A **scaffolding round** may break the standard where the break *is* the
+  teaching. A level opts in with `spellOut` / `longhandChance`. A7 is one.
+- An **at-standard round** uses the standard and nothing else — no long way, no
+  demonstration ties. A8 is one, and that is why it must stay tie-free.
+
+"Is this notation correct?" is the wrong question on its own. Ask *which kind of
+round is this*, then apply the standard or the scaffold.
 
 ## Every on-screen prompt has a NAME, and a level can override it
 Rob's request, because the scaffolding changes level by level and the wording
