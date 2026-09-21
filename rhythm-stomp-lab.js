@@ -673,7 +673,7 @@ function rstompSpecsToPhrase(specBars) {
 let rstompSelectedLevel = '1';
 let rstompSpecBars = [];        // SOURCE OF TRUTH: bars, each a list of {slots,value,isRest,tied}
 let rstompPhrase = [];          // derived slot stream: bars, each slotsPerBar of 'play'/'hold'/'rest'
-let rstompPositions = [];       // flat [{barIndex, slotIndex}] - one per slot in the phrase
+let rstompPositions = [];       // the counted positions: [{barIndex, slotIndex, absolute}]
 
 // The active level's grid, set when a phrase is generated. Held here rather
 // than looked up per call so that drawing, scoring and the counting row all
@@ -1193,12 +1193,42 @@ function generateRstompPhraseWithTie(level, grid) {
 // One position per slot. How many slots a bar holds is the active level's
 // label-array length, so this is the same function whether a slot is a
 // crotchet, a quaver or a semiquaver - which is the point of the grid.
-function buildRstompPositions(phrase) {
+// WHICH SLOTS GET A LABEL WRITTEN UNDER THEM. This is the rule the whole
+// pillar turns on, and it is NOT "every slot":
+//
+//   A label is written on every BEAT, and wherever a note or rest STARTS.
+//   Nothing is written on an off-beat slot that no event begins on.
+//
+// So a crotchet on beat 2 of a quaver-grid bar is just `2` - you count the
+// beat, you do not say "and" when nothing happens there. A minim is `1 (2)`
+// whatever the grid, which is why the counting a student learns at Stage A
+// still reads the same once the beat divides. Rob's decision; see CLAUDE.md,
+// "The counting names every beat, and every event - nothing else".
+//
+// Every position carries its bar, its slot within that bar (what the caret
+// and the counting row are placed from) and its absolute slot in the phrase.
+function buildRstompPositions(specBars) {
     const positions = [];
-    phrase.forEach((bar, barIndex) => {
-        for (let slotIndex = 0; slotIndex < rstompSlotsPerBar; slotIndex++) positions.push({ barIndex, slotIndex });
+    (specBars || []).forEach((specs, barIndex) => {
+        let slotIndex = 0;
+        specs.forEach(spec => {
+            for (let k = 0; k < spec.slots; k++) {
+                const slot = slotIndex + k;
+                if (k === 0 || slot % rstompSlotsPerBeat === 0) {
+                    positions.push({ barIndex, slotIndex: slot, absolute: barIndex * rstompSlotsPerBar + slot });
+                }
+            }
+            slotIndex += spec.slots;
+        });
     });
     return positions;
+}
+
+// Which counting position sits on an absolute slot, or -1 when that slot
+// isn't counted. Phrases are at most a few dozen positions, so a scan is
+// cheaper than keeping a map in step with them.
+function rstompIndexOfSlot(absolute) {
+    return rstompPositions.findIndex(position => position.absolute === absolute);
 }
 
 function rstompExpectedAnswer(position) {
@@ -1266,11 +1296,18 @@ function rstompTargetGroups() {
     rstompSpecBars.forEach(specs => {
         let beat = 0;
         specs.forEach(spec => {
+            // Only the slots that are counted - every beat this note or rest
+            // covers, plus its own onset (see buildRstompPositions). A note
+            // that starts off the beat contributes its onset label; the
+            // off-beat slots it merely holds through contribute nothing.
             const digits = [];
-            for (let k = 0; k < spec.slots; k++) digits.push(rstompLabels[beat + k]);
+            for (let k = 0; k < spec.slots; k++) {
+                if (k === 0 || (beat + k) % rstompSlotsPerBeat === 0) digits.push(rstompLabels[beat + k]);
+            }
             if (!spec.isRest && !spec.tied) {
-                // Struck: the onset digit is written plainly, its held beats
-                // bracketed. A one-beat note has no held beats, so no bracket.
+                // Struck: the onset digit is written plainly, the beats it
+                // holds through bracketed. A note that covers no further
+                // beat has nothing to bracket - a lone quaver is just `+`.
                 groups.push({ bracketed: false, digits: [digits[0]] });
                 if (digits.length > 1) groups.push({ bracketed: true, closed: true, kind: 'hold', digits: digits.slice(1) });
             } else {
@@ -1385,11 +1422,15 @@ function rstompWrongBarsFor(writing) {
     const mine = rstompGroupsToSlotMarks(writing.groups);
     const theirs = rstompGroupsToSlotMarks(rstompTargetGroups());
     const wrong = new Set();
-    for (let slot = 0; slot < theirs.length; slot++) {
-        if (mine[slot] !== theirs[slot]) wrong.add(Math.floor(slot / rstompSlotsPerBar));
+    // One mark per LABEL, not per slot - a label's bar comes from the
+    // position it was written on, since a bar no longer holds a fixed
+    // number of labels (a bar of quavers holds eight, a bar of crotchets
+    // four).
+    for (let index = 0; index < theirs.length; index++) {
+        if (mine[index] !== theirs[index]) wrong.add(rstompPositions[index].barIndex);
     }
     for (let extra = theirs.length; extra < mine.length; extra++) {
-        wrong.add(Math.min(rstompPhrase.length - 1, Math.floor(extra / rstompSlotsPerBar)));
+        wrong.add(rstompPhrase.length - 1);
     }
     return [...wrong].sort((a, b) => a - b);
 }
@@ -1401,7 +1442,7 @@ function rstompWrongBarsFor(writing) {
 // splicing, and it never leaves the student editing around an answer that no
 // longer lines up.
 function rstompRewindTo(barIndex) {
-    const keepSlots = barIndex * rstompSlotsPerBar;
+    const keepSlots = rstompPositions.filter(position => position.barIndex < barIndex).length;
     const rebuilt = { groups: [], inside: false };
     let used = 0;
     for (const group of rstompWriting.groups) {
@@ -1443,7 +1484,7 @@ function startNewRstompPhrase() {
     if (typeof rstompAudioStop === 'function') rstompAudioStop();
     rstompSpecBars = generateRstompPhrase(level);
     rstompPhrase = rstompSpecsToPhrase(rstompSpecBars);
-    rstompPositions = buildRstompPositions(rstompPhrase);
+    rstompPositions = buildRstompPositions(rstompSpecBars);
     rstompEntries = new Array(rstompPositions.length).fill(null);
     rstompWriting = { groups: [], inside: false };
     rstompRevealed = null;
@@ -1732,11 +1773,14 @@ function updateRstompStripChrome() {
 
     const progress = document.getElementById('rstomp-strip-progress');
     if (progress) {
+        // "Counts", not "beats" - a label is not always a beat any more. A
+        // quaver starting on the "+" gets a label and is not a beat, while
+        // the off-beat half of a crotchet is neither.
         const total = rstompPositions.length;
         const written = rstompScribe ? rstompWrittenBeats() : rstompCursor;
         progress.textContent = written >= total
-            ? `All ${total} beats in`
-            : `Beat ${written + 1} of ${total}`;
+            ? `All ${total} counts in`
+            : `Count ${written + 1} of ${total}`;
     }
 
     // Nothing to expand when the whole phrase is already on screen.
@@ -1846,27 +1890,32 @@ function buildRstompCountingTokens(barIndex) {
     const tokens = [];
     let beat = 0;
     for (const spec of specs) {
-        // A note's counting only appears once every beat it covers has been
-        // answered - showing half a group would put a bracket on screen the
-        // student hasn't finished building.
-        let answered = true;
+        // Only this note's COUNTED positions - the beats it covers plus its
+        // own onset. The tutorial runs on the crotchet grid, where that is
+        // every slot, but it is stated the same way as everywhere else so
+        // the two interfaces can never drift apart on what gets a label.
+        const own = [];
         for (let k = 0; k < spec.slots; k++) {
-            if (rstompEntries[barIndex * rstompSlotsPerBar + beat + k] == null) { answered = false; break; }
+            const index = rstompIndexOfSlot(barIndex * rstompSlotsPerBar + beat + k);
+            if (index !== -1) own.push({ index, slot: beat + k });
         }
-        if (!answered) break;
+        // A note's counting only appears once every position it covers has
+        // been answered - showing half a group would put a bracket on screen
+        // the student hasn't finished building.
+        if (!own.length || own.some(position => rstompEntries[position.index] == null)) break;
 
-        const digits = [];
-        for (let k = 0; k < spec.slots; k++) digits.push(rstompLabels[beat + k]);
+        const digits = own.map(position => rstompLabels[position.slot]);
+        const lastSlot = own[own.length - 1].slot;
         // The student's own answer decides plain-vs-bracketed on the first
         // beat; the grouping comes from the written note. That keeps the row
         // honest to what they typed while still delineating the notation.
-        if (rstompEntries[barIndex * rstompSlotsPerBar + beat] === 'play') {
-            tokens.push({ text: digits[0], startBeat: beat, endBeat: beat, kind: 'play' });
+        if (rstompEntries[own[0].index] === 'play') {
+            tokens.push({ text: digits[0], startBeat: own[0].slot, endBeat: own[0].slot, kind: 'play' });
             if (digits.length > 1) {
-                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: beat + 1, endBeat: beat + spec.slots - 1, kind: 'hold' });
+                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: own[1].slot, endBeat: lastSlot, kind: 'hold' });
             }
         } else {
-            tokens.push({ text: `(${digits.join(' ')})`, startBeat: beat, endBeat: beat + spec.slots - 1, kind: spec.isRest ? 'rest' : 'hold' });
+            tokens.push({ text: `(${digits.join(' ')})`, startBeat: own[0].slot, endBeat: lastSlot, kind: spec.isRest ? 'rest' : 'hold' });
         }
         beat += spec.slots;
     }
@@ -1923,21 +1972,30 @@ function buildRstompScribeRuns() {
     const groups = rstompRevealed || (rstompWriting ? rstompWriting.groups : []);
     const wrong = new Set(rstompWrongBars.map(bar => bar - 1));
     const runs = [];
-    let slot = 0;
+    let index = 0;
     groups.forEach(group => {
         // A bracket just opened has no digits yet but must still show - the
         // whole point of the key is that opening one is a visible act.
         if (!group.digits.length && !group.bracketed) return;
+        // A label's x comes from the counting POSITION it was written on.
+        // Labels and slots are no longer one-to-one - a crotchet at the
+        // quaver grid takes one label and two slots - so the slot has to be
+        // looked up rather than counted off.
         const span = Math.max(0, group.digits.length - 1);
-        runs.push({
-            text: rstompGroupText(group),
-            bracketed: group.bracketed,
-            empty: group.digits.length === 0,
-            startSlot: slot,
-            endSlot: slot + span,
-            wrong: wrong.has(Math.floor(slot / rstompSlotsPerBar)) || wrong.has(Math.floor((slot + span) / rstompSlotsPerBar))
-        });
-        slot += group.digits.length;
+        const last = Math.min(index + span, rstompPositions.length - 1);
+        const start = rstompPositions[Math.min(index, rstompPositions.length - 1)];
+        const end = rstompPositions[last];
+        if (start && end) {
+            runs.push({
+                text: rstompGroupText(group),
+                bracketed: group.bracketed,
+                empty: group.digits.length === 0,
+                startSlot: start.absolute,
+                endSlot: end.absolute,
+                wrong: wrong.has(start.barIndex) || wrong.has(end.barIndex)
+            });
+        }
+        index += group.digits.length;
     });
     return runs;
 }
