@@ -34,8 +34,28 @@
 const RAUDIO_TICK_MS = 25;        // how often the scheduler wakes
 const RAUDIO_LOOKAHEAD = 0.12;    // seconds of music booked in advance
 
+/* THE MIX. Rob, on the first render: "I am hearing a metronome and a drum
+   beat... if there is a rhythm mixed in with that, then the drum beat has to
+   go way more in the background. And any single rhythmic note should be at
+   least 40% louder than anything else, so it sits on top comfortably."
+
+   He was right and the numbers said so: the kick was at 0.7, the loudest
+   thing in the piece - louder than the snare on the rhythm and twice the
+   counting voice. The backing was playing over the lesson.
+
+   So there are three buses and the whole mix is these three numbers. THE
+   RHYTHM IS THE LESSON: the snare on the onsets and the counting voice both
+   sit on the rhythm bus, and everything else is support. A test renders each
+   bus alone and checks the ratio, so this cannot drift back. */
+const RAUDIO_MIX = {
+    rhythm: 1.00,     // the snare on the onsets, and the counting voice
+    click: 0.55,      // the pulse underneath
+    loop: 0.45        // the backing track - present, but clearly behind
+};
+
 let raudioCtx = null;
 let raudioMaster = null;
+let raudioBus = {};
 let raudioQueue = [];             // [{ when, play }] sorted by when
 let raudioTimer = null;
 let raudioVoice = null;           // sample bank, once recordings exist
@@ -51,9 +71,24 @@ function rstompAudio() {
         raudioMaster = raudioCtx.createGain();
         raudioMaster.gain.value = 0.9;
         raudioMaster.connect(raudioCtx.destination);
+        raudioBuildBuses();
     }
     if (raudioCtx.state === 'suspended') raudioCtx.resume();
     return raudioCtx;
+}
+
+function raudioBuildBuses() {
+    raudioBus = {};
+    Object.keys(RAUDIO_MIX).forEach(name => {
+        const gain = raudioCtx.createGain();
+        gain.gain.value = RAUDIO_MIX[name];
+        gain.connect(raudioMaster);
+        raudioBus[name] = gain;
+    });
+}
+
+function raudioOut(bus) {
+    return (raudioBus && raudioBus[bus]) || raudioMaster;
 }
 
 function rstompAudioRunning() {
@@ -99,7 +134,7 @@ function rstompAudioSchedule(events, onStop) {
 
 /* ---------- the instruments (placeholders where noted) ---------- */
 
-function raudioTone(when, freq, dur, gain, type) {
+function raudioTone(when, freq, dur, gain, type, bus) {
     const ctx = raudioCtx;
     const osc = ctx.createOscillator();
     const amp = ctx.createGain();
@@ -108,11 +143,11 @@ function raudioTone(when, freq, dur, gain, type) {
     amp.gain.setValueAtTime(0.0001, when);
     amp.gain.exponentialRampToValueAtTime(gain, when + 0.006);
     amp.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    osc.connect(amp).connect(raudioMaster);
+    osc.connect(amp).connect(raudioOut(bus));
     osc.start(when); osc.stop(when + dur + 0.02);
 }
 
-function raudioNoise(when, dur, gain, hz, q) {
+function raudioNoise(when, dur, gain, hz, q, bus) {
     const ctx = raudioCtx;
     const frames = Math.ceil(ctx.sampleRate * (dur + 0.02));
     const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
@@ -124,27 +159,30 @@ function raudioNoise(when, dur, gain, hz, q) {
     const amp = ctx.createGain();
     amp.gain.setValueAtTime(gain, when);
     amp.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    src.connect(filter).connect(amp).connect(raudioMaster);
+    src.connect(filter).connect(amp).connect(raudioOut(bus));
     src.start(when); src.stop(when + dur + 0.02);
 }
 
 // The rhythm itself, as a snare. Rob: "not a melody, but just a rhythm being
 // played amongst a backing track."
 function raudioSnare(when, accent) {
-    raudioNoise(when, accent ? 0.16 : 0.11, accent ? 0.5 : 0.3, 1900, 0.8);
-    raudioTone(when, accent ? 190 : 170, 0.05, accent ? 0.22 : 0.13, 'triangle');
+    raudioNoise(when, accent ? 0.17 : 0.13, accent ? 0.62 : 0.46, 1900, 0.8, 'rhythm');
+    raudioTone(when, accent ? 190 : 170, 0.05, accent ? 0.26 : 0.18, 'triangle', 'rhythm');
 }
 
+// The backing track. Its own quieter bus, and a softer kick besides - a
+// backing track that competes with the rhythm is not a backing track.
 function raudioKick(when)  { const t = raudioCtx;
     const osc = t.createOscillator(), amp = t.createGain();
     osc.frequency.setValueAtTime(140, when);
     osc.frequency.exponentialRampToValueAtTime(48, when + 0.11);
-    amp.gain.setValueAtTime(0.7, when);
-    amp.gain.exponentialRampToValueAtTime(0.0001, when + 0.18);
-    osc.connect(amp).connect(raudioMaster); osc.start(when); osc.stop(when + 0.2); }
-function raudioHat(when, open) { raudioNoise(when, open ? 0.13 : 0.035, 0.12, 8200, 1.2); }
+    amp.gain.setValueAtTime(0.5, when);
+    amp.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
+    osc.connect(amp).connect(raudioOut('loop')); osc.start(when); osc.stop(when + 0.18); }
+function raudioLoopSnare(when) { raudioNoise(when, 0.1, 0.34, 1700, 0.8, 'loop'); }
+function raudioHat(when, open) { raudioNoise(when, open ? 0.13 : 0.03, 0.1, 8200, 1.2, 'loop'); }
 function raudioClick(when, downbeat) {
-    raudioTone(when, downbeat ? 1180 : 820, 0.035, downbeat ? 0.32 : 0.2, 'square');
+    raudioTone(when, downbeat ? 1180 : 820, 0.03, downbeat ? 0.3 : 0.2, 'square', 'click');
 }
 
 /* ---------- the counting voice ---------- */
@@ -183,16 +221,16 @@ function raudioSyllable(when, label, strong) {
         if (buf) {
             const src = raudioCtx.createBufferSource(); src.buffer = buf;
             const amp = raudioCtx.createGain();
-            amp.gain.value = strong ? 1 : 0.55;
-            src.connect(amp).connect(raudioMaster);
+            amp.gain.value = strong ? 1 : 0.5;
+            src.connect(amp).connect(raudioOut('rhythm'));
             src.start(when);
             return;
         }
     }
     const numeral = /^[0-9]/.test(label);
     raudioTone(when, RAUDIO_PLACEHOLDER_PITCH[label] || 440,
-               strong ? 0.13 : 0.09, strong ? 0.34 : 0.12,
-               numeral ? 'square' : 'sine');
+               strong ? 0.15 : 0.1, strong ? 0.6 : 0.24,
+               numeral ? 'square' : 'sine', 'rhythm');
 }
 
 /* ---------- turning a phrase into a schedule ---------- */
@@ -223,7 +261,7 @@ function raudioLoopEvents(bars, slotsPerBar, slotsPerBeat, slotSec, style) {
             if (beat === 0 || (!compound && beats >= 4 && beat === Math.floor(beats / 2)))
                 events.push({ at, play: t => raudioKick(t) });
             if (!compound && beats >= 4 && (beat === 1 || beat === beats - 1))
-                events.push({ at, play: t => raudioSnare(t, false) });
+                events.push({ at, play: t => raudioLoopSnare(t) });
             events.push({ at, play: t => raudioHat(t, false) });
             if (style !== 'sparse')
                 events.push({ at: at + beatSec / 2, play: t => raudioHat(t, false) });
