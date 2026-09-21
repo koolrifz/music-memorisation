@@ -2225,24 +2225,43 @@ function buildRstompCountingTokens(barIndex) {
             const index = rstompIndexOfSlot(barIndex * rstompSlotsPerBar + beat + k);
             if (index !== -1) own.push({ index, slot: beat + k });
         }
-        // A note's counting only appears once every position it covers has
-        // been answered - showing half a group would put a bracket on screen
-        // the student hasn't finished building.
-        if (!own.length || own.some(position => rstompEntries[position.index] == null)) break;
+        // THE COUNTING IS TYPED OUT AS THEY GO, one label per answer.
+        //
+        // It used to wait for a note's WHOLE group to be answered before any
+        // of it appeared, on the reasoning that half a group would put an
+        // unfinished bracket on screen. On Level 1 that means a semibreve's
+        // `1 (2 3 4)` lands in one lump on the fourth tap and nothing happens
+        // on the first three - Rob, playing it: "counting not being produced
+        // as typed; only when you get to beat 4 does it all show."
+        //
+        // So take the answered PREFIX instead. A group still being built
+        // shows its opening bracket with no closing one - `1 (2 3` - which is
+        // exactly how the keypad already draws a bracket the student has
+        // opened and not yet closed, so the two interfaces still agree.
+        const answered = [];
+        for (const position of own) {
+            if (rstompEntries[position.index] == null) break;
+            answered.push(position);
+        }
+        if (!answered.length) break;
+        const complete = answered.length === own.length;
+        const close = complete ? ')' : '';
 
-        const digits = own.map(position => rstompLabels[position.slot]);
-        const lastSlot = own[own.length - 1].slot;
+        const digits = answered.map(position => rstompLabels[position.slot]);
+        const lastSlot = answered[answered.length - 1].slot;
         // The student's own answer decides plain-vs-bracketed on the first
         // beat; the grouping comes from the written note. That keeps the row
         // honest to what they typed while still delineating the notation.
-        if (rstompEntries[own[0].index] === 'play') {
-            tokens.push({ text: digits[0], startBeat: own[0].slot, endBeat: own[0].slot, kind: 'play' });
+        if (rstompEntries[answered[0].index] === 'play') {
+            tokens.push({ text: digits[0], startBeat: answered[0].slot, endBeat: answered[0].slot, kind: 'play' });
             if (digits.length > 1) {
-                tokens.push({ text: `(${digits.slice(1).join(' ')})`, startBeat: own[1].slot, endBeat: lastSlot, kind: 'hold' });
+                tokens.push({ text: `(${digits.slice(1).join(' ')}${close}`, startBeat: answered[1].slot, endBeat: lastSlot, kind: 'hold' });
             }
         } else {
-            tokens.push({ text: `(${digits.join(' ')})`, startBeat: own[0].slot, endBeat: lastSlot, kind: spec.isRest ? 'rest' : 'hold' });
+            tokens.push({ text: `(${digits.join(' ')}${close}`, startBeat: answered[0].slot, endBeat: lastSlot, kind: spec.isRest ? 'rest' : 'hold' });
         }
+        // Nothing after an unfinished note can have been answered yet.
+        if (!complete) break;
         beat += spec.slots;
     }
     return tokens;
