@@ -205,17 +205,26 @@ async function rstompAudioLoadVoice(bank) {
     return true;
 }
 
-// PLACEHOLDER VOICE. Pitch stands in for the syllable and loudness for the
-// accent, so the accent map and the timing can both be heard and tested long
-// before anyone records anything. Numbers get a square wave and the off-beat
-// syllables a sine, so the beat structure is audible on its own.
-const RAUDIO_PLACEHOLDER_PITCH = {
-    '1': 523, '2': 587, '3': 659, '4': 698, '5': 784, '6': 880,
-    'e': 392, '+': 440, 'a': 466,
-    'trip': 523, 'o': 587, 'let': 659
-};
+// PLACEHOLDER VOICE. Three things stand in for a recorded syllable, and each
+// one carries a different piece of information:
+//
+//   PITCH     - WHICH BEAT you are in. Rob's rule: everything in beat 1 is the
+//               tonic, everything in beat 2 the supertonic, beat 3 the
+//               mediant, beat 4 the subdominant. A subdivision keeps its
+//               beat's pitch, so the "and" of 3 sounds the mediant exactly
+//               like the 3 it belongs to. In 4/4 that is a major tetrachord;
+//               6/8 counted in six just runs on up the scale.
+//   TIMBRE    - whether it is the beat itself (square) or a subdivision
+//               (sine). The pitch no longer separates those, so the timbre
+//               has to.
+//   LOUDNESS  - the accent: struck notes are loud, held and rested ones soft.
+//
+// The pitch was keyed off the SYLLABLE before, which put `e + a` in a
+// different register from the numbers and said nothing about where in the bar
+// you were. Rob heard the tetrachord and named the rule; this is it.
+const RAUDIO_DEGREE_HZ = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
 
-function raudioSyllable(when, label, strong) {
+function raudioSyllable(when, label, strong, beat) {
     if (raudioVoice && raudioVoice[label]) {
         const buf = raudioVoice[label][strong ? 'strong' : 'soft'] || raudioVoice[label].soft;
         if (buf) {
@@ -228,7 +237,8 @@ function raudioSyllable(when, label, strong) {
         }
     }
     const numeral = /^[0-9]/.test(label);
-    raudioTone(when, RAUDIO_PLACEHOLDER_PITCH[label] || 440,
+    const degree = RAUDIO_DEGREE_HZ[Math.min(Math.max(beat || 0, 0), RAUDIO_DEGREE_HZ.length - 1)];
+    raudioTone(when, degree,
                strong ? 0.15 : 0.1, strong ? 0.6 : 0.24,
                numeral ? 'square' : 'sine', 'rhythm');
 }
@@ -245,11 +255,18 @@ function rstompAudioAccentMap() {
     // carries the slot it is written on, and the schedule times it from that.
     // Nothing is spoken on a slot that carries no label, which is the point:
     // you don't say "and" when nothing happens on it.
-    return rstompGroupsToSlotMarks(rstompTargetGroups()).map((mark, index) => ({
-        label: mark.slice(0, mark.length - 3),
-        strong: mark[mark.length - 3] !== 'b',
-        slot: rstompPositions[index] ? rstompPositions[index].absolute : index
-    }));
+    return rstompGroupsToSlotMarks(rstompTargetGroups()).map((mark, index) => {
+        const slot = rstompPositions[index] ? rstompPositions[index].absolute : index;
+        return {
+            label: mark.slice(0, mark.length - 3),
+            strong: mark[mark.length - 3] !== 'b',
+            slot,
+            // Which beat of the bar this falls in - what the placeholder
+            // voice's pitch is taken from. A subdivision reports its beat,
+            // not its own position, so it sounds at that beat's degree.
+            beat: Math.floor((slot % rstompSlotsPerBar) / rstompSlotsPerBeat)
+        };
+    });
 }
 
 // A plain two-bar drum loop, synthesised so it can sit at ANY tempo without
@@ -314,7 +331,7 @@ function rstompAudioPhraseEvents(options) {
 
     map.forEach(label => {
         const at = offset + label.slot * slotSec;
-        if (opt.counting) events.push({ at, play: t => raudioSyllable(t, label.label, label.strong) });
+        if (opt.counting) events.push({ at, play: t => raudioSyllable(t, label.label, label.strong, label.beat) });
         if (opt.snare && label.strong) events.push({ at, play: t => raudioSnare(t, label.slot % rstompSlotsPerBar === 0) });
         if (opt.click && label.slot % rstompSlotsPerBeat === 0)
             events.push({ at, play: t => raudioClick(t, label.slot % rstompSlotsPerBar === 0) });
