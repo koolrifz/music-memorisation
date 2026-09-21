@@ -703,6 +703,17 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 }
 @media (prefers-reduced-motion: reduce) { .rstomp-caret { transition: none; } }
 
+/* The playhead is the MUSIC's position, not the student's. No transition on
+   it - it is moved every animation frame from the audio clock, and a CSS ease
+   on top of that would fight the clock and lag behind the sound. Warm against
+   the caret's teal so the two are never confused, and behind it in the stack
+   so a playhead passing the writing position never hides it. */
+.rstomp-playhead {
+    position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px;
+    background: var(--accent-gold); opacity: 0.85;
+    box-shadow: 0 0 0 4px rgba(255,200,0,0.18); pointer-events: none;
+}
+
 /* Lives in the status row BELOW the strip, not floating over it. It used to be
    absolutely positioned inside the scroll frame, which pinned it over the
    counting row and hid the bars being written - and it only ever appears when

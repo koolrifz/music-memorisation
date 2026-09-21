@@ -61,6 +61,17 @@ let raudioTimer = null;
 let raudioVoice = null;           // sample bank, once recordings exist
 let raudioOnStop = null;
 
+/* WHERE THE PHRASE SITS ON THE CLOCK, so the page can draw a playhead.
+
+   Scheduling alone is not enough for that: the events know when they sound,
+   but once booked they are gone from the queue, and the queue is emptied
+   ahead of the sound anyway (that is what the lookahead IS). The only thing
+   that always knows where the music has got to is ctx.currentTime measured
+   against the moment slot 0 sounds - which is the schedule's start plus the
+   count-in. Both numbers are kept here and nowhere else, so the playhead and
+   the events cannot disagree about where the beat is. */
+let raudioTiming = null;          // { start, offset, slotSec } while playing
+
 // iOS will not start an AudioContext outside a user gesture, and will suspend
 // one that was started too early - so this is called from the tap, not on load.
 function rstompAudio() {
@@ -100,6 +111,7 @@ function rstompAudioRunning() {
 function rstompAudioStop() {
     if (raudioTimer) { clearInterval(raudioTimer); raudioTimer = null; }
     raudioQueue = [];
+    raudioTiming = null;
     if (raudioMaster && raudioCtx) {
         // a short fade rather than a hard cut, so stopping never clicks
         const now = raudioCtx.currentTime;
@@ -112,12 +124,13 @@ function rstompAudioStop() {
     if (done) done();
 }
 
-function rstompAudioSchedule(events, onStop) {
+function rstompAudioSchedule(events, onStop, timing) {
     const ctx = rstompAudio();
     if (!ctx) return false;
-    rstompAudioStop();
+    rstompAudioStop();                             // clears raudioTiming, so set it after
     raudioOnStop = onStop || null;
     const start = ctx.currentTime + 0.12;          // a beat of headroom to load
+    raudioTiming = timing ? Object.assign({ start }, timing) : null;
     raudioQueue = events.map(e => ({ when: start + e.at, play: e.play }))
                         .sort((a, b) => a.when - b.when);
     const endsAt = raudioQueue.length ? raudioQueue[raudioQueue.length - 1].when + 0.4 : start;
@@ -130,6 +143,16 @@ function rstompAudioSchedule(events, onStop) {
         if (!raudioQueue.length && now > endsAt) rstompAudioStop();
     }, RAUDIO_TICK_MS);
     return true;
+}
+
+// Which slot the music is on right now, as a FRACTION of a slot so a playhead
+// can glide rather than hop: 0 is the first slot of bar 1, 4.5 is halfway
+// through slot 5. Negative during the count-in and past the end once the
+// phrase has run out; null when nothing is playing. The caller decides what
+// to do at the edges - this only reports the clock.
+function rstompAudioPlayhead() {
+    if (!raudioTimer || !raudioTiming || !raudioCtx) return null;
+    return (raudioCtx.currentTime - raudioTiming.start - raudioTiming.offset) / raudioTiming.slotSec;
 }
 
 /* ---------- the instruments (placeholders where noted) ---------- */
@@ -304,7 +327,18 @@ function raudioLoopEvents(bars, slotsPerBar, slotsPerBeat, slotSec, style) {
 function rstompAudioPlayPhrase(options) {
     const events = rstompAudioPhraseEvents(options);
     if (!events) return false;
-    return rstompAudioSchedule(events, (options || {}).onStop);
+    return rstompAudioSchedule(events, (options || {}).onStop, rstompAudioTiming(options));
+}
+
+// How long one slot lasts, and how much count-in sits before slot 0. The
+// event list and the playhead both need these two numbers and they must not
+// be derived twice - a playhead that computes its own count-in drifts a whole
+// bar the first time a level changes meter.
+function rstompAudioTiming(options) {
+    const opt = Object.assign({ bpm: 90, countIn: true }, options || {});
+    const slotSec = 60 / opt.bpm / rstompSlotsPerBeat;
+    const beats = Math.round(rstompSlotsPerBar / rstompSlotsPerBeat);
+    return { slotSec, offset: opt.countIn ? beats * slotSec * rstompSlotsPerBeat : 0 };
 }
 
 // The phrase as a list of { at, play } - separate from playing it, so the same
@@ -314,19 +348,17 @@ function rstompAudioPhraseEvents(options) {
     const opt = Object.assign({ bpm: 90, counting: true, snare: true,
                                 click: true, loop: true, countIn: true }, options || {});
     if (!rstompPhrase.length) return null;
-    const slotSec = 60 / opt.bpm / rstompSlotsPerBeat;
+    const { slotSec, offset } = rstompAudioTiming(opt);
     const map = rstompAudioAccentMap();
     const bars = rstompPhrase.length;
     const events = [];
 
     // A count-in of one bar, so they arrive with the pulse already going.
-    let offset = 0;
     if (opt.countIn) {
         const beats = Math.round(rstompSlotsPerBar / rstompSlotsPerBeat);
         for (let b = 0; b < beats; b++)
             events.push({ at: b * slotSec * rstompSlotsPerBeat,
                           play: t => raudioClick(t, b === 0) });
-        offset = beats * slotSec * rstompSlotsPerBeat;
     }
 
     map.forEach(label => {

@@ -34,7 +34,9 @@ supersedes the other** — but they now have different jobs:
    a time and the student answers "does a new note start here?" A child who
    can't yet write numerals confidently can still play it, and it works
    beautifully in prompts. **Decided: this becomes the interactive tutorial /
-   help area**, not a parallel game with its own level spiral. It is the way in
+   help area**, not a parallel game with its own level spiral. **Built as a
+   tutorial round:** a wrong tap is refused and explained on the spot — see
+   "The two-button interface is a TUTORIAL ROUND". It is the way in
    — for preps and lower primary as their whole experience, and for everyone
    else as the thing that teaches the idea before the keypad asks them to write
    it. It is what currently ships as the game.
@@ -479,11 +481,76 @@ That is exactly how the keypad already draws a bracket the student has opened
 and not yet closed, so the two interfaces still agree on what an unfinished
 group looks like.
 
-**Unchanged, and worth knowing:** the student's answer on a note's FIRST beat
-decides plain-vs-bracketed; the grouping itself comes from the written note. So
-a wrong "PLAY" on beat 3 of a semibreve still draws inside the bracket rather
-than showing what they actually said. Grading catches it — the display doesn't.
-**Open for Rob:** whether the tutorial should show the wrong answer as given.
+### The two-button interface is a TUTORIAL ROUND — it refuses a wrong tap
+Rob's instruction: *"let's make this a tutorial round. Alert them when they've
+made a mistake and suggest the correct answer after repeated mistakes. Every
+problem is an opportunity."*
+
+`stampRstomp()` now checks the answer against `rstompExpectedAnswer()` **at the
+tap** on non-scribe levels. A wrong tap is **refused** — not recorded, the
+cursor does not move — so a student cannot walk four bars away from a mistake
+made on beat 2, and the counting on screen never shows something they didn't
+mean.
+
+- **First miss on a count:** `walk-wrong` says only that it's wrong. Finding it
+  yourself is the skill.
+- **Second miss and every one after:** `walk-hint` names the button *and says
+  why*, from the slot's own mode — `play` → "a new note starts on this count",
+  `hold` → "the note before is still ringing through this count", `rest` →
+  "this count is silent". Being stuck with no way forward teaches nothing.
+  `rstompWalkHint()` is the one place that wording lives.
+
+**It closes an open question.** The old worry was that a wrong "PLAY" on beat 3
+of a semibreve still drew *inside* the bracket, because the grouping comes from
+the written note and only the first beat's answer decides plain-vs-bracketed —
+so the page showed something the student had not said. A refused tap is never
+drawn, so the display and the answer can no longer disagree.
+
+**There is no three-strike ladder here any more, and it isn't needed.** The
+ladder on the keypad exists so the student can hunt for their own mistake — one
+strike says how many bars are wrong, the next names them, the third reveals.
+None of that applies once the mistake is caught and explained at the tap that
+made it: there is nothing left to hunt for. `handleRstompFailure()` is gone;
+`handleRstompWalkMisses()` replaces it.
+
+**So the rule of three measures the only thing left to measure: three walks in
+a row that needed NO correction.** `rstompWalkMisses` counts the wrong taps at
+each position; a finished walk with any of them completes correctly (it had to)
+but resets the streak. That is stricter than the old ladder on paper and has to
+be — the in-the-moment help is the concession, and if the streak survived it too
+the gate would confirm nothing. If Rob wants it softer, this is the one line to
+change.
+
+### "Hear it" moves a PLAYHEAD and scrolls the strip
+Rob: *"when we click 'Hear it' the music cursor should follow along and the
+notation should scroll if needed, particularly in portrait mode."* Measured on a
+390px phone: a Level 4 phrase is **560px of music in a 376px window**, so
+playback used to run four bars past a student looking at one and a half, with
+nothing saying which sound belonged to which note. Connecting the sound to the
+notation is the whole point of the button, and that was exactly what was
+missing.
+
+- **It is not the caret.** The caret is where the student is *writing* and must
+  not move while they listen, so the playhead is its own element in its own
+  colour (gold against the caret's teal) and sits behind the caret in the stack.
+  Verified: listening leaves `rstompCursor` untouched.
+- **The clock is the AUDIO clock.** `rstompAudioPlayhead()` returns the current
+  slot as a fraction — `(ctx.currentTime - start - offset) / slotSec` — read
+  every animation frame. Page time drifts against the sound inside a single
+  phrase, which is the whole reason `rhythm-audio.js` exists, and a CSS
+  transition on top of it would lag the sound, so the playhead has none.
+- **`rstompAudioTiming()` is the one place the count-in and the slot length are
+  derived.** The event list and the playhead both read it. A playhead that
+  computed its own count-in would sit a whole bar out the first time a level
+  changed meter.
+- **It lands on the note by construction**, because it rides `pulseX` — the same
+  slot grid the noteheads are moved onto (see "Notes sit ON the slot grid").
+  Measured at L1/L4/L10/L15/L24: the playhead-to-notehead gap is the documented
+  constant **12px inset**, on every onset of every level, and nothing more.
+- **Scrolling anchors further left than the writing cursor does** (band 5%–60%,
+  anchor 20%): someone reading along needs the bar *ahead* of the sound, not the
+  one behind it. Stopping restores the view to the writing cursor, unless the
+  student had scrolled away on purpose.
 
 ### The keypad is the level's labels — never hardcode it
 `renderRstompKeypad()` builds it from the level's label array: `1 2 3 4` at the
@@ -821,8 +888,9 @@ The names, and the variables each one can use:
 | `name-one` | second strike, naming the one wrong bar | `{bar}` |
 | `name-some` | second strike, naming the wrong bars | `{bars}` |
 | `show-answer` | third strike, the answer revealed | |
-| `walk-retry` | two-button, naming the wrong bars | `{bars}` `{plural}` `{attempt}` |
-| `walk-answer` | two-button, the answer revealed | |
+| `walk-wrong` | two-button, first wrong tap on a count | |
+| `walk-hint` | two-button, a repeat wrong tap on the same count | `{answer}` `{because}` |
+| `walk-missed` | two-button, the walk finished but needed help | `{n}` |
 
 **The defaults are placeholders and Rob will replace them. The names are the
 contract** — don't rename one without updating any level that overrides it, and
@@ -874,6 +942,30 @@ In `loadG2Grid()`, the target letter is re-displayed and re-spoken (`speakLetter
 Idea: audio encouragement at streak 1/2/3 within a density tier, matching Rob's in-person teaching cadence (encouraging early reps, playful tension on the final rep before advancement, celebration on success — see teaching philosophy note below). Content and exact trigger points aren't decided yet — check with Rob before implementing, this isn't ready to build from yet.
 
 ---
+
+## FLAG THE PREREQUISITE LEAP
+Rob's rule, after his son Garnet — who teaches students who *"do not want to
+learn"* — played Rhythm Stomp Lab for a moment and said *"nah, what I need is a
+step before this."* Note Smash had been a success with the same kids.
+
+> *"Any time we've made a leap from one game to the next has assumed a certain
+> amount of prerequisite logic and knowledge. Then we need to flag that and make
+> sure we are moving incrementally."*
+
+So when a new game or stage is added, the question is not only "is this the next
+thing in the syllabus?" but **"what does this assume the student already
+knows, and where did they get it?"** If the answer is "nowhere in the app", that
+is a hole and it gets written down rather than stepped over.
+
+**The one currently known: note-value equivalency.** The Rhythm pillar assumes
+the student knows what each note is *worth* — it teaches counting to someone who
+already has that. Nothing in the app teaches it. Captured in
+`ideas/equivalency-note-tree.md`; not designed, not built, ask Rob first.
+
+`ideas/README.md` is how an idea like that gets built without disturbing work
+already in flight: the idea file on main, the build on `idea/<name>`, a fresh
+session per branch, and a merge bar that includes "played on a phone" and "its
+CLAUDE.md section is written."
 
 ## The constraint that outranks engagement
 **Time at the instrument beats time in the app.** Rob: *"None of this makes any
