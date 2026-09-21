@@ -2340,6 +2340,34 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
     while (fontSize > 10 && placeAt(fontSize) > 0.5) fontSize -= 1;
 }
 
+// WHICH NOTES SHARE A BEAM, as spec indices. One run per beam, runs of one
+// are dropped (a lone quaver keeps its flag). Split out of renderRstompStaff
+// so the compliance tests exercise the real thing rather than a copy of it -
+// see NOTATION_RULES.md.
+//
+// A run is a maximal set of adjacent beamable notes lying wholly inside one
+// beam group. A note that straddles a group boundary belongs to no group and
+// is beamed to nothing.
+function rstompBeamRuns(specs, beamSlots) {
+    const groupOf = (start, slots) => {
+        const first = Math.floor(start / beamSlots);
+        return first === Math.floor((start + slots - 1) / beamSlots) ? first : null;
+    };
+    const runs = [];
+    let run = [];
+    let slot = 0;
+    const flush = () => { if (run.length > 1) runs.push(run.map(item => item.index)); run = []; };
+    specs.forEach((spec, index) => {
+        const group = groupOf(slot, spec.slots);
+        const beamable = !spec.isRest && group !== null && RSTOMP_BEAMABLE.indexOf(spec.value) !== -1;
+        if (!beamable || (run.length && run[run.length - 1].group !== group)) flush();
+        if (beamable) run.push({ index, group });
+        slot += spec.slots;
+    });
+    flush();
+    return runs;
+}
+
 function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
     container.innerHTML = '';
     const VF = Vex.Flow;
@@ -2395,22 +2423,8 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
         //
         // A note that straddles a group boundary is beamed to nothing and
         // keeps its flag - there is no group it belongs to.
-        const groupOf = (start, slots) => {
-            const first = Math.floor(start / rstompBeamSlots);
-            return first === Math.floor((start + slots - 1) / rstompBeamSlots) ? first : null;
-        };
-        const beams = [];
-        let run = [];
-        let beamCursor = 0;
-        const flushBeam = () => { if (run.length > 1) beams.push(new VF.Beam(run.map(item => item.note))); run = []; };
-        specs.forEach((spec, index) => {
-            const group = groupOf(beamCursor, spec.slots);
-            const beamable = !spec.isRest && group !== null && RSTOMP_BEAMABLE.indexOf(spec.value) !== -1;
-            if (!beamable || (run.length && run[run.length - 1].group !== group)) flushBeam();
-            if (beamable) run.push({ note: notes[index], group });
-            beamCursor += spec.slots;
-        });
-        flushBeam();
+        const beams = rstompBeamRuns(specs, rstompBeamSlots)
+            .map(run => new VF.Beam(run.map(index => notes[index])));
         // The ideal, evenly-spaced slot grid (where the level's labels fall).
         // Everything below - the formatting width, where each note is put,
         // and where the counting row anchors - is stated against it.
