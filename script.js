@@ -687,10 +687,17 @@ function renderFloatingClef(containerId, clefName) {
 /* =========================================
     GAME 1: STAFF SMASH (v2 Cumulative Reveal & Micro-Reward Redesign)
    ========================================= */
+// Moved onto the landscape/density-grid rework (step 6): 4 columns, tiers
+// of [4, 8, 12, 16] instead of 3 columns / [3, 6, 9, 12] - see Game 2's
+// own note (script.js, its GAME 2 section) for the shape of this change;
+// Game 1 is the harder case because its round-generation was hardcoded to
+// 3-wide rows directly in the algorithm (see buildSmashGridRound's doc
+// comment), not just in the DOM/CSS, so this rewrite goes through the
+// shared engine rather than just reparametrizing the old code in place.
 let g1Score = 0;
 let g1TotalAttempts = 0;
 let g1TierIndex = 0;
-const g1Tiers = [3, 6, 9, 12]; // 1 row (3), 2 rows (6), 3 rows (9), 4 rows (12)
+const g1Tiers = [4, 8, 12, 16]; // 1 row (4), 2 rows (8), 3 rows (12), 4 rows (16)
 const g1Level2PhaseNames = ['Lines', 'Spaces', 'Mixed Line & Spaces', 'Mixed Staff Numbers'];
 let g1Level = 'level2';
 // Reserved for the future Game 2 ledger-naming stage; not used by the current Game 1 course.
@@ -954,14 +961,18 @@ function startG1Game() {
 
 function updateG1TrackerUI() {
     const activeCardsCount = g1Tiers[g1TierIndex];
-    const rowCount = activeCardsCount / 3;
-    
+    const rowCount = activeCardsCount / SMASH_GRID_COLS;
+
         const streakDots = [0, 1, 2].map(index =>
             `<span class="streak-dot${index < g1Streak ? ' active' : ''}" aria-hidden="true"></span>`
         ).join('');
 
+        // Ledger Bonus always runs at the hardest tier (g1TierIndex is set to
+        // 3 for its whole duration - see startG1LedgerBonus), so its card
+        // count is always the top of g1Tiers, not a literal that would go
+        // stale the next time that array's values change.
         const roundLabel = g1IsLedgerBonus
-            ? `Ledger Bonus ${g1LedgerBonusRound + 1}/3 | Grid: 12`
+            ? `Ledger Bonus ${g1LedgerBonusRound + 1}/3 | Grid: ${g1Tiers[g1Tiers.length - 1]}`
             : g1Level === 'level2'
             ? `${g1Level2PhaseNames[g1Level2Phase]} | Grid: ${activeCardsCount}`
             : `Rows: ${rowCount}/4`;
@@ -983,7 +994,11 @@ function startG1Timer() {
 function startG1FlashTimer() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    const flashSeconds = g1Tiers[g1TierIndex] / 3 + 2;
+    // Dividing by SMASH_GRID_COLS instead of the old literal 3 keeps this at
+    // the exact same pacing across the tier switch (same fix as Game 2's
+    // startG2FlashTimer - both give [4/4+2, 8/4+2, 12/4+2, 16/4+2] =
+    // [3,4,5,6] seconds for tiers 0-3, identical to the old 3/3+2 ... 12/3+2).
+    const flashSeconds = g1Tiers[g1TierIndex] / SMASH_GRID_COLS + 2;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     g1FlashTimer = setTimeout(() => {
@@ -1010,18 +1025,32 @@ function triggerG1TimeBonus(amount) {
 function awardG1RoundBonuses() {
     const cardsInPlay = g1Tiers[g1TierIndex];
     const elapsedSeconds = (performance.now() - g1RoundStartedAt) / 1000;
-    const speedThreshold = cardsInPlay / 3 + 1;
+    // Same "divide by the column count, not the literal 3" fix as
+    // startG1FlashTimer - identical thresholds either way.
+    const speedThreshold = cardsInPlay / SMASH_GRID_COLS + 1;
 
-    if (g1WrongTapsThisScreen === 0 && cardsInPlay <= 6) {
-        triggerG1TimeBonus(cardsInPlay === 3 ? 0.5 : 0.75);
+    // Indexed by tier now, not by comparing the card count to a literal
+    // 3/6 - those stopped matching anything once the tiers became
+    // [4,8,12,16]. Same bands as before: only the two smallest tiers get
+    // this perfect-screen bonus, 0.5s on the smallest, 0.75s on the second.
+    if (g1WrongTapsThisScreen === 0 && g1TierIndex <= 1) {
+        triggerG1TimeBonus(g1TierIndex === 0 ? 0.5 : 0.75);
     }
     if (elapsedSeconds <= speedThreshold) {
         triggerG1TimeBonus(0.5);
     }
 }
 
-function awardG1TierBonus(completedCards) {
-    const mainClockBonus = completedCards <= 6 ? 2 : 3;
+// Took a `completedCards` param before and compared it to a literal 6 - now
+// just reads g1TierIndex directly, since every call site was really asking
+// "is the tier we're on/just finished in the easier or harder half", which
+// index answers without the caller needing to pass anything. First half
+// (indices 0-1) gets 2s, second half (2-3) gets 3s - Ledger Bonus is
+// always the hardest tier (g1TierIndex === 3 for its whole duration - see
+// startG1LedgerBonus), so it always lands in the 3s half, same as its old
+// hardcoded awardG1TierBonus(12) call always did.
+function awardG1TierBonus() {
+    const mainClockBonus = g1TierIndex < g1Tiers.length / 2 ? 2 : 3;
     triggerG1TimeBonus(mainClockBonus);
 }
 
@@ -1029,7 +1058,7 @@ function advanceG1Streak() {
     if (g1Level === 'level2') {
         if (g1Streak < 3) return false;
         g1Streak = 0;
-        awardG1TierBonus(g1Tiers[g1TierIndex]);
+        awardG1TierBonus();
         if (g1TierIndex < g1Tiers.length - 1) {
             g1TierIndex++;
             return false;
@@ -1046,7 +1075,7 @@ function advanceG1Streak() {
     if (g1Streak < 3) return false;
 
     g1Streak = 0;
-    awardG1TierBonus(g1Tiers[g1TierIndex]);
+    awardG1TierBonus();
     if (g1TierIndex < g1Tiers.length - 1) {
         g1TierIndex++;
         return false;
@@ -1069,7 +1098,7 @@ function markG1DudSuccess() {
     playSound('correct');
     g1Score++;
     g1BonusDuds++;
-    const dudTimeRefund = g1Tiers[g1TierIndex] / 3 + 2;
+    const dudTimeRefund = g1Tiers[g1TierIndex] / SMASH_GRID_COLS + 2; // same identical-pacing fix as startG1FlashTimer
     triggerG1TimeBonus(dudTimeRefund + 0.5);
     g1Streak++;
     return advanceG1Streak();
@@ -1125,7 +1154,7 @@ function resolveG1LedgerBonusScreen(cleared) {
         awardG1RoundBonuses();
         if (g1Streak >= 3) {
             g1Streak = 0;
-            awardG1TierBonus(12);
+            awardG1TierBonus(); // g1TierIndex is 3 throughout Ledger Bonus - see startG1LedgerBonus
         }
     } else {
         g1Streak = 0;
@@ -1187,16 +1216,19 @@ function loadG1Grid() {
     flashFill.style.transition = 'none'; flashFill.style.width = '100%';
 
     const activeCardsCount = g1Tiers[g1TierIndex];
-    const activeRowsCount = activeCardsCount / 3;
+    const activeRowsCount = activeCardsCount / SMASH_GRID_COLS;
 
-    // Define density bands per tier:
-    // 3 cards (1 row): min 1, max 2
-    // 6 cards (2 rows): min 2, max 4
-    // 9 cards (3 rows): min 2, max 3
-    // 12 cards (4 rows): min 3, max 4
-    if (activeCardsCount === 3) { g1TierMin = 1; g1TierMax = 2; }
-    else if (activeCardsCount === 6) { g1TierMin = 2; g1TierMax = 4; }
-    else if (activeCardsCount === 9) { g1TierMin = 2; g1TierMax = 3; }
+    // Define density bands per tier - indexed by TIER now, not by the
+    // tier's card count (those literal 3/6/9/12 comparisons stopped
+    // matching anything once the values became [4,8,12,16] - see
+    // buildSmashGridRound's doc comment). Same bands as before:
+    // tier 0 (1 row): min 1, max 2
+    // tier 1 (2 rows): min 2, max 4
+    // tier 2 (3 rows): min 2, max 3
+    // tier 3 (4 rows): min 3, max 4
+    if (g1TierIndex === 0) { g1TierMin = 1; g1TierMax = 2; }
+    else if (g1TierIndex === 1) { g1TierMin = 2; g1TierMax = 4; }
+    else if (g1TierIndex === 2) { g1TierMin = 2; g1TierMax = 3; }
     else { g1TierMin = 3; g1TierMax = 4; }
 
     const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
@@ -1273,49 +1305,9 @@ function loadG1Grid() {
     
     let isDud = !g1LastScreenWasDud && Math.random() < 0.15;
     g1LastScreenWasDud = isDud;
-    
-    // Row allocation algorithm per v2 brief:
-    let totalBudget = 0;
-    if (isDud) {
-        g1LastRolledTotal = 0;
-        g1TargetsPresent = 0;
-    } else {
-        g1LastRolledTotal = Math.random() < 0.5 ? g1TierMin : g1TierMax; 
-        g1TargetsPresent = g1LastRolledTotal;
-    }
 
-    let rowTargets = [0, 0, 0, 0];
-    if (!isDud && g1TargetsPresent > 0) {
-        let activeRowIndices = [];
-        for(let r=0; r<activeRowsCount; r++) activeRowIndices.push(r);
-        
-        activeRowIndices.sort(() => Math.random() - 0.5);
-        
-        let remaining = g1TargetsPresent;
-        for (let i = 0; i < activeRowIndices.length; i++) {
-            let rIdx = activeRowIndices[i];
-            if (i === activeRowIndices.length - 1) {
-                rowTargets[rIdx] = Math.min(2, remaining);
-            } else {
-                let maxPossible = Math.min(2, remaining);
-                let assigned = Math.floor(Math.random() * (maxPossible + 1));
-                rowTargets[rIdx] = assigned;
-                remaining -= assigned;
-            }
-        }
-        let safety = 0;
-        while (remaining > 0 && safety < 10) {
-            for (let rIdx of activeRowIndices) {
-                if (rowTargets[rIdx] < 2 && remaining > 0) {
-                    rowTargets[rIdx]++;
-                    remaining--;
-                }
-            }
-            safety++;
-        }
-        g1TargetsPresent = rowTargets.reduce((a, b) => a + b, 0);
-        g1LastRolledTotal = g1TargetsPresent;
-    }
+    g1LastRolledTotal = isDud ? 0 : (Math.random() < 0.5 ? g1TierMin : g1TierMax);
+    g1TargetsPresent = g1LastRolledTotal;
     g1TargetsFound = 0;
 
     if (g1Level !== 'level2') {
@@ -1323,60 +1315,69 @@ function loadG1Grid() {
         distractorPool = g1TargetType === 'line' ? poolSpaces : poolLines;
     }
 
-    // Build all 4 rows (12 cards total) for cumulative reveal inside loadG1Grid
-    for (let r = 0; r < 4; r++) {
+    // Built through the shared grid engine (see buildSmashGridRound) instead
+    // of a hand-rolled row-allocation loop - that loop was the one piece of
+    // Game 1 genuinely hardcoded to 3-wide rows (the "at most 2 targets, fill
+    // to exactly 3" logic), unlike Game 2's, which was already just a flat
+    // count. totalRows is always the hardest tier's row count (4, same as
+    // before - 16/4 lands on the same number 12/3 did) for the cumulative-
+    // reveal mechanic: every row up to totalRows is always built and shown,
+    // locked/dimmed past activeRowsCount, never hidden outright.
+    const totalRowsCount = g1Tiers[g1Tiers.length - 1] / SMASH_GRID_COLS;
+    const round = buildSmashGridRound({
+        totalRows: totalRowsCount,
+        activeRows: activeRowsCount,
+        cols: SMASH_GRID_COLS,
+        targetsPresent: g1TargetsPresent,
+        // i is the within-row index (0 at the start of every row, same as
+        // the original hand-rolled loop's own per-row target/distractor
+        // counters), so orientationTargets/orientationDistractors cycle the
+        // same way they always did.
+        pickTarget: i => {
+            const selectedTarget = g1Level === 'level2' ? orientationTargets[i % orientationTargets.length] : null;
+            const targetNote = g1Level === 'level2' ? selectedTarget.note : targetPool[Math.floor(Math.random() * targetPool.length)];
+            const targetLabel = g1Level === 'level2' ? selectedTarget.label : targetNote[0];
+            return { note: targetNote, label: targetLabel };
+        },
+        pickDistractor: i => {
+            if (g1Level === 'level2') {
+                const distractor = orientationDistractors[i % orientationDistractors.length];
+                return { note: distractor.note, label: distractor.label };
+            }
+            const distractor = distractorPool[Math.floor(Math.random() * distractorPool.length)];
+            return { note: distractor, label: distractor[0] };
+        },
+    });
+    g1TargetsPresent = round.targetsPresent;
+    g1LastRolledTotal = g1TargetsPresent;
+
+    round.rows.forEach(row => {
         const rowEl = document.createElement('div');
         rowEl.className = 'g1-row';
-        
-        const isRowActive = (r < activeRowsCount);
-        
-        if (!isRowActive) {
+
+        if (!row.isActive) {
             rowEl.classList.add('locked');
-        } else if (r === activeRowsCount - 1 && g1TierIndex > 0) {
+        } else if (row.index === activeRowsCount - 1 && g1TierIndex > 0) {
             rowEl.classList.add('unlock-pulse');
         }
 
-        let numTargetsInRow = rowTargets[r];
-        let rowNotes = [];
-        for (let i = 0; i < numTargetsInRow; i++) {
-            const selectedTarget = g1Level === 'level2'
-                ? orientationTargets[i % orientationTargets.length]
-                : null;
-            const targetNote = g1Level === 'level2' ? selectedTarget.note : targetPool[Math.floor(Math.random() * targetPool.length)];
-            const targetLabel = g1Level === 'level2' ? selectedTarget.label : targetNote[0];
-            rowNotes.push({ note: targetNote, label: targetLabel, isTarget: true });
-        }
-        let distractorIndex = 0;
-        for (let i = numTargetsInRow; i < 3; i++) {
-            let distractor;
-            if (g1Level === 'level2') {
-                distractor = orientationDistractors[distractorIndex % orientationDistractors.length];
-                distractorIndex++;
-                rowNotes.push({ note: distractor.note, label: distractor.label, isTarget: false });
-            } else {
-                distractor = distractorPool[Math.floor(Math.random() * distractorPool.length)];
-                rowNotes.push({ note: distractor, label: distractor[0], isTarget: false });
-            }
-        }
-        rowNotes.sort(() => Math.random() - 0.5);
-
-        rowNotes.forEach(item => {
+        row.cards.forEach(item => {
             const card = document.createElement('div');
             card.className = 'smash-card small-card';
-            
-            if (isRowActive) {
+
+            if (row.isActive) {
                 card.onclick = () => handleG1Click(card, item.isTarget, item.label);
             }
-            
+
             const innerDiv = document.createElement('div');
             card.appendChild(innerDiv);
             rowEl.appendChild(card);
-            
-            renderSmashCard(innerDiv, clefName, item.note[1], isRowActive);
+
+            renderSmashCard(innerDiv, clefName, item.note[1], row.isActive);
         });
 
         container.appendChild(rowEl);
-    }
+    });
 
     startG1FlashTimer();
 }
@@ -1476,7 +1477,7 @@ function finishG1Game(isOfficialSmash = false) {
     } else {
         document.getElementById('g1-summary-progress-title').innerText = 'Your Smash progress';
         document.getElementById('g1-final-tier-label').innerText = 'Highest Grid Reached';
-        document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
+        document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / SMASH_GRID_COLS} Rows (${g1Tiers[g1TierIndex]} Cards)`;
     }
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
     if (isOfficialSmash && nextStage) {
