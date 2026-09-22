@@ -701,23 +701,41 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rstomp-play-demo { background: var(--accent-green); }
 .rstomp-bracket-demo { background: var(--accent-teal); color: var(--bg-dark); }
 
-.rstomp-header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 46px auto 8px; padding: 0 4px; }
+/* Landscape pivot, step 7: widened from 640px to match the 1000px landscape
+   width Games 1/2 already moved to (see the "LANDSCAPE SHELL FOR GAMES 1 & 2"
+   note further up this file), so the guide and header read at the same width
+   as the strip below them instead of looking narrower than the notation.
+   Nothing in rhythm-stomp-lab.js needed to change for this - rstompBarWidth()
+   already reads the strip's live clientWidth and the existing window-resize
+   listener (ensureRstompStripListeners) already re-renders on any width
+   change, so the render layer was ready for a wider shell before this. */
+.rstomp-header { width: 100%; max-width: 1000px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 46px auto 8px; padding: 0 4px; }
 .rstomp-header-label { font-weight: 900; color: var(--accent-teal); font-size: 14px; line-height: 1.25; }
 
 /* THE GUIDE. Rob: "that's exactly what that rectangle is - it's there with you
    for the whole game, it's a guide", and it needed to stand out more. Gold, to
    match the streak dots: the two things that speak to the student for the whole
    level now read as one voice, and nothing else on the screen is gold. */
-.rstomp-prompt { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-gold); background: rgba(255,200,0,0.12); border: 2px solid var(--accent-gold); border-radius: 12px; padding: 10px 12px; }
+.rstomp-prompt { width: 100%; max-width: 1000px; margin: 0 auto 10px; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-gold); background: rgba(255,200,0,0.12); border: 2px solid var(--accent-gold); border-radius: 12px; padding: 10px 12px; }
 
 /* The whole phrase on one continuous line. The strip is the ONLY thing that
    scrolls sideways - the prompt, buttons and everything else stay put at
-   full size. It goes wider than the 640px the rest of the screen uses,
-   because notation is what actually needs the room: on a desktop that's
-   enough for the full phrase with no scrolling at all. */
+   full size. It goes wider than the rest of the screen used to (960px
+   against 640px) for exactly this reason - notation is what actually needs
+   the room - so now that the rest of the screen is 1000px too (the line
+   above), the strip goes with it rather than being left behind narrower.
+   Untouched: RSTOMP_MIN_SLOT_WIDTH/RSTOMP_MAX_SLOT_WIDTH in
+   rhythm-stomp-lab.js, which cap how big an individual bar gets regardless
+   of how much width the strip has to give it ("above this bars just look
+   sparse on a big screen" - a deliberate spacing choice, not a technical
+   limit this pivot has any reason to touch). A Stage-A 4-bar phrase already
+   fit under the old 960px without scrolling; Stage B's finer quaver grid
+   still needs the scroll-and-follow behaviour below regardless of how wide
+   this gets, since its bars are wider than a crotchet-grid bar - that
+   mechanism stays exactly as built, not something to remove. */
 .rstomp-strip {
     position: relative;
-    width: 100%; max-width: 960px; margin: 0 auto;
+    width: 100%; max-width: 1000px; margin: 0 auto;
     background: #ffffff; border: 3px solid #324a64; border-radius: 12px;
     padding: 4px 6px 8px;
     overflow-x: auto; overflow-y: hidden;
@@ -808,7 +826,7 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    two lines inside each button - and the chip is only ever on screen when the
    phrase is scrolled away from the cursor, so three is the usual case. */
 .rstomp-strip-status {
-    width: 100%; max-width: 960px; margin: 6px auto 0;
+    width: 100%; max-width: 1000px; margin: 6px auto 0;
     display: flex; align-items: center; justify-content: space-between;
     flex-wrap: wrap; gap: 8px;
     font-size: 12px; font-weight: 700; color: var(--text-muted);
