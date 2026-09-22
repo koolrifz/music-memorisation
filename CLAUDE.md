@@ -19,8 +19,56 @@ grouping code.** It holds the standard classical engraving conventions Rob
 supplied as authority, and the engine's measured standing against them. Code
 that violates them is a bug, not a style preference.
 
+## The app is LANDSCAPE-ONLY — this is a reversal
+Earlier versions of this file, and the code itself, assumed portrait as the
+primary orientation (narrow single-column layouts, a 3-column SMASH grid sized
+for a phone held upright, a `<meta viewport orientation=portrait>` tag). That
+assumption is gone. The app is now built and tested exclusively for landscape:
+
+- **The SMASH grid (Games 1 & 2) is 4 columns, density `[4, 8, 12, 16]`**, not
+  the old 3-column `[3, 6, 9, 12]`. `SMASH_GRID_COLS` and `buildSmashGridRound()`
+  in `script.js` are the shared engine both games' grids run through — a tier
+  is a card count, not a hardcoded literal, everywhere pacing/bonuses/display
+  read it (this replaced several places that used to divide by the literal `3`
+  or branch on card-count literals directly).
+- **Games 1, 2, and Rhythm Stomp Lab share a 1000px-wide landscape chrome**
+  (`renderGameShellChrome()` / `renderSmashGameHeader()` / `initSharedGameShells()`
+  in `script.js`, called once at load). **Game 3 (Real Smash) deliberately
+  stays narrower** — a flashcard and a 12-key piano don't benefit from a
+  4-column grid's width, so its header/hud/card/piano/thumb-stacks widths are
+  sized to their own content instead of matched to Games 1/2.
+- **The `orientation=portrait` viewport meta tag is removed.** It was never a
+  real lock (that's not a value browsers honor) and had stopped describing
+  reality; the app now simply expects to be used in landscape and is laid out
+  accordingly.
+- **The old portrait reflow paths in `rhythm.js` (2-row/2-canvas splitting,
+  a `matchMedia` listener) were already removed** — see the comments above
+  `renderRhythmBars()` in that file for what was there and why it's gone. This
+  game (`rhythm.js`, the old counting-round "Rhythm Stomp") is slated for
+  retirement in favour of Rhythm Stomp Lab, so it was left otherwise
+  unmodernized rather than widened.
+- **Rhythm Stomp Lab's render layer needed no JS changes for this pivot** —
+  `rstompBarWidth()`, `renderRstompStaff()`, and the debounced resize listener
+  in `ensureRstompStripListeners()` were already fully width-responsive with
+  no hardcoded viewport assumptions. Only its CSS chrome widths moved to match
+  Games 1/2's 1000px.
+
+**A real usability bug found while widening Game 3's piano, worth knowing
+about if a similarly-squeezed control shows up elsewhere:** an element with
+`overflow: hidden` sitting inside a flex column has an *automatic minimum
+size of 0* per the flexbox spec, so when its siblings' combined height
+exceeds the flex container's fixed height, that element can get crushed down
+to a few pixels instead of just "a bit smaller" — even though its CSS `height`
+says otherwise. This is exactly what was silently happening to `.piano-wrapper`
+on short landscape viewports (phone-in-landscape is often under 400px tall),
+which is the real explanation behind "the keys miss a lot" — not just that the
+keys were nominally too small, but that on a cramped screen they could shrink
+to near-nothing. Fixed with `flex-shrink: 0` on `.piano-wrapper` so it holds
+its full height, plus `overflow-y: auto` on `.screen` generally as a safety
+net so anything still pushed off-box scrolls into view instead of vanishing.
+
 ## The three games + two tools
-- **Staff Smash** (Game 1) — orientation drills: lines, spaces, mixed, staff numbers, then a Ledger Bonus Round. Uses a "SMASH grid" mechanic: a grid of mini-staves, tap the ones matching the announced target, density scales 3→6→9→12 cards as streaks build.
+- **Staff Smash** (Game 1) — orientation drills: lines, spaces, mixed, staff numbers, then a Ledger Bonus Round. Uses a "SMASH grid" mechanic: a grid of mini-staves, tap the ones matching the announced target, density scales 4→8→12→16 cards (a 4-column grid) as streaks build.
 - **Note Smash** (Game 2) — same SMASH grid mechanic, now with real letter names instead of raw line/space discrimination.
 - **Real Smash** (Game 3) — the graduation stage: 60-second sprints, full sight-reading, no hints, scored with medals and a personal best.
 - **Kool Beat** — metronome (dashboard practice tool).
