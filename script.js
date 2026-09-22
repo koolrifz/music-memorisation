@@ -349,183 +349,6 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
     }
 }
 
-/* =========================================
-   SHARED SMASH GRID ROUND ENGINE (Games 1 & 2)
-   Not wired into either game yet - built ahead of the landscape/density-grid
-   rework (Rob's new tier array is [4, 8, 12, 16], 4 columns, replacing the
-   3-column [3, 6, 9, 12] grid) so both games can be rewritten against one
-   shared piece instead of two more hand-rolled copies of the same algorithm.
-
-   This generalizes what used to be loadG1Grid's own row-target-allocation
-   logic (script.js, pre-landscape-rework version) - it decided how many of
-   this round's targets land in each row, with two rules baked in as literal
-   "3"s: a row could hold at most 2 targets (so at least 1 distractor always
-   sits in it, since a row was exactly 3 cards), and the DOM build always
-   filled every row to exactly 3 cards. Both are now `cols`-derived instead
-   of hardcoded, so this works unchanged whether a row is 3 cards or 4 (or
-   any other width a future skin wants).
-
-   totalRows vs activeRows is deliberately still two different numbers, not
-   one - that's the cumulative-reveal mechanic (see the "Row Locked States"
-   section of style.css: unreached rows are still built and shown, just
-   dimmed and locked), not a rows/cols implementation detail: totalRows is
-   the full grid a stage ever shows (its hardest tier's row count),
-   activeRows is how many of those rows are unlocked at the CURRENT tier.
-
-   Pure data - no DOM, no VexFlow, no randomness the caller doesn't control
-   the shape of. pickTarget(i)/pickDistractor(i) are supplied by the caller
-   (Game 1's several selection modes - line/space, the level2 orientation
-   phases, the ledger bonus - and Game 2's letter-name selection all differ
-   here) and must each return a plain card-data object; isTarget is added
-   by this function, not the caller.
-
-   One thing fixed, not just ported, while generalizing this: the original
-   row-allocation loop set the last active row's count without deducting it
-   from `remaining` first, so the leftover-distribution pass afterwards
-   could then push that row past what was actually rolled (confirmed by
-   simulation - e.g. a 1-row / 3-card-wide round that rolled 1 target could
-   silently end up showing 2). Verified against 4-col AND the current
-   3-col shape by simulation (10k+ rounds, every row always exactly `cols`
-   cards, `targetsPresent` in the result always matches what was requested
-   whenever the grid has room for it, and degrades gracefully - capped, not
-   stuck or overshot - when it doesn't).
-   ========================================= */
-// The new density-grid column count, replacing the old 3-column shape.
-// Shared so both games land on the same number - Game 2 uses it now,
-// Game 1 once its own rewrite lands.
-const SMASH_GRID_COLS = 4;
-
-function buildSmashGridRound({ totalRows, activeRows, cols, targetsPresent, pickTarget, pickDistractor }) {
-    const maxTargetsPerRow = Math.max(1, cols - 1); // always leave room for >=1 distractor per row
-    const rowTargetCounts = new Array(totalRows).fill(0);
-
-    if (targetsPresent > 0 && activeRows > 0) {
-        const activeRowIndices = [];
-        for (let r = 0; r < activeRows; r++) activeRowIndices.push(r);
-        activeRowIndices.sort(() => Math.random() - 0.5);
-
-        let remaining = targetsPresent;
-        activeRowIndices.forEach((rowIndex, i) => {
-            const maxPossible = Math.min(maxTargetsPerRow, remaining);
-            const assigned = (i === activeRowIndices.length - 1)
-                ? maxPossible // the last row always mops up whatever's left, capped
-                : Math.floor(Math.random() * (maxPossible + 1));
-            rowTargetCounts[rowIndex] = assigned;
-            remaining -= assigned;
-        });
-        let safety = 0;
-        while (remaining > 0 && safety < 10) {
-            for (const rowIndex of activeRowIndices) {
-                if (rowTargetCounts[rowIndex] < maxTargetsPerRow && remaining > 0) {
-                    rowTargetCounts[rowIndex]++;
-                    remaining--;
-                }
-            }
-            safety++;
-        }
-    }
-
-    const rows = [];
-    for (let r = 0; r < totalRows; r++) {
-        const numTargetsInRow = rowTargetCounts[r];
-        const cards = [];
-        for (let i = 0; i < numTargetsInRow; i++) cards.push({ ...pickTarget(i), isTarget: true });
-        for (let i = numTargetsInRow; i < cols; i++) cards.push({ ...pickDistractor(i - numTargetsInRow), isTarget: false });
-        cards.sort(() => Math.random() - 0.5);
-        rows.push({ index: r, isActive: r < activeRows, cards });
-    }
-
-    return {
-        rows,
-        targetsPresent: rowTargetCounts.reduce((sum, count) => sum + count, 0)
-    };
-}
-
-/* =========================================
-   SHARED GAME SHELL (Games 1, 2, 3)
-   The back-nav (.game-nav) and HUD (.hud: pause + timer badge) used to be
-   hand-duplicated once per game in index.html - three copies, byte-for-byte
-   the same shape, differing only in which game id goes to
-   handleBackButton()/pauseCurrentGame() and the timer badge's own id and
-   starting text. renderGameShellChrome() builds that markup once instead,
-   into the empty .game-nav/.hud containers index.html still has - and it
-   emits the exact same ids the rest of this file already reads and writes
-   (g1-timer-badge, g2-timer-badge, g3-timer-badge), so nothing downstream
-   of this needed to change.
-
-   renderSmashGameHeader() does the same for the .game-header row, but only
-   for Games 1 & 2 - they share one real shape (score/streak on the left, a
-   target display with its own flash timer in the centre, a right-hand slot
-   that's empty for Game 1 and holds the helper/watchlist buttons for
-   Game 2 - only the center column's flex weight, the target's color/size/
-   id-suffix/starting text, and that right-hand slot actually differ).
-   Game 3's header is a genuinely different shape (a progress bar, not a
-   target display, and its ids aren't g3-prefixed like everything else -
-   score-text, tier-tracker-text, progress-bar) and isn't part of the 4x4
-   density-grid rework, so it stays static markup in index.html for now
-   rather than being forced into this.
-
-   Both are called once, for every game, right after this file loads (see
-   the bottom of this file) - .view/.screen visibility is pure CSS
-   (display/opacity), so every game's DOM already exists at page load
-   whether or not that game is the one currently shown.
-   ========================================= */
-function renderGameShellChrome(gameId, prefix, { timerText }) {
-    const nav = document.querySelector(`#view-${gameId} .game-nav`);
-    if (nav) nav.innerHTML = `<button class="btn-back" onclick="handleBackButton('${gameId}')">⬅ Back</button>`;
-
-    const hud = document.querySelector(`#view-${gameId} .hud`);
-    if (hud) hud.innerHTML = `
-        <button class="pause-btn" onclick="pauseCurrentGame('${gameId}')">🛑 Pause</button>
-        <span class="timer-badge" id="${prefix}-timer-badge">${timerText}</span>
-    `;
-}
-
-function renderSmashGameHeader(gameId, prefix, { targetIdSuffix, targetColor, targetFontSize, targetText, centerFlex, right }) {
-    const header = document.querySelector(`#view-${gameId} .game-header`);
-    if (!header) return;
-    header.innerHTML = `
-        <div class="score-counter" style="align-items: flex-start; flex: 1;">
-            <div class="score-row">⭐ <span id="${prefix}-score-text">0</span></div>
-            <div class="tier-tracker" id="${prefix}-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
-            <div class="tier-tracker" id="${prefix}-attempts-text">Attempts: 0</div>
-        </div>
-
-        <div style="display:flex; flex-direction:column; align-items:center; flex: ${centerFlex};">
-            <div style="color: ${targetColor}; font-weight: 900; font-size: ${targetFontSize}; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="${prefix}-${targetIdSuffix}">${targetText}</div>
-            <div class="flash-timer" id="${prefix}-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="${prefix}-flash-timer-fill"></div></div>
-        </div>
-
-        ${right}
-    `;
-}
-
-function initSharedGameShells() {
-    renderGameShellChrome('game1', 'g1', { timerText: '20s' });
-    renderGameShellChrome('game2', 'g2', { timerText: '60s' });
-    renderGameShellChrome('game3', 'g3', { timerText: '60s' });
-
-    renderSmashGameHeader('game1', 'g1', {
-        targetIdSuffix: 'target-instruction-display',
-        targetColor: 'var(--accent-purple)',
-        targetFontSize: '24px',
-        targetText: 'SMASH LINES',
-        centerFlex: 2,
-        right: '<div style="flex: 1;"></div>'
-    });
-    renderSmashGameHeader('game2', 'g2', {
-        targetIdSuffix: 'target-note-display',
-        targetColor: 'var(--accent-gold)',
-        targetFontSize: '28px',
-        targetText: 'C',
-        centerFlex: 1,
-        right: `<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
-            <button id="g2-helper-toggle" class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
-            <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
-        </div>`
-    });
-}
-
 let personalBests = {
     game2: { round1: 0, round2: 0, round3: 0, round4: 0 },
     game3: { 'drill-lines': 0, 'drill-spaces': 0, 'drill-both': 0, 'speed': 0 }
@@ -687,17 +510,10 @@ function renderFloatingClef(containerId, clefName) {
 /* =========================================
     GAME 1: STAFF SMASH (v2 Cumulative Reveal & Micro-Reward Redesign)
    ========================================= */
-// Moved onto the landscape/density-grid rework (step 6): 4 columns, tiers
-// of [4, 8, 12, 16] instead of 3 columns / [3, 6, 9, 12] - see Game 2's
-// own note (script.js, its GAME 2 section) for the shape of this change;
-// Game 1 is the harder case because its round-generation was hardcoded to
-// 3-wide rows directly in the algorithm (see buildSmashGridRound's doc
-// comment), not just in the DOM/CSS, so this rewrite goes through the
-// shared engine rather than just reparametrizing the old code in place.
 let g1Score = 0;
 let g1TotalAttempts = 0;
 let g1TierIndex = 0;
-const g1Tiers = [4, 8, 12, 16]; // 1 row (4), 2 rows (8), 3 rows (12), 4 rows (16)
+const g1Tiers = [3, 6, 9, 12]; // 1 row (3), 2 rows (6), 3 rows (9), 4 rows (12)
 const g1Level2PhaseNames = ['Lines', 'Spaces', 'Mixed Line & Spaces', 'Mixed Staff Numbers'];
 let g1Level = 'level2';
 // Reserved for the future Game 2 ledger-naming stage; not used by the current Game 1 course.
@@ -961,18 +777,14 @@ function startG1Game() {
 
 function updateG1TrackerUI() {
     const activeCardsCount = g1Tiers[g1TierIndex];
-    const rowCount = activeCardsCount / SMASH_GRID_COLS;
-
+    const rowCount = activeCardsCount / 3;
+    
         const streakDots = [0, 1, 2].map(index =>
             `<span class="streak-dot${index < g1Streak ? ' active' : ''}" aria-hidden="true"></span>`
         ).join('');
 
-        // Ledger Bonus always runs at the hardest tier (g1TierIndex is set to
-        // 3 for its whole duration - see startG1LedgerBonus), so its card
-        // count is always the top of g1Tiers, not a literal that would go
-        // stale the next time that array's values change.
         const roundLabel = g1IsLedgerBonus
-            ? `Ledger Bonus ${g1LedgerBonusRound + 1}/3 | Grid: ${g1Tiers[g1Tiers.length - 1]}`
+            ? `Ledger Bonus ${g1LedgerBonusRound + 1}/3 | Grid: 12`
             : g1Level === 'level2'
             ? `${g1Level2PhaseNames[g1Level2Phase]} | Grid: ${activeCardsCount}`
             : `Rows: ${rowCount}/4`;
@@ -994,11 +806,7 @@ function startG1Timer() {
 function startG1FlashTimer() {
     if (g1FlashTimer) clearTimeout(g1FlashTimer);
     const flashFill = document.getElementById('g1-flash-timer-fill');
-    // Dividing by SMASH_GRID_COLS instead of the old literal 3 keeps this at
-    // the exact same pacing across the tier switch (same fix as Game 2's
-    // startG2FlashTimer - both give [4/4+2, 8/4+2, 12/4+2, 16/4+2] =
-    // [3,4,5,6] seconds for tiers 0-3, identical to the old 3/3+2 ... 12/3+2).
-    const flashSeconds = g1Tiers[g1TierIndex] / SMASH_GRID_COLS + 2;
+    const flashSeconds = g1Tiers[g1TierIndex] / 3 + 2;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
     g1FlashTimer = setTimeout(() => {
@@ -1025,32 +833,18 @@ function triggerG1TimeBonus(amount) {
 function awardG1RoundBonuses() {
     const cardsInPlay = g1Tiers[g1TierIndex];
     const elapsedSeconds = (performance.now() - g1RoundStartedAt) / 1000;
-    // Same "divide by the column count, not the literal 3" fix as
-    // startG1FlashTimer - identical thresholds either way.
-    const speedThreshold = cardsInPlay / SMASH_GRID_COLS + 1;
+    const speedThreshold = cardsInPlay / 3 + 1;
 
-    // Indexed by tier now, not by comparing the card count to a literal
-    // 3/6 - those stopped matching anything once the tiers became
-    // [4,8,12,16]. Same bands as before: only the two smallest tiers get
-    // this perfect-screen bonus, 0.5s on the smallest, 0.75s on the second.
-    if (g1WrongTapsThisScreen === 0 && g1TierIndex <= 1) {
-        triggerG1TimeBonus(g1TierIndex === 0 ? 0.5 : 0.75);
+    if (g1WrongTapsThisScreen === 0 && cardsInPlay <= 6) {
+        triggerG1TimeBonus(cardsInPlay === 3 ? 0.5 : 0.75);
     }
     if (elapsedSeconds <= speedThreshold) {
         triggerG1TimeBonus(0.5);
     }
 }
 
-// Took a `completedCards` param before and compared it to a literal 6 - now
-// just reads g1TierIndex directly, since every call site was really asking
-// "is the tier we're on/just finished in the easier or harder half", which
-// index answers without the caller needing to pass anything. First half
-// (indices 0-1) gets 2s, second half (2-3) gets 3s - Ledger Bonus is
-// always the hardest tier (g1TierIndex === 3 for its whole duration - see
-// startG1LedgerBonus), so it always lands in the 3s half, same as its old
-// hardcoded awardG1TierBonus(12) call always did.
-function awardG1TierBonus() {
-    const mainClockBonus = g1TierIndex < g1Tiers.length / 2 ? 2 : 3;
+function awardG1TierBonus(completedCards) {
+    const mainClockBonus = completedCards <= 6 ? 2 : 3;
     triggerG1TimeBonus(mainClockBonus);
 }
 
@@ -1058,7 +852,7 @@ function advanceG1Streak() {
     if (g1Level === 'level2') {
         if (g1Streak < 3) return false;
         g1Streak = 0;
-        awardG1TierBonus();
+        awardG1TierBonus(g1Tiers[g1TierIndex]);
         if (g1TierIndex < g1Tiers.length - 1) {
             g1TierIndex++;
             return false;
@@ -1075,7 +869,7 @@ function advanceG1Streak() {
     if (g1Streak < 3) return false;
 
     g1Streak = 0;
-    awardG1TierBonus();
+    awardG1TierBonus(g1Tiers[g1TierIndex]);
     if (g1TierIndex < g1Tiers.length - 1) {
         g1TierIndex++;
         return false;
@@ -1098,7 +892,7 @@ function markG1DudSuccess() {
     playSound('correct');
     g1Score++;
     g1BonusDuds++;
-    const dudTimeRefund = g1Tiers[g1TierIndex] / SMASH_GRID_COLS + 2; // same identical-pacing fix as startG1FlashTimer
+    const dudTimeRefund = g1Tiers[g1TierIndex] / 3 + 2;
     triggerG1TimeBonus(dudTimeRefund + 0.5);
     g1Streak++;
     return advanceG1Streak();
@@ -1154,7 +948,7 @@ function resolveG1LedgerBonusScreen(cleared) {
         awardG1RoundBonuses();
         if (g1Streak >= 3) {
             g1Streak = 0;
-            awardG1TierBonus(); // g1TierIndex is 3 throughout Ledger Bonus - see startG1LedgerBonus
+            awardG1TierBonus(12);
         }
     } else {
         g1Streak = 0;
@@ -1216,19 +1010,16 @@ function loadG1Grid() {
     flashFill.style.transition = 'none'; flashFill.style.width = '100%';
 
     const activeCardsCount = g1Tiers[g1TierIndex];
-    const activeRowsCount = activeCardsCount / SMASH_GRID_COLS;
+    const activeRowsCount = activeCardsCount / 3;
 
-    // Define density bands per tier - indexed by TIER now, not by the
-    // tier's card count (those literal 3/6/9/12 comparisons stopped
-    // matching anything once the values became [4,8,12,16] - see
-    // buildSmashGridRound's doc comment). Same bands as before:
-    // tier 0 (1 row): min 1, max 2
-    // tier 1 (2 rows): min 2, max 4
-    // tier 2 (3 rows): min 2, max 3
-    // tier 3 (4 rows): min 3, max 4
-    if (g1TierIndex === 0) { g1TierMin = 1; g1TierMax = 2; }
-    else if (g1TierIndex === 1) { g1TierMin = 2; g1TierMax = 4; }
-    else if (g1TierIndex === 2) { g1TierMin = 2; g1TierMax = 3; }
+    // Define density bands per tier:
+    // 3 cards (1 row): min 1, max 2
+    // 6 cards (2 rows): min 2, max 4
+    // 9 cards (3 rows): min 2, max 3
+    // 12 cards (4 rows): min 3, max 4
+    if (activeCardsCount === 3) { g1TierMin = 1; g1TierMax = 2; }
+    else if (activeCardsCount === 6) { g1TierMin = 2; g1TierMax = 4; }
+    else if (activeCardsCount === 9) { g1TierMin = 2; g1TierMax = 3; }
     else { g1TierMin = 3; g1TierMax = 4; }
 
     const clefName = document.getElementById('g1-clef-select') ? document.getElementById('g1-clef-select').value : 'treble';
@@ -1305,9 +1096,49 @@ function loadG1Grid() {
     
     let isDud = !g1LastScreenWasDud && Math.random() < 0.15;
     g1LastScreenWasDud = isDud;
+    
+    // Row allocation algorithm per v2 brief:
+    let totalBudget = 0;
+    if (isDud) {
+        g1LastRolledTotal = 0;
+        g1TargetsPresent = 0;
+    } else {
+        g1LastRolledTotal = Math.random() < 0.5 ? g1TierMin : g1TierMax; 
+        g1TargetsPresent = g1LastRolledTotal;
+    }
 
-    g1LastRolledTotal = isDud ? 0 : (Math.random() < 0.5 ? g1TierMin : g1TierMax);
-    g1TargetsPresent = g1LastRolledTotal;
+    let rowTargets = [0, 0, 0, 0];
+    if (!isDud && g1TargetsPresent > 0) {
+        let activeRowIndices = [];
+        for(let r=0; r<activeRowsCount; r++) activeRowIndices.push(r);
+        
+        activeRowIndices.sort(() => Math.random() - 0.5);
+        
+        let remaining = g1TargetsPresent;
+        for (let i = 0; i < activeRowIndices.length; i++) {
+            let rIdx = activeRowIndices[i];
+            if (i === activeRowIndices.length - 1) {
+                rowTargets[rIdx] = Math.min(2, remaining);
+            } else {
+                let maxPossible = Math.min(2, remaining);
+                let assigned = Math.floor(Math.random() * (maxPossible + 1));
+                rowTargets[rIdx] = assigned;
+                remaining -= assigned;
+            }
+        }
+        let safety = 0;
+        while (remaining > 0 && safety < 10) {
+            for (let rIdx of activeRowIndices) {
+                if (rowTargets[rIdx] < 2 && remaining > 0) {
+                    rowTargets[rIdx]++;
+                    remaining--;
+                }
+            }
+            safety++;
+        }
+        g1TargetsPresent = rowTargets.reduce((a, b) => a + b, 0);
+        g1LastRolledTotal = g1TargetsPresent;
+    }
     g1TargetsFound = 0;
 
     if (g1Level !== 'level2') {
@@ -1315,69 +1146,60 @@ function loadG1Grid() {
         distractorPool = g1TargetType === 'line' ? poolSpaces : poolLines;
     }
 
-    // Built through the shared grid engine (see buildSmashGridRound) instead
-    // of a hand-rolled row-allocation loop - that loop was the one piece of
-    // Game 1 genuinely hardcoded to 3-wide rows (the "at most 2 targets, fill
-    // to exactly 3" logic), unlike Game 2's, which was already just a flat
-    // count. totalRows is always the hardest tier's row count (4, same as
-    // before - 16/4 lands on the same number 12/3 did) for the cumulative-
-    // reveal mechanic: every row up to totalRows is always built and shown,
-    // locked/dimmed past activeRowsCount, never hidden outright.
-    const totalRowsCount = g1Tiers[g1Tiers.length - 1] / SMASH_GRID_COLS;
-    const round = buildSmashGridRound({
-        totalRows: totalRowsCount,
-        activeRows: activeRowsCount,
-        cols: SMASH_GRID_COLS,
-        targetsPresent: g1TargetsPresent,
-        // i is the within-row index (0 at the start of every row, same as
-        // the original hand-rolled loop's own per-row target/distractor
-        // counters), so orientationTargets/orientationDistractors cycle the
-        // same way they always did.
-        pickTarget: i => {
-            const selectedTarget = g1Level === 'level2' ? orientationTargets[i % orientationTargets.length] : null;
-            const targetNote = g1Level === 'level2' ? selectedTarget.note : targetPool[Math.floor(Math.random() * targetPool.length)];
-            const targetLabel = g1Level === 'level2' ? selectedTarget.label : targetNote[0];
-            return { note: targetNote, label: targetLabel };
-        },
-        pickDistractor: i => {
-            if (g1Level === 'level2') {
-                const distractor = orientationDistractors[i % orientationDistractors.length];
-                return { note: distractor.note, label: distractor.label };
-            }
-            const distractor = distractorPool[Math.floor(Math.random() * distractorPool.length)];
-            return { note: distractor, label: distractor[0] };
-        },
-    });
-    g1TargetsPresent = round.targetsPresent;
-    g1LastRolledTotal = g1TargetsPresent;
-
-    round.rows.forEach(row => {
+    // Build all 4 rows (12 cards total) for cumulative reveal inside loadG1Grid
+    for (let r = 0; r < 4; r++) {
         const rowEl = document.createElement('div');
         rowEl.className = 'g1-row';
-
-        if (!row.isActive) {
+        
+        const isRowActive = (r < activeRowsCount);
+        
+        if (!isRowActive) {
             rowEl.classList.add('locked');
-        } else if (row.index === activeRowsCount - 1 && g1TierIndex > 0) {
+        } else if (r === activeRowsCount - 1 && g1TierIndex > 0) {
             rowEl.classList.add('unlock-pulse');
         }
 
-        row.cards.forEach(item => {
+        let numTargetsInRow = rowTargets[r];
+        let rowNotes = [];
+        for (let i = 0; i < numTargetsInRow; i++) {
+            const selectedTarget = g1Level === 'level2'
+                ? orientationTargets[i % orientationTargets.length]
+                : null;
+            const targetNote = g1Level === 'level2' ? selectedTarget.note : targetPool[Math.floor(Math.random() * targetPool.length)];
+            const targetLabel = g1Level === 'level2' ? selectedTarget.label : targetNote[0];
+            rowNotes.push({ note: targetNote, label: targetLabel, isTarget: true });
+        }
+        let distractorIndex = 0;
+        for (let i = numTargetsInRow; i < 3; i++) {
+            let distractor;
+            if (g1Level === 'level2') {
+                distractor = orientationDistractors[distractorIndex % orientationDistractors.length];
+                distractorIndex++;
+                rowNotes.push({ note: distractor.note, label: distractor.label, isTarget: false });
+            } else {
+                distractor = distractorPool[Math.floor(Math.random() * distractorPool.length)];
+                rowNotes.push({ note: distractor, label: distractor[0], isTarget: false });
+            }
+        }
+        rowNotes.sort(() => Math.random() - 0.5);
+
+        rowNotes.forEach(item => {
             const card = document.createElement('div');
             card.className = 'smash-card small-card';
-
-            if (row.isActive) {
+            
+            if (isRowActive) {
                 card.onclick = () => handleG1Click(card, item.isTarget, item.label);
             }
-
+            
             const innerDiv = document.createElement('div');
             card.appendChild(innerDiv);
             rowEl.appendChild(card);
-
-            renderSmashCard(innerDiv, clefName, item.note[1], row.isActive);
+            
+            renderSmashCard(innerDiv, clefName, item.note[1], isRowActive);
         });
 
         container.appendChild(rowEl);
-    });
+    }
 
     startG1FlashTimer();
 }
@@ -1477,7 +1299,7 @@ function finishG1Game(isOfficialSmash = false) {
     } else {
         document.getElementById('g1-summary-progress-title').innerText = 'Your Smash progress';
         document.getElementById('g1-final-tier-label').innerText = 'Highest Grid Reached';
-        document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / SMASH_GRID_COLS} Rows (${g1Tiers[g1TierIndex]} Cards)`;
+        document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
     }
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
     if (isOfficialSmash && nextStage) {
@@ -1497,16 +1319,8 @@ function startNextG1Stage() {
 
 /* =========================================
     GAME 2: NOTE SMASH (Fixed Width Stave)
-    First game moved onto the landscape/density-grid rework: 4 columns,
-    tiers of [4, 8, 12, 16] instead of 3 columns / [3, 6, 9, 12]. Game 1
-    stays on its old shape until its own rewrite (its row-allocation logic
-    is hardcoded to 3-wide rows in a way Game 2's never was - see
-    buildSmashGridRound's doc comment). Every place below that used to
-    branch or compute a pacing value from the literal card-count values
-    (3/6/9/12) now uses g2TierIndex instead, so the same behavior carries
-    over unchanged to the new tier values - see each such spot's own note.
    ========================================= */
-let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [4, 8, 12, 16];
+let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [3, 6, 9, 12];
 const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
 let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
@@ -1691,27 +1505,15 @@ function startG2Game() {
     startG2Timer(); loadG2Grid();
 }
 
-// Fixed while wiring in the shared game shell (script.js's "SHARED GAME
-// SHELL" section): this function used to end at the innerText line below,
-// and the streak-dots append that belongs in it (see updateG1TrackerUI's
-// equivalent line) had gone missing from inside the function entirely -
-// four dangling lines sat between this function and startG2Timer(),
-// outside any function body, so they ran exactly ONCE, at page load,
-// against whatever g2Streak was at that moment (0) and whatever static
-// text index.html had for g2-tier-tracker-text at the time - never again
-// on any later round. In the shipped app today that means Game 2's tier-
-// tracker streak dots never actually update as you play, unlike Game 1's.
-// Making the header markup itself only exist once the shared shell builds
-// it (rather than being static in index.html from page load) surfaced
-// this as a hard crash instead of a silent no-op, which is what caught it.
 function updateG2TrackerUI() {
-    const streakDots = [0, 1, 2].map(index =>
-        `<span class="streak-dot${index < g2Streak ? ' active' : ''}" aria-hidden="true"></span>`
-    ).join('');
-    document.getElementById('g2-tier-tracker-text').innerHTML = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
+    document.getElementById('g2-tier-tracker-text').innerText = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]} | Streak: ${g2Streak}/3`;
     document.getElementById('g2-score-text').innerText = g2Score;
     document.getElementById('g2-attempts-text').innerText = `Attempts: ${g2TotalAttempts}`;
 }
+        const streakDots = [0, 1, 2].map(index =>
+            `<span class="streak-dot${index < g2Streak ? ' active' : ''}" aria-hidden="true"></span>`
+        ).join('');
+        document.getElementById('g2-tier-tracker-text').innerHTML += ` | Streak: <span class="streak-dots">${streakDots}</span>`;
 function startG2Timer() {
     if (g2Timer) clearInterval(g2Timer);
     document.getElementById('g2-timer-badge').innerText = `${g2SecondsLeft}s`;
@@ -1725,10 +1527,7 @@ function startG2Timer() {
 function startG2FlashTimer(remainingSeconds = null) {
     if (g2FlashTimer) clearTimeout(g2FlashTimer);
     const flashFill = document.getElementById('g2-flash-timer-fill');
-    // Dividing by SMASH_GRID_COLS instead of the old literal 3 keeps this
-    // at the exact same pacing across the tier switch - both give [3,4,5,6]
-    // seconds for tiers 0-3 (3/3+2 = 4/4+2 = 3, 6/3+2 = 8/4+2 = 4, etc.).
-    const flashSeconds = remainingSeconds === null ? g2Tiers[g2TierIndex] / SMASH_GRID_COLS + 2 : remainingSeconds;
+    const flashSeconds = remainingSeconds === null ? g2Tiers[g2TierIndex] / 3 + 2 : remainingSeconds;
     g2FlashDeadline = performance.now() + flashSeconds * 1000;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
@@ -1751,23 +1550,12 @@ function triggerG2TimeBonus(amount) {
 
 function awardG2ScreenBonuses() {
     const cardsInPlay = g2Tiers[g2TierIndex];
-    // Indexed by tier now, not by comparing the card count to a literal 3/6 -
-    // those literals were specific to the old [3,6,9,12] values and would
-    // silently stop matching anything once the tiers became [4,8,12,16].
-    // Same bands as before: only the two smallest tiers get this perfect-
-    // screen bonus, 0.5s on the smallest, 0.75s on the second.
-    if (g2WrongTapsThisScreen === 0 && g2TierIndex <= 1) triggerG2TimeBonus(g2TierIndex === 0 ? 0.5 : 0.75);
-    // Same "divide by the column count, not the literal 3" fix as
-    // startG2FlashTimer - identical thresholds [2,3,4,5]s either way.
-    if (g2RoundStartedAt && (performance.now() - g2RoundStartedAt) / 1000 <= cardsInPlay / SMASH_GRID_COLS + 1) triggerG2TimeBonus(0.5);
+    if (g2WrongTapsThisScreen === 0 && cardsInPlay <= 6) triggerG2TimeBonus(cardsInPlay === 3 ? 0.5 : 0.75);
+    if (g2RoundStartedAt && (performance.now() - g2RoundStartedAt) / 1000 <= cardsInPlay / 3 + 1) triggerG2TimeBonus(0.5);
 }
 
 function awardG2TierBonus() {
-    // First half of the tier progression (indices 0-1) gets 2s, second half
-    // (2-3) gets 3s - was `g2Tiers[g2TierIndex] <= 6`, which stopped meaning
-    // anything once the tier values changed; index-based carries the same
-    // split forward regardless of what the actual card counts are.
-    triggerG2TimeBonus(g2TierIndex < g2Tiers.length / 2 ? 2 : 3);
+    triggerG2TimeBonus(g2Tiers[g2TierIndex] <= 6 ? 2 : 3);
 }
 
 function awardG2DuplicateNoteBonus() {
@@ -1792,7 +1580,7 @@ function showG2StageComplete() {
     document.getElementById('g2-stage-complete-title').innerText = `${g2PhaseNames[g2Phase]} smashed!`;
     document.getElementById('g2-stage-complete-next').innerText = `Next up: ${g2PhaseNames[g2Phase + 1]}`;
     document.getElementById('g2-stage-score').innerText = g2Score;
-    document.getElementById('g2-stage-bonus').innerText = `${g2TierIndex < g2Tiers.length / 2 ? 2 : 3}s`; // same split as awardG2TierBonus
+    document.getElementById('g2-stage-bonus').innerText = `${g2Tiers[g2TierIndex] <= 6 ? 2 : 3}s`;
     document.getElementById('g2-stage-time').innerText = `${g2CarriedStageTime}s`;
     document.getElementById('modal-g2-stage-complete').classList.add('show');
     playSound('complete');
@@ -1837,7 +1625,7 @@ function resolveG2Screen(cleared) {
                 card.classList.add('dud-correct', 'screen-complete');
             });
             playSound('correct');
-            g2DudStreak++; g2Score++; triggerG2TimeBonus(g2Tiers[g2TierIndex] / SMASH_GRID_COLS + 2); g2LastScreenWasDud = true; // same identical-pacing fix as startG2FlashTimer
+            g2DudStreak++; g2Score++; triggerG2TimeBonus(g2Tiers[g2TierIndex] / 3 + 2); g2LastScreenWasDud = true;
         } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen > 0) {
             g2DudStreak = 0;
         }
@@ -1856,7 +1644,7 @@ function loadG2Grid() {
     flashFill.style.transition = 'none'; flashFill.style.width = '100%';
 
     let cardCount = g2Tiers[g2TierIndex];
-    container.style.gridTemplateColumns = `repeat(${SMASH_GRID_COLS}, 1fr)`;
+    container.style.gridTemplateColumns = 'repeat(3, 1fr)';
 
     const clefName = getClefPreference();
     const config = NOTE_CONFIGS[clefName];
@@ -1876,48 +1664,29 @@ function loadG2Grid() {
     if (g2TargetNote !== g2LastAnnouncedNote) { speakLetter(g2TargetNote); g2LastAnnouncedNote = g2TargetNote; }
     
     let isDud = !g2LastScreenWasDud && Math.random() < 0.15;
-    // Density band per tier - indexed by TIER, not by the tier's card
-    // count (which no longer doubles as a stable identifier now that the
-    // values are [4, 8, 12, 16] instead of [3, 6, 9, 12]). Same bands as
-    // before: tier 0 always shows exactly 1 target, tier 1 exactly 2,
-    // tier 2 randomly 2-3, tier 3 randomly 3-4.
-    g2TargetsPresent = isDud ? 0
-        : g2TierIndex === 0 ? 1
-        : g2TierIndex === 1 ? 2
-        : g2TierIndex === 2 ? (Math.floor(Math.random() * 2) + 2)
-        : Math.floor(Math.random() * 2) + 3;
+    g2TargetsPresent = isDud ? 0 : (cardCount === 3 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : Math.floor(Math.random() * 2) + 3);
     if (g2TargetsPresent > cardCount) g2TargetsPresent = cardCount;
     g2TargetsFound = 0;
-
+    
     let targetPool = pool.filter(n => n[0].toUpperCase() === g2TargetNote);
     let distractorPool = pool.filter(n => n[0].toUpperCase() !== g2TargetNote);
     if(targetPool.length === 0) { g2TargetsPresent = 0; isDud = true; }
     g2DuplicateBonusEligible = g2Phase >= 2 && g2TargetsPresent >= 2 && targetPool.length >= 2;
 
-    // Built through the shared grid engine (see buildSmashGridRound) instead
-    // of a flat shuffled list - Game 2 has no locked/ghost rows (unlike
-    // Game 1's cumulative reveal), so totalRows === activeRows here: every
-    // row this round shows is always "active".
+    let gridNotes = [];
     const shuffledTargetPool = [...targetPool].sort(() => Math.random() - 0.5);
-    const activeRows = cardCount / SMASH_GRID_COLS;
-    const round = buildSmashGridRound({
-        totalRows: activeRows,
-        activeRows,
-        cols: SMASH_GRID_COLS,
-        targetsPresent: g2TargetsPresent,
-        pickTarget: i => ({ note: shuffledTargetPool[i % shuffledTargetPool.length] }),
-        pickDistractor: () => ({ note: distractorPool[Math.floor(Math.random() * distractorPool.length)] }),
-    });
-    g2TargetsPresent = round.targetsPresent;
+    for(let i=0; i<g2TargetsPresent; i++) gridNotes.push(shuffledTargetPool[i % shuffledTargetPool.length]);
+    for(let i=g2TargetsPresent; i<cardCount; i++) gridNotes.push(distractorPool[Math.floor(Math.random() * distractorPool.length)]);
+    gridNotes.sort(() => Math.random() - 0.5);
 
-    round.rows.forEach(row => row.cards.forEach(item => {
+    gridNotes.forEach((n) => {
         const card = document.createElement('div');
         card.className = 'smash-card small-card';
-        card.onclick = () => handleG2Click(card, item.note[0].toUpperCase());
-
+        card.onclick = () => handleG2Click(card, n[0].toUpperCase());
+        
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
-        renderSmashCard(innerDiv, config.clef, item.note[1]);
-    }));
+        renderSmashCard(innerDiv, config.clef, n[1]);
+    });
     startG2FlashTimer();
 }
 
@@ -2086,9 +1855,8 @@ function getTimeLimitForTier(tier) { return tier + 1; }
 function toggleInputMethod() {
     isPianoInput = !isPianoInput;
     const piano = document.getElementById('piano-container'); const thumbs = document.getElementById('thumb-stacks-container'); const btn = document.getElementById('input-toggle-btn');
-    if (isPianoInput) { piano.style.display = 'flex'; thumbs.style.display = 'none'; btn.innerText = '🔄 Switch to Thumb Stacks'; }
+    if (isPianoInput) { piano.style.display = 'flex'; thumbs.style.display = 'none'; btn.innerText = '🔄 Switch to Thumb Stacks'; } 
     else { piano.style.display = 'none'; thumbs.style.display = 'flex'; btn.innerText = '🔄 Switch to Piano Keyboard'; }
-    scrollG3InputIntoView();
 }
 
 function toggleG3HelperModal() {
@@ -2272,18 +2040,6 @@ function startG3Game() {
     currentMode = selectedStage.mode;
     updateG3TrackerUI();
     switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); loadNextCard();
-    scrollG3InputIntoView();
-}
-
-// On a real phone in landscape, .g3-screen-game's stacked content (header,
-// flashcard, toggle, answer boxes, piano) is comfortably taller than the
-// viewport - the piano can land entirely below the fold with no visual hint
-// that it's there. Bringing the active input control (piano or thumb
-// stacks) into view once, at round start, means a student never has to
-// discover on their own that they need to scroll to find their keys.
-function scrollG3InputIntoView() {
-    const activeInput = document.getElementById(isPianoInput ? 'piano-container' : 'thumb-stacks-container');
-    if (activeInput) activeInput.scrollIntoView({ block: 'end', behavior: 'auto' });
 }
 
 function start60SecondTimer() {
@@ -2315,12 +2071,12 @@ function loadNextCard() {
     try {
         const VF = Vex.Flow;
         const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
-        const labelsContainer = document.getElementById('g3-note-labels'); labelsContainer.innerHTML = '';
-
+        const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
+        
         const clefName = getClefPreference();
         const config = NOTE_CONFIGS[clefName];
         const level = currentG3Level;
-
+        
         let combinedPool = [];
         if (currentMode === 'speed') {
             combinedPool = [...config.staffLines, ...config.staffSpaces];
@@ -2334,33 +2090,23 @@ function loadNextCard() {
             }
         }
 
-        // Landscape pivot, step 8, then Rob's merged-card redesign: the card
-        // is now the same width as the piano (880px, see .card-wrapper in
-        // style.css), so the note area genuinely benefits from more than the
-        // 320/260 this used to be capped at - a wide card with notes still
-        // bunched at 420px would look exactly like the bug this was meant to
-        // fix. VexFlow's renderer sets an INLINE width style matching
-        // rendererWidth exactly, which wins over #score-canvas svg's own
-        // (non-!important) max-width:100% CSS rule the same way it did for
-        // the SMASH grid cards in steps 5-6 - so this JS number, not the
-        // CSS, is what actually decides how big the card renders.
         const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG);
-        const rendererWidth = Math.min(900, Math.max(260, canvasContainer.clientWidth || 420));
+        const rendererWidth = Math.min(320, Math.max(260, canvasContainer.clientWidth || 320));
         renderer.resize(rendererWidth, 145);
         const context = renderer.getContext();
-        const staveWidth = Math.min(840, rendererWidth - 24);
+        const staveWidth = Math.min(260, rendererWidth - 24);
         const staveX = (rendererWidth - staveWidth) / 2;
         const stave = new VF.Stave(staveX, 25, staveWidth); stave.addClef(config.clef);
-        if(currentMode.includes('drill') || currentTier === 1) {
-            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false;
+        if(currentMode.includes('drill') || currentTier === 1) { 
+            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(115); 
         } else { stave.addTimeSignature("4/4"); }
         stave.setContext(context).draw();
 
-        currentExpectedNotes = []; let staveNotes = []; let durations = [];
-        if(currentMode.includes('drill')) { durations = ["w"]; }
+        currentExpectedNotes = []; let staveNotes = []; let durations = []; let formatWidth = 165;
+        if(currentMode.includes('drill')) { durations = ["w"]; formatWidth = 40; } 
         else {
-            if (currentTier === 1) { durations = ["w"]; } else if (currentTier === 2) { durations = ["h", "h"]; }
-            else if (currentTier === 3) { durations = ["h", "q", "q"]; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; }
+            if (currentTier === 1) { durations = ["w"]; formatWidth = 40; } else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
+            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
         }
 
         let lastPitchKey = null;
@@ -2371,50 +2117,23 @@ function loadNextCard() {
             lastPitchKey = chosenNote[1];
             if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
             // 3. Add auto_stem: true so VexFlow handles standard stem directions
-            staveNotes.push(new VF.StaveNote({
-                clef: config.clef,
-                keys: [chosenNote[1]],
-                duration: dur,
-                auto_stem: true
-            }));
+            staveNotes.push(new VF.StaveNote({ 
+                clef: config.clef, 
+                keys: [chosenNote[1]], 
+                duration: dur, 
+                auto_stem: true 
+            })); 
             currentExpectedNotes.push(chosenNote[0]);
         }
 
-        // Justify across the stave's REAL note area (mirrors
-        // renderRstompStaff's own justify pass), then put every note ON an
-        // even slot across that area rather than trusting VexFlow's own
-        // proportional (duration-weighted) spacing for it - a single whole
-        // note belongs in the middle of the staff, not wherever the clef
-        // happens to leave it, and a mix of halves/quarters should still
-        // read as evenly spaced. This is what lets the note-labels below
-        // land directly under their own note instead of a note-shaped area
-        // somewhere off to the left.
-        const trueStartX = stave.getNoteStartX();
-        const trueEndX = stave.getNoteEndX();
         let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-        new VF.Formatter().joinVoices([voice]).format([voice], trueEndX - trueStartX - 10);
-        staveNotes.forEach((note, i) => {
-            const slotX = trueStartX + ((i + 0.5) / staveNotes.length) * (trueEndX - trueStartX);
-            const tickContext = note.getTickContext();
-            tickContext.setX(tickContext.getX() + (slotX - note.getAbsoluteX()));
-        });
+        new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
         voice.draw(context, stave);
 
-        // One label per note, positioned from the note's own real rendered
-        // x (read back post-draw, the same way renderRstompStaff reads note
-        // x back for its counting row) rather than laid out as a row of its
-        // own - see the .g3-note-labels comment in style.css for why.
-        const svgEl = canvasContainer.querySelector('svg');
-        const svgRect = svgEl.getBoundingClientRect();
-        const labelsRect = labelsContainer.getBoundingClientRect();
-        staveNotes.forEach((note, idx) => {
-            const label = document.createElement('div');
-            label.className = 'g3-note-label'; label.id = `box-${idx}`;
-            label.style.left = `${(svgRect.left - labelsRect.left) + note.getAbsoluteX()}px`;
-            const inner = document.createElement('div');
-            inner.className = 'g3-note-label-inner';
-            label.appendChild(inner);
-            labelsContainer.appendChild(label);
+        currentExpectedNotes.forEach((_, idx) => {
+            const cell = document.createElement('div'); cell.className = 'input-cell';
+            const input = document.createElement('input'); input.type = 'text'; input.readOnly = true; input.id = `box-${idx}`;
+            cell.appendChild(input); inputsContainer.appendChild(cell);
         });
         activeInputIndex = 0; setActiveBox(0);
 
@@ -2432,7 +2151,7 @@ function startFlashcardTimer(seconds, remainingSeconds = null) {
         if (secondsLeft > 0) {
             playSound('timeout'); document.getElementById('card-canvas-wrapper').classList.add('timeout'); currentStreak = 0; updateG3TrackerUI(); 
             currentExpectedNotes.forEach((val, idx) => {
-                const box = document.getElementById(`box-${idx}`); if (box && !box.classList.contains('correct')) { box.firstElementChild.textContent = val; box.firstElementChild.style.color = 'var(--accent-red)'; }
+                const box = document.getElementById(`box-${idx}`); if (box && !box.classList.contains('correct')) { box.value = val; box.style.color = 'var(--accent-red)'; }
             });
             setTimeout(loadNextCard, 800);
         }
@@ -2440,7 +2159,7 @@ function startFlashcardTimer(seconds, remainingSeconds = null) {
 }
 
 function setActiveBox(idx) {
-    document.querySelectorAll('.g3-note-label').forEach(el => el.classList.remove('active-box'));
+    document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
     const target = document.getElementById(`box-${idx}`); if (target) { activeInputIndex = idx; target.classList.add('active-box'); }
 }
 
@@ -2448,7 +2167,7 @@ function handleKeypadInput(letter) {
     if (secondsLeft <= 0) return;
     const input = document.getElementById(`box-${activeInputIndex}`); if (!input) return;
 
-    input.firstElementChild.textContent = letter; const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase(); totalAttempts++;
+    input.value = letter; const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase(); totalAttempts++;
 
     if (letter === correctVal) {
         playSound('correct'); input.classList.remove('incorrect'); input.classList.add('correct'); correctAttempts++;
@@ -2471,7 +2190,7 @@ function handleKeypadInput(letter) {
         if (currentMode === 'speed') currentStreak = 0; 
         else { let existingErr = watchListQueue.find(e => e[1] === currentFlashcardPitch); if (!existingErr) watchListQueue.push([correctVal, currentFlashcardPitch]); }
         input.classList.remove('correct'); input.classList.remove('incorrect'); void input.offsetWidth; input.classList.add('incorrect');
-        setTimeout(() => { input.firstElementChild.textContent = ''; input.classList.remove('incorrect'); }, 300);
+        setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 300);
     }
 }
 
@@ -2529,16 +2248,10 @@ function startNextG3Stage() {
 window.addEventListener('keydown', (e) => {
     const key = e.key.toUpperCase();
     if (!document.getElementById('g3-screen-game') || !document.getElementById('g3-screen-game').classList.contains('active')) return;
-
+    
     if (['A','B','C','D','E','F','G'].includes(key)) {
-        if (isPianoInput) { const pKey = document.querySelector(`.white-key[data-note="${key}"]`); if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); } }
+        if (isPianoInput) { const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`); if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); } } 
         else { const cKey = document.getElementById(`btn-${key}`); if (cKey) { cKey.classList.add('simulated-active'); setTimeout(() => cKey.classList.remove('simulated-active'), 100); } }
         handleKeypadInput(key);
     }
 });
-
-// script.js loads at the bottom of <body>, so every game's DOM already
-// exists (just hidden via .view/.screen CSS) by the time this runs - see
-// the "SHARED GAME SHELL" section above for why this is safe to do once,
-// unconditionally, rather than lazily per game on first entry.
-initSharedGameShells();

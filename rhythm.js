@@ -291,14 +291,10 @@ function generateRhythmPhraseNormal(level) {
     return chosenIndices.map(index => shapes[index].flatMap(key => RHYTHM_PATTERNS[key]));
 }
 
-// A tied note is split across the bar 0/1 or bar 2/3 boundary, never the
-// bar 1/2 boundary in the middle. That restriction used to exist because
-// portrait split bars into [0,1] and [2,3] rows/canvases and a tie can only
-// be drawn within one shared canvas - now that this screen is landscape-only
-// (see the row-grouping comment above renderRhythmBars) all 4 bars always
-// share one canvas, so the restriction no longer protects anything real.
-// Left in place anyway: this game is slated for retirement in favour of
-// Rhythm Stomp Lab, so widening tie placement here isn't worth doing. r beats of the
+// A tied note is split across the bar 0/1 or bar 2/3 boundary (never the
+// bar 1/2 boundary - see the row-grouping comment above renderRhythmBars:
+// portrait splits bars into [0,1] and [2,3] rows, so a tie can only ever
+// be drawn within one of those pairs, never across them). r beats of the
 // tied note sit at the end of the first bar (a Play plus r-1 Holds), s
 // beats sit at the start of the second bar as pure Hold - no onset there,
 // since it's the same note continuing, not a new attack. That leading
@@ -426,6 +422,7 @@ function startRhythmLevel() {
     rhythmStreak = 0;
     rhythmScore = 0;
     rhythmLocked = false;
+    setupRhythmOrientationListener();
     setupRhythmKeyboardListener();
     switchScreenState('rhythm', 'rhythm-screen-counting');
     document.getElementById('rhythm-level-label').innerText = RHYTHM_LEVELS.find(level => level.id === rhythmSelectedLevel).label;
@@ -571,31 +568,27 @@ function updateRhythmNumberRow() {
 
 /* ---------- Rendering (beat-strip + VexFlow staff per row of bars) ---------- */
 
-// Bars are grouped into "rows" that each share one VexFlow canvas, so a
-// cross-barline tie (Level 8+) can be drawn as a real connecting curve
-// between two adjacent bars' noteheads - only possible when both sides of
-// the tie live in the same SVG. Kool Riffs is landscape-only now (this
-// screen used to also reflow into 2 rows of 2 in portrait; that path and
-// its matchMedia listener were removed once landscape became the only
-// supported orientation), so this is always one row of every bar in the
-// phrase and this function is really just "how wide is the shared canvas"
-// - the row-grouping machinery itself is kept generic (it already just
-// takes whatever barIndices array it's handed) since Rhythm Stomp Lab's
-// eventual 8-bar phrases will want the same one-canvas-per-row approach.
-// generateRhythmPhrase still never ties across the middle bar boundary
-// (see its own comment) - that constraint no longer protects a row split
-// that doesn't exist, but this game (the old counting-round "Rhythm
-// Stomp") is slated for retirement in favour of Rhythm Stomp Lab, so
-// widening its tie placement isn't worth doing here.
+// Bars are grouped into "rows" that each share one VexFlow canvas - 1 row
+// of 4 in landscape, 2 rows of 2 in portrait - so that a cross-barline tie
+// (Level 8+) can be drawn as a real connecting curve between two adjacent
+// bars' noteheads, which is only possible when both sides of the tie live
+// in the same SVG. The bar-2/bar-3 boundary is deliberately never a tie
+// point (see generateRhythmPhrase) specifically because portrait splits
+// there into two separate rows/canvases - a tie can't be drawn across that
+// split, and the generated content has to be identical in both
+// orientations (design brief §5 item 3), so that boundary just never
+// carries one.
 function renderRhythmBars() {
     const container = document.getElementById('rhythm-bars-container');
     if (!container) return;
     container.innerHTML = '';
     const level = RHYTHM_LEVELS.find(entry => entry.id === rhythmSelectedLevel);
     const beatsPerBar = level.beatsPerBar || 4;
+    const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+    container.classList.toggle('portrait-layout', !isLandscape);
     const isComplete = rhythmCursor >= rhythmPositions.length;
     const activeBar = isComplete ? -1 : rhythmPositions[rhythmCursor].barIndex;
-    const rows = [[0, 1, 2, 3]];
+    const rows = isLandscape ? [[0, 1, 2, 3]] : [[0, 1], [2, 3]];
 
     rows.forEach(barIndices => {
         const rowDiv = document.createElement('div');
@@ -814,6 +807,15 @@ function renderRhythmRowStaff(container, barIndices, activeBarIndex, beatsPerBar
     // waste on blank canvas that VexFlow doesn't draw into.
     const svg = container.querySelector('svg');
     if (svg) svg.style.marginTop = '-90px';
+}
+
+function setupRhythmOrientationListener() {
+    if (window.__rhythmOrientationListenerAdded) return;
+    window.__rhythmOrientationListenerAdded = true;
+    window.matchMedia('(orientation: landscape)').addEventListener('change', () => {
+        const countingScreen = document.getElementById('rhythm-screen-counting');
+        if (countingScreen && countingScreen.classList.contains('active')) renderRhythmBars();
+    });
 }
 
 // Keyboard controls for Chromebook/laptop play alongside touch: number
