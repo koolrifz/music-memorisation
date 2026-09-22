@@ -598,6 +598,30 @@ asynchronous, so the first sound of the level was the one most at risk.
 **Only a correct tap sounds.** A refused tap gets the wrong-answer tone, not a
 drum — the drum is the reward for reading it right.
 
+**THE KEYPAD CARRIES THE SAME TWO SOUNDS, and they cost no new rule.** Rob,
+after hearing them work: *"It's so good that I would like it to continue through
+the levels. The snare is on anything that is not within a bracket. Anything
+within a bracket receives the brush sound. Don't make any noises on the bracket,
+only on the things contained within it. Just having that audio reinforcement I
+found very comforting."*
+
+That mapping **is** the counting convention: the onset digit sits outside the
+bracket, and everything bracketed is held or silent. So "which group did this
+digit land in" already answers "crack or swish" — `rstompKey()` asks the group
+*after* the press rather than reading `inside` before it, because a digit only
+joins a bracket when there is an open bracketed group to join.
+
+- **The brackets are silent.** They are punctuation, not counts. Erase too:
+  taking something back is not a beat.
+- **The sound follows what the STUDENT wrote, not what is correct** — the keypad
+  never validates as you type, which is the whole point of it. Measured: type
+  the right answer and the cracks and swishes land exactly where the music's own
+  onsets and holds are (10 levels, 173 counts, zero mismatches). Write every
+  label bare and it cracks all the way through against music that holds — so
+  **the mistake becomes audible** before it is ever graded. That is the same
+  principle as making an overlapping token visible: finding your own mistake is
+  the skill.
+
 ### Restart, not sixteen undos
 Rob, hunting a wrong bar on Level 7: *"In order to find them I need to undo… I
 guess we have to back through the whole thing, one undo button at a time, or we
