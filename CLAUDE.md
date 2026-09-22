@@ -563,12 +563,37 @@ exactly the distinction the two buttons ask about — so the student hears the
 answer they just gave in the same terms the notation uses, and the level starts
 to sound like the thing it is teaching.
 
-`raudioBrush()` is deliberately not a quiet snare: no pitched body at all (the
-snare's triangle thump is what makes it a *hit*), a swell rather than a crack
-(up over 60ms), and a lower, wider band than the snare's 1900Hz — a wire brush
-is air, not skin. `rstompAudioTap()` plays it immediately rather than through
-the lookahead scheduler, because a button is not music in time and must not
-disturb a phrase that happens to be playing.
+**They are NOT the phrase's snare at a different volume, and the first version's
+mistake was assuming they could be.** The snare inside a phrase is mixed to sit
+*in* a phrase, against a click and a backing loop. A button sounds alone, on a
+phone speaker, and is over in a tenth of a second. The first cut reused the
+phrase snare and set the brush at 0.16; measured output was **0.35 peak for the
+crack and 0.12 for the swish, and Rob could not hear either** — *"I'm not
+getting any sound for Play or Nothing New… if it's there maybe you got to turn
+it up."* They were firing the whole time. A short noise burst reads far quieter
+than a sustained tone at the same peak, because loudness is energy over time,
+so peak-matching the existing `playSound` tones was never going to be enough.
+
+Now `raudioTapSnare()` and `raudioBrush()`, built for the job: **0.60 and 0.30
+peak**, roughly 2.4× louder, and still clear of clipping at **0.84 with a whole
+phrase playing underneath**.
+
+- The **crack** is body + a snap layer on top to cut through a phone speaker +
+  just enough pitched thump to say "drum" rather than "click".
+- The **swish** is air, not skin: no pitched body at all, a swell rather than an
+  attack, and the band **opening upward** through the stroke (1500→4400Hz) —
+  that movement is what makes it a brush dragged across the head instead of a
+  quiet snare. Measured, the crack carries **16.5dB more energy below 400Hz**
+  than the swish, which is the difference you actually hear.
+
+`rstompAudioTap()` plays immediately rather than through the lookahead
+scheduler, because a button is not music in time and must not disturb a phrase
+that happens to be playing. Two things it has to get right: it books the sound
+**20ms out, not 5** (a one-shot booked 5ms ahead can land in a quantum the audio
+thread has already rendered, and is then simply missing), and if the context
+reads `suspended` it **resumes and then fires** — a context created inside the
+very tap that needs it can still be waking up on Android, and `resume()` is
+asynchronous, so the first sound of the level was the one most at risk.
 
 **Only a correct tap sounds.** A refused tap gets the wrong-answer tone, not a
 drum — the drum is the reward for reading it right.

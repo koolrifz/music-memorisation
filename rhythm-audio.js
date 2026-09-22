@@ -193,34 +193,53 @@ function raudioSnare(when, accent) {
     raudioTone(when, accent ? 190 : 170, 0.05, accent ? 0.26 : 0.18, 'triangle', 'rhythm');
 }
 
-/* THE BRUSH. Rob, on the two-button interface: "when I press Play it would be
-   nice to hear a sound like a snare drum, and when it says Nothing New, just a
-   whisper - like a brush sound from drums. Shhh. Swish." Then the whole level,
-   spoken as drums: "swish, crack, crack, swish, swish, swish, crack."
+/* THE TWO BUTTON SOUNDS. Rob, on the two-button interface: "when I press Play
+   it would be nice to hear a sound like a snare drum, and when it says Nothing
+   New, just a whisper - like a brush sound from drums. Shhh. Swish." Then the
+   whole level, spoken as drums: "swish, crack, crack, swish, swish, swish,
+   crack."
 
    That is not decoration, it is the lesson made audible. A crack is an onset
    and a swish is sustain, which is exactly the distinction the two buttons ask
    about - so the student hears the answer they just gave in the same terms the
    notation uses.
 
-   It has to sound like a brush and not like a quiet snare, so: no pitched body
-   at all (the snare's triangle thump is what makes it a hit), a longer and
-   softer envelope that swells rather than cracks, and a lower, wider band than
-   the snare's 1900Hz - a wire brush is air, not skin. */
+   THEY ARE NOT THE PHRASE'S SNARE AT A DIFFERENT VOLUME. The snare inside a
+   phrase is mixed to sit in a phrase, against a click and a backing loop. A
+   button sounds alone, on a phone speaker, and is over in a tenth of a second,
+   so it has to be louder and snappier than anything in the mix. The first
+   version reused the phrase snare and set the brush at 0.16: measured output
+   was 0.35 peak for the crack and 0.12 for the swish, and Rob could not hear
+   either of them - a short noise burst reads far quieter than a sustained tone
+   at the same peak, because loudness is energy over time. */
+
+// The crack. Body, then a snap on top so it cuts through a phone speaker, then
+// just enough pitched thump to say "drum" rather than "click".
+function raudioTapSnare(when) {
+    raudioNoise(when, 0.15, 0.90, 2200, 0.7, 'rhythm');
+    raudioNoise(when, 0.04, 0.70, 5200, 0.5, 'rhythm');
+    raudioTone(when, 205, 0.055, 0.40, 'triangle', 'rhythm');
+}
+
+// The swish. A brush is AIR, not skin, so: no pitched body at all (the snare's
+// thump is what makes it a hit), a swell rather than an attack, and the band
+// OPENING UPWARD through the stroke - that movement is what makes it read as a
+// brush dragged across the head instead of a quiet snare.
 function raudioBrush(when) {
     const ctx = raudioCtx;
-    const dur = 0.22;
+    const dur = 0.30;
     const frames = Math.ceil(ctx.sampleRate * (dur + 0.02));
     const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
     const src = ctx.createBufferSource(); src.buffer = buffer;
     const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass'; filter.frequency.value = 3400; filter.Q.value = 0.5;
+    filter.type = 'bandpass'; filter.Q.value = 0.4;   // wide - a brush is broadband
+    filter.frequency.setValueAtTime(1500, when);
+    filter.frequency.linearRampToValueAtTime(4400, when + dur);
     const amp = ctx.createGain();
-    // A swell, not a hit: up over 60ms, away over the rest.
     amp.gain.setValueAtTime(0.0001, when);
-    amp.gain.linearRampToValueAtTime(0.16, when + 0.06);
+    amp.gain.linearRampToValueAtTime(0.46, when + 0.07);   // swells, not cracks
     amp.gain.exponentialRampToValueAtTime(0.0001, when + dur);
     src.connect(filter).connect(amp).connect(raudioOut('rhythm'));
     src.start(when); src.stop(when + dur + 0.02);
@@ -233,11 +252,22 @@ function raudioBrush(when) {
 function rstompAudioTap(kind) {
     const ctx = rstompAudio();
     if (!ctx) return false;
-    const when = ctx.currentTime + 0.005;
-    try {
-        if (kind === 'play') raudioSnare(when, true);
-        else raudioBrush(when);
-    } catch (err) { /* a dud tap sound must never block the answer */ }
+    const fire = () => {
+        // 20ms, not 5: a one-shot booked 5ms out can land in a quantum the
+        // audio thread has already rendered, and then it is simply missing.
+        const when = raudioCtx.currentTime + 0.02;
+        try {
+            if (kind === 'play') raudioTapSnare(when);
+            else raudioBrush(when);
+        } catch (err) { /* a dud tap sound must never block the answer */ }
+    };
+    // A context created inside this very tap can still read 'suspended' for a
+    // few milliseconds on Android, and resume() is asynchronous - so a sound
+    // booked before it comes up is swallowed. Waiting costs nothing and saves
+    // the first tap of the level, which is the one that tells them the sounds
+    // are there at all.
+    if (ctx.state === 'suspended') ctx.resume().then(fire).catch(fire);
+    else fire();
     return true;
 }
 
