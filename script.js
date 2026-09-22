@@ -2086,8 +2086,9 @@ function getTimeLimitForTier(tier) { return tier + 1; }
 function toggleInputMethod() {
     isPianoInput = !isPianoInput;
     const piano = document.getElementById('piano-container'); const thumbs = document.getElementById('thumb-stacks-container'); const btn = document.getElementById('input-toggle-btn');
-    if (isPianoInput) { piano.style.display = 'flex'; thumbs.style.display = 'none'; btn.innerText = '🔄 Switch to Thumb Stacks'; } 
+    if (isPianoInput) { piano.style.display = 'flex'; thumbs.style.display = 'none'; btn.innerText = '🔄 Switch to Thumb Stacks'; }
     else { piano.style.display = 'none'; thumbs.style.display = 'flex'; btn.innerText = '🔄 Switch to Piano Keyboard'; }
+    scrollG3InputIntoView();
 }
 
 function toggleG3HelperModal() {
@@ -2271,6 +2272,18 @@ function startG3Game() {
     currentMode = selectedStage.mode;
     updateG3TrackerUI();
     switchScreenState('game3', 'g3-screen-game'); start60SecondTimer(); loadNextCard();
+    scrollG3InputIntoView();
+}
+
+// On a real phone in landscape, .g3-screen-game's stacked content (header,
+// flashcard, toggle, answer boxes, piano) is comfortably taller than the
+// viewport - the piano can land entirely below the fold with no visual hint
+// that it's there. Bringing the active input control (piano or thumb
+// stacks) into view once, at round start, means a student never has to
+// discover on their own that they need to scroll to find their keys.
+function scrollG3InputIntoView() {
+    const activeInput = document.getElementById(isPianoInput ? 'piano-container' : 'thumb-stacks-container');
+    if (activeInput) activeInput.scrollIntoView({ block: 'end', behavior: 'auto' });
 }
 
 function start60SecondTimer() {
