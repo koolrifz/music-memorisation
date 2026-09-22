@@ -284,12 +284,16 @@
             <button class="helper-back-button" onclick="toggleG3HelperModal()">Back to Smashing</button>
         </div>
 
-        <div class="card-wrapper" id="card-canvas-wrapper">
-            <div id="score-canvas"></div>
+        <div class="g3-play-row">
+            <div class="card-wrapper" id="card-canvas-wrapper">
+                <div id="score-canvas"></div>
+            </div>
+
+            <div class="g3-answer-col">
+                <button class="btn-input-toggle" id="input-toggle-btn" onclick="toggleInputMethod()">🔄 Switch to Thumb Stacks</button>
+                <div class="inputs-row" id="inputs-container"></div>
+            </div>
         </div>
-        
-        <button class="btn-input-toggle" id="input-toggle-btn" onclick="toggleInputMethod()">🔄 Switch to Thumb Stacks</button>
-        <div class="inputs-row" id="inputs-container"></div>
 
         <div class="piano-wrapper" id="piano-container">
             <div class="white-key" id="key-C3" data-note="C" onclick="handleKeypadInput('C')">C</div>
