@@ -2490,7 +2490,7 @@ window.addEventListener('keydown', (e) => {
     if (!document.getElementById('g3-screen-game') || !document.getElementById('g3-screen-game').classList.contains('active')) return;
 
     if (['A','B','C','D','E','F','G'].includes(key)) {
-        if (isPianoInput) { const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`); if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); } }
+        if (isPianoInput) { const pKey = document.querySelector(`.white-key[data-note="${key}"]`); if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); } }
         else { const cKey = document.getElementById(`btn-${key}`); if (cKey) { cKey.classList.add('simulated-active'); setTimeout(() => cKey.classList.remove('simulated-active'), 100); } }
         handleKeypadInput(key);
     }
