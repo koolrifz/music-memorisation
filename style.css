@@ -522,7 +522,8 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    drifting off true center. Two equal 1fr flanks force the middle column
    to sit at the real horizontal midpoint of the header, which lines up
    with the midpoint of the .rhythm-bars grid below (same max-width/margin
-   auto), landing the 4/4 between bars 2-3 in landscape or 1-2 in portrait. */
+   auto), landing the 4/4 between bars 2-3 (this screen is landscape-only,
+   one row of all 4 bars - see renderRhythmBars in rhythm.js). */
 /* column-gap fixes a real bug (not just cosmetic spacing): with none set,
    a long wrapped label's column can butt directly against the adjacent
    time-signature column with zero pixels between them - at phone width
@@ -542,10 +543,10 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 /* The staff is the single most important thing on this screen - it's what
    the student is actually decoding - so it's one continuous panel (not
    separate boxed cards eating space on borders/padding/backgrounds) with a
-   tall render area. Bars are grouped into rows (1 row of 4 in landscape, 2
-   rows of 2 in portrait - see renderRhythmBars in rhythm.js), each row
-   sharing one VexFlow canvas so a cross-barline tie can be drawn as a real
-   curve between adjacent bars. */
+   tall render area. Bars are grouped into rows (always one row of all 4
+   bars - this screen is landscape-only; see renderRhythmBars in rhythm.js),
+   each row sharing one VexFlow canvas so a cross-barline tie can be drawn
+   as a real curve between adjacent bars. */
 .rhythm-bars { width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; background: var(--bg-panel); border: 2px solid #324a64; border-radius: 12px; padding: 6px 2px 4px; }
 
 /* Printed-page look for the notation itself: a real white background behind

@@ -349,6 +349,93 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
     }
 }
 
+/* =========================================
+   SHARED SMASH GRID ROUND ENGINE (Games 1 & 2)
+   Not wired into either game yet - built ahead of the landscape/density-grid
+   rework (Rob's new tier array is [4, 8, 12, 16], 4 columns, replacing the
+   3-column [3, 6, 9, 12] grid) so both games can be rewritten against one
+   shared piece instead of two more hand-rolled copies of the same algorithm.
+
+   This generalizes what used to be loadG1Grid's own row-target-allocation
+   logic (script.js, pre-landscape-rework version) - it decided how many of
+   this round's targets land in each row, with two rules baked in as literal
+   "3"s: a row could hold at most 2 targets (so at least 1 distractor always
+   sits in it, since a row was exactly 3 cards), and the DOM build always
+   filled every row to exactly 3 cards. Both are now `cols`-derived instead
+   of hardcoded, so this works unchanged whether a row is 3 cards or 4 (or
+   any other width a future skin wants).
+
+   totalRows vs activeRows is deliberately still two different numbers, not
+   one - that's the cumulative-reveal mechanic (see the "Row Locked States"
+   section of style.css: unreached rows are still built and shown, just
+   dimmed and locked), not a rows/cols implementation detail: totalRows is
+   the full grid a stage ever shows (its hardest tier's row count),
+   activeRows is how many of those rows are unlocked at the CURRENT tier.
+
+   Pure data - no DOM, no VexFlow, no randomness the caller doesn't control
+   the shape of. pickTarget(i)/pickDistractor(i) are supplied by the caller
+   (Game 1's several selection modes - line/space, the level2 orientation
+   phases, the ledger bonus - and Game 2's letter-name selection all differ
+   here) and must each return a plain card-data object; isTarget is added
+   by this function, not the caller.
+
+   One thing fixed, not just ported, while generalizing this: the original
+   row-allocation loop set the last active row's count without deducting it
+   from `remaining` first, so the leftover-distribution pass afterwards
+   could then push that row past what was actually rolled (confirmed by
+   simulation - e.g. a 1-row / 3-card-wide round that rolled 1 target could
+   silently end up showing 2). Verified against 4-col AND the current
+   3-col shape by simulation (10k+ rounds, every row always exactly `cols`
+   cards, `targetsPresent` in the result always matches what was requested
+   whenever the grid has room for it, and degrades gracefully - capped, not
+   stuck or overshot - when it doesn't).
+   ========================================= */
+function buildSmashGridRound({ totalRows, activeRows, cols, targetsPresent, pickTarget, pickDistractor }) {
+    const maxTargetsPerRow = Math.max(1, cols - 1); // always leave room for >=1 distractor per row
+    const rowTargetCounts = new Array(totalRows).fill(0);
+
+    if (targetsPresent > 0 && activeRows > 0) {
+        const activeRowIndices = [];
+        for (let r = 0; r < activeRows; r++) activeRowIndices.push(r);
+        activeRowIndices.sort(() => Math.random() - 0.5);
+
+        let remaining = targetsPresent;
+        activeRowIndices.forEach((rowIndex, i) => {
+            const maxPossible = Math.min(maxTargetsPerRow, remaining);
+            const assigned = (i === activeRowIndices.length - 1)
+                ? maxPossible // the last row always mops up whatever's left, capped
+                : Math.floor(Math.random() * (maxPossible + 1));
+            rowTargetCounts[rowIndex] = assigned;
+            remaining -= assigned;
+        });
+        let safety = 0;
+        while (remaining > 0 && safety < 10) {
+            for (const rowIndex of activeRowIndices) {
+                if (rowTargetCounts[rowIndex] < maxTargetsPerRow && remaining > 0) {
+                    rowTargetCounts[rowIndex]++;
+                    remaining--;
+                }
+            }
+            safety++;
+        }
+    }
+
+    const rows = [];
+    for (let r = 0; r < totalRows; r++) {
+        const numTargetsInRow = rowTargetCounts[r];
+        const cards = [];
+        for (let i = 0; i < numTargetsInRow; i++) cards.push({ ...pickTarget(i), isTarget: true });
+        for (let i = numTargetsInRow; i < cols; i++) cards.push({ ...pickDistractor(i - numTargetsInRow), isTarget: false });
+        cards.sort(() => Math.random() - 0.5);
+        rows.push({ index: r, isActive: r < activeRows, cards });
+    }
+
+    return {
+        rows,
+        targetsPresent: rowTargetCounts.reduce((sum, count) => sum + count, 0)
+    };
+}
+
 let personalBests = {
     game2: { round1: 0, round2: 0, round3: 0, round4: 0 },
     game3: { 'drill-lines': 0, 'drill-spaces': 0, 'drill-both': 0, 'speed': 0 }
