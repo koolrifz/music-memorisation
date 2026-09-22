@@ -147,6 +147,11 @@ reason outranks the tidiness of drawing a tie as one object:
 A whole note tied to a whole note is `1 (2 3 4)` then `(1 2 3 4)` — **never**
 `1 (2 3 4 1 2 3 4)`. A half tied across the barline is `3 (4)` then `(1 2)`.
 
+**This is still what the app WRITES, everywhere. There is now one exception to
+what it ACCEPTS: a run of rests may be chunked straight through a barline** —
+see "A run of rests may cross the barline" below. Sound is unchanged; only
+silence got the concession.
+
 The grouping unit is **one written note or rest**, which is also why a bracket
 can't cross a barline: a written note can't either — that is what a tie is for.
 Each note or rest on the staff gets exactly one group:
@@ -244,12 +249,39 @@ Four things it deliberately does **not** loosen, all still marked wrong:
 
 - a rest left **unbracketed** anywhere in the run;
 - a bracket left **hanging open** at the end of the run;
-- a bracket drawn **across a barline** — the run stops at the barline, because
-  the bracket never crosses one and that rule is the teaching;
+- a bracket drawn **across a barline** by a run of *held notes* — sound still
+  stops at the barline (a rest run no longer does: see below);
 - a rest merged into the **hold bracket of a note** beside it, or vice versa —
   only like joins like;
 - an **onset digit swallowed into the bracket**. The onset sits outside, always;
   that is the rule everything else rests on.
+
+### A RUN OF RESTS MAY CROSS THE BARLINE — Rob overruling his own barline rule
+He made this call knowing exactly what it cost, and said so:
+
+> *"This would be a nice situation when you have rests that span over two bars
+> continuously — they open bracket and the numbers and syllables under the rests
+> are tracked, and even tracked across the barline… and it shouldn't be marked
+> incorrect. This is a chunking one that should work either way. **It breaks a
+> lot of rules but I really think it's an unnecessary one** — to make sure we
+> don't get too pedantic. If they can see all seven beats of that rest then good
+> luck to them."*
+
+So `(1 2 3 4 1 2 3)` across two bars of silence is **accepted**. The reasoning
+holds up: silence does not stop at a barline the way a written note does, and
+the barline rule exists so the counting delineates the bar and beat 1 stays
+findable. A student who has counted seven beats of rest straight through has
+*demonstrably kept their place* — which is the thing the rule was protecting.
+
+- **What is TAUGHT is unchanged.** The app still reveals one bracket per written
+  rest, stopping at every barline. This is a grading concession only, exactly
+  like the within-bar merge above.
+- **HOLDS ARE NOT LOOSENED.** Rob asked for rests and said rests. A note tied
+  over a barline is a different case and he has not ruled on it — it still marks
+  wrong. Verified both ways. **Open for Rob:** should a held note chunk across a
+  barline too? The same "they kept their place" argument would apply, but a tie
+  is two written notes where a rest run is two written rests, so it is his call,
+  not an inference.
 
 Implemented in `rstompNormaliseSustainRuns()`, applied to both the student's
 marks and the target's before they are compared. `rstompLabelKinds()` labels
@@ -278,10 +310,10 @@ is where the thing it counts is. Rob: *"there aren't two different sets of
 spacing... it's all the same."*
 
 His handwritten `1(234)` is a constraint of writing by hand, not a spec — do
-**not** force a note's counting into one tight run. The onset digit anchors to
-its notehead; a hold bracket with no glyph of its own centres across the span
-it covers, so the numbers breathe. That is what the app already does and it is
-correct.
+**not** force a note's counting into one tight run. **Every label is placed on
+its own**, under the count it names: see "Each label is placed on its own" below.
+An earlier version of this file said a bracket "centres across the span it
+covers", which is what produced the lump Rob then asked to have spread out.
 
 Full detail lives in the design brief §10.2a–§10.2b.
 
@@ -835,6 +867,35 @@ both: for a run covering the whole bar it gives exactly the old centred
 position, and for anything shorter it spreads across the slots written. Swept
 all 25 scribe levels, correct answer and all-bare-labels wrong answer: zero
 overlap anywhere.
+
+**AND THE QUESTION IS ASKED PER LABEL, NOT PER GROUP.** Rob, seeing a rest
+run's counting bunched into a huddle: *"Notes within the brackets under rests
+should be distributed under the rest and not grouped together, as shown in both
+the portrait mode and the full screen mode."*
+
+A group was drawn as **one token** centred across its whole span, so a bar of a
+crotchet then three crotchet rests put `(2 3 4)` in a single lump over the first
+rest instead of a number over each one. Three rests, three glyphs, one huddle.
+
+`rstompLabelAnchor()` now asks the same two questions of each label separately,
+and the brackets are glued to the first and last label of the group rather than
+being tokens of their own. **It needed no new rule** — the two rules were always
+about a single count:
+
+1. a glyph above this count → left-align to it (`noteX`);
+2. no glyph → nothing to align to, so sit in the middle of the slot the count
+   names, which is where *"the numbers need to breathe"* was always pointing.
+
+A run of rests now takes rule 1 on **every** label, because every written rest
+is its own glyph. A held note's tail still takes rule 2 and spreads across the
+beats it holds instead of clumping at their midpoint. A centred whole-bar rest
+has no glyph over any one count, so all its labels take rule 2 and spread across
+the bar. Measured: the labels inside a bracket now sit **one slot apart**
+(32.6px and 36.9px against a 33.8px slot), and the token-overlap sweep is still
+zero on all 25 scribe levels, right answer and wrong.
+
+It also collapsed the two render branches into one shared helper, so the
+tutorial and the keypad can no longer drift apart on where a number goes.
 
 **A crotchet at the quaver grid is `2 (+)`.** Onset outside, held slot
 bracketed — the same rule as `1 (2 3 4)` for a semibreve, one generation

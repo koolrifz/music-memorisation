@@ -1659,11 +1659,31 @@ function rstompNormaliseSustainRuns(marks) {
         const kind = kinds[index];
         if (kind !== 'rest' && kind !== 'hold') return mark;
         const bar = rstompPositions[index] ? rstompPositions[index].barIndex : -1;
-        // Same KIND, same bar. A hold never merges with a rest beside it -
-        // sound and silence are different things - and neither crosses a
-        // barline, because the bracket never does.
-        const joins = other => kinds[other] === kind
-            && rstompPositions[other] && rstompPositions[other].barIndex === bar;
+        // Same KIND. A hold never merges with a rest beside it - sound and
+        // silence are different things.
+        //
+        // A RUN OF RESTS MAY CROSS THE BARLINE, and this is Rob overruling his
+        // own barline rule knowingly: "this would be a nice situation when you
+        // have rests that span over two bars continuously... they're tracked
+        // even across the barline... and it shouldn't be marked incorrect.
+        // This is a chunking one that should work either way. It breaks a lot
+        // of rules but I really think it's an unnecessary one - to make sure we
+        // don't get too pedantic. If they can see all seven beats of that rest
+        // then good luck to them."
+        //
+        // Silence does not stop at a barline the way a written note does. The
+        // barline rule exists so the counting delineates the bar and beat 1
+        // stays findable - but a student who has counted seven beats of rest
+        // straight through has demonstrably kept their place, which is the
+        // thing the rule was protecting. What is TAUGHT is unchanged: the app
+        // still reveals one bracket per written rest, stopping at every
+        // barline. This is a grading concession only.
+        //
+        // HOLDS ARE NOT LOOSENED. Rob asked for rests and said rests, and a
+        // note tied over a barline is a different case that he has not ruled
+        // on - flagged for him rather than assumed.
+        const joins = other => kinds[other] === kind && rstompPositions[other]
+            && (kind === 'rest' || rstompPositions[other].barIndex === bar);
         const chars = mark.split('');
         if (index > 0 && joins(index - 1)) chars[chars.length - 2] = '-';
         if (joins(index + 1)) chars[chars.length - 1] = '-';
@@ -2420,20 +2440,26 @@ function buildRstompCountingTokens(barIndex) {
         }
         if (!answered.length) break;
         const complete = answered.length === own.length;
-        const close = complete ? ')' : '';
 
         const digits = answered.map(position => rstompLabels[position.slot]);
-        const lastSlot = answered[answered.length - 1].slot;
+        // ONE TOKEN PER LABEL, so every number can sit under the count it
+        // names - see rstompLabelAnchor. The brackets are glued to the first
+        // and last label of the group rather than being tokens of their own,
+        // which keeps them hugging the digits they enclose.
+        const emit = (labels, slots, bracketed, kind) => labels.forEach((label, i) => {
+            const open = (bracketed && i === 0) ? '(' : '';
+            const shut = (bracketed && complete && i === labels.length - 1) ? ')' : '';
+            tokens.push({ text: `${open}${label}${shut}`, slot: slots[i], kind });
+        });
+        const slots = answered.map(position => position.slot);
         // The student's own answer decides plain-vs-bracketed on the first
         // beat; the grouping comes from the written note. That keeps the row
         // honest to what they typed while still delineating the notation.
         if (rstompEntries[answered[0].index] === 'play') {
-            tokens.push({ text: digits[0], startBeat: answered[0].slot, endBeat: answered[0].slot, kind: 'play' });
-            if (digits.length > 1) {
-                tokens.push({ text: `(${digits.slice(1).join(' ')}${close}`, startBeat: answered[1].slot, endBeat: lastSlot, kind: 'hold' });
-            }
+            emit(digits.slice(0, 1), slots.slice(0, 1), false, 'play');
+            if (digits.length > 1) emit(digits.slice(1), slots.slice(1), true, 'hold');
         } else {
-            tokens.push({ text: `(${digits.join(' ')}${close}`, startBeat: answered[0].slot, endBeat: lastSlot, kind: spec.isRest ? 'rest' : 'hold' });
+            emit(digits, slots, true, spec.isRest ? 'rest' : 'hold');
         }
         // Nothing after an unfinished note can have been answered yet.
         if (!complete) break;
@@ -2508,7 +2534,10 @@ function buildRstompScribeRuns() {
         if (start && end) {
             runs.push({
                 text: rstompGroupText(group),
+                labels: group.digits,
+                startIndex: index,           // into rstompPositions, so each label can be placed alone
                 bracketed: group.bracketed,
+                closed: !group.bracketed || !!group.closed,
                 empty: group.digits.length === 0,
                 startSlot: start.absolute,
                 endSlot: end.absolute,
@@ -2518,6 +2547,33 @@ function buildRstompScribeRuns() {
         index += group.digits.length;
     });
     return runs;
+}
+
+// WHERE ONE LABEL GOES. The alignment rules above, applied per LABEL rather
+// than per group - which is the change Rob asked for after seeing a rest run's
+// counting bunched into a lump: "notes within the brackets under rests should
+// be distributed under the rest and not grouped together."
+//
+// The group was drawn as ONE token centred across its whole span, so a bar of
+// three crotchet rests put "(2 3 4)" in a single huddle over the first rest
+// instead of a number over each one. Asking the question per label fixes it
+// without a new rule, because the two rules were always about a single count:
+//
+//   1. a glyph above this count -> left-align to it (layout.noteX);
+//   2. no glyph -> nothing to align to, so sit in the middle of the slot the
+//      count names, which is where "the numbers need to breathe" was always
+//      pointing.
+//
+// A run of rests now takes rule 1 on every label, because every written rest
+// is its own glyph. A held note's tail still takes rule 2, and spreads across
+// the beats it holds rather than clumping at their midpoint. A centred
+// whole-bar rest has no glyph over any one count, so all of its labels take
+// rule 2 and spread across the bar.
+function rstompLabelAnchor(layout, slotIndex) {
+    const owner = layout.beatOwner[slotIndex];
+    if (!layout.centredRest && owner && owner.isOnset)
+        return { x: layout.noteX[owner.specIndex], centered: false };
+    return { x: (layout.pulseX(slotIndex) + layout.pulseX(slotIndex + 1)) / 2, centered: true };
 }
 
 function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, barOffset = 0) {
@@ -2536,66 +2592,37 @@ function renderRstompCountingRow(container, layouts, perBarWidth, totalWidth, ba
     };
 
     if (rstompScribe) {
-        // Absolute slot -> the layout showing it, or null when that bar isn't
-        // in this container (the full view renders one system at a time).
-        const layoutFor = slot => layouts[Math.floor(slot / rstompSlotsPerBar) - barOffset] || null;
         buildRstompScribeRuns().forEach(run => {
-            const startLayout = layoutFor(run.startSlot);
-            if (!startLayout) return;
-            const startBeat = run.startSlot % rstompSlotsPerBar;
-            const owner = startLayout.beatOwner[startBeat];
             if (run.empty) {
-                // Nothing written inside it yet, so there is no span to
-                // centre across - park it on its own beat.
-                add(run.text, startLayout.pulseX(startBeat), false, run.wrong);
-            } else if (startLayout.centredRest || !owner.isOnset) {
-                // No glyph above this slot, so there is nothing to left-align
-                // to - centre across the span, whether or not the student
-                // bracketed it.
-                //
-                // A CENTRED REST TAKES THIS RULE TOO, for the same reason: a
-                // whole-bar rest hangs in the middle of the bar and belongs to
-                // every slot, so no single slot has a glyph over it. It used
-                // to get a branch of its own that drew the token at the bar's
-                // centre - right for the one run that IS the whole bar, and
-                // wrong for every other, because they all landed on that one
-                // point. A student who wrote six separate labels in a 6/8
-                // whole-rest bar got five of them stacked on one pixel
-                // (measured at x 517.5, C1 and C2). Anchoring the onset token
-                // at noteX was no better: a centred rest's noteX is the bar
-                // centre, so the token sat three slots from the label it was.
-                // The span rule handles both - for a run covering the whole
-                // bar it gives exactly the old centred position, and for
-                // anything shorter it spreads across the slots written.
-                //
-                // The `run.bracketed &&` that used to be part
-                // of this test contradicted the rule stated above, and cost
-                // Rob a Stage B level: an UNbracketed digit written on a
-                // held slot fell through to rule 1 and was drawn at the
-                // notehead of the note holding through it - i.e. exactly on
-                // top of that note's own onset digit, pixel for pixel. The
-                // student could no longer see what they had written, and
-                // every label after it was one position out of step with
-                // what they meant. Writing an unbracketed digit on a held
-                // slot is a real mistake and still marks wrong; it just has
-                // to be VISIBLE, because finding your own mistake is the
-                // skill this interface is built around.
-                const endLayout = layoutFor(run.endSlot) || layouts[layouts.length - 1];
-                const endBeat = layoutFor(run.endSlot) ? (run.endSlot % rstompSlotsPerBar) + 1 : rstompSlotsPerBar;
-                add(run.text, (startLayout.pulseX(startBeat) + endLayout.pulseX(endBeat)) / 2, true, run.wrong);
-            } else {
-                add(run.text, startLayout.noteX[owner.specIndex], false, run.wrong);
+                // A bracket just opened, nothing in it yet, so there is no
+                // count to sit under - park it on its own beat.
+                const position = rstompPositions[Math.min(run.startIndex, rstompPositions.length - 1)];
+                const layout = position && layouts[position.barIndex - barOffset];
+                if (layout) add(run.text, layout.pulseX(position.slotIndex), false, run.wrong);
+                return;
             }
+            run.labels.forEach((label, i) => {
+                // A label's x comes from the counting POSITION it was written
+                // on. Labels and slots are not one-to-one - a crotchet at the
+                // quaver grid takes one label and two slots - so the position
+                // has to be looked up rather than counted off.
+                const position = rstompPositions[Math.min(run.startIndex + i, rstompPositions.length - 1)];
+                if (!position) return;
+                // The bar may not be in this container: the full view renders
+                // one system at a time.
+                const layout = layouts[position.barIndex - barOffset];
+                if (!layout) return;
+                const open = (run.bracketed && i === 0) ? '(' : '';
+                const shut = (run.bracketed && run.closed && i === run.labels.length - 1) ? ')' : '';
+                const at = rstompLabelAnchor(layout, position.slotIndex);
+                add(`${open}${label}${shut}`, at.x, at.centered, run.wrong);
+            });
         });
     } else {
         layouts.forEach((layout, position) => {
             buildRstompCountingTokens(barOffset + position).forEach(token => {
-                const owner = layout.beatOwner[token.startBeat];
-                if (layout.centredRest || (token.kind === 'hold' && !owner.isOnset)) {   // as above
-                    add(token.text, (layout.pulseX(token.startBeat) + layout.pulseX(token.endBeat + 1)) / 2, true, false);
-                } else {
-                    add(token.text, layout.noteX[owner.specIndex], false, false);
-                }
+                const at = rstompLabelAnchor(layout, token.slot);
+                add(token.text, at.x, at.centered, false);
             });
         });
     }
