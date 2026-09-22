@@ -2315,12 +2315,12 @@ function loadNextCard() {
     try {
         const VF = Vex.Flow;
         const canvasContainer = document.getElementById('score-canvas'); canvasContainer.innerHTML = '';
-        const inputsContainer = document.getElementById('inputs-container'); inputsContainer.innerHTML = '';
-        
+        const labelsContainer = document.getElementById('g3-note-labels'); labelsContainer.innerHTML = '';
+
         const clefName = getClefPreference();
         const config = NOTE_CONFIGS[clefName];
         const level = currentG3Level;
-        
+
         let combinedPool = [];
         if (currentMode === 'speed') {
             combinedPool = [...config.staffLines, ...config.staffSpaces];
@@ -2334,32 +2334,33 @@ function loadNextCard() {
             }
         }
 
-        // Landscape pivot, step 8: these were hard-capped at 320/260 regardless
-        // of how much room a landscape screen actually gives the card - the
-        // one real JS blocker in Game 3 (its own #score-canvas svg CSS rule
-        // already says max-width: 100%, but VexFlow's renderer sets an
-        // INLINE width style matching rendererWidth exactly, which wins over
-        // that non-!important CSS rule the same way it did for the SMASH
-        // grid cards in steps 5-6 - so this JS number, not the CSS, is what
-        // actually decides how big the card renders). Raised to match
-        // .card-wrapper's new 600px width (see style.css).
+        // Landscape pivot, step 8, then Rob's merged-card redesign: the card
+        // is now the same width as the piano (880px, see .card-wrapper in
+        // style.css), so the note area genuinely benefits from more than the
+        // 320/260 this used to be capped at - a wide card with notes still
+        // bunched at 420px would look exactly like the bug this was meant to
+        // fix. VexFlow's renderer sets an INLINE width style matching
+        // rendererWidth exactly, which wins over #score-canvas svg's own
+        // (non-!important) max-width:100% CSS rule the same way it did for
+        // the SMASH grid cards in steps 5-6 - so this JS number, not the
+        // CSS, is what actually decides how big the card renders.
         const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG);
-        const rendererWidth = Math.min(420, Math.max(260, canvasContainer.clientWidth || 420));
+        const rendererWidth = Math.min(900, Math.max(260, canvasContainer.clientWidth || 420));
         renderer.resize(rendererWidth, 145);
         const context = renderer.getContext();
-        const staveWidth = Math.min(360, rendererWidth - 24);
+        const staveWidth = Math.min(840, rendererWidth - 24);
         const staveX = (rendererWidth - staveWidth) / 2;
         const stave = new VF.Stave(staveX, 25, staveWidth); stave.addClef(config.clef);
-        if(currentMode.includes('drill') || currentTier === 1) { 
-            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false; stave.setNoteStartX(115); 
+        if(currentMode.includes('drill') || currentTier === 1) {
+            stave.setEndBarType(VF.Barline.type.NONE); stave.setBegBarType(VF.Barline.type.NONE); stave.options.left_bar = false; stave.options.right_bar = false;
         } else { stave.addTimeSignature("4/4"); }
         stave.setContext(context).draw();
 
-        currentExpectedNotes = []; let staveNotes = []; let durations = []; let formatWidth = 165;
-        if(currentMode.includes('drill')) { durations = ["w"]; formatWidth = 40; } 
+        currentExpectedNotes = []; let staveNotes = []; let durations = [];
+        if(currentMode.includes('drill')) { durations = ["w"]; }
         else {
-            if (currentTier === 1) { durations = ["w"]; formatWidth = 40; } else if (currentTier === 2) { durations = ["h", "h"]; formatWidth = 100; }
-            else if (currentTier === 3) { durations = ["h", "q", "q"]; formatWidth = 140; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; formatWidth = 165; }
+            if (currentTier === 1) { durations = ["w"]; } else if (currentTier === 2) { durations = ["h", "h"]; }
+            else if (currentTier === 3) { durations = ["h", "q", "q"]; } else if (currentTier === 4) { durations = ["q", "q", "q", "q"]; }
         }
 
         let lastPitchKey = null;
@@ -2370,23 +2371,50 @@ function loadNextCard() {
             lastPitchKey = chosenNote[1];
             if (durations.length === 1) currentFlashcardPitch = chosenNote[1];
             // 3. Add auto_stem: true so VexFlow handles standard stem directions
-            staveNotes.push(new VF.StaveNote({ 
-                clef: config.clef, 
-                keys: [chosenNote[1]], 
-                duration: dur, 
-                auto_stem: true 
-            })); 
+            staveNotes.push(new VF.StaveNote({
+                clef: config.clef,
+                keys: [chosenNote[1]],
+                duration: dur,
+                auto_stem: true
+            }));
             currentExpectedNotes.push(chosenNote[0]);
         }
 
+        // Justify across the stave's REAL note area (mirrors
+        // renderRstompStaff's own justify pass), then put every note ON an
+        // even slot across that area rather than trusting VexFlow's own
+        // proportional (duration-weighted) spacing for it - a single whole
+        // note belongs in the middle of the staff, not wherever the clef
+        // happens to leave it, and a mix of halves/quarters should still
+        // read as evenly spaced. This is what lets the note-labels below
+        // land directly under their own note instead of a note-shaped area
+        // somewhere off to the left.
+        const trueStartX = stave.getNoteStartX();
+        const trueEndX = stave.getNoteEndX();
         let voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables(staveNotes);
-        new VF.Formatter().joinVoices([voice]).format([voice], formatWidth);
+        new VF.Formatter().joinVoices([voice]).format([voice], trueEndX - trueStartX - 10);
+        staveNotes.forEach((note, i) => {
+            const slotX = trueStartX + ((i + 0.5) / staveNotes.length) * (trueEndX - trueStartX);
+            const tickContext = note.getTickContext();
+            tickContext.setX(tickContext.getX() + (slotX - note.getAbsoluteX()));
+        });
         voice.draw(context, stave);
 
-        currentExpectedNotes.forEach((_, idx) => {
-            const cell = document.createElement('div'); cell.className = 'input-cell';
-            const input = document.createElement('input'); input.type = 'text'; input.readOnly = true; input.id = `box-${idx}`;
-            cell.appendChild(input); inputsContainer.appendChild(cell);
+        // One label per note, positioned from the note's own real rendered
+        // x (read back post-draw, the same way renderRstompStaff reads note
+        // x back for its counting row) rather than laid out as a row of its
+        // own - see the .g3-note-labels comment in style.css for why.
+        const svgEl = canvasContainer.querySelector('svg');
+        const svgRect = svgEl.getBoundingClientRect();
+        const labelsRect = labelsContainer.getBoundingClientRect();
+        staveNotes.forEach((note, idx) => {
+            const label = document.createElement('div');
+            label.className = 'g3-note-label'; label.id = `box-${idx}`;
+            label.style.left = `${(svgRect.left - labelsRect.left) + note.getAbsoluteX()}px`;
+            const inner = document.createElement('div');
+            inner.className = 'g3-note-label-inner';
+            label.appendChild(inner);
+            labelsContainer.appendChild(label);
         });
         activeInputIndex = 0; setActiveBox(0);
 
@@ -2404,7 +2432,7 @@ function startFlashcardTimer(seconds, remainingSeconds = null) {
         if (secondsLeft > 0) {
             playSound('timeout'); document.getElementById('card-canvas-wrapper').classList.add('timeout'); currentStreak = 0; updateG3TrackerUI(); 
             currentExpectedNotes.forEach((val, idx) => {
-                const box = document.getElementById(`box-${idx}`); if (box && !box.classList.contains('correct')) { box.value = val; box.style.color = 'var(--accent-red)'; }
+                const box = document.getElementById(`box-${idx}`); if (box && !box.classList.contains('correct')) { box.firstElementChild.textContent = val; box.firstElementChild.style.color = 'var(--accent-red)'; }
             });
             setTimeout(loadNextCard, 800);
         }
@@ -2412,7 +2440,7 @@ function startFlashcardTimer(seconds, remainingSeconds = null) {
 }
 
 function setActiveBox(idx) {
-    document.querySelectorAll('.input-cell input').forEach(inp => inp.classList.remove('active-box'));
+    document.querySelectorAll('.g3-note-label').forEach(el => el.classList.remove('active-box'));
     const target = document.getElementById(`box-${idx}`); if (target) { activeInputIndex = idx; target.classList.add('active-box'); }
 }
 
@@ -2420,7 +2448,7 @@ function handleKeypadInput(letter) {
     if (secondsLeft <= 0) return;
     const input = document.getElementById(`box-${activeInputIndex}`); if (!input) return;
 
-    input.value = letter; const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase(); totalAttempts++;
+    input.firstElementChild.textContent = letter; const correctVal = currentExpectedNotes[activeInputIndex].toUpperCase(); totalAttempts++;
 
     if (letter === correctVal) {
         playSound('correct'); input.classList.remove('incorrect'); input.classList.add('correct'); correctAttempts++;
@@ -2443,7 +2471,7 @@ function handleKeypadInput(letter) {
         if (currentMode === 'speed') currentStreak = 0; 
         else { let existingErr = watchListQueue.find(e => e[1] === currentFlashcardPitch); if (!existingErr) watchListQueue.push([correctVal, currentFlashcardPitch]); }
         input.classList.remove('correct'); input.classList.remove('incorrect'); void input.offsetWidth; input.classList.add('incorrect');
-        setTimeout(() => { input.value = ''; input.classList.remove('incorrect'); }, 300);
+        setTimeout(() => { input.firstElementChild.textContent = ''; input.classList.remove('incorrect'); }, 300);
     }
 }
 
