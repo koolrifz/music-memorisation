@@ -390,6 +390,11 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
    whenever the grid has room for it, and degrades gracefully - capped, not
    stuck or overshot - when it doesn't).
    ========================================= */
+// The new density-grid column count, replacing the old 3-column shape.
+// Shared so both games land on the same number - Game 2 uses it now,
+// Game 1 once its own rewrite lands.
+const SMASH_GRID_COLS = 4;
+
 function buildSmashGridRound({ totalRows, activeRows, cols, targetsPresent, pickTarget, pickDistractor }) {
     const maxTargetsPerRow = Math.max(1, cols - 1); // always leave room for >=1 distractor per row
     const rowTargetCounts = new Array(totalRows).fill(0);
@@ -1491,8 +1496,16 @@ function startNextG1Stage() {
 
 /* =========================================
     GAME 2: NOTE SMASH (Fixed Width Stave)
+    First game moved onto the landscape/density-grid rework: 4 columns,
+    tiers of [4, 8, 12, 16] instead of 3 columns / [3, 6, 9, 12]. Game 1
+    stays on its old shape until its own rewrite (its row-allocation logic
+    is hardcoded to 3-wide rows in a way Game 2's never was - see
+    buildSmashGridRound's doc comment). Every place below that used to
+    branch or compute a pacing value from the literal card-count values
+    (3/6/9/12) now uses g2TierIndex instead, so the same behavior carries
+    over unchanged to the new tier values - see each such spot's own note.
    ========================================= */
-let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [3, 6, 9, 12];
+let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [4, 8, 12, 16];
 const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
 let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
 let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
@@ -1711,7 +1724,10 @@ function startG2Timer() {
 function startG2FlashTimer(remainingSeconds = null) {
     if (g2FlashTimer) clearTimeout(g2FlashTimer);
     const flashFill = document.getElementById('g2-flash-timer-fill');
-    const flashSeconds = remainingSeconds === null ? g2Tiers[g2TierIndex] / 3 + 2 : remainingSeconds;
+    // Dividing by SMASH_GRID_COLS instead of the old literal 3 keeps this
+    // at the exact same pacing across the tier switch - both give [3,4,5,6]
+    // seconds for tiers 0-3 (3/3+2 = 4/4+2 = 3, 6/3+2 = 8/4+2 = 4, etc.).
+    const flashSeconds = remainingSeconds === null ? g2Tiers[g2TierIndex] / SMASH_GRID_COLS + 2 : remainingSeconds;
     g2FlashDeadline = performance.now() + flashSeconds * 1000;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
@@ -1734,12 +1750,23 @@ function triggerG2TimeBonus(amount) {
 
 function awardG2ScreenBonuses() {
     const cardsInPlay = g2Tiers[g2TierIndex];
-    if (g2WrongTapsThisScreen === 0 && cardsInPlay <= 6) triggerG2TimeBonus(cardsInPlay === 3 ? 0.5 : 0.75);
-    if (g2RoundStartedAt && (performance.now() - g2RoundStartedAt) / 1000 <= cardsInPlay / 3 + 1) triggerG2TimeBonus(0.5);
+    // Indexed by tier now, not by comparing the card count to a literal 3/6 -
+    // those literals were specific to the old [3,6,9,12] values and would
+    // silently stop matching anything once the tiers became [4,8,12,16].
+    // Same bands as before: only the two smallest tiers get this perfect-
+    // screen bonus, 0.5s on the smallest, 0.75s on the second.
+    if (g2WrongTapsThisScreen === 0 && g2TierIndex <= 1) triggerG2TimeBonus(g2TierIndex === 0 ? 0.5 : 0.75);
+    // Same "divide by the column count, not the literal 3" fix as
+    // startG2FlashTimer - identical thresholds [2,3,4,5]s either way.
+    if (g2RoundStartedAt && (performance.now() - g2RoundStartedAt) / 1000 <= cardsInPlay / SMASH_GRID_COLS + 1) triggerG2TimeBonus(0.5);
 }
 
 function awardG2TierBonus() {
-    triggerG2TimeBonus(g2Tiers[g2TierIndex] <= 6 ? 2 : 3);
+    // First half of the tier progression (indices 0-1) gets 2s, second half
+    // (2-3) gets 3s - was `g2Tiers[g2TierIndex] <= 6`, which stopped meaning
+    // anything once the tier values changed; index-based carries the same
+    // split forward regardless of what the actual card counts are.
+    triggerG2TimeBonus(g2TierIndex < g2Tiers.length / 2 ? 2 : 3);
 }
 
 function awardG2DuplicateNoteBonus() {
@@ -1764,7 +1791,7 @@ function showG2StageComplete() {
     document.getElementById('g2-stage-complete-title').innerText = `${g2PhaseNames[g2Phase]} smashed!`;
     document.getElementById('g2-stage-complete-next').innerText = `Next up: ${g2PhaseNames[g2Phase + 1]}`;
     document.getElementById('g2-stage-score').innerText = g2Score;
-    document.getElementById('g2-stage-bonus').innerText = `${g2Tiers[g2TierIndex] <= 6 ? 2 : 3}s`;
+    document.getElementById('g2-stage-bonus').innerText = `${g2TierIndex < g2Tiers.length / 2 ? 2 : 3}s`; // same split as awardG2TierBonus
     document.getElementById('g2-stage-time').innerText = `${g2CarriedStageTime}s`;
     document.getElementById('modal-g2-stage-complete').classList.add('show');
     playSound('complete');
@@ -1809,7 +1836,7 @@ function resolveG2Screen(cleared) {
                 card.classList.add('dud-correct', 'screen-complete');
             });
             playSound('correct');
-            g2DudStreak++; g2Score++; triggerG2TimeBonus(g2Tiers[g2TierIndex] / 3 + 2); g2LastScreenWasDud = true;
+            g2DudStreak++; g2Score++; triggerG2TimeBonus(g2Tiers[g2TierIndex] / SMASH_GRID_COLS + 2); g2LastScreenWasDud = true; // same identical-pacing fix as startG2FlashTimer
         } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen > 0) {
             g2DudStreak = 0;
         }
@@ -1828,7 +1855,7 @@ function loadG2Grid() {
     flashFill.style.transition = 'none'; flashFill.style.width = '100%';
 
     let cardCount = g2Tiers[g2TierIndex];
-    container.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    container.style.gridTemplateColumns = `repeat(${SMASH_GRID_COLS}, 1fr)`;
 
     const clefName = getClefPreference();
     const config = NOTE_CONFIGS[clefName];
@@ -1848,29 +1875,48 @@ function loadG2Grid() {
     if (g2TargetNote !== g2LastAnnouncedNote) { speakLetter(g2TargetNote); g2LastAnnouncedNote = g2TargetNote; }
     
     let isDud = !g2LastScreenWasDud && Math.random() < 0.15;
-    g2TargetsPresent = isDud ? 0 : (cardCount === 3 ? 1 : cardCount === 6 ? 2 : cardCount === 9 ? (Math.floor(Math.random() * 2) + 2) : Math.floor(Math.random() * 2) + 3);
+    // Density band per tier - indexed by TIER, not by the tier's card
+    // count (which no longer doubles as a stable identifier now that the
+    // values are [4, 8, 12, 16] instead of [3, 6, 9, 12]). Same bands as
+    // before: tier 0 always shows exactly 1 target, tier 1 exactly 2,
+    // tier 2 randomly 2-3, tier 3 randomly 3-4.
+    g2TargetsPresent = isDud ? 0
+        : g2TierIndex === 0 ? 1
+        : g2TierIndex === 1 ? 2
+        : g2TierIndex === 2 ? (Math.floor(Math.random() * 2) + 2)
+        : Math.floor(Math.random() * 2) + 3;
     if (g2TargetsPresent > cardCount) g2TargetsPresent = cardCount;
     g2TargetsFound = 0;
-    
+
     let targetPool = pool.filter(n => n[0].toUpperCase() === g2TargetNote);
     let distractorPool = pool.filter(n => n[0].toUpperCase() !== g2TargetNote);
     if(targetPool.length === 0) { g2TargetsPresent = 0; isDud = true; }
     g2DuplicateBonusEligible = g2Phase >= 2 && g2TargetsPresent >= 2 && targetPool.length >= 2;
 
-    let gridNotes = [];
+    // Built through the shared grid engine (see buildSmashGridRound) instead
+    // of a flat shuffled list - Game 2 has no locked/ghost rows (unlike
+    // Game 1's cumulative reveal), so totalRows === activeRows here: every
+    // row this round shows is always "active".
     const shuffledTargetPool = [...targetPool].sort(() => Math.random() - 0.5);
-    for(let i=0; i<g2TargetsPresent; i++) gridNotes.push(shuffledTargetPool[i % shuffledTargetPool.length]);
-    for(let i=g2TargetsPresent; i<cardCount; i++) gridNotes.push(distractorPool[Math.floor(Math.random() * distractorPool.length)]);
-    gridNotes.sort(() => Math.random() - 0.5);
+    const activeRows = cardCount / SMASH_GRID_COLS;
+    const round = buildSmashGridRound({
+        totalRows: activeRows,
+        activeRows,
+        cols: SMASH_GRID_COLS,
+        targetsPresent: g2TargetsPresent,
+        pickTarget: i => ({ note: shuffledTargetPool[i % shuffledTargetPool.length] }),
+        pickDistractor: () => ({ note: distractorPool[Math.floor(Math.random() * distractorPool.length)] }),
+    });
+    g2TargetsPresent = round.targetsPresent;
 
-    gridNotes.forEach((n) => {
+    round.rows.forEach(row => row.cards.forEach(item => {
         const card = document.createElement('div');
         card.className = 'smash-card small-card';
-        card.onclick = () => handleG2Click(card, n[0].toUpperCase());
-        
+        card.onclick = () => handleG2Click(card, item.note[0].toUpperCase());
+
         const innerDiv = document.createElement('div'); card.appendChild(innerDiv); container.appendChild(card);
-        renderSmashCard(innerDiv, config.clef, n[1]);
-    });
+        renderSmashCard(innerDiv, config.clef, item.note[1]);
+    }));
     startG2FlashTimer();
 }
 

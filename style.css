@@ -443,6 +443,36 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     box-sizing: border-box;
 }
 
+/* =========================================
+   GAME 2 LANDSCAPE LAYOUT (density-grid pivot, step 5)
+   Game 2 is the first game moved onto the wider landscape shell and the new
+   4-column density grid (script.js: g2Tiers is now [4, 8, 12, 16], laid out
+   via SMASH_GRID_COLS). These override the shared .hud/.game-header/
+   #g2-clef-display/#g2-grid-container rules above, scoped to Game 2 alone
+   (by id, or #view-game2 for the classed .hud/.game-header elements shared
+   with Games 1 & 3) so Game 1 - still on its old 3-column/500px layout
+   until its own rewrite - is completely unaffected. Once Game 1 moves onto
+   the same shape, these merge back into the shared rules instead of
+   staying game-specific.
+
+   1000px comfortably fits the Chromebook/tablet landscape widths this app
+   targets (see the rhythm-key-hint comment elsewhere in this file) without
+   going absurd on an ultra-wide monitor - "landscape" means "use the width
+   that's actually there", not "no cap at all".
+   ========================================= */
+#view-game2 .hud, #view-game2 .game-header { max-width: 1000px; }
+#g2-clef-display { max-width: 1000px; }
+#g2-grid-container { max-width: 1000px; }
+/* Cards get proportionally taller too, not just wider - at 1000px/4 columns
+   a card is roughly 2.5x as wide as the old 500px/3-column shape's, and
+   .smash-card's SVG is meant to scale to fill the card (see the "Strip
+   individual card borders and backgrounds" rule and the fix just below it),
+   so leaving the card at the old 95px would letterbox the notation into a
+   short, mostly-empty wide strip. This needs a definite `height`, not just
+   `min-height` - the svg-fill fix below only works when the card actually
+   has one to resolve percentages against. */
+#g2-grid-container .smash-card { height: 160px; }
+
 /* 3 columns per row layout */
 .g1-row { 
     display: grid; 
@@ -472,6 +502,37 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     height: 100%;
     max-width: 100%;
     overflow: visible !important; /* Fixes ledger lines getting hidden */
+}
+
+/* This width/height: 100% above has never actually taken effect, on either
+   game: VexFlow's renderer.resize(120, 110) sets an INLINE
+   style="width:120px;height:110px" directly on the svg element (confirmed
+   via outerHTML), which beats a non-!important external rule regardless of
+   selector, and an EARLIER `.smash-card svg { ...; max-height: 120px; }`
+   rule further up this file (predates the "Strip individual card borders"
+   redesign above) caps it a second way even where !important beats the
+   inline style. Both games' cards have always just been however big
+   VexFlow's fixed 120x110 canvas happens to render, regardless of the
+   container around it.
+
+   Found and fixed for GAME 2 ONLY while giving it more room for landscape -
+   at its old ~150x95px card size the gap between "should fill" and
+   "120x110 regardless" was small enough to miss; at its new ~234x160px
+   landscape cards it left a small floating note in a mostly-empty box.
+   Game 1 is left exactly as it's always rendered (this same latent gap
+   still there, unfixed) since it's not part of this rework yet - fixing it
+   here globally measurably changed Game 1's own card height as a side
+   effect (its card has no definite `height` of its own, only `min-height`,
+   so once the svg could actually fill 100%, its rendered size started
+   coming from aspect-ratio-derived auto-sizing off the card's width
+   instead of VexFlow's frozen 120x110 - taller than before, unasked-for).
+   Do the same fix here, scoped to Game 1 too, when Game 1's own rewrite
+   gives its cards a definite height the same way. */
+#g2-grid-container .smash-card > div { width: 100%; height: 100%; }
+#g2-grid-container .smash-card svg {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
 }
 
 /* Locked ghost rows styling */
