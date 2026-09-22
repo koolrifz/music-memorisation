@@ -817,7 +817,11 @@ function renderRstompPathway() {
         const node = document.createElement('button');
         node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${level.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
         node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${level.shortLabel}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        // Locked levels still show their number and name, dimmed and not
+        // clickable, so the student can see what is coming. Rob's call - it
+        // departs from the other games' icon-only locked node on purpose: 29
+        // anonymous dots read as "nothing built past here".
+        node.innerHTML = `<span class="pathway-node-icon">${index + 1}</span><span class="pathway-node-label">${level.shortLabel}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
         if (isUnlocked) node.onclick = () => selectRstompLevel(level.id);
         track.appendChild(node);
     });
