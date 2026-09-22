@@ -1732,6 +1732,23 @@ function rstompKey(key) {
         // there to count, and the overflow would only ever be marked wrong.
         if (rstompWrittenBeats() >= rstompPositions.length) return;
         rstompPressDigit(key);
+        // THE SAME TWO SOUNDS, CARRIED THROUGH TO THE KEYPAD. Rob: "the snare
+        // is on anything that is not within a bracket, anything within a
+        // bracket receives the brush. Don't make any noises on the bracket,
+        // only on the things contained within it."
+        //
+        // It is the counting convention made audible, and it needs no new
+        // rule: the onset digit sits OUTSIDE the bracket and everything
+        // bracketed is held or silent, so "which group did this digit land
+        // in" already answers "crack or swish". Asked of the group after the
+        // press rather than of `inside` before it, because a digit only joins
+        // a bracket when there is an open bracketed group to join.
+        //
+        // The brackets themselves stay silent: they are punctuation, not
+        // counts. Erase too - taking something back is not a beat.
+        const landed = rstompWriting.groups[rstompWriting.groups.length - 1];
+        if (typeof rstompAudioTap === 'function')
+            rstompAudioTap(landed && landed.bracketed ? 'hold' : 'play');
     }
     rstompCursor = Math.min(rstompWrittenBeats(), rstompPositions.length);
     rstompFollowing = true;
