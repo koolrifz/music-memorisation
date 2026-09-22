@@ -147,10 +147,11 @@ reason outranks the tidiness of drawing a tie as one object:
 A whole note tied to a whole note is `1 (2 3 4)` then `(1 2 3 4)` — **never**
 `1 (2 3 4 1 2 3 4)`. A half tied across the barline is `3 (4)` then `(1 2)`.
 
-**This is still what the app WRITES, everywhere. There is now one exception to
-what it ACCEPTS: a run of rests may be chunked straight through a barline** —
-see "A run of rests may cross the barline" below. Sound is unchanged; only
-silence got the concession.
+**This is still what the app WRITES, everywhere. It is no longer what the app
+ACCEPTS: a continuous run — of rests OR of a held note — may be chunked
+straight through a barline.** See "A run of one kind may cross the barline"
+below. Rob reversed this rule himself, in two steps, and knew both times that
+he was doing it.
 
 The grouping unit is **one written note or rest**, which is also why a bracket
 can't cross a barline: a written note can't either — that is what a tie is for.
@@ -249,15 +250,17 @@ Four things it deliberately does **not** loosen, all still marked wrong:
 
 - a rest left **unbracketed** anywhere in the run;
 - a bracket left **hanging open** at the end of the run;
-- a bracket drawn **across a barline** by a run of *held notes* — sound still
-  stops at the barline (a rest run no longer does: see below);
+- a bracket drawn **across a barline** — *no longer wrong*, for a run of one
+  kind; see below. It is still wrong for anything that is not a single
+  continuous run, because an onset is a different kind;
 - a rest merged into the **hold bracket of a note** beside it, or vice versa —
   only like joins like;
 - an **onset digit swallowed into the bracket**. The onset sits outside, always;
   that is the rule everything else rests on.
 
-### A RUN OF RESTS MAY CROSS THE BARLINE — Rob overruling his own barline rule
-He made this call knowing exactly what it cost, and said so:
+### A RUN OF ONE KIND MAY CROSS THE BARLINE — Rob reversing his own rule
+He made this call in two steps and knew both times what it cost. First for
+**rests**:
 
 > *"This would be a nice situation when you have rests that span over two bars
 > continuously — they open bracket and the numbers and syllables under the rests
@@ -267,21 +270,35 @@ He made this call knowing exactly what it cost, and said so:
 > don't get too pedantic. If they can see all seven beats of that rest then good
 > luck to them."*
 
-So `(1 2 3 4 1 2 3)` across two bars of silence is **accepted**. The reasoning
-holds up: silence does not stop at a barline the way a written note does, and
-the barline rule exists so the counting delineates the bar and beat 1 stays
-findable. A student who has counted seven beats of rest straight through has
-*demonstrably kept their place* — which is the thing the rule was protecting.
+Then, asked whether a **held note** should follow:
+
+> *"Yes. If somebody writes the counting over the barline and uses one open and
+> closed set of brackets for a held note, I think we can assume they do not want
+> to close that bracket and restart another one — they are continuing to mark a
+> held note by keeping the bracket open whilst they have crossed the barline. So
+> yes, I emphatically made that point as the opposite earlier on."*
+
+So `(1 2 3 4 1 2 3)` across two bars of silence is accepted, and so is a tie
+bracketed straight through. The reasoning is one reasoning for both: **a
+continuous sound and a continuous silence do not stop at a barline the way a
+written note does.** The barline rule exists so the counting delineates the bar
+and beat 1 stays findable — and a student who has tracked a note or a rest
+straight through has *demonstrably kept their place*, which is the thing the
+rule was protecting.
+
+`joins()` is now one test — **same kind** — and that is the whole rule.
 
 - **What is TAUGHT is unchanged.** The app still reveals one bracket per written
-  rest, stopping at every barline. This is a grading concession only, exactly
-  like the within-bar merge above.
-- **HOLDS ARE NOT LOOSENED.** Rob asked for rests and said rests. A note tied
-  over a barline is a different case and he has not ruled on it — it still marks
-  wrong. Verified both ways. **Open for Rob:** should a held note chunk across a
-  barline too? The same "they kept their place" argument would apply, but a tie
-  is two written notes where a rest run is two written rests, so it is his call,
-  not an inference.
+  note or rest, stopping at every barline. This is a grading concession only and
+  it does not touch `rstompTargetGroups()`.
+- **SOUND AND SILENCE STILL DO NOT MERGE.** Only like joins like, and an onset
+  is its own kind — so a bracket that swallows an onset, or that runs from a
+  held note into the rest beside it, still fails. Verified after the change.
+- **Open, and Rob's to decide once he has played more:** whether *early* levels
+  should still enforce the barline to drill the rule, relaxing it later. *"Maybe
+  at an earlier level I might reinforce the rule just for a little while… that's
+  going to come with me playing the game a bit more."* The natural shape is a
+  per-level flag read inside `joins()` — one line, not a second code path.
 
 Implemented in `rstompNormaliseSustainRuns()`, applied to both the student's
 marks and the target's before they are compared. `rstompLabelKinds()` labels

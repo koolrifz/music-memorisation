@@ -1658,32 +1658,43 @@ function rstompNormaliseSustainRuns(marks) {
     return marks.map((mark, index) => {
         const kind = kinds[index];
         if (kind !== 'rest' && kind !== 'hold') return mark;
-        const bar = rstompPositions[index] ? rstompPositions[index].barIndex : -1;
-        // Same KIND. A hold never merges with a rest beside it - sound and
-        // silence are different things.
+        // SAME KIND IS THE ONLY TEST LEFT. A hold never merges with a rest
+        // beside it - sound and silence are different things, and only like
+        // joins like. But a run of one kind may now be chunked straight
+        // THROUGH A BARLINE, for rests and for held notes alike.
         //
-        // A RUN OF RESTS MAY CROSS THE BARLINE, and this is Rob overruling his
-        // own barline rule knowingly: "this would be a nice situation when you
-        // have rests that span over two bars continuously... they're tracked
-        // even across the barline... and it shouldn't be marked incorrect.
-        // This is a chunking one that should work either way. It breaks a lot
-        // of rules but I really think it's an unnecessary one - to make sure we
-        // don't get too pedantic. If they can see all seven beats of that rest
-        // then good luck to them."
+        // This is Rob overruling his own barline rule, in two steps and both
+        // times knowing exactly what it cost. First for rests: "this would be
+        // a nice situation when you have rests that span over two bars
+        // continuously... it shouldn't be marked incorrect. This is a chunking
+        // one that should work either way. It breaks a lot of rules but I
+        // really think it's an unnecessary one - to make sure we don't get too
+        // pedantic. If they can see all seven beats of that rest then good luck
+        // to them." Then, asked whether a HELD note should follow: "yes. If
+        // somebody writes the counting over the barline and uses one open and
+        // closed set of brackets for a held note, I think we can assume they do
+        // not want to close that bracket and restart another one - they are
+        // continuing to mark a held note by keeping the bracket open whilst
+        // they have crossed the barline. So yes, I emphatically made that point
+        // as the opposite earlier on."
         //
-        // Silence does not stop at a barline the way a written note does. The
-        // barline rule exists so the counting delineates the bar and beat 1
-        // stays findable - but a student who has counted seven beats of rest
-        // straight through has demonstrably kept their place, which is the
-        // thing the rule was protecting. What is TAUGHT is unchanged: the app
-        // still reveals one bracket per written rest, stopping at every
-        // barline. This is a grading concession only.
+        // The reasoning is the same for both: a continuous sound and a
+        // continuous silence do not stop at a barline the way a written note
+        // does. The barline rule exists so the counting delineates the bar and
+        // beat 1 stays findable - and a student who has tracked a note or a
+        // rest straight through has demonstrably kept their place, which is the
+        // thing the rule was protecting.
         //
-        // HOLDS ARE NOT LOOSENED. Rob asked for rests and said rests, and a
-        // note tied over a barline is a different case that he has not ruled
-        // on - flagged for him rather than assumed.
-        const joins = other => kinds[other] === kind && rstompPositions[other]
-            && (kind === 'rest' || rstompPositions[other].barIndex === bar);
+        // WHAT IS TAUGHT IS UNCHANGED. The app still reveals one bracket per
+        // written note or rest, stopping at every barline. This is a grading
+        // concession only, and it does not touch rstompTargetGroups().
+        //
+        // Open, and Rob's to decide once he has played more: whether EARLY
+        // levels should still enforce the barline to drill the rule, relaxing
+        // it later. "Maybe at an earlier level I might reinforce the rule just
+        // for a little while." The natural shape for that is a per-level flag
+        // read right here - one line - not a second code path.
+        const joins = other => kinds[other] === kind && !!rstompPositions[other];
         const chars = mark.split('');
         if (index > 0 && joins(index - 1)) chars[chars.length - 2] = '-';
         if (joins(index + 1)) chars[chars.length - 1] = '-';
