@@ -2321,11 +2321,20 @@ function loadNextCard() {
             }
         }
 
+        // Landscape pivot, step 8: these were hard-capped at 320/260 regardless
+        // of how much room a landscape screen actually gives the card - the
+        // one real JS blocker in Game 3 (its own #score-canvas svg CSS rule
+        // already says max-width: 100%, but VexFlow's renderer sets an
+        // INLINE width style matching rendererWidth exactly, which wins over
+        // that non-!important CSS rule the same way it did for the SMASH
+        // grid cards in steps 5-6 - so this JS number, not the CSS, is what
+        // actually decides how big the card renders). Raised to match
+        // .card-wrapper's new 600px width (see style.css).
         const renderer = new VF.Renderer(canvasContainer, VF.Renderer.Backends.SVG);
-        const rendererWidth = Math.min(320, Math.max(260, canvasContainer.clientWidth || 320));
+        const rendererWidth = Math.min(420, Math.max(260, canvasContainer.clientWidth || 420));
         renderer.resize(rendererWidth, 145);
         const context = renderer.getContext();
-        const staveWidth = Math.min(260, rendererWidth - 24);
+        const staveWidth = Math.min(360, rendererWidth - 24);
         const staveX = (rendererWidth - staveWidth) / 2;
         const stave = new VF.Stave(staveX, 25, staveWidth); stave.addClef(config.clef);
         if(currentMode.includes('drill') || currentTier === 1) { 
