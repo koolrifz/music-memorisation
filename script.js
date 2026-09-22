@@ -436,6 +436,91 @@ function buildSmashGridRound({ totalRows, activeRows, cols, targetsPresent, pick
     };
 }
 
+/* =========================================
+   SHARED GAME SHELL (Games 1, 2, 3)
+   The back-nav (.game-nav) and HUD (.hud: pause + timer badge) used to be
+   hand-duplicated once per game in index.html - three copies, byte-for-byte
+   the same shape, differing only in which game id goes to
+   handleBackButton()/pauseCurrentGame() and the timer badge's own id and
+   starting text. renderGameShellChrome() builds that markup once instead,
+   into the empty .game-nav/.hud containers index.html still has - and it
+   emits the exact same ids the rest of this file already reads and writes
+   (g1-timer-badge, g2-timer-badge, g3-timer-badge), so nothing downstream
+   of this needed to change.
+
+   renderSmashGameHeader() does the same for the .game-header row, but only
+   for Games 1 & 2 - they share one real shape (score/streak on the left, a
+   target display with its own flash timer in the centre, a right-hand slot
+   that's empty for Game 1 and holds the helper/watchlist buttons for
+   Game 2 - only the center column's flex weight, the target's color/size/
+   id-suffix/starting text, and that right-hand slot actually differ).
+   Game 3's header is a genuinely different shape (a progress bar, not a
+   target display, and its ids aren't g3-prefixed like everything else -
+   score-text, tier-tracker-text, progress-bar) and isn't part of the 4x4
+   density-grid rework, so it stays static markup in index.html for now
+   rather than being forced into this.
+
+   Both are called once, for every game, right after this file loads (see
+   the bottom of this file) - .view/.screen visibility is pure CSS
+   (display/opacity), so every game's DOM already exists at page load
+   whether or not that game is the one currently shown.
+   ========================================= */
+function renderGameShellChrome(gameId, prefix, { timerText }) {
+    const nav = document.querySelector(`#view-${gameId} .game-nav`);
+    if (nav) nav.innerHTML = `<button class="btn-back" onclick="handleBackButton('${gameId}')">⬅ Back</button>`;
+
+    const hud = document.querySelector(`#view-${gameId} .hud`);
+    if (hud) hud.innerHTML = `
+        <button class="pause-btn" onclick="pauseCurrentGame('${gameId}')">🛑 Pause</button>
+        <span class="timer-badge" id="${prefix}-timer-badge">${timerText}</span>
+    `;
+}
+
+function renderSmashGameHeader(gameId, prefix, { targetIdSuffix, targetColor, targetFontSize, targetText, centerFlex, right }) {
+    const header = document.querySelector(`#view-${gameId} .game-header`);
+    if (!header) return;
+    header.innerHTML = `
+        <div class="score-counter" style="align-items: flex-start; flex: 1;">
+            <div class="score-row">⭐ <span id="${prefix}-score-text">0</span></div>
+            <div class="tier-tracker" id="${prefix}-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
+            <div class="tier-tracker" id="${prefix}-attempts-text">Attempts: 0</div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; flex: ${centerFlex};">
+            <div style="color: ${targetColor}; font-weight: 900; font-size: ${targetFontSize}; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="${prefix}-${targetIdSuffix}">${targetText}</div>
+            <div class="flash-timer" id="${prefix}-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="${prefix}-flash-timer-fill"></div></div>
+        </div>
+
+        ${right}
+    `;
+}
+
+function initSharedGameShells() {
+    renderGameShellChrome('game1', 'g1', { timerText: '20s' });
+    renderGameShellChrome('game2', 'g2', { timerText: '60s' });
+    renderGameShellChrome('game3', 'g3', { timerText: '60s' });
+
+    renderSmashGameHeader('game1', 'g1', {
+        targetIdSuffix: 'target-instruction-display',
+        targetColor: 'var(--accent-purple)',
+        targetFontSize: '24px',
+        targetText: 'SMASH LINES',
+        centerFlex: 2,
+        right: '<div style="flex: 1;"></div>'
+    });
+    renderSmashGameHeader('game2', 'g2', {
+        targetIdSuffix: 'target-note-display',
+        targetColor: 'var(--accent-gold)',
+        targetFontSize: '28px',
+        targetText: 'C',
+        centerFlex: 1,
+        right: `<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
+            <button id="g2-helper-toggle" class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
+            <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
+        </div>`
+    });
+}
+
 let personalBests = {
     game2: { round1: 0, round2: 0, round3: 0, round4: 0 },
     game3: { 'drill-lines': 0, 'drill-spaces': 0, 'drill-both': 0, 'speed': 0 }
@@ -1592,15 +1677,27 @@ function startG2Game() {
     startG2Timer(); loadG2Grid();
 }
 
+// Fixed while wiring in the shared game shell (script.js's "SHARED GAME
+// SHELL" section): this function used to end at the innerText line below,
+// and the streak-dots append that belongs in it (see updateG1TrackerUI's
+// equivalent line) had gone missing from inside the function entirely -
+// four dangling lines sat between this function and startG2Timer(),
+// outside any function body, so they ran exactly ONCE, at page load,
+// against whatever g2Streak was at that moment (0) and whatever static
+// text index.html had for g2-tier-tracker-text at the time - never again
+// on any later round. In the shipped app today that means Game 2's tier-
+// tracker streak dots never actually update as you play, unlike Game 1's.
+// Making the header markup itself only exist once the shared shell builds
+// it (rather than being static in index.html from page load) surfaced
+// this as a hard crash instead of a silent no-op, which is what caught it.
 function updateG2TrackerUI() {
-    document.getElementById('g2-tier-tracker-text').innerText = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]} | Streak: ${g2Streak}/3`;
+    const streakDots = [0, 1, 2].map(index =>
+        `<span class="streak-dot${index < g2Streak ? ' active' : ''}" aria-hidden="true"></span>`
+    ).join('');
+    document.getElementById('g2-tier-tracker-text').innerHTML = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
     document.getElementById('g2-score-text').innerText = g2Score;
     document.getElementById('g2-attempts-text').innerText = `Attempts: ${g2TotalAttempts}`;
 }
-        const streakDots = [0, 1, 2].map(index =>
-            `<span class="streak-dot${index < g2Streak ? ' active' : ''}" aria-hidden="true"></span>`
-        ).join('');
-        document.getElementById('g2-tier-tracker-text').innerHTML += ` | Streak: <span class="streak-dots">${streakDots}</span>`;
 function startG2Timer() {
     if (g2Timer) clearInterval(g2Timer);
     document.getElementById('g2-timer-badge').innerText = `${g2SecondsLeft}s`;
@@ -2335,10 +2432,16 @@ function startNextG3Stage() {
 window.addEventListener('keydown', (e) => {
     const key = e.key.toUpperCase();
     if (!document.getElementById('g3-screen-game') || !document.getElementById('g3-screen-game').classList.contains('active')) return;
-    
+
     if (['A','B','C','D','E','F','G'].includes(key)) {
-        if (isPianoInput) { const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`); if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); } } 
+        if (isPianoInput) { const pKey = document.getElementById(key === 'C' ? 'key-C1' : `key-${key}`); if (pKey) { pKey.classList.add('simulated-active'); setTimeout(() => pKey.classList.remove('simulated-active'), 100); } }
         else { const cKey = document.getElementById(`btn-${key}`); if (cKey) { cKey.classList.add('simulated-active'); setTimeout(() => cKey.classList.remove('simulated-active'), 100); } }
         handleKeypadInput(key);
     }
 });
+
+// script.js loads at the bottom of <body>, so every game's DOM already
+// exists (just hidden via .view/.screen CSS) by the time this runs - see
+// the "SHARED GAME SHELL" section above for why this is safe to do once,
+// unconditionally, rather than lazily per game on first entry.
+initSharedGameShells();

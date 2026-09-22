@@ -100,10 +100,12 @@
 </div>
 
 <!-- GAME 1 VIEW (Staff Smash - SMASH Grid Rebuild) -->
+<!-- The .game-nav/.hud/.game-header markup below is filled in by
+     renderGameShellChrome()/renderSmashGameHeader() in script.js (the
+     shared game shell) rather than hand-duplicated here - see the
+     "SHARED GAME SHELL" section of script.js. -->
 <div id="view-game1" class="view">
-    <div class="game-nav">
-        <button class="btn-back" onclick="handleBackButton('game1')">⬅ Back</button>
-    </div>
+    <div class="game-nav"></div>
 
     <div id="g1-screen-pathway" class="screen active">
         <div class="pathway-card">
@@ -125,25 +127,9 @@
     </div>
 
     <div id="g1-screen-game" class="screen">
-        <div class="hud">
-            <button class="pause-btn" onclick="pauseCurrentGame('game1')">🛑 Pause</button>
-            <span class="timer-badge" id="g1-timer-badge">20s</span>
-        </div>
-        
-        <div class="game-header">
-            <div class="score-counter" style="align-items: flex-start; flex: 1;">
-                <div class="score-row">⭐ <span id="g1-score-text">0</span></div>
-                <div class="tier-tracker" id="g1-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
-                <div class="tier-tracker" id="g1-attempts-text">Attempts: 0</div>
-            </div>
-            
-            <div style="display:flex; flex-direction:column; align-items:center; flex: 2;">
-                <div style="color: var(--accent-purple); font-weight: 900; font-size: 24px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g1-target-instruction-display">SMASH LINES</div>
-                <div class="flash-timer" id="g1-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g1-flash-timer-fill"></div></div>
-            </div>
-            
-              <div style="flex: 1;"></div>
-        </div>
+        <div class="hud"></div>
+
+        <div class="game-header"></div>
 
         <div id="g1-clef-display"></div>
         <div id="g1-grid-container" class="smash-grid-layout"></div>
@@ -180,9 +166,7 @@
 
 <!-- GAME 2 VIEW (Note Smash) -->
 <div id="view-game2" class="view">
-    <div class="game-nav">
-        <button class="btn-back" onclick="handleBackButton('game2')">⬅ Back</button>
-    </div>
+    <div class="game-nav"></div>
 
     <div id="g2-screen-pathway" class="screen active">
         <div class="pathway-card">
@@ -203,29 +187,10 @@
     </div>
 
     <div id="g2-screen-game" class="screen">
-        <div class="hud">
-            <button class="pause-btn" onclick="pauseCurrentGame('game2')">🛑 Pause</button>
-            <span class="timer-badge" id="g2-timer-badge">60s</span>
-        </div>
-        
-        <div class="game-header">
-            <div class="score-counter" style="align-items: flex-start; flex: 1;">
-                <div class="score-row">⭐ <span id="g2-score-text">0</span></div>
-                <div class="tier-tracker" id="g2-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
-                <div class="tier-tracker" id="g2-attempts-text">Attempts: 0</div>
-            </div>
-            
-            <div style="display:flex; flex-direction:column; align-items:center; flex: 1;">
-                <div style="color: var(--accent-gold); font-weight: 900; font-size: 28px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g2-target-note-display">C</div>
-                <div class="flash-timer" id="g2-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g2-flash-timer-fill"></div></div>
-            </div>
-            
-            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
-                <button id="g2-helper-toggle" class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
-                <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
-            </div>
-        </div>
-        
+        <div class="hud"></div>
+
+        <div class="game-header"></div>
+
         <div class="helper-modal" id="g2-helper-modal">
             <button class="helper-close-button" onclick="toggleG2HelperModal()" aria-label="Close helpers">×</button>
             <h3>📖 Note Name Helpers</h3>
@@ -274,10 +239,8 @@
 
 <!-- GAME 3 VIEW (Real Smash) -->
 <div id="view-game3" class="view">
-    <div class="game-nav">
-        <button class="btn-back" onclick="handleBackButton('game3')">⬅ Back</button>
-    </div>
-    
+    <div class="game-nav"></div>
+
     <div id="g3-screen-pathway" class="screen active">
         <div class="pathway-card">
             <div class="clef-picker">
@@ -293,11 +256,12 @@
     </div>
 
     <div id="g3-screen-game" class="screen">
-        <div class="hud">
-            <button class="pause-btn" onclick="pauseCurrentGame('game3')">🛑 Pause</button>
-            <span class="timer-badge" id="g3-timer-badge">60s</span>
-        </div>
-        
+        <div class="hud"></div>
+
+        <!-- Game 3's own header shape (a progress bar, not a target display) is
+             a genuinely different layout from Games 1/2's shared header - see
+             the "SHARED GAME SHELL" note in script.js - so it stays static
+             markup here rather than going through renderSmashGameHeader(). -->
         <div class="game-header">
             <div class="progress-bar-container" style="flex:2;"><div class="progress-fill" id="progress-bar"></div></div>
             <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleG3HelperModal()">💡 Helpers</button>
