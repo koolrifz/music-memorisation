@@ -411,9 +411,14 @@ const VSMASH_CROP_HEIGHT = 65;    // Stomp Lab's window, which clears ties and r
 const VSMASH_GLYPH_ROOM = 14;     // px kept free at the right for the last note or rest
 const vsmashDrawCache = {};
 
-function vsmashDrawNotes(el, specs, width) {
-    width = Math.max(40, Math.round(width));
-    const key = width + '|' + specs.map(s => s.value + (s.isRest ? 'r' : '')).join(',');
+// scale < 1 draws smaller notation that still fills `width`: VexFlow draws
+// at width / scale and the SVG is shrunk to fit, so the staff line runs the
+// whole way across. Used by the Tree on short screens.
+function vsmashDrawNotes(el, specs, width, scale) {
+    scale = scale || 1;
+    const shown = Math.max(40, Math.round(width));
+    width = Math.round(shown / scale);
+    const key = width + '|' + scale + '|' + specs.map(s => s.value + (s.isRest ? 'r' : '')).join(',');
     if (!(key in vsmashDrawCache)) {
         const VF = Vex.Flow;
         const scratch = document.createElement('div');
@@ -455,10 +460,10 @@ function vsmashDrawNotes(el, specs, width) {
         voice.draw(context, stave);
         const svg = scratch.querySelector('svg');
         svg.setAttribute('viewBox', '0 ' + VSMASH_CROP_TOP + ' ' + width + ' ' + VSMASH_CROP_HEIGHT);
-        svg.setAttribute('width', width);
-        svg.setAttribute('height', VSMASH_CROP_HEIGHT);
-        svg.style.width = width + 'px';
-        svg.style.height = VSMASH_CROP_HEIGHT + 'px';
+        svg.setAttribute('width', shown);
+        svg.setAttribute('height', Math.round(VSMASH_CROP_HEIGHT * scale));
+        svg.style.width = shown + 'px';
+        svg.style.height = Math.round(VSMASH_CROP_HEIGHT * scale) + 'px';
         vsmashDrawCache[key] = scratch.innerHTML;
     }
     el.innerHTML = vsmashDrawCache[key];
@@ -554,8 +559,15 @@ function vsmashTile(valueId, width, tag) {
     const notes = document.createElement('div');
     notes.className = 'vsmash-tile-notes';
     tile.appendChild(notes);
-    vsmashDrawNotes(notes, [vsmashSpec(valueId)], width - 6);
+    vsmashDrawNotes(notes, [vsmashSpec(valueId)], width - 6, vsmashTreeScale());
     return tile;
+}
+
+// On a short screen (a small phone, a Chromebook) the Tree draws its notes
+// at 80% so round 3 fits without scrolling - see the matching rule in
+// style.css. The tiles stay exactly as wide as their share of the row.
+function vsmashTreeScale() {
+    return window.matchMedia('(max-height: 740px)').matches ? 0.8 : 1;
 }
 
 function vsmashTileWidth(valueId, rowWidth) {

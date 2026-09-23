@@ -995,3 +995,31 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .vsmash-license-name { font-size: 20px; font-weight: 900; margin: 0 0 10px; }
 .vsmash-license-ticket p { font-weight: 800; line-height: 1.35; }
 .vsmash-gate-card { width: min(92%, 420px); background: var(--bg-panel); padding: 18px 14px; border-radius: 20px; border: 3px solid var(--accent-orange); box-sizing: border-box; text-align: center; }
+
+
+/* ---------- Phone polish (build guide §4 step 6) ----------
+   Every Value Smash button at least 56px tall (build guide §0.8). The nav
+   buttons borrow the app's shared .btn-back look, so the size is set here,
+   for Value Smash only - the other games are untouched. */
+#view-value .game-nav, #view-value .vsmash-nav-right { top: 8px; }
+#view-value .btn-back { min-height: 56px; padding: 0 18px; font-size: 16px; }
+#view-value .pathway-card { margin-top: 64px; }
+#value-screen-game { padding-top: 72px; }
+.vsmash-player-chip { min-height: 56px; }
+#modal-value-tree .btn-close { min-height: 56px; min-width: 150px; }
+#view-value .btn-secondary, .vsmash-license-card .btn-secondary, .vsmash-gate-card .btn-secondary { min-height: 56px; }
+
+/* A crowded HUD wraps whole items onto a second line, never mid-word. */
+.vsmash-hud { flex-wrap: wrap; row-gap: 4px; }
+.vsmash-hud > span { white-space: nowrap; }
+
+/* SHORT SCREENS - a small Android phone, and a Chromebook, whose browser
+   window is only 650-700px tall. The Tree's rows and tiles come down from
+   71px to 58px and the notation to 80%, so round 3 fits without scrolling.
+   Tile WIDTHS never change: a tile is always its share of the row. */
+@media (max-height: 740px) {
+    .vsmash-tree-rows { gap: 6px; margin-bottom: 12px; }
+    .vsmash-tray { gap: 6px; }
+    .vsmash-tree-row, .vsmash-tray .vsmash-tile { height: 58px; }
+    .vsmash-tree-row .vsmash-tile { height: 52px; }   /* the notation is drawn at 80% to match: vsmashTreeScale() */
+}

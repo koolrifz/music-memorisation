@@ -1,6 +1,6 @@
 # Plan: take the words out of the code
 
-**Status:** plan approved in principle by Rob on 2026-09-23. Nothing is built yet.
+**Status:** plan approved in principle by Rob on 2026-09-23. Step 0 (`text.js`, `lang/`, `content/`, `tools/check-text.py`) is built on `idea/value-smash`, and Value Smash uses it; the older games are not migrated yet.
 
 Rob:
 

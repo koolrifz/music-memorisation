@@ -1198,9 +1198,9 @@ is a hole and it gets written down rather than stepped over.
 Smash.** The Rhythm pillar assumes the student knows what each note is *worth*,
 and nothing in the app teaches it yet. Rob approved the design on 2026-09-23;
 the brief is `kool-riffs-docs/docs/value-smash-design-brief.md`, and the
-original idea is `ideas/equivalency-note-tree.md`. Not built yet. **To build it, follow
-`docs/value-smash-build-guide.md`**, one step at a time. The short
-version is below, under "SILOS AND BRIDGES".
+original idea is `ideas/equivalency-note-tree.md`. **Part V1 is built on
+`idea/value-smash`** to `docs/value-smash-build-guide.md`; see "VALUE SMASH"
+below. The short version of the structure is under "SILOS AND BRIDGES".
 
 `ideas/README.md` is how an idea like that gets built without disturbing work
 already in flight: the idea file on main, the build on `idea/<name>`, a fresh
@@ -1276,6 +1276,95 @@ Reference art (Rob's 2026 Gemini redraws of both, the 1997 originals, and what
 the pose images must look like: flat background, no watermark, one image per
 pose) is in the private docs: `kool-riffs-docs/docs/riff-and-tango.md`.
 
+## VALUE SMASH — Part V1 built (branch `idea/value-smash`)
+The Value silo's first part, "The Big Three" (whole, half and quarter notes
+and their rests, in common time), built to `docs/value-smash-build-guide.md`
+Phases 0–1. The design is the brief's; this section records **what was built,
+the calls made where the guide left room, and what was tried and dropped.**
+
+**Files.** `value-smash.js` (everything), `text.js` + `lang/` + `content/`
+(the words, Phase 0), `view-value` in `index.html`, a Value Smash block at the
+end of `style.css`. The one change to another game is the gate line at the top
+of `enterRhythmLab()`. Note values are **read** from `RSTOMP_VOCABULARY` and
+their lengths from `rstompSlotsFor()`, never copied.
+
+**Floors are data** (`VSMASH_FLOORS`, IDs permanent): **The Tree** → **Smash**
+→ **Sprint**. Progress is per player, only through `vsmashLoad()` /
+`vsmashSave()`. The tunable numbers are the constants at the top of the file.
+
+**How each floor plays, and the calls made on it:**
+
+- **The Tree** — three equal rows (each lasts the same time), tiles as wide as
+  their value, a tile drops into the highest row with room or is refused with
+  the reason told as a *relationship*, never in beats. A full row plays back at
+  0.5 s a beat.
+  - Round 3's tray holds the **notes as well as the rests**, so a note offered to
+    a rest row is refused: sound is not silence.
+  - A rest row plays back with the **brush**, not the snare: a snare on a
+    silence says the opposite of what the row means (and matches Stomp Lab).
+  - The Tree card (the help menu) shows every row of each round passed,
+    *including the given row* — otherwise the whole rest, always given, would
+    never appear.
+- **Smash** — Note Smash's grid, matched not imported.
+  - **Duds: Rob's call, 2026-09-24.** Tier 1 has no clock at all, so a dud there
+    is answered with a **Nothing here** button; from tier 2 each screen has Note
+    Smash's flash timer and a dud passes when it runs out untouched. A dud
+    handled right earns a **joker** that saves the streak once.
+  - A wrong tap costs **2 s** (`VSMASH_WRONG_TAP_SECONDS`) — the guide says wrong
+    taps cost time; the older games actually charge none. On tier 1, with no
+    clock, a wrong tap **breaks the streak** instead: otherwise tapping every
+    card clears tier 1, and a hook that pays off guessing is a bug.
+  - A dud earns a joker and time, **no points** (Note Smash gives one): only
+    correct taps score.
+  - The combo is per screen: taps score 1, 2, 3…; the crack climbs a whole tone
+    a step. Gold card triple. Missed targets are outlined after a miss.
+- **The Sprint** — the Smash engine in sprint mode: 60 s from tier 2, every
+  question kind, no duration bars, stays at 12 cards after Gold.
+  - **Medal = highest tier CLEARED**, as Real Smash does. "Reached" would give
+    Bronze for pressing Start, because the Sprint starts at tier 2.
+  - **Stars follow the medal** (Bronze 1, Silver 2, Gold 3): a fixed 60 s has
+    no finishing time to beat. A no-medal run still records a personal best.
+  - The first medal awards the **Artistic License**, with its ceremony, once.
+
+**Cards are real notation, and drawn on the beat.** Every card is one of the
+**55** runs of 1–4 notes and rests that pass `vsmashGroupIsReal()` (half rest
+only from beat 1 or 3; a bar of silence is one whole rest; beat 3 hidden only by
+quarter / half / quarter). Notes sit on an even **beat grid** across the card, as
+Stomp Lab's staff does, so a card reads as a bar and each note starts over its
+own stretch of the duration bar.
+
+**Tried and dropped — don't bring these back:**
+
+| Tried | Why it went |
+|---|---|
+| Random notes, kept if they fitted | ~72% of cards came out a single note, so "equals a half note" became "find the half notes". Now the size is picked first from the list of 55. |
+| VexFlow's own spacing on cards | Rests ran into noteheads at card width. |
+| A beat grid to the card's very edge | Beat 4's glyph was clipped. The grid stops `VSMASH_GLYPH_ROOM` short. |
+| Shrinking the Tree's notation with CSS on short screens | The staff line stopped at 80% of the tile. The notation is *drawn* at 80% instead (`vsmashTreeScale()`). |
+| Showing the License ceremony after a short delay | Leaving in that moment awarded the License with no ceremony, ever. It shows at once. |
+| Waiting out a dud on tier 1 | There is no clock to wait out — hence the button. |
+
+**Phone layout.** Every button is at least 56 px (Value Smash's nav buttons are
+sized in its own CSS, so the other games are untouched). Measured: every screen
+fits with nothing below the fold at **390×844, 360×640 and a 1366×657
+Chromebook**; short screens (under 740 px tall) get a compact Tree. The 320-wide
+phones and landscape scroll, as the rest of the app does.
+
+**Tests.** `python tools/test-value-smash.py` (needs `pip install playwright`;
+it drives the installed Chrome): 64 checks across every floor, the gate, the
+older games and the layout. Run it with `tools/check-text.py` before every
+commit.
+
+**Open for Rob:**
+- Everything in the §5 defaults table, plus the 2 s wrong-tap cost, the Sprint's
+  medal-stars, and a joker being one only (no stacking).
+- **No names setting on screen yet.** `KR.setNames()` works and each player
+  stores `namesSetting`, but nothing lets a student change it.
+- **No keyboard play.** Tab and Enter work (every tile and card is a button),
+  but there are no shortcut keys for Chromebooks.
+- **The brief's "near-miss" hook** ("1 beat over", "0.3 s off your best") is
+  listed for phase 1 in the brief but not in the build guide; not built.
+
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that
 outranks engagement", which said time at the instrument outranks time in the
@@ -1320,4 +1409,4 @@ Draft copy:
 **Tenor** — "Same Clef, One Line Higher" / Tenor clef is the exact same symbol as alto — just shifted up. Its curl now points at the second line from the top. That's still Middle C. Everything you learned counting from Middle C in alto works the same way here.
 
 ## Roadmap context
-Pillars: Notation (three games, done/near-done), **Value** (Value Smash, designed, not built), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "SILOS AND BRIDGES"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
+Pillars: Notation (three games, done/near-done), **Value** (Value Smash, Part V1 built on `idea/value-smash`), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "SILOS AND BRIDGES"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
