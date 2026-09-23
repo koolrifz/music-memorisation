@@ -26,8 +26,12 @@ SOURCES = [
      'standing against them.'),
     ('ideas/README.md',
      'How to develop a new idea on a branch without disturbing work in flight.'),
+    ('docs/language-files-plan.md',
+     'How words, sounds and pictures move out of the code into language files.'),
+    ('docs/value-smash-build-guide.md',
+     'The step-by-step build spec for Value Smash, Phase 0 and Phase 1.'),
     ('ideas/equivalency-note-tree.md',
-     'The known prerequisite hole: note-value equivalency. Captured, not designed.'),
+     'The prerequisite hole: note-value equivalency. Designed as Value Smash, not built.'),
 ]
 
 HEADER = """# Kool Riffs — project knowledge

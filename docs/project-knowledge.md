@@ -5,7 +5,7 @@ Drop this straight into a Claude Project's knowledge base.
 
 - **Live app:** https://koolrifz.github.io/music-memorisation/
 - **Repo:** https://github.com/koolrifz/music-memorisation
-- **Generated:** 2026-09-22 — by `tools/build-project-knowledge.py`
+- **Generated:** 2026-09-23 — by `tools/build-project-knowledge.py`
 
 **This file is generated.** Edit the sources in the repo and re-run the script;
 do not edit this copy, the next run overwrites it.
@@ -37,6 +37,15 @@ Read this before touching the code. It's the accumulated context from months of 
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
 **Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar. Notation rendering uses VexFlow 3.0.9 via CDN.
+
+**WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
+that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
+can't continue."* Every on-screen word, spoken line, sound and picture is to be
+referenced by ID from language and content files (`lang/`, `content/`), not a
+literal in the HTML or JS. **Not a CMS, not a database**: plain files Rob can
+read. The plan, the migration order and the checks are in
+`docs/language-files-plan.md`. Until a game is migrated its old literals stay,
+but **no new on-screen text may be added as a literal anywhere.**
 
 **THE ENGRAVING STANDARD OUTRANKS ROB'S OWN RULES.** Rob's ruling, and it
 reframes most of this file: *"Most of my rules are actually the scaffolding
@@ -1150,7 +1159,11 @@ contract** — don't rename one without updating any level that overrides it, an
 don't add on-screen teaching copy as a bare string.
 
 ## Naming conventions (don't drift from these)
-The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
+The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash, and "Value Smash", a working title). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
+
+**Note names: US first, UK in brackets.** Rob, 2026-09-23: on screen it is "whole note (semibreve)", and a setting switches to US-only or UK-only. This lives in the language files (`en-US` / `en-GB`), never in code. The design notes in this file keep saying "crotchet" and "minim"; that is working shorthand, not on-screen copy.
+
+**Bonus rounds are "Maestro" bonuses** (the equivalency bonus was once called "Ludicrous"; Rob: that's Tesla's).
 
 ## Core mechanics (apply consistently to any new content)
 - **Rule of three:** three correct in a row confirms real mastery, not a lucky guess. Used everywhere as the advancement gate.
@@ -1160,6 +1173,8 @@ The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Sma
 
 ## Persistence pattern (already implemented — follow this shape for anything new)
 Each game keeps its own localStorage key (`koolRiffsG1Progress`, `koolRiffsG2Progress`, `koolRiffsG3Progress`) storing per-device unlocked stages, best score/time per stage, resume position, and total plays. This is real browser storage on a real deployed site — no sandbox restriction applies here. On relaunch, route to the pathway screen at the saved resume position, not back to the dashboard.
+
+**Progress stays on the device** until networking is designed once, for the whole app (Rob: *"until we wrap this whole thing up in an umbrella"*). One addition Rob approved for shared school iPads and Chromebooks: a **local player picker**, a list of names on the device with no passwords and no network, so that each student's progress is their own. It arrives with Value Smash.
 
 ## Pathway screen pattern
 Each game's entry point is a pathway screen (`g1-screen-pathway`, etc.) — a compact horizontal track of stage nodes (locked = icon only, no text; unlocked = icon + label; cleared = icon + label + best score badge). The Start button never appears on this screen itself, only after a stage is selected. This was a deliberate fix — don't regress to a screen where a game launches straight into "Start" with no visible pathway.
@@ -1210,29 +1225,110 @@ thing in the syllabus?" but **"what does this assume the student already
 knows, and where did they get it?"** If the answer is "nowhere in the app", that
 is a hole and it gets written down rather than stepped over.
 
-**The one currently known: note-value equivalency.** The Rhythm pillar assumes
-the student knows what each note is *worth* — it teaches counting to someone who
-already has that. Nothing in the app teaches it. Captured in
-`ideas/equivalency-note-tree.md`; not designed, not built, ask Rob first.
+**The one currently known: note-value equivalency, now DESIGNED as Value
+Smash.** The Rhythm pillar assumes the student knows what each note is *worth*,
+and nothing in the app teaches it yet. Rob approved the design on 2026-09-23;
+the brief is `kool-riffs-docs/docs/value-smash-design-brief.md`, and the
+original idea is `ideas/equivalency-note-tree.md`. Not built yet. **To build it, follow
+`docs/value-smash-build-guide.md`**, one step at a time. The short
+version is below, under "SILOS AND BRIDGES".
 
 `ideas/README.md` is how an idea like that gets built without disturbing work
 already in flight: the idea file on main, the build on `idea/<name>`, a fresh
 session per branch, and a merge bar that includes "played on a phone" and "its
 CLAUDE.md section is written."
 
-## The constraint that outranks engagement
-**Time at the instrument beats time in the app.** Rob: *"None of this makes any
-difference unless they're practising their instrument… They shouldn't live their
-life on the computer. They should live their life behind their instrument."*
+## SILOS AND BRIDGES: the app's structure
+Rob's structure, 2026-09-23. **Words: a *silo* is a body of knowledge (what
+earlier notes call a pillar: Notation, Value, Rhythm…); a *Level* is a *bridge*
+built between the silos.** **It is bigger than any one game and is not built
+yet.** Every new game is designed so that it slots into it.
 
-This is the opposite of how apps are normally designed, so it needs stating
-before someone optimises the wrong number:
+- **Value is a silo.** *"A music note does two things. It tells us the pitch…
+  and it tells you its value. Then we combine it together to make rhythm."* The
+  silos are now **Notation (pitch) · Value · Rhythm · Key Signatures ·
+  Intervals**, possibly more later (Rob's childhood flash cards also covered
+  terminology).
+- **Each silo has its own floors** (Stomp Lab's A1 is a floor of the Rhythm
+  silo). **An app-wide Level is a bridge across the silos**: a set of floors
+  from every silo, taken together. Level 1 is the introductory floors of all
+  the silos. *"Don't make them start from a beginner in one pillar and force them
+  to become an expert, then move to the next one."* Which floors make which
+  Level is still to be worked out with Rob.
+- **The Artistic License.** Clearing Value Smash's first part awards it, and it
+  opens Rhythm Stomp Lab: *"You can't even get to Rhythm Stomp unless you can
+  smash some note values."* Later Stomp Lab stages each open with the Value part
+  they depend on. **Never re-lock a Stomp Lab level a student has already
+  unlocked.**
+- **Values first, time signatures last.** Every note value is given in common
+  time from the first screen (*"it takes up the whole bar and it commonly
+  receives four beats"*, as in Rubank), but the *meaning* of time signatures
+  waits until all values and equivalencies are done. **Simple time (4/4, 2/4,
+  3/4) and compound time (the 8 on the bottom) are taught separately**, simple
+  first. The 2/4 against 6/8-in-two comparison comes when 6/8 speeds up (Stomp
+  Lab's Stage E).
+- **The note tree is the help menu**, and the student builds it themselves. Once
+  a time signature is on screen, the tree labels each note with its beats in
+  that signature.
 
-- A short session that clears a level and ends is a **success**.
-- **No streak mechanic may punish a day away from the screen** — that day may
-  have been spent playing.
-- "Now go and play this" prompts are a **feature**, not an off-ramp.
-- If a change would raise engagement but lower practice time, **it loses.**
+### Riff and Tango: the coaches in the gold box
+Rob's two characters, created in 1997; he owns them, and they will be redrawn.
+**Riff** is a jazz Scottie dog (grey, red beret, green vest, white beard; the
+1997 sunglasses are gone) with a
+**hip, gruff** voice, and he handles **pitch**: the Notation games. **Tango** is
+an orange cat who walks on two legs, with a big **red mane** and a **blue
+vest**. She is a drummer, with a **high, tight, squeaky** voice, and she
+handles **rhythm**: Value Smash and Stomp Lab. *"Together rhythm and pitch make
+melody, and that's music."*
+
+- **Coaches, not a universe.** Rob: *"a baby bit of a backstory that allows them
+  to keep coaching us through… teaching us to read music and encouraging us to
+  try more and telling us what the rules to the games are… This is a
+  memorising, glorified flashcards is what we're making."* No world map, no
+  quest. The town map and the name "Jam City" are **parked**.
+- **They speak in the gold guide box.** The gold box is already the voice that
+  is *"there with you for the whole game"* (see "The guide box is GOLD"). It
+  becomes their speech bubble in every game. The speaker's portrait sits
+  **beside** the box, **never over the notation**. Lines can go back and forth
+  between the two of them.
+- **Build hooks, not content.** The game fires named events; the content files
+  decide who says what (`docs/language-files-plan.md` §2.4). Every line has an
+  ID and a speaker.
+- **Voices.** Until Rob chooses synthesised voices, the browser's speech reads
+  each line with a pitch and rate per speaker. After that, each line is
+  generated once and saved as an audio file under its ID.
+
+Reference art (Rob's 2026 Gemini redraws of both, the 1997 originals, and what
+the pose images must look like: flat background, no watermark, one image per
+pose) is in the private docs: `kool-riffs-docs/docs/riff-and-tango.md`.
+
+## ADDICTIVE BY DESIGN: the whole app
+**This REVERSES the section that used to stand here** ("The constraint that
+outranks engagement", which said time at the instrument outranks time in the
+app and that no streak may punish a day away from the screen). The reversal is
+Rob's, made on 2026-09-23 and applied to the whole app, not just one game:
+
+> *"That has become my overarching mission… the whole Kool Riffs game. This is
+> not about long-term companionship with the young musician. It's really to seed
+> their initial learning with as much repetition as possible. I don't want to
+> minimise any opportunity for addictive gameplay."*
+
+> *"It's really a three-to-six-month game in the very first beginning learning
+> stages."*
+
+> *"The whole game isn't going to cost practice time. Let's not even put them in
+> competition with each other. Let's just leave it completely separate, but yes,
+> we can encourage them to practise."*
+
+- **Streaks, daily challenges, stars, combos and collections are all allowed**,
+  including a daily streak (with freezes) that resets.
+- **"Go and play it on your instrument" lines are dialogue, never a condition.**
+  *"Don't let the gameplay be the bargaining chip."* They live in the language
+  files, Riff and Tango can say them, and they never lock, gate or reward
+  anything.
+- **Addictive never means easier.** Every hook still has to pass "only correct
+  taps score", and the rule of three and the all-or-nothing gates are untouched.
+  A hook that pays off guessing is a bug.
 
 ## Design philosophy (useful context, not a task list)
 Rob's teaching background is built around rote memorization drilled to automaticity (flashcard-style, "rule of three" mastery checks) rather than repertoire-first instruction — he considers this the biggest gap in how music reading is currently taught, and it's the whole reason this app exists. When in doubt about how strict a mastery gate should be, or whether to add a hint/scaffold, the answer is usually "make them actually prove it" rather than "make it easier to pass." This app is explicitly not meant to feel like generic edutainment — the "Smash" branding and the strict all-or-nothing mastery checks are deliberate, not to be softened without asking.
@@ -1250,7 +1346,7 @@ Draft copy:
 **Tenor** — "Same Clef, One Line Higher" / Tenor clef is the exact same symbol as alto — just shifted up. Its curl now points at the second line from the top. That's still Middle C. Everything you learned counting from Middle C in alto works the same way here.
 
 ## Roadmap context
-Currently scoped as three games (Notation pillar only) out of four eventual pillars: Notation (done/near-done), Rhythm, Key Signatures, Intervals — not yet started. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
+Pillars: Notation (three games, done/near-done), **Value** (Value Smash, designed, not built), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "SILOS AND BRIDGES"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
 
 
 ==============================================================================
@@ -1563,9 +1659,11 @@ An idea earns `main` when **all** of these are true — not before:
 - **The test suite is green** and the new thing has tests of its own.
 - **`CLAUDE.md` has its section written**, including the decisions that were
   *rejected* and why. An idea merged without that becomes a mystery in a month.
-- **It doesn't cost practice time.** See "The constraint that outranks
-  engagement" in `CLAUDE.md`: if it raises engagement and lowers time at the
-  instrument, it loses.
+- **Its hooks reward only correct answers.** The app is addictive by design
+  (see "ADDICTIVE BY DESIGN" in `CLAUDE.md`), but a hook that pays off guessing
+  or softens a gate is a bug.
+- **Its words are in the language files**, not literals in the code (see
+  `docs/language-files-plan.md`).
 
 Until then the branch just sits there. A branch costs nothing. Half a good idea
 merged into main costs a lot.
@@ -1579,13 +1677,653 @@ and rebase both.
 
 
 ==============================================================================
+# FILE: docs/language-files-plan.md
+*How words, sounds and pictures move out of the code into language files.*
+==============================================================================
+
+# Plan: take the words out of the code
+
+**Status:** plan approved in principle by Rob on 2026-09-23. Nothing is built yet.
+
+Rob:
+
+> *"I was disappointed to learn that Staff Smash, Note Smash and Real Smash are
+> all pretty much hard-coded. That can't continue… The HTML with as little
+> hard-coded text in it — mostly labels that we have a language file for… I want
+> a whole list, everything catalogued, so I know every voice prompt. We give it
+> an ID. I want to be able to hook into the music backing as well."*
+
+He was also clear about what this is **not**:
+
+> *"No, I don't want a content management system. I'm just saying I need to get
+> some language files so they're not hard-coded into the HTML."*
+
+So this plan does not involve a database, a server, an editor or a build step.
+It moves words, sounds and pictures out of the code and into plain files that
+Rob can read and edit, with every item having an ID.
+
+---
+
+## 1. Where things stand (measured 2026-09-23)
+
+| Where | Hard-coded |
+|---|---|
+| `index.html` | about **286** pieces of visible text: titles, buttons, descriptions, modal copy, emoji |
+| `script.js` (Staff, Note and Real Smash) | **111** places that write text straight onto the screen, plus 8 spoken lines |
+| `rhythm.js` | 15 places that write text onto the screen |
+| `rhythm-stomp-lab.js` | 23 places that write text onto the screen, **plus `RSTOMP_PROMPTS`**: a named table of prompts that levels can override |
+| Stage lists | `g1PathwayStages`, `g2PathwayStages`, `g3PathwayStages`, `RHYTHM_LEVELS` and `RSTOMP_LEVELS` mix level data with display names |
+
+`RSTOMP_PROMPTS` is the one place that is already done the right way: each
+prompt has a name, and a level can reword any line without anyone touching the
+code. **This plan applies that pattern to the whole app.**
+
+---
+
+## 2. The shape
+
+```
+lang/
+  en-US.js        every word in the app, by ID — the base language
+  en-GB.js        only the lines that differ (note names), by the same IDs
+content/
+  dialogue.js     Riff & Tango lines: which event, who says it, which text ID
+  audio.js        every sound and backing track, by ID
+  art.js          every picture and character pose, by ID
+text.js           the small helper that looks things up (about 60 lines)
+tools/
+  check-text.py   finds missing IDs, unused IDs, and text still hard-coded
+  build-text-catalogue.py   writes docs/text-catalogue.md: Rob's full list
+```
+
+### 2.1 Why `.js` files and not `.json`
+
+The app has no build step. A `.json` file has to be loaded with `fetch()`, and
+`fetch()` fails when `index.html` is opened straight from a folder on a
+computer. A `.js` file loads with a plain `<script>` tag, which works
+everywhere, including offline. The contents are still plain data, one entry per
+line:
+
+```js
+KR.lang('en-US', {
+  'home.staffSmash.title':    'Staff Smash',
+  'home.staffSmash.blurb':    'Build instant staff orientation, one position at a time.',
+  'value.tree.refuse':        'That row is {note}s. A {note} is half a {parent}.',
+  'note.whole':               'whole note',
+  'note.half':                'half note',
+});
+```
+
+`en-GB.js` only lists what is different:
+
+```js
+KR.lang('en-GB', {
+  'note.whole': 'semibreve',
+  'note.half':  'minim',
+});
+```
+
+### 2.2 The US/UK switch falls out of this for free
+
+Rob's rule is to use American names first, with the UK name in brackets, and to
+offer a switch. The note names are just two language files, and a setting picks
+between them:
+
+| Setting | Shows |
+|---|---|
+| **Both** (default for beginners) | whole note (semibreve) |
+| US | whole note |
+| UK | semibreve |
+
+The same mechanism would carry a whole other language later, if one is ever
+wanted.
+
+### 2.3 How the code asks for words
+
+- **HTML** carries an ID and no words:
+  `<button data-text="home.staffSmash.title"></button>`. On load,
+  `KR.applyText(document)` fills in every tagged element.
+- **JS** asks for words by ID:
+  `el.textContent = KR.t('g2.target', { note })`.
+- **Speech** takes the same IDs: `speak(KR.t('g2.target.spoken', { note }))`.
+  If a recorded voice file is listed for that ID in `audio.js`, it plays
+  instead of the synthesised voice.
+- **A missing ID shows the ID itself**, for example `[g2.target]`, instead of
+  a blank. A missing line is then visible in testing, rather than being a
+  silent gap on a student's phone.
+
+### 2.4 Riff and Tango, and the music, hook in through events
+
+The game code announces **what happened**. It does not decide what anyone says
+or which music plays:
+
+```js
+KR.event('value.license.awarded');
+```
+
+`dialogue.js` decides what, if anything, happens then:
+
+```js
+{ on: 'value.license.awarded', speaker: 'tango', text: 'tango.license.1', pose: 'tango.cheer' },
+```
+
+**Where the lines appear: the gold guide box.** A dialogue line is shown in the
+gold box, with the speaker's portrait (`art.js`) **beside** the box, never over
+the notation. A line is spoken by:
+
+- the recorded file for its ID, if `audio.js` lists one;
+- otherwise the browser's speech, using the speaker's voice profile from
+  `content/dialogue.js`: a lower pitch and slower rate for Riff (hip and gruff),
+  a higher pitch and quicker rate for Tango (high, tight and squeaky).
+
+The browser voices vary from device to device, so this fallback is only a
+placeholder. The catalogue lists every line that still has no recorded file.
+
+`audio.js` does the same for backing tracks and stingers. Rob can then write
+the whole Riff and Tango narrative, change the music, or add a "go and play it
+on your instrument" line, **without any code changing**. An event with nothing
+attached does nothing.
+
+### 2.5 Rob's catalogue
+
+`tools/build-text-catalogue.py` writes `docs/text-catalogue.md`. It is one
+table listing every ID with:
+
+- its US text and its UK text;
+- whether it is spoken;
+- who says it;
+- which file it is used in.
+
+This is the "whole list, everything catalogued" Rob asked for. It is generated,
+never edited by hand, so it cannot go stale.
+
+---
+
+## 3. The order: never break a working game
+
+Each step is its own branch. Each one is played on Rob's phone before it merges.
+
+| Step | What | Risk |
+|---|---|---|
+| **0** | `text.js`, empty `lang/` and `content/` files, `check-text.py`. Nothing visible changes. | none |
+| **1** | **Rhythm Stomp Lab.** Move `RSTOMP_PROMPTS` and its level overrides into `en-US.js`. It is already named, so this proves the system on the part that needs the least change. | low |
+| **2** | **The dashboard and home screen.** | low |
+| **3** | **Staff Smash** | medium |
+| **4** | **Note Smash.** Fix CLAUDE.md open item 4 (announcing the target on every redraw) in the same change, because the same lines are being touched. | medium |
+| **5** | **Real Smash.** Fix CLAUDE.md open item 3 (the dead setup screen) in the same change. | medium |
+| **6** | **Stage lists → `content/levels.js`.** Stage names and descriptions become IDs; the level data moves out of the game logic. | medium |
+| **7** | **Riff and Tango and the music**, once Rob sends the material: fill `dialogue.js`, `art.js` and `audio.js`. | none: content only |
+
+**Value Smash is written language-first from its first line.** It needs only
+step 0, not the migration of the older games, so it never adds to the debt.
+
+Before each merge, `check-text.py` must report:
+
+- **no hard-coded text** in the files that step converted;
+- **every ID used exists** in `en-US.js`;
+- **`en-GB.js` contains no ID that `en-US.js` lacks.**
+
+---
+
+## 4. What this plan deliberately does not do
+
+- **It does not restructure the game logic.** Rob also asked for things to be
+  "more object-oriented". The duplicated grid code in Staff Smash and Note Smash
+  (`g1*` and `g2*`) should one day become one shared Smash-grid module. That is
+  a larger rewrite of working games, so it is a separate project, to start once
+  the words are out. Doing both in one change would make any breakage
+  impossible to trace.
+- **It does not add a server, database or CMS.** Rob ruled this out. The files
+  are the source.
+- **It does not change how anything plays.** A converted game should be
+  indistinguishable from before, word for word.
+
+---
+
+## 5. Also true once this lands
+
+- There is no automated test suite in this repo yet. `check-text.py` would be
+  the first check a change must pass, and it is where the Value Smash notation
+  sweeps (brief §13) would live too.
+- Every new on-screen line, anywhere in the app, is added as an ID. The
+  `CLAUDE.md` rule in "Every on-screen prompt has a NAME" now applies app-wide,
+  not only to Stomp Lab.
+
+
+==============================================================================
+# FILE: docs/value-smash-build-guide.md
+*The step-by-step build spec for Value Smash, Phase 0 and Phase 1.*
+==============================================================================
+
+# Value Smash: build guide, Phase 0 and Phase 1
+
+**Who this is for:** whoever is building. That might be a Claude Code session,
+GitHub Copilot in VS Code, or a human developer. It is written so that any of
+them can work from it **without access to the private docs repo.**
+
+**Where the full design lives:** `kool-riffs-docs/docs/value-smash-design-brief.md`
+(private). This guide is the part of that brief needed to build the first
+playable version, plus the technical decisions that go with it. If the two
+disagree, **the brief wins**: stop and ask Rob.
+
+**Before writing any code, read:**
+
+1. `CLAUDE.md`, especially these sections: "WORDS DO NOT GO IN THE CODE",
+   "SILOS AND BRIDGES", "Riff and Tango", "ADDICTIVE BY DESIGN", "Core
+   mechanics", "Persistence pattern", "Pathway screen pattern", and "VexFlow does
+   not draw dots".
+2. `docs/language-files-plan.md` (the whole thing, which is short).
+3. This guide.
+
+---
+
+## 0. The rules you must not break
+
+These come from `CLAUDE.md`, and every one of them has been learned the hard
+way:
+
+1. **No on-screen words in the code.** Every word the student sees or hears
+   comes from `lang/en-US.js` by ID, through `KR.t('some.id')`. The HTML
+   carries `data-text="some.id"`, never the words. If you are about to type a
+   sentence inside a `.js` or `.html` file, stop and put it in the language
+   file instead.
+2. **Don't break the working games.** Staff Smash, Note Smash, Real Smash, the
+   old Rhythm game and Rhythm Stomp Lab must behave exactly as before. In this
+   phase, the only change to existing code is the three small edits listed in
+   §3.5 and §2.3. Don't "tidy up" `script.js` or `rhythm-stomp-lab.js`.
+3. **No build step, no frameworks, no npm.** Plain HTML, CSS and JavaScript,
+   loaded with `<script>` tags, as the rest of the app is. VexFlow 3.0.9 is
+   already loaded from a CDN.
+4. **Real notation only**, drawn with VexFlow as SVG, stems up. Dotted notes
+   need `note.addDotToAll()`. Beam pairs of eighth notes by hand. Never use
+   `VF.Beam.generateBeams`. (Phase 1 has no eighth notes, but keep this in
+   mind.)
+5. **Nothing decorative ever sits on top of the notation.** Effects, portraits
+   and badges go beside the music or behind it, never over it.
+6. **Only correct taps score.** Wrong taps cost time, never points. Totals shown
+   on screen are whole numbers.
+7. **Rule of three**: three correct in a row passes a tier.
+8. **Phone first.** Test at 390 px wide in portrait. Buttons at least 56 px tall.
+
+---
+
+## 1. What Phase 0 and Phase 1 deliver
+
+| | Delivers |
+|---|---|
+| **Phase 0** | The language-file foundation (`text.js`, `lang/`, `content/`) and a checker. **Nothing visible changes.** |
+| **Phase 1** | Value Smash, Part V1 ("The Big Three": whole, half and quarter notes and their rests), with three floors: **Tree, Smash, Sprint**. Also a player picker, the Artistic License gate into Stomp Lab, stars, personal bests, combos and gold cards. |
+
+**Not in this phase:** Merge, Bar Drop, parts V2–V6, the Maestro Bonus, Daily
+Smash, streaks, the Note Deck, and Riff and Tango's art and dialogue. **But the
+places for them are built now** (§2.3).
+
+---
+
+## 2. Phase 0: the foundation
+
+Follow `docs/language-files-plan.md` §2. Concretely:
+
+### 2.1 Files
+
+```
+text.js               the helper, described below
+lang/en-US.js         KR.lang('en-US', { ...every word... })
+lang/en-GB.js         KR.lang('en-GB', { ...only UK differences, e.g. note names... })
+content/dialogue.js   KR.dialogue = { voices: {...}, lines: [] }
+content/art.js        KR.art = { }          // pose id -> image path; empty for now
+content/audio.js      KR.audio = { }        // line or sound id -> file path; empty for now
+tools/check-text.py   the checker
+```
+
+In `index.html`, load them **before** `script.js`, in this order: `text.js`,
+`lang/en-US.js`, `lang/en-GB.js`, then the `content/` files.
+
+### 2.2 `text.js`: the whole API
+
+Keep it small, commented and readable. Rob reads this code.
+
+```js
+KR.lang(code, table)        // register a language table
+KR.t(id, vars)              // look up an id, fill {braces} from vars.
+                            //   Missing id -> returns "[id]" so the gap is visible.
+KR.applyText(root)          // fill every [data-text] element under root
+KR.noteName(valueId)        // note names follow the names setting:
+                            //   'both' -> "whole note (semibreve)"  (default)
+                            //   'us'   -> "whole note"
+                            //   'uk'   -> "semibreve"
+KR.setNames(mode)           // 'both' | 'us' | 'uk', saved in localStorage
+KR.on(eventName, fn)        // listen for a game event
+KR.event(eventName, data)   // announce a game event. Also looks in
+                            //   KR.dialogue.lines for a matching `on` and, if
+                            //   found, shows it in the guide box (2.3).
+KR.say(lineOrTextId, opts)  // show a line in the guide box and speak it
+```
+
+**Speech:**
+
+- If `KR.audio[id]` exists, `KR.say` plays that audio file.
+- Otherwise it uses `speechSynthesis`, with the speaker's profile from
+  `KR.dialogue.voices`:
+  - `riff`: pitch 0.7, rate 0.95;
+  - `tango`: pitch 1.6, rate 1.1;
+  - `narrator`: the default.
+- Speech must never throw an error if the browser has no voices.
+
+### 2.3 The three places for later work (build these now)
+
+1. **The guide box.** Make one reusable guide box: a gold box with the same
+   look as `.rstomp-prompt` in `style.css`, plus a **portrait slot to its
+   left**. The slot stays hidden until `KR.art` has a picture for the speaker.
+   `KR.say()` writes into it. Value Smash uses it for every instruction.
+   **Don't** change Stomp Lab's own prompt box in this phase.
+2. **Events.** Value Smash calls `KR.event()` at every moment a character might
+   one day react to. The list is in §3.8. `content/dialogue.js` stays empty,
+   so for now nothing extra happens.
+3. **One place for progress.** All Value Smash progress is read and written
+   through two functions, `vsmashLoad()` and `vsmashSave()`, and nowhere else
+   (§3.2).
+
+### 2.4 `tools/check-text.py`
+
+It checks three things, and exits non-zero if any fail:
+
+1. every `KR.t('…')`, `data-text="…"` and `KR.say('…')` ID used in
+   `value-smash.js`, `text.js` and `index.html` exists in `lang/en-US.js`;
+2. every ID in `lang/en-GB.js` also exists in `en-US.js`;
+3. `value-smash.js` contains no quoted English sentences, found with a simple
+   check: a string literal of two or more words with a space between letters.
+   Allow an explicit `// text-ok` comment on the same line for rare
+   exceptions, such as CSS class names.
+
+**Done when:** the app loads exactly as before, with no console errors;
+`KR.t('missing.thing')` returns `[missing.thing]`; and the checker passes.
+
+---
+
+## 3. Phase 1: Value Smash V1
+
+### 3.1 Files and screens
+
+- A new file, `value-smash.js`, loaded **after** `rhythm-audio.js` and
+  `rhythm-stomp-lab.js` (it reuses their sound functions).
+- A new view, `view-value`, following the pattern of `view-rhythm-lab` in
+  `index.html`. It needs:
+  - a pathway screen;
+  - a game screen;
+  - a results screen.
+- A new card on the dashboard, placed **before** the Rhythm Stomp Lab card,
+  with its title and blurb taken from the language file.
+
+### 3.2 Players and progress
+
+- **Player picker.** The first time a student opens Value Smash, they are asked
+  for a name, typed in a box, with no password. After that, a small "Playing
+  as: Sam ▾" control on the pathway screen lets them switch player or add a new
+  one.
+  - Stored in `localStorage` under the key `koolRiffsPlayers`, as
+    `{ list: [{id, name}], current: id }`.
+  - In this phase **only Value Smash** uses players. Don't change the other
+    games.
+- **Progress** is stored under the key `koolRiffsValueProgress`, as
+  `{ players: { [playerId]: {...} } }`. Each player holds:
+
+  ```js
+  { floors: { [floorId]: { cleared, stars, bestScore, bestTime, plays } },
+    unlocked: [floorId, ...], lastFloor, license: false, namesSetting: 'both' }
+  ```
+
+- Wrap every `localStorage` read and write in `try/catch`. On school
+  Chromebooks storage can be wiped or blocked.
+
+### 3.3 Floors are data
+
+Define the floors as a data array at the top of `value-smash.js`. **Floor IDs
+are permanent**, because a future app-wide Level (a "bridge") will list them.
+
+```js
+const VSMASH_FLOORS = [
+  { id: 'v1-tree',   part: 'v1', kind: 'tree',   unlock: null },
+  { id: 'v1-smash',  part: 'v1', kind: 'smash',  unlock: 'v1-tree' },
+  { id: 'v1-sprint', part: 'v1', kind: 'sprint', unlock: 'v1-smash', awards: 'license' },
+];
+```
+
+Display names come from the language file, as `value.floor.v1-tree.name` and so
+on. The pathway screen follows the pathway pattern in `CLAUDE.md`:
+
+- a **locked** floor shows only an icon;
+- an **unlocked** floor shows an icon and its name;
+- a **cleared** floor shows an icon, its name and its stars;
+- **Start** appears only once a floor has been selected.
+
+### 3.4 The beat key and note values
+
+- Every question that mentions beats shows a small chip, **"C · ♩ = 1 beat"**,
+  taken from the language file. Part V1 is always common time: a whole note is
+  4 beats, a half note 2, a quarter note 1, and each rest the same as its note.
+- Note values use the same codes as `RSTOMP_VOCABULARY` in
+  `rhythm-stomp-lab.js`: `w`, `h`, `q` (plus `isRest`). **Don't copy
+  `RSTOMP_VOCABULARY`: read it.**
+- **Drawing notes on cards and tiles.** Write one small function,
+  `vsmashDrawNotes(el, specs)`. It draws a short run of notes and rests with
+  VexFlow:
+  - SVG;
+  - a one-line staff with no clef and no time signature;
+  - stems up;
+  - `Voice` in `SOFT` mode, because a card is not a full bar.
+
+  **Cache each distinct drawing** as an SVG string and reuse it, so the grid
+  doesn't call VexFlow for every card on every screen.
+
+### 3.5 Floor v1-tree: The Tree (scaffolding, no clock)
+
+**What it teaches:** how the values relate, without any beat counting.
+
+**The screen:**
+
+- A column of **3 rows, all the same width**, because each row lasts the same
+  time: a whole-note row, a half-note row and a quarter-note row.
+- Under the rows is a **tray** of tiles: whole, half and quarter (and the three
+  rests, in round 3).
+- **Each tile's width is proportional to its value.** A whole note is the full
+  row, a half note is half of it, and a quarter note is a quarter of it.
+
+**Play:**
+
+- The student taps a tray tile. It goes into the **highest row that still has
+  room**.
+  - If the tile is the value that row holds, it drops in.
+  - If it isn't, it is **refused**: a clunk sound, the tile shakes, and the
+    guide box says why. For example, `value.tree.refuse` could read *"That row
+    is {note}s. A {note} is half a {parent}."*, with the names coming from
+    `KR.noteName`.
+- When a row is full, it **plays back**: one `raudioTapSnare()` per note,
+  0.5 s per beat. Then fire the event `value.tree.row`.
+- **The three rounds:**
+  1. The whole note is given; build down.
+  2. A randomly chosen row is given (the halves or the quarters); build up and
+     down.
+  3. The rest tree (whole rest, half rests, quarter rests).
+- **Passing:**
+  - Complete all three rounds.
+  - A round counts only if it was finished with **at most 1 refused tile**.
+    Otherwise it is replayed with a new random start. *(This is a default for
+    Rob to tune.)*
+  - Fire `value.tree.cleared`.
+
+**After it is cleared, the tree is the help menu.** Add a **Tree** button to
+every Value Smash screen. It opens the student's own tree as a reference card,
+showing only the rows they have built. Later, V5/V6 will add beat labels here.
+
+### 3.6 Floor v1-smash: Smash
+
+This copies the Note Smash mechanic. Read these functions in `script.js` before
+writing:
+
+- `loadG2Grid()`;
+- `handleG2Click()`;
+- `resolveG2Screen()`;
+- `triggerG2TimeBonus()`;
+- the watchlist functions.
+
+Match their behaviour; don't import from them.
+
+**Tiers, density, duds and the clock:**
+
+- **Tiers:** 3 → 6 → 9 → 12 cards.
+- **Targets per screen:** the same bands as Note Smash (1–2, 2–4, 2–3, 3–4).
+- **Duds:** about 15% of screens have no correct cards. **Never two duds in a
+  row.** A correctly handled dud counts as a joker.
+- **Rule of three per tier:** three cleared screens in a row moves up a tier.
+  Clearing tier 4 clears the floor.
+- **The clock:** **no clock on tier 1.** It starts at tier 2, at 60 seconds.
+  Clearing a screen gives a time bonus of `(cards / 3) + 2` seconds. A wrong
+  tap costs time, not points.
+
+**The duration bar:** a bar under each card, as long as the card lasts.
+
+| Tier | Duration bar |
+|---|---|
+| 1 | shown in full |
+| 2 | faint |
+| 3–4 | gone |
+
+**Targets:**
+
+| Tier | Target type | Target | Cards contain |
+|---|---|---|---|
+| 1–2 | "Smash everything worth **N beats**" | N = 1, 2 or 4 | tier 1: single notes and rests; tier 2: also groups of 2–3 notes and rests |
+| 3–4 | "Smash everything that **equals a** half note / whole note" | a card's total must equal it | groups of 1–4 notes and rests |
+
+Groups must still be real notation, so no group may be longer than 4 beats.
+The target is spoken **only when it changes** (Note Smash re-announces it every
+time, which is a known bug not to copy).
+
+**Feel:**
+
+- A correct card plays `raudioTapSnare()` and shatters.
+- **Combo:** each correct tap in a row raises the snare pitch one step and adds
+  one to a multiplier for that screen. A wrong tap resets it.
+- **Gold card:** about 1 screen in 12 has one target card drawn in gold, worth
+  triple points.
+- **Watchlist:** a value the student misses appears more often for the next few
+  screens.
+
+**Events to fire:**
+
+- `value.smash.correct`
+- `value.smash.wrong`
+- `value.smash.tierUp`
+- `value.floor.cleared`
+
+### 3.7 Floor v1-sprint: Sprint and the Artistic License
+
+- 60 seconds, starting at tier 2 density. **Every** kind of question from the
+  Smash floor is mixed in, with no duration bars. Time bonuses work as in Smash.
+- **Medals** go by the highest tier reached, as in Real Smash: tier 2 is
+  Bronze, tier 3 Silver, tier 4 Gold. Record a personal best.
+- **Stars (every floor):**
+  - 1 star: cleared;
+  - 2 stars: cleared within a target time (default 120 s for Smash, 60 s for
+    the Tree);
+  - 3 stars: cleared with no wrong taps.
+- **Bronze or better awards the Artistic License**, once only:
+  - set `license: true`;
+  - show a full-screen ceremony card (words from the language file; Tango's
+    portrait slot stays empty for now);
+  - fire `value.license.awarded`.
+
+**The Stomp Lab gate.** This is the only change to `rhythm-stomp-lab.js`. At
+the top of `enterRhythmLab()`:
+
+- If the current Value Smash player **has no license**, **and** Stomp Lab
+  progress shows the student has never played (`totalPlays` is 0 and
+  `unlockedStages` is just `['1']`):
+  - show the Value Smash guide box message `value.license.needed`, with a
+    button that opens Value Smash;
+  - return, without entering Stomp Lab.
+- **Anyone who has already played Stomp Lab is never blocked.** Never remove
+  anything from `unlockedStages`.
+
+### 3.8 Events Value Smash fires (the list the characters will use)
+
+| Event | When it fires |
+|---|---|
+| `value.open` | Value Smash opens |
+| `value.floor.start` | a floor starts |
+| `value.floor.cleared` | a floor is cleared |
+| `value.tree.row` | a tree row is completed |
+| `value.tree.refuse` | a tree tile is refused |
+| `value.tree.cleared` | the tree is cleared |
+| `value.smash.correct` | a correct card is smashed |
+| `value.smash.wrong` | a wrong card is tapped |
+| `value.smash.dud` | a dud screen is handled correctly |
+| `value.smash.tierUp` | the student moves up a tier |
+| `value.smash.gold` | a gold card is smashed |
+| `value.sprint.medal` | a Sprint ends with a medal (data: `{ medal }`) |
+| `value.license.awarded` | the Artistic License is awarded |
+
+### 3.9 Wording
+
+Write placeholder text for every ID in `lang/en-US.js`, with IDs grouped and
+commented by screen. **Rob will rewrite all of it**, so keep it short and
+plain. Put note names in `en-GB.js` too:
+
+- semibreve
+- minim
+- crotchet
+- semibreve rest
+- minim rest
+- crotchet rest
+
+---
+
+## 4. How to work: one step at a time
+
+Do these in order. **Commit after each step that works**, with a clear
+message. Stop after each step so Rob can look.
+
+1. Phase 0 (§2)
+2. The Value Smash view, the pathway and the player picker (§3.1–3.3), with
+   empty floors
+3. The Tree (§3.5)
+4. Smash (§3.6)
+5. The Sprint, stars, medals, the license and the Stomp Lab gate (§3.7)
+6. Polish on a phone: layout at 390 px, sounds, and the checker passing
+
+**Before each commit:** the app still loads with no console errors, all five
+existing games still open and play, and `python3 tools/check-text.py` passes.
+
+---
+
+## 5. Defaults Rob will tune (don't agonise over them)
+
+| Setting | Default |
+|---|---|
+| Dud rate | 15% |
+| Gold-card rate | 1 in 12 |
+| Sprint length | 60 s |
+| Star target times | 120 s for Smash, 60 s for the Tree |
+| Refusals allowed per Tree round | 1 |
+| Placeholder voice pitch and rate | Riff: pitch 0.7, rate 0.95. Tango: pitch 1.6, rate 1.1. |
+| Snare timing in Tree playback | 0.5 s per beat |
+
+Put these as named constants at the top of `value-smash.js`, so they are easy
+to find.
+
+
+==============================================================================
 # FILE: ideas/equivalency-note-tree.md
-*The known prerequisite hole: note-value equivalency. Captured, not designed.*
+*The prerequisite hole: note-value equivalency. Designed as Value Smash, not built.*
 ==============================================================================
 
 # The missing step: note-value equivalency
 
-**Status: captured, not designed and not built. Ask Rob before building.**
+**Status: designed and approved by Rob (2026-09-23); not built.** The full design
+brief is `kool-riffs-docs/docs/value-smash-design-brief.md` (revision 2). It
+answers every open question below, and `CLAUDE.md` ("THE APP IS LEVELS ACROSS
+PILLARS") has the short version.
 
 Raised by Rob after Garnet played Rhythm Stomp Lab. Written down here so it
 survives the conversation it came from — see `ideas/README.md` for how to take
