@@ -30,11 +30,13 @@ NO_WORDS = ['value-smash.js']
 LANG_BASE = 'lang/en-US.js'
 LANG_OTHERS = ['lang/en-GB.js']
 
+# Only an ID written out whole: KR.t('a.b') or KR.t('a.b', vars). An ID
+# built at run time (KR.t('value.floor.' + id)) can't be checked here.
 ID_USE = [
-    re.compile(r"""KR\.(?:t|say)\(\s*['"]([^'"]+)['"]"""),
+    re.compile(r"""KR\.(?:t|say)\(\s*['"]([^'"]+)['"]\s*[,)]"""),
     re.compile(r"""data-text\s*=\s*['"]([^'"]+)['"]"""),
 ]
-NOTE_NAME_USE = re.compile(r"""KR\.noteName\(\s*['"]([^'"]+)['"]""")
+NOTE_NAME_USE = re.compile(r"""KR\.noteName\(\s*['"]([^'"]+)['"]\s*[,)]""")
 LANG_ENTRY = re.compile(r"""^\s*['"]([^'"]+)['"]\s*:""", re.MULTILINE)
 TWO_WORDS = re.compile(r"[A-Za-z]\s+[A-Za-z]")
 

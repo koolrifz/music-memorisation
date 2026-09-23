@@ -48,6 +48,13 @@
                 <p>Count when the next note starts, before you ever play it.</p>
             </div>
         </div>
+        <div class="game-card orange" onclick="enterValueSmash()">
+            <div class="game-icon icon-orange" data-text="home.value.icon"></div>
+            <div class="game-details">
+                <h2 data-text="home.value.title"></h2>
+                <p data-text="home.value.blurb"></p>
+            </div>
+        </div>
         <div class="game-card teal" onclick="launchGame('view-rhythm-lab')">
             <div class="game-icon icon-teal">🧪</div>
             <div class="game-details">
@@ -567,6 +574,60 @@
     </div>
 </div>
 
+<!-- VALUE SMASH (the Value silo) - value-smash.js. No words here: every
+     element carries data-text="some.id", filled from lang/en-US.js. -->
+<div id="view-value" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleValueBackButton()" data-text="value.back"></button>
+    </div>
+
+    <!-- Who is playing. Asked the first time; the "Playing as" control on
+         the pathway comes back here to switch or add a player. -->
+    <div id="value-screen-player" class="screen">
+        <div class="pathway-card">
+            <h1 data-text="value.title"></h1>
+            <div class="kr-guide" id="value-player-guide">
+                <img class="kr-guide-portrait" hidden alt="">
+                <div class="kr-guide-text"></div>
+            </div>
+            <div class="vsmash-player-list" id="value-player-list"></div>
+            <input class="vsmash-name-input" id="value-name-input" type="text" maxlength="20" autocomplete="off">
+            <button class="btn btn-start" onclick="addValuePlayer()" data-text="value.player.add"></button>
+        </div>
+    </div>
+
+    <div id="value-screen-pathway" class="screen">
+        <div class="pathway-card">
+            <h1 data-text="value.title"></h1>
+            <button class="vsmash-player-chip" id="value-player-chip" onclick="showValuePlayers()"></button>
+            <p class="pathway-subtitle" data-text="value.subtitle"></p>
+            <div class="pathway-track" id="value-pathway-track"></div>
+            <button class="btn btn-start" id="value-pathway-start" onclick="startSelectedValueFloor()" disabled data-text="value.choose"></button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')" data-text="value.toDashboard"></button>
+        </div>
+    </div>
+
+    <div id="value-screen-game" class="screen">
+        <div class="vsmash-header">
+            <div class="vsmash-header-label" id="value-floor-label"></div>
+        </div>
+        <div class="kr-guide" id="value-game-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <div class="vsmash-stage" id="value-stage"></div>
+        <button class="btn btn-secondary vsmash-leave" onclick="handleValueBackButton()" data-text="value.floor.back"></button>
+    </div>
+
+    <div id="value-screen-results" class="screen">
+        <div class="pathway-card">
+            <h1 data-text="value.results.title"></h1>
+            <div id="value-results-body"></div>
+            <button class="btn btn-start" onclick="showValuePathway()" data-text="value.floor.back"></button>
+        </div>
+    </div>
+</div>
+
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-credits">
     <div class="credits-box">
@@ -643,5 +704,6 @@
 <script src="rhythm.js"></script>
 <script src="rhythm-audio.js"></script>
 <script src="rhythm-stomp-lab.js"></script>
+<script src="value-smash.js"></script>
 </body>
 </html>

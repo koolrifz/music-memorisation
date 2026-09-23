@@ -12,6 +12,7 @@
     --accent-gold: #ffc800;
     --accent-teal: #2dd4bf;
     --accent-teal-shadow: #1ea08f;
+    --accent-orange: #ff9600;
     --text-main: #ffffff;
     --text-muted: #8696a7;
 }
@@ -871,3 +872,28 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .kr-guide-portrait { flex: 0 0 auto; width: 56px; height: 56px; object-fit: contain; }
 .kr-guide-portrait[hidden] { display: none; }
 .kr-guide-text { flex: 1 1 auto; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-gold); background: rgba(255,200,0,0.12); border: 2px solid var(--accent-gold); border-radius: 12px; padding: 10px 12px; }
+
+
+/* =========================================
+   VALUE SMASH (value-smash.js)
+   Tango's colour: she handles rhythm, and Value Smash is hers.
+   Phone first - every button at least 56px tall.
+   ========================================= */
+.game-card.orange:active { border-color: var(--accent-orange); }
+.icon-orange { background: var(--accent-orange); color: var(--bg-dark); }
+#value-pathway-track { grid-template-columns: repeat(3, 1fr); }
+.vsmash-stars { color: var(--accent-gold); font-size: 17px; line-height: 1; letter-spacing: 1px; }
+#value-screen-player .kr-guide { margin-top: 14px; }
+
+.vsmash-player-chip { display: inline-block; min-height: 44px; margin: 8px auto 0; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--accent-orange); background: rgba(255,150,0,0.12); color: white; font-weight: 900; font-size: 15px; cursor: pointer; }
+.vsmash-player-list { display: flex; flex-direction: column; }
+.vsmash-player-btn { min-height: 56px; text-transform: none; letter-spacing: 0; font-size: 18px; }
+.vsmash-player-btn.current { box-shadow: 0 6px 0 #2a3b4f, inset 0 0 0 3px var(--accent-orange); }
+.vsmash-name-input { box-sizing: border-box; width: 100%; min-height: 56px; margin-top: 16px; padding: 12px 16px; font-size: 18px; font-weight: 800; border-radius: 14px; border: 3px solid #526b85; background: var(--bg-dark); color: white; text-align: center; }
+.vsmash-name-input:focus { outline: none; border-color: var(--accent-orange); }
+
+#value-screen-game { padding-top: 64px; }
+.vsmash-header { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; }
+.vsmash-header-label { color: var(--accent-gold); font-weight: 900; font-size: 18px; }
+.vsmash-stage { width: 100%; max-width: 640px; margin: 0 auto; }
+.vsmash-leave { max-width: 640px; min-height: 56px; }

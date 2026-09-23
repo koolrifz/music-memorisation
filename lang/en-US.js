@@ -22,4 +22,40 @@ KR.lang('en-US', {
     'note.half-rest':        'half rest',
     'note.quarter-rest':     'quarter rest',
 
+    /* ---------- Dashboard: the Value Smash card ---------- */
+    'home.value.icon':       '♩',
+    'home.value.title':      'Value Smash',
+    'home.value.blurb':      'How long does each note last? Smash the values.',
+
+    /* ---------- Value Smash: every screen ---------- */
+    'value.title':           'Value Smash',
+    'value.back':            '⬅ Back',
+    'value.toDashboard':     'Back to Dashboard',
+
+    /* ---------- Value Smash: who is playing ---------- */
+    'value.player.askFirst':        "Hi! What's your name?",
+    'value.player.askSwitch':       "Who's playing? Tap your name, or type a new one.",
+    'value.player.nameNeeded':      'Type your name first.',
+    'value.player.namePlaceholder': 'Your name',
+    'value.player.add':             "Let's go",
+    'value.player.playingAs':       'Playing as: {name} ▾',
+
+    /* ---------- Value Smash: the pathway ---------- */
+    'value.subtitle':        'Pick a floor.',
+    'value.choose':          'Choose your mission',
+    'value.start':           'Start {floor}',
+    'value.floor.lockedIcon': '•',
+    'value.star.full':       '★',
+    'value.star.empty':      '☆',
+    'value.floor.v1-tree.name':   'The Tree',
+    'value.floor.v1-smash.name':  'Smash',
+    'value.floor.v1-sprint.name': 'Sprint',
+
+    /* ---------- Value Smash: playing a floor ---------- */
+    'value.floor.empty':     'This floor is still being built. Come back soon!',
+    'value.floor.back':      'Back to the floors',
+
+    /* ---------- Value Smash: results ---------- */
+    'value.results.title':   'Results',
+
 });
