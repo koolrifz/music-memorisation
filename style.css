@@ -858,3 +858,16 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
     border-color: #5eead4;
     color: #f0fdfa;
 }
+
+
+/* =========================================
+   THE GUIDE BOX (KR.say in text.js)
+   The gold box that speaks to the student - the same look as
+   .rstomp-prompt - with a portrait slot to its LEFT for whoever is
+   speaking. The portrait sits beside the box, never over the notation,
+   and stays hidden until content/art.js has a picture.
+   ========================================= */
+.kr-guide { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 640px; margin: 0 auto 10px; }
+.kr-guide-portrait { flex: 0 0 auto; width: 56px; height: 56px; object-fit: contain; }
+.kr-guide-portrait[hidden] { display: none; }
+.kr-guide-text { flex: 1 1 auto; text-align: center; font-weight: 900; font-size: 15px; color: var(--accent-gold); background: rgba(255,200,0,0.12); border: 2px solid var(--accent-gold); border-radius: 12px; padding: 10px 12px; }
