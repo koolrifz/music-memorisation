@@ -1,6 +1,9 @@
 # The missing step: note-value equivalency
 
-**Status: captured, not designed and not built. Ask Rob before building.**
+**Status: designed, not built.** The full design brief is
+`kool-riffs-docs/docs/value-smash-design-brief.md` (final draft, 2026-09-23,
+awaiting Rob's sign-off). It answers every open question below. Ask Rob before
+building.
 
 Raised by Rob after Garnet played Rhythm Stomp Lab. Written down here so it
 survives the conversation it came from — see `ideas/README.md` for how to take
