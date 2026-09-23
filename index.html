@@ -620,6 +620,7 @@
         <div class="vsmash-hud" id="value-hud" hidden>
             <span class="streak-dots vsmash-streak" id="value-streak"></span>
             <span class="vsmash-joker" id="value-joker" hidden data-text="value.smash.joker"></span>
+            <span class="vsmash-medal" id="value-medal" hidden></span>
             <span class="vsmash-combo" id="value-combo"></span>
             <span class="vsmash-score" id="value-score"></span>
             <span class="timer-badge vsmash-clock" id="value-clock" hidden></span>
@@ -649,6 +650,37 @@
         <h3 data-text="value.tree.cardTitle"></h3>
         <div id="value-tree-card-rows"></div>
         <button class="btn-close" onclick="closeValueTreeCard()" data-text="value.tree.close"></button>
+    </div>
+</div>
+
+<!-- The Artistic License ceremony (value-smash.js vsmashLicenseCeremony).
+     Tango presents it from the guide box once her portrait exists. -->
+<div class="modal-overlay vsmash-license" id="modal-value-license">
+    <div class="vsmash-license-card">
+        <div class="kr-guide" id="value-license-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <div class="vsmash-license-ticket">
+            <div class="vsmash-license-badge" data-text="value.license.badge"></div>
+            <h2 data-text="value.license.title"></h2>
+            <p class="vsmash-license-name" id="value-license-name"></p>
+            <p data-text="value.license.body"></p>
+        </div>
+        <button class="btn btn-start" onclick="openStompFromLicense()" data-text="value.license.go"></button>
+        <button class="btn btn-secondary" onclick="closeValueLicense()" data-text="value.license.later"></button>
+    </div>
+</div>
+
+<!-- The Stomp Lab gate (value-smash.js vsmashGateStompLab) -->
+<div class="modal-overlay" id="modal-value-gate">
+    <div class="vsmash-gate-card">
+        <div class="kr-guide" id="value-gate-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <button class="btn btn-start" onclick="openValueFromGate()" data-text="value.license.openValue"></button>
+        <button class="btn btn-secondary" onclick="closeValueGate()" data-text="value.license.notNow"></button>
     </div>
 </div>
 

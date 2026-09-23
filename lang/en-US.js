@@ -93,6 +93,27 @@ KR.lang('en-US', {
     'value.smash.clock':         '{n}s',
     'value.smash.joker':         '🃏 Joker',
 
+    /* ---------- Value Smash: the Sprint ---------- */
+    'value.medal.bronze':        '🥉 Bronze',
+    'value.medal.silver':        '🥈 Silver',
+    'value.medal.gold':          '🥇 Gold',
+    'value.sprint.medalEarned':  '{medal}! Now {cards} cards.',
+    'value.sprint.topTier':      '{medal}! Keep smashing for points.',
+    'value.sprint.needBronze':   'Clear three screens in a row at {cards} cards to win Bronze.',
+
+    /* ---------- Value Smash: the Artistic License ----------
+       'value.license.say' and 'value.license.needed' are Tango's lines. */
+    'value.license.badge':       '🎨',
+    'value.license.title':       'Artistic License',
+    'value.license.holder':      'Awarded to {name}',
+    'value.license.body':        'You can smash whole, half and quarter notes and their rests. Rhythm Stomp Lab is open!',
+    'value.license.say':         "You've earned your Artistic License! Rhythm Stomp Lab is open.",
+    'value.license.go':          'Open Rhythm Stomp Lab',
+    'value.license.later':       'Later',
+    'value.license.needed':      'You need your Artistic License for Rhythm Stomp Lab. Win a medal in the Value Smash Sprint to earn it.',
+    'value.license.openValue':   'Go to Value Smash',
+    'value.license.notNow':      'Not now',
+
     /* ---------- Value Smash: the Tree help card ---------- */
     'value.tree.button':     '🌳 Tree',
     'value.tree.cardTitle':  'Your tree',

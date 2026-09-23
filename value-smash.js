@@ -32,6 +32,7 @@ const VSMASH_STAR_TIME = { tree: 60, smash: 120 };   // seconds to beat for the 
 const VSMASH_DUD_RATE = 0.15;                // share of Smash screens with nothing to smash
 const VSMASH_GOLD_RATE = 1 / 12;             // share of Smash screens with a gold (triple) card
 const VSMASH_CLOCK_SECONDS = 60;             // the Smash clock, which starts at tier 2
+const VSMASH_SPRINT_SECONDS = 60;            // the Sprint's length
 const VSMASH_WRONG_TAP_SECONDS = 2;          // what a wrong tap costs once the clock is running
 const VSMASH_WATCH_SCREENS = 3;              // a missed target comes back more often for this many clears
 const VSMASH_WATCH_CHANCE = 0.5;             // ...picked this often while it is on the watchlist
@@ -302,8 +303,7 @@ function startSelectedValueFloor() {
     KR.event('value.floor.start', { floor: floor.id });
 
     if (floor.kind === 'tree') return startValueTree(floor);
-    if (floor.kind === 'smash') return startValueSmash(floor);
-    // The Sprint arrives in a later step.
+    if (floor.kind === 'smash' || floor.kind === 'sprint') return startValueSmash(floor);
     KR.say('value.floor.empty', { box: vsmashGuide() });
 }
 
@@ -321,21 +321,31 @@ function vsmashFloorCleared(floor, result) {
     const record = progress.floors[floor.id] || {};
     const target = VSMASH_STAR_TIME[floor.kind];
     const inTime = target == null || result.seconds <= target;
-    const stars = 1 + (inTime ? 1 : 0) + (inTime && result.wrong === 0 ? 1 : 0);
+    // The Sprint brings its own stars, from its medal.
+    const stars = result.stars || 1 + (inTime ? 1 : 0) + (inTime && result.wrong === 0 ? 1 : 0);
 
     record.cleared = true;
     record.stars = Math.max(record.stars || 0, stars);
-    if (record.bestTime == null || result.seconds < record.bestTime) record.bestTime = result.seconds;
+    if (!result.untimed && (record.bestTime == null || result.seconds < record.bestTime)) record.bestTime = result.seconds;
+    if (result.medal && (record.bestMedal || 0) < stars) record.bestMedal = stars;
     result.newBest = vsmashRecordScore(record, result.score);
     progress.floors[floor.id] = record;
 
     const opened = VSMASH_FLOORS.filter(f => f.unlock === floor.id && !progress.unlocked.includes(f.id));
     opened.forEach(f => progress.unlocked.push(f.id));
     if (opened.length) progress.lastFloor = opened[0].id;
+
+    // The Artistic License is awarded once, ever.
+    const licensed = floor.awards === 'license' && !progress.license;
+    if (licensed) progress.license = true;
     vsmashSave(progress);
 
     KR.event('value.floor.cleared', { floor: floor.id, stars: stars });
     showValueResults(floor, stars, result, opened);
+    if (licensed) {
+        KR.event('value.license.awarded');
+        vsmashLicenseCeremony();
+    }
 }
 
 // A personal best, where the floor keeps a score. Returns true when it is new.
@@ -372,7 +382,8 @@ function showValueResults(floor, stars, result, opened) {
     const line = vsmashResultsBody();
     line('vsmash-result-title', KR.t('value.results.cleared', { floor: vsmashFloorName(floor.id) }));
     line('vsmash-result-stars', vsmashStars(stars));
-    line('vsmash-result-line', KR.t('value.results.time', { seconds: Math.round(result.seconds) }));
+    if (result.medal) line('vsmash-result-medal', KR.t('value.medal.' + result.medal));
+    else line('vsmash-result-line', KR.t('value.results.time', { seconds: Math.round(result.seconds) }));
     vsmashScoreLines(line, floor.id, result);
     opened.forEach(f => line('vsmash-result-open', KR.t('value.results.opened', { floor: vsmashFloorName(f.id) })));
     playSound('complete');
@@ -777,11 +788,14 @@ const VSMASH_COMBO_STEPS = 8;       // the crack stops rising after this many
 //   beats:  "Smash everything worth N beats"      (tiers 1-2)
 //   equals: "Smash everything that equals a ..."  (tiers 3-4)
 // units: how many notes and rests a card may hold, [fewest, most].
-function vsmashTierQuestions(tier) {
-    if (tier <= 1) return [1, 2, 4].map(n => ({ kind: 'beats', total: n, key: 'beats:' + n,
+// The Sprint asks every kind at every tier.
+function vsmashTierQuestions(tier, sprint) {
+    const beats = [1, 2, 4].map(n => ({ kind: 'beats', total: n, key: 'beats:' + n,
         units: tier === 0 ? [1, 1] : [1, 3] }));
-    return ['half-note', 'whole-note'].map(v => ({ kind: 'equals', note: v, total: vsmashBeats(v),
+    const equals = ['half-note', 'whole-note'].map(v => ({ kind: 'equals', note: v, total: vsmashBeats(v),
         key: 'equals:' + v, units: [1, 4] }));
+    if (sprint) return beats.concat(equals);
+    return tier <= 1 ? beats : equals;
 }
 
 /* ---------- Cards are real notation ----------
@@ -861,11 +875,16 @@ function vsmashShuffle(list) {
 let vsmashSmash = null;    // the Smash floor in play, or null
 let vsmashPaused = false;  // true while the Tree help card is open
 
+// The Smash floor and the Sprint share this engine. The Sprint starts at
+// tier 2 with the clock running, asks everything, shows no duration bars,
+// and never ends early: clearing tier 4 keeps it there, piling up points.
 function startValueSmash(floor) {
+    const sprint = floor.kind === 'sprint';
     vsmashSmash = {
-        floor: floor, started: Date.now(),
-        tier: 0, streak: 0, joker: false, score: 0, wrong: 0,
-        clock: null,            // seconds left; null until tier 2
+        floor: floor, sprint: sprint, started: Date.now(),
+        tier: sprint ? 1 : 0, streak: 0, joker: false, score: 0, wrong: 0,
+        clock: sprint ? VSMASH_SPRINT_SECONDS : null,   // seconds left; Smash starts it at tier 2
+        best: -1,               // Sprint: the highest tier cleared, which sets the medal
         watch: {},              // question key -> clears left on the watchlist
         lastDud: false, lastAnnounced: null,
     };
@@ -883,7 +902,7 @@ function startValueSmash(floor) {
 
 function vsmashPickQuestion() {
     const s = vsmashSmash;
-    const questions = vsmashTierQuestions(s.tier);
+    const questions = vsmashTierQuestions(s.tier, s.sprint);
     const watched = questions.filter(q => s.watch[q.key] > 0);
     if (watched.length && Math.random() < VSMASH_WATCH_CHANCE) return vsmashRandom(watched);
     return vsmashRandom(questions);
@@ -935,7 +954,7 @@ function renderValueSmashGrid() {
     const stage = document.getElementById('value-stage');
     stage.innerHTML = '';
     const grid = document.createElement('div');
-    grid.className = 'vsmash-grid tier-' + (s.tier + 1); // text-ok
+    grid.className = 'vsmash-grid tier-' + (s.tier + 1) + (s.sprint ? ' no-bars' : ''); // text-ok
     stage.appendChild(grid);
     const gap = 8;
     const cardWidth = Math.floor((stage.clientWidth - 2 * gap) / 3);
@@ -965,6 +984,9 @@ function vsmashUpdateHud() {
     document.getElementById('value-streak').innerHTML = [0, 1, 2]
         .map(i => '<span class="streak-dot' + (i < s.streak ? ' active' : '') + '"></span>').join(''); // text-ok
     document.getElementById('value-joker').hidden = !s.joker;
+    const medal = document.getElementById('value-medal');
+    medal.hidden = !VSMASH_MEDALS[s.best];
+    if (VSMASH_MEDALS[s.best]) medal.textContent = KR.t('value.medal.' + VSMASH_MEDALS[s.best]);
     document.getElementById('value-combo').textContent = s.combo >= 2 ? KR.t('value.smash.combo', { n: s.combo }) : '';
     document.getElementById('value-score').textContent = KR.t('value.smash.score', { n: s.score });
     const clock = document.getElementById('value-clock');
@@ -1119,14 +1141,28 @@ function vsmashSmashResolve(cleared) {
     if (s.streak < 3) return vsmashLater(loadValueSmashScreen, 350);
 
     s.streak = 0;
-    if (s.tier === VSMASH_TIERS.length - 1) return vsmashSmashCleared();
+    const top = s.tier === VSMASH_TIERS.length - 1;
+    if (s.sprint) {
+        // A medal for every tier cleared, as in Real Smash: tier 2 Bronze,
+        // tier 3 Silver, tier 4 Gold. At the top the Sprint stays put.
+        s.best = Math.max(s.best, s.tier);
+        playSound('complete');
+        vsmashUpdateHud();
+        if (top) {
+            KR.say('value.sprint.topTier', { box: vsmashGuide(), vars: { medal: KR.t('value.medal.gold') } });
+            return vsmashLater(loadValueSmashScreen, 1600);
+        }
+    } else if (top) {
+        return vsmashSmashCleared();
+    }
     s.tier++;
     KR.event('value.smash.tierUp', { tier: s.tier + 1 });
-    playSound('complete');
+    if (!s.sprint) playSound('complete');
     const startsClock = s.clock === null;
     if (startsClock) s.clock = VSMASH_CLOCK_SECONDS;
-    KR.say(startsClock ? 'value.smash.tierUpClock' : 'value.smash.tierUp',
-        { box: vsmashGuide(), vars: { cards: VSMASH_TIERS[s.tier], seconds: VSMASH_CLOCK_SECONDS } });
+    const earned = s.sprint ? 'value.sprint.medalEarned' : startsClock ? 'value.smash.tierUpClock' : 'value.smash.tierUp';
+    KR.say(earned, { box: vsmashGuide(), vars: { cards: VSMASH_TIERS[s.tier], seconds: VSMASH_CLOCK_SECONDS,
+        medal: VSMASH_MEDALS[s.best] ? KR.t('value.medal.' + VSMASH_MEDALS[s.best]) : '' } });
     s.lastAnnounced = null;   // a new tier announces its first target aloud
     vsmashUpdateHud();
     vsmashLater(loadValueSmashScreen, 2200);
@@ -1141,7 +1177,89 @@ function vsmashSmashCleared() {
 function vsmashSmashTimeUp() {
     const s = vsmashSmash;
     vsmashSmash = null;
+    if (s.sprint) return vsmashSprintEnd(s);
     showValueTimeUp({ cards: VSMASH_TIERS[s.tier], score: s.score });
+}
+
+/* =========================================
+   FLOOR v1-sprint: THE SPRINT and THE ARTISTIC LICENSE
+   =========================================
+   60 seconds of everything the Smash floor asks. The medal is the highest
+   tier CLEARED, as in Real Smash - the Sprint starts at tier 2, so "reached"
+   would hand out Bronze for turning up. Bronze or better clears the floor.
+   Stars follow the medal: Bronze 1, Silver 2, Gold 3 - a fixed 60 s leaves
+   no finishing time to beat.
+
+   Clearing it the first time awards the ARTISTIC LICENSE, which opens
+   Rhythm Stomp Lab (CLAUDE.md "SILOS AND BRIDGES"): a full-screen ceremony
+   card, presented by Tango once her art exists.
+   ========================================= */
+const VSMASH_MEDALS = { 1: 'bronze', 2: 'silver', 3: 'gold' };   // tier index cleared -> medal
+
+function vsmashSprintEnd(s) {
+    const medal = VSMASH_MEDALS[s.best];
+    const result = { seconds: VSMASH_SPRINT_SECONDS, wrong: s.wrong, score: s.score, untimed: true };
+    if (medal) {
+        KR.event('value.sprint.medal', { medal: medal });
+        result.medal = medal;
+        result.stars = s.best;
+        return vsmashFloorCleared(s.floor, result);
+    }
+    // No medal: the score still counts as a personal best.
+    const progress = vsmashLoad();
+    const record = progress.floors[s.floor.id] || {};
+    result.newBest = vsmashRecordScore(record, s.score);
+    progress.floors[s.floor.id] = record;
+    vsmashSave(progress);
+    const line = vsmashResultsBody();
+    line('vsmash-result-title', KR.t('value.results.timeUp'));
+    line('vsmash-result-line', KR.t('value.sprint.needBronze', { cards: VSMASH_TIERS[1] }));
+    vsmashScoreLines(line, s.floor.id, result);
+    playSound('timeout');
+}
+
+function vsmashLicenseCeremony() {
+    const player = vsmashCurrentPlayer();
+    document.getElementById('value-license-name').textContent =
+        KR.t('value.license.holder', { name: player ? player.name : '' });
+    document.getElementById('modal-value-license').classList.add('show');
+    KR.say('value.license.say', { box: document.getElementById('value-license-guide'), speaker: 'tango' });
+    playSound('complete');
+}
+
+function closeValueLicense() {
+    document.getElementById('modal-value-license').classList.remove('show');
+}
+
+function openStompFromLicense() {
+    closeValueLicense();
+    launchGame('view-rhythm-lab');
+}
+
+/* ---------- The Stomp Lab gate ----------
+   Called from the top of enterRhythmLab() in rhythm-stomp-lab.js - the only
+   change to that file. Returns true when it has turned the student back.
+   Only a student who has NEVER played Stomp Lab (no finished level, only
+   level 1 open) and has no License is stopped. Anyone who has already
+   played is never blocked, and nothing is ever re-locked. */
+function vsmashGateStompLab() {
+    const stomp = getRstompProgress();
+    const unlocked = stomp.unlockedStages || ['1'];
+    const neverPlayed = (stomp.totalPlays || 0) === 0 && unlocked.length === 1 && unlocked[0] === '1';
+    if (!neverPlayed || vsmashLoad().license) return false;
+    launchGame('view-dashboard');
+    document.getElementById('modal-value-gate').classList.add('show');
+    KR.say('value.license.needed', { box: document.getElementById('value-gate-guide'), speaker: 'tango' });
+    return true;
+}
+
+function closeValueGate() {
+    document.getElementById('modal-value-gate').classList.remove('show');
+}
+
+function openValueFromGate() {
+    closeValueGate();
+    enterValueSmash();
 }
 
 /* ---------- Feel ---------- */

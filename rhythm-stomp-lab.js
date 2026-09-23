@@ -798,6 +798,10 @@ function recordRstompResult(isOfficialMastery) {
 /* ---------- Pathway screen ---------- */
 
 function enterRhythmLab() {
+    // The Artistic License gate (value-smash.js, vsmashGateStompLab). A
+    // student who has never played Stomp Lab earns the License in Value
+    // Smash first. Anyone who has already played is never blocked.
+    if (typeof vsmashGateStompLab === 'function' && vsmashGateStompLab()) return;
     renderRstompPathway();
     switchScreenState('rhythm-lab', 'rhythm-lab-screen-pathway');
 }

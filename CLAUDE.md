@@ -1228,7 +1228,12 @@ yet.** Every new game is designed so that it slots into it.
   opens Rhythm Stomp Lab: *"You can't even get to Rhythm Stomp unless you can
   smash some note values."* Later Stomp Lab stages each open with the Value part
   they depend on. **Never re-lock a Stomp Lab level a student has already
-  unlocked.**
+  unlocked.** **Built on `idea/value-smash`:** a medal in the V1 Sprint awards
+  it (`license: true` in the player's `koolRiffsValueProgress`), and the one
+  guarded line at the top of `enterRhythmLab()` calls `vsmashGateStompLab()`.
+  It stops only a student with no License who has **never** played Stomp Lab
+  (`totalPlays` 0 and only level 1 open). So on a fresh device Stomp Lab does
+  not open: that is the gate, not a bug.
 - **Values first, time signatures last.** Every note value is given in common
   time from the first screen (*"it takes up the whole bar and it commonly
   receives four beats"*, as in Rubank), but the *meaning* of time signatures
