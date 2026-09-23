@@ -1268,15 +1268,34 @@ yet.** Every new game is designed so that it slots into it.
   a time signature is on screen, the tree labels each note with its beats in
   that signature.
 
-### Riff and Tango
-Rob's two characters, created in 1997. **Riff**, a jazz Scottie dog with a rough
-voice, handles **pitch**. **Tango**, a pink-haired, ponytailed cat who walks on
-two legs and is a drummer, handles **rhythm**. *"Together rhythm and pitch make
-melody, and that's music."* They carry a meta-narrative across the whole game.
-Rob is sending the character material; details go in the private docs.
-**Build hooks, not content:** the game fires named events, and what the
-characters say is attached to those events in the content files, never written
-into the code (`docs/language-files-plan.md` §2.4).
+### Riff and Tango: the coaches in the gold box
+Rob's two characters, created in 1997; he owns them, and they will be redrawn.
+**Riff** is a jazz Scottie dog (grey, red beret, green vest, white beard) with a
+**hip, gruff** voice, and he handles **pitch**: the Notation games. **Tango** is
+a cat who walks on two legs, with an **orange-red** spiky tuft and ponytail and
+blue overalls. She is a drummer, with a **high, tight, squeaky** voice, and she
+handles **rhythm**: Value Smash and Stomp Lab. *"Together rhythm and pitch make
+melody, and that's music."*
+
+- **Coaches, not a universe.** Rob: *"a baby bit of a backstory that allows them
+  to keep coaching us through… teaching us to read music and encouraging us to
+  try more and telling us what the rules to the games are… This is a
+  memorising, glorified flashcards is what we're making."* No world map, no
+  quest. The town map and the name "Jam City" are **parked**.
+- **They speak in the gold guide box.** The gold box is already the voice that
+  is *"there with you for the whole game"* (see "The guide box is GOLD"). It
+  becomes their speech bubble in every game. The speaker's portrait sits
+  **beside** the box, **never over the notation**. Lines can go back and forth
+  between the two of them.
+- **Build hooks, not content.** The game fires named events; the content files
+  decide who says what (`docs/language-files-plan.md` §2.4). Every line has an
+  ID and a speaker.
+- **Voices.** Until Rob chooses synthesised voices, the browser's speech reads
+  each line with a pitch and rate per speaker. After that, each line is
+  generated once and saved as an audio file under its ID.
+
+Reference art (1997 stills and Rob's Gemini "Old Riff" redraw) and the open
+items are in the private docs: `kool-riffs-docs/docs/riff-and-tango.md`.
 
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that
@@ -1286,7 +1305,10 @@ Rob's, made on 2026-09-23 and applied to the whole app, not just one game:
 
 > *"That has become my overarching mission… the whole Kool Riffs game. This is
 > not about long-term companionship with the young musician. It's really to seed
-> their initial learning with as much repetition as possible. I don't want to
+> their initial learning with as much repetition as possible."*
+>
+> *"It's really a three-to-six-month game in the very first beginning learning
+> stages. I don't want to
 > minimise any opportunity for addictive gameplay."*
 
 > *"The whole game isn't going to cost practice time. Let's not even put them in
@@ -1779,6 +1801,18 @@ KR.event('value.license.awarded');
 ```js
 { on: 'value.license.awarded', speaker: 'tango', text: 'tango.license.1', pose: 'tango.cheer' },
 ```
+
+**Where the lines appear: the gold guide box.** A dialogue line is shown in the
+gold box, with the speaker's portrait (`art.js`) **beside** the box, never over
+the notation. A line is spoken by:
+
+- the recorded file for its ID, if `audio.js` lists one;
+- otherwise the browser's speech, using the speaker's voice profile from
+  `content/dialogue.js`: a lower pitch and slower rate for Riff (hip and gruff),
+  a higher pitch and quicker rate for Tango (high, tight and squeaky).
+
+The browser voices vary from device to device, so this fallback is only a
+placeholder. The catalogue lists every line that still has no recorded file.
 
 `audio.js` does the same for backing tracks and stingers. Rob can then write
 the whole Riff and Tango narrative, change the music, or add a "go and play it

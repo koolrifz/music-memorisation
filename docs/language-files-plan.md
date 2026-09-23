@@ -124,6 +124,18 @@ KR.event('value.license.awarded');
 { on: 'value.license.awarded', speaker: 'tango', text: 'tango.license.1', pose: 'tango.cheer' },
 ```
 
+**Where the lines appear: the gold guide box.** A dialogue line is shown in the
+gold box, with the speaker's portrait (`art.js`) **beside** the box, never over
+the notation. A line is spoken by:
+
+- the recorded file for its ID, if `audio.js` lists one;
+- otherwise the browser's speech, using the speaker's voice profile from
+  `content/dialogue.js`: a lower pitch and slower rate for Riff (hip and gruff),
+  a higher pitch and quicker rate for Tango (high, tight and squeaky).
+
+The browser voices vary from device to device, so this fallback is only a
+placeholder. The catalogue lists every line that still has no recorded file.
+
 `audio.js` does the same for backing tracks and stingers. Rob can then write
 the whole Riff and Tango narrative, change the music, or add a "go and play it
 on your instrument" line, **without any code changing**. An event with nothing
