@@ -7,6 +7,15 @@ A browser-based music-education app (single HTML page, no build step) teaching p
 
 **Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar. Notation rendering uses VexFlow 3.0.9 via CDN.
 
+**WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
+that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
+can't continue."* Every on-screen word, spoken line, sound and picture is to be
+referenced by ID from language and content files (`lang/`, `content/`), not a
+literal in the HTML or JS. **Not a CMS, not a database**: plain files Rob can
+read. The plan, the migration order and the checks are in
+`docs/language-files-plan.md`. Until a game is migrated its old literals stay,
+but **no new on-screen text may be added as a literal anywhere.**
+
 **THE ENGRAVING STANDARD OUTRANKS ROB'S OWN RULES.** Rob's ruling, and it
 reframes most of this file: *"Most of my rules are actually the scaffolding
 tricks and tips to gain the knowledge."* The standard is the notation; his
@@ -1119,7 +1128,11 @@ contract** — don't rename one without updating any level that overrides it, an
 don't add on-screen teaching copy as a bare string.
 
 ## Naming conventions (don't drift from these)
-The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
+The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Smash, Real Smash, and "Value Smash", a working title). Don't introduce a differently-themed name (e.g. "Quest", "Sprint" as a title) for a new mode without checking first — this was deliberately corrected once already (Real Smash was originally "NoteQuest").
+
+**Note names: US first, UK in brackets.** Rob, 2026-09-23: on screen it is "whole note (semibreve)", and a setting switches to US-only or UK-only. This lives in the language files (`en-US` / `en-GB`), never in code. The design notes in this file keep saying "crotchet" and "minim"; that is working shorthand, not on-screen copy.
+
+**Bonus rounds are "Maestro" bonuses** (the equivalency bonus was once called "Ludicrous"; Rob: that's Tesla's).
 
 ## Core mechanics (apply consistently to any new content)
 - **Rule of three:** three correct in a row confirms real mastery, not a lucky guess. Used everywhere as the advancement gate.
@@ -1129,6 +1142,8 @@ The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Sma
 
 ## Persistence pattern (already implemented — follow this shape for anything new)
 Each game keeps its own localStorage key (`koolRiffsG1Progress`, `koolRiffsG2Progress`, `koolRiffsG3Progress`) storing per-device unlocked stages, best score/time per stage, resume position, and total plays. This is real browser storage on a real deployed site — no sandbox restriction applies here. On relaunch, route to the pathway screen at the saved resume position, not back to the dashboard.
+
+**Progress stays on the device** until networking is designed once, for the whole app (Rob: *"until we wrap this whole thing up in an umbrella"*). One addition Rob approved for shared school iPads and Chromebooks: a **local player picker**, a list of names on the device with no passwords and no network, so that each student's progress is their own. It arrives with Value Smash.
 
 ## Pathway screen pattern
 Each game's entry point is a pathway screen (`g1-screen-pathway`, etc.) — a compact horizontal track of stage nodes (locked = icon only, no text; unlocked = icon + label; cleared = icon + label + best score badge). The Start button never appears on this screen itself, only after a stage is selected. This was a deliberate fix — don't regress to a screen where a game launches straight into "Start" with no visible pathway.
@@ -1179,29 +1194,83 @@ thing in the syllabus?" but **"what does this assume the student already
 knows, and where did they get it?"** If the answer is "nowhere in the app", that
 is a hole and it gets written down rather than stepped over.
 
-**The one currently known: note-value equivalency.** The Rhythm pillar assumes
-the student knows what each note is *worth* — it teaches counting to someone who
-already has that. Nothing in the app teaches it. Captured in
-`ideas/equivalency-note-tree.md`; not designed, not built, ask Rob first.
+**The one currently known: note-value equivalency, now DESIGNED as Value
+Smash.** The Rhythm pillar assumes the student knows what each note is *worth*,
+and nothing in the app teaches it yet. Rob approved the design on 2026-09-23;
+the brief is `kool-riffs-docs/docs/value-smash-design-brief.md`, and the
+original idea is `ideas/equivalency-note-tree.md`. Not built yet. The short
+version is below, under "THE APP IS LEVELS ACROSS PILLARS".
 
 `ideas/README.md` is how an idea like that gets built without disturbing work
 already in flight: the idea file on main, the build on `idea/<name>`, a fresh
 session per branch, and a merge bar that includes "played on a phone" and "its
 CLAUDE.md section is written."
 
-## The constraint that outranks engagement
-**Time at the instrument beats time in the app.** Rob: *"None of this makes any
-difference unless they're practising their instrument… They shouldn't live their
-life on the computer. They should live their life behind their instrument."*
+## THE APP IS LEVELS ACROSS PILLARS
+Rob's structure, 2026-09-23. **It is bigger than any one game and is not built
+yet.** Every new game is designed so that it slots into it.
 
-This is the opposite of how apps are normally designed, so it needs stating
-before someone optimises the wrong number:
+- **Value is a pillar.** *"A music note does two things. It tells us the pitch…
+  and it tells you its value. Then we combine it together to make rhythm."* The
+  pillars are now **Notation (pitch) · Value · Rhythm · Key Signatures ·
+  Intervals**, possibly more later (Rob's childhood flash cards also covered
+  terminology).
+- **Each pillar is a building, and each level inside it is a floor** (Stomp
+  Lab's A1 is a floor). **An app-wide Level is a band of floors taken across
+  every pillar**, so Level 1 is the introductory floors of all the pillars
+  together. *"Don't make them start from a beginner in one pillar and force them
+  to become an expert, then move to the next one."* Which floors make which
+  Level is still to be worked out with Rob.
+- **The Artistic License.** Clearing Value Smash's first part awards it, and it
+  opens Rhythm Stomp Lab: *"You can't even get to Rhythm Stomp unless you can
+  smash some note values."* Later Stomp Lab stages each open with the Value part
+  they depend on. **Never re-lock a Stomp Lab level a student has already
+  unlocked.**
+- **Values first, time signatures last.** Every note value is given in common
+  time from the first screen (*"it takes up the whole bar and it commonly
+  receives four beats"*, as in Rubank), but the *meaning* of time signatures
+  waits until all values and equivalencies are done. **Simple time (4/4, 2/4,
+  3/4) and compound time (the 8 on the bottom) are taught separately**, simple
+  first. The 2/4 against 6/8-in-two comparison comes when 6/8 speeds up (Stomp
+  Lab's Stage E).
+- **The note tree is the help menu**, and the student builds it themselves. Once
+  a time signature is on screen, the tree labels each note with its beats in
+  that signature.
 
-- A short session that clears a level and ends is a **success**.
-- **No streak mechanic may punish a day away from the screen** — that day may
-  have been spent playing.
-- "Now go and play this" prompts are a **feature**, not an off-ramp.
-- If a change would raise engagement but lower practice time, **it loses.**
+### Riff and Tango
+Rob's two characters, created in 1997. **Riff**, a jazz Scottie dog with a rough
+voice, handles **pitch**. **Tango**, a pink-haired, ponytailed cat who walks on
+two legs and is a drummer, handles **rhythm**. *"Together rhythm and pitch make
+melody, and that's music."* They carry a meta-narrative across the whole game.
+Rob is sending the character material; details go in the private docs.
+**Build hooks, not content:** the game fires named events, and what the
+characters say is attached to those events in the content files, never written
+into the code (`docs/language-files-plan.md` §2.4).
+
+## ADDICTIVE BY DESIGN: the whole app
+**This REVERSES the section that used to stand here** ("The constraint that
+outranks engagement", which said time at the instrument outranks time in the
+app and that no streak may punish a day away from the screen). The reversal is
+Rob's, made on 2026-09-23 and applied to the whole app, not just one game:
+
+> *"That has become my overarching mission… the whole Kool Riffs game. This is
+> not about long-term companionship with the young musician. It's really to seed
+> their initial learning with as much repetition as possible. I don't want to
+> minimise any opportunity for addictive gameplay."*
+
+> *"The whole game isn't going to cost practice time. Let's not even put them in
+> competition with each other. Let's just leave it completely separate, but yes,
+> we can encourage them to practise."*
+
+- **Streaks, daily challenges, stars, combos and collections are all allowed**,
+  including a daily streak (with freezes) that resets.
+- **"Go and play it on your instrument" lines are dialogue, never a condition.**
+  *"Don't let the gameplay be the bargaining chip."* They live in the language
+  files, Riff and Tango can say them, and they never lock, gate or reward
+  anything.
+- **Addictive never means easier.** Every hook still has to pass "only correct
+  taps score", and the rule of three and the all-or-nothing gates are untouched.
+  A hook that pays off guessing is a bug.
 
 ## Design philosophy (useful context, not a task list)
 Rob's teaching background is built around rote memorization drilled to automaticity (flashcard-style, "rule of three" mastery checks) rather than repertoire-first instruction — he considers this the biggest gap in how music reading is currently taught, and it's the whole reason this app exists. When in doubt about how strict a mastery gate should be, or whether to add a hint/scaffold, the answer is usually "make them actually prove it" rather than "make it easier to pass." This app is explicitly not meant to feel like generic edutainment — the "Smash" branding and the strict all-or-nothing mastery checks are deliberate, not to be softened without asking.
@@ -1219,4 +1288,4 @@ Draft copy:
 **Tenor** — "Same Clef, One Line Higher" / Tenor clef is the exact same symbol as alto — just shifted up. Its curl now points at the second line from the top. That's still Middle C. Everything you learned counting from Middle C in alto works the same way here.
 
 ## Roadmap context
-Currently scoped as three games (Notation pillar only) out of four eventual pillars: Notation (done/near-done), Rhythm, Key Signatures, Intervals — not yet started. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
+Pillars: Notation (three games, done/near-done), **Value** (Value Smash, designed, not built), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "THE APP IS LEVELS ACROSS PILLARS"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.

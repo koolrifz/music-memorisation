@@ -35,9 +35,11 @@ An idea earns `main` when **all** of these are true — not before:
 - **The test suite is green** and the new thing has tests of its own.
 - **`CLAUDE.md` has its section written**, including the decisions that were
   *rejected* and why. An idea merged without that becomes a mystery in a month.
-- **It doesn't cost practice time.** See "The constraint that outranks
-  engagement" in `CLAUDE.md`: if it raises engagement and lowers time at the
-  instrument, it loses.
+- **Its hooks reward only correct answers.** The app is addictive by design
+  (see "ADDICTIVE BY DESIGN" in `CLAUDE.md`), but a hook that pays off guessing
+  or softens a gate is a bug.
+- **Its words are in the language files**, not literals in the code (see
+  `docs/language-files-plan.md`).
 
 Until then the branch just sits there. A branch costs nothing. Half a good idea
 merged into main costs a lot.

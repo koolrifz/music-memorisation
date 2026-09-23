@@ -1,9 +1,9 @@
 # The missing step: note-value equivalency
 
-**Status: designed, not built.** The full design brief is
-`kool-riffs-docs/docs/value-smash-design-brief.md` (final draft, 2026-09-23,
-awaiting Rob's sign-off). It answers every open question below. Ask Rob before
-building.
+**Status: designed and approved by Rob (2026-09-23); not built.** The full design
+brief is `kool-riffs-docs/docs/value-smash-design-brief.md` (revision 2). It
+answers every open question below, and `CLAUDE.md` ("THE APP IS LEVELS ACROSS
+PILLARS") has the short version.
 
 Raised by Rob after Garnet played Rhythm Stomp Lab. Written down here so it
 survives the conversation it came from — see `ideas/README.md` for how to take
