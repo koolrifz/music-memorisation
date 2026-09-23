@@ -1198,27 +1198,30 @@ is a hole and it gets written down rather than stepped over.
 Smash.** The Rhythm pillar assumes the student knows what each note is *worth*,
 and nothing in the app teaches it yet. Rob approved the design on 2026-09-23;
 the brief is `kool-riffs-docs/docs/value-smash-design-brief.md`, and the
-original idea is `ideas/equivalency-note-tree.md`. Not built yet. The short
-version is below, under "THE APP IS LEVELS ACROSS PILLARS".
+original idea is `ideas/equivalency-note-tree.md`. Not built yet. **To build it, follow
+`docs/value-smash-build-guide.md`**, one step at a time. The short
+version is below, under "SILOS AND BRIDGES".
 
 `ideas/README.md` is how an idea like that gets built without disturbing work
 already in flight: the idea file on main, the build on `idea/<name>`, a fresh
 session per branch, and a merge bar that includes "played on a phone" and "its
 CLAUDE.md section is written."
 
-## THE APP IS LEVELS ACROSS PILLARS
-Rob's structure, 2026-09-23. **It is bigger than any one game and is not built
+## SILOS AND BRIDGES: the app's structure
+Rob's structure, 2026-09-23. **Words: a *silo* is a body of knowledge (what
+earlier notes call a pillar: Notation, Value, Rhythm…); a *Level* is a *bridge*
+built between the silos.** **It is bigger than any one game and is not built
 yet.** Every new game is designed so that it slots into it.
 
-- **Value is a pillar.** *"A music note does two things. It tells us the pitch…
+- **Value is a silo.** *"A music note does two things. It tells us the pitch…
   and it tells you its value. Then we combine it together to make rhythm."* The
-  pillars are now **Notation (pitch) · Value · Rhythm · Key Signatures ·
+  silos are now **Notation (pitch) · Value · Rhythm · Key Signatures ·
   Intervals**, possibly more later (Rob's childhood flash cards also covered
   terminology).
-- **Each pillar is a building, and each level inside it is a floor** (Stomp
-  Lab's A1 is a floor). **An app-wide Level is a band of floors taken across
-  every pillar**, so Level 1 is the introductory floors of all the pillars
-  together. *"Don't make them start from a beginner in one pillar and force them
+- **Each silo has its own floors** (Stomp Lab's A1 is a floor of the Rhythm
+  silo). **An app-wide Level is a bridge across the silos**: a set of floors
+  from every silo, taken together. Level 1 is the introductory floors of all
+  the silos. *"Don't make them start from a beginner in one pillar and force them
   to become an expert, then move to the next one."* Which floors make which
   Level is still to be worked out with Rob.
 - **The Artistic License.** Clearing Value Smash's first part awards it, and it
@@ -1312,4 +1315,4 @@ Draft copy:
 **Tenor** — "Same Clef, One Line Higher" / Tenor clef is the exact same symbol as alto — just shifted up. Its curl now points at the second line from the top. That's still Middle C. Everything you learned counting from Middle C in alto works the same way here.
 
 ## Roadmap context
-Pillars: Notation (three games, done/near-done), **Value** (Value Smash, designed, not built), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "THE APP IS LEVELS ACROSS PILLARS"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
+Pillars: Notation (three games, done/near-done), **Value** (Value Smash, designed, not built), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "SILOS AND BRIDGES"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
