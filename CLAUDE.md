@@ -1239,10 +1239,11 @@ yet.** Every new game is designed so that it slots into it.
 
 ### Riff and Tango: the coaches in the gold box
 Rob's two characters, created in 1997; he owns them, and they will be redrawn.
-**Riff** is a jazz Scottie dog (grey, red beret, green vest, white beard) with a
+**Riff** is a jazz Scottie dog (grey, red beret, green vest, white beard; the
+1997 sunglasses are gone) with a
 **hip, gruff** voice, and he handles **pitch**: the Notation games. **Tango** is
-a cat who walks on two legs, with an **orange-red** spiky tuft and ponytail and
-blue overalls. She is a drummer, with a **high, tight, squeaky** voice, and she
+an orange cat who walks on two legs, with a big **red mane** and a **blue
+vest**. She is a drummer, with a **high, tight, squeaky** voice, and she
 handles **rhythm**: Value Smash and Stomp Lab. *"Together rhythm and pitch make
 melody, and that's music."*
 
@@ -1263,8 +1264,9 @@ melody, and that's music."*
   each line with a pitch and rate per speaker. After that, each line is
   generated once and saved as an audio file under its ID.
 
-Reference art (1997 stills and Rob's Gemini "Old Riff" redraw) and the open
-items are in the private docs: `kool-riffs-docs/docs/riff-and-tango.md`.
+Reference art (Rob's 2026 Gemini redraws of both, the 1997 originals, and what
+the pose images must look like: flat background, no watermark, one image per
+pose) is in the private docs: `kool-riffs-docs/docs/riff-and-tango.md`.
 
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that
