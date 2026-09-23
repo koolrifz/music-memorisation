@@ -10,7 +10,8 @@
                                  A missing id comes back as "[id]", so the gap
                                  shows up in testing instead of a blank.
      KR.applyText(root)          fill every [data-text] element under root
-     KR.noteName(valueId)        a note name, following the names setting
+     KR.noteName(valueId, opts)  a note name, following the names setting;
+                                 { many: true } for the plural
      KR.setNames(mode)           'both' | 'us' | 'uk', remembered on this device
      KR.on(eventName, fn)        listen for a game event
      KR.event(eventName, data)   announce a game event; a matching line in
@@ -64,7 +65,9 @@ KR.applyText = function (root) {
 
 /* ---------- Note names: US first, UK in brackets ----------
    valueId is a key of RSTOMP_VOCABULARY ('whole-note', 'half-rest', ...).
-   Its words are the id 'note.' + valueId, in en-US and en-GB. */
+   Its words are the id 'note.' + valueId, in en-US and en-GB, and the
+   plural is 'note.' + valueId + '.many' - so both names make their own
+   plural ("half notes (minims)", never "half note (minim)s"). */
 KR.NAMES_KEY = 'koolRiffsNoteNames';
 KR.names = 'both';
 try {
@@ -78,8 +81,8 @@ KR.setNames = function (mode) {
     try { localStorage.setItem(KR.NAMES_KEY, mode); } catch (e) {}
 };
 
-KR.noteName = function (valueId) {
-    const id = 'note.' + valueId;
+KR.noteName = function (valueId, opts) {
+    const id = 'note.' + valueId + (opts && opts.many ? '.many' : '');
     const us = KR.lookup(id, 'en-US');
     const uk = KR.lookup(id, 'en-GB');
     if (us === null) return '[' + id + ']';

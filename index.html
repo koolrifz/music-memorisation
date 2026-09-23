@@ -580,6 +580,11 @@
     <div class="game-nav">
         <button class="btn-back" onclick="handleValueBackButton()" data-text="value.back"></button>
     </div>
+    <!-- The student's own tree, as a help card. Only there once the Tree
+         floor is cleared (value-smash.js vsmashRefreshTreeButton). -->
+    <div class="vsmash-nav-right">
+        <button class="btn-back vsmash-tree-btn" id="value-tree-btn" hidden onclick="openValueTreeCard()" data-text="value.tree.button"></button>
+    </div>
 
     <!-- Who is playing. Asked the first time; the "Playing as" control on
          the pathway comes back here to switch or add a player. -->
@@ -616,7 +621,6 @@
             <div class="kr-guide-text"></div>
         </div>
         <div class="vsmash-stage" id="value-stage"></div>
-        <button class="btn btn-secondary vsmash-leave" onclick="handleValueBackButton()" data-text="value.floor.back"></button>
     </div>
 
     <div id="value-screen-results" class="screen">
@@ -625,6 +629,14 @@
             <div id="value-results-body"></div>
             <button class="btn btn-start" onclick="showValuePathway()" data-text="value.floor.back"></button>
         </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-value-tree">
+    <div class="vsmash-tree-card">
+        <h3 data-text="value.tree.cardTitle"></h3>
+        <div id="value-tree-card-rows"></div>
+        <button class="btn-close" onclick="closeValueTreeCard()" data-text="value.tree.close"></button>
     </div>
 </div>
 

@@ -896,4 +896,37 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .vsmash-header { width: 100%; max-width: 640px; margin: 0 auto 10px; text-align: center; }
 .vsmash-header-label { color: var(--accent-gold); font-weight: 900; font-size: 18px; }
 .vsmash-stage { width: 100%; max-width: 640px; margin: 0 auto; }
-.vsmash-leave { max-width: 640px; min-height: 56px; }
+
+.vsmash-nav-right { position: absolute; top: 15px; right: 15px; z-index: 50; }
+.vsmash-tree-btn[hidden] { display: none; }
+
+/* ---------- The Tree ----------
+   Every row the same width, because every row lasts the same time. A
+   tile's width IS its value. The notation stays black on white paper, and
+   nothing is drawn on top of it: highlights are the tile's own border. */
+.vsmash-tree-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.vsmash-tree-row { display: flex; height: 71px; border: 3px dashed #526b85; border-radius: 10px; background: rgba(255,255,255,0.04); overflow: hidden; }
+.vsmash-tree-row.target { border-color: var(--accent-gold); border-style: solid; box-shadow: 0 0 0 3px rgba(255,200,0,0.18); }
+.vsmash-tile { box-sizing: border-box; flex: 0 0 auto; height: 71px; padding: 0; background: #ffffff; border: 3px solid #324a64; border-radius: 8px; overflow: hidden; display: flex; align-items: center; }
+.vsmash-tree-row .vsmash-tile { height: 65px; border-width: 0 1px; border-radius: 0; border-color: #c9d3de; }
+.vsmash-tile-notes { line-height: 0; }
+.vsmash-tile.sounding { background: #fff3c4; }
+.vsmash-tile.drop { animation: vsmashDrop 0.22s ease-out; }
+@keyframes vsmashDrop { from { transform: translateY(-14px); opacity: 0.3; } to { transform: translateY(0); opacity: 1; } }
+.vsmash-tray { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
+button.vsmash-tile { cursor: pointer; border-color: var(--accent-orange); box-shadow: 0 4px 0 #b36a00; touch-action: manipulation; }
+button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36a00; }
+.vsmash-tile.shake { animation: vsmashShake 0.4s; border-color: var(--accent-red); }
+@keyframes vsmashShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+
+/* ---------- Results ---------- */
+.vsmash-result-title { color: white; font-size: 22px; font-weight: 900; margin: 14px 0 4px; }
+.vsmash-result-stars { color: var(--accent-gold); font-size: 44px; letter-spacing: 4px; margin: 4px 0; }
+.vsmash-result-line { color: var(--text-muted); font-weight: 800; margin: 4px 0; }
+.vsmash-result-open { color: var(--accent-green); font-weight: 900; font-size: 18px; margin: 12px 0 4px; }
+
+/* ---------- The Tree help card ---------- */
+.vsmash-tree-card { background: var(--bg-panel); width: min(92%, 440px); max-height: 90%; overflow-y: auto; padding: 18px 14px; border-radius: 20px; text-align: center; border: 3px solid var(--accent-orange); box-shadow: 0 10px 30px rgba(0,0,0,0.6); box-sizing: border-box; }
+.vsmash-tree-card h3 { color: var(--accent-gold); margin: 0 0 12px; }
+#value-tree-card-rows { display: flex; flex-direction: column; gap: 6px; }
+#value-tree-card-rows .vsmash-tree-row { border-style: solid; }
