@@ -1274,11 +1274,11 @@ Rob's, made on 2026-09-23 and applied to the whole app, not just one game:
 
 > *"That has become my overarching mission… the whole Kool Riffs game. This is
 > not about long-term companionship with the young musician. It's really to seed
-> their initial learning with as much repetition as possible."*
->
-> *"It's really a three-to-six-month game in the very first beginning learning
-> stages. I don't want to
+> their initial learning with as much repetition as possible. I don't want to
 > minimise any opportunity for addictive gameplay."*
+
+> *"It's really a three-to-six-month game in the very first beginning learning
+> stages."*
 
 > *"The whole game isn't going to cost practice time. Let's not even put them in
 > competition with each other. Let's just leave it completely separate, but yes,
