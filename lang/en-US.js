@@ -76,6 +76,23 @@ KR.lang('en-US', {
     'value.tree.roundDone':      'Round {n} done!',
     'value.tree.again':          "{n} tiles didn't fit that time. Let's build it again.",
 
+    /* ---------- Value Smash: Smash ---------- */
+    'value.beatKey':             'C · ♩ = 1 beat',
+    'value.smash.header':        '{floor} · {cards} cards',
+    'value.smash.beats.one':     'Smash everything worth 1 beat.',
+    'value.smash.beats':         'Smash everything worth {n} beats.',
+    'value.smash.equals':        'Smash everything that equals a {note}.',
+    'value.smash.nothing':       'Nothing here',
+    'value.smash.dud':           'Nothing to smash. Well spotted! That earns a joker.',
+    'value.smash.jokerUsed':     'Your joker saved your streak.',
+    'value.smash.missed':        'Missed some! The outlined cards were the ones.',
+    'value.smash.tierUp':        'Tier up! {cards} cards now.',
+    'value.smash.tierUpClock':   'Tier up! {cards} cards, and the clock starts now: {seconds} seconds.',
+    'value.smash.score':         'Score {n}',
+    'value.smash.combo':         'Combo ×{n}',
+    'value.smash.clock':         '{n}s',
+    'value.smash.joker':         '🃏 Joker',
+
     /* ---------- Value Smash: the Tree help card ---------- */
     'value.tree.button':     '🌳 Tree',
     'value.tree.cardTitle':  'Your tree',
@@ -86,5 +103,11 @@ KR.lang('en-US', {
     'value.results.cleared': '{floor} cleared!',
     'value.results.time':    'Time: {seconds} seconds',
     'value.results.opened':  '{floor} is open!',
+    'value.results.score':   'Score: {n}',
+    'value.results.best':    'Best: {n}',
+    'value.results.newBest': 'New personal best!',
+    'value.results.timeUp':  "Time's up!",
+    'value.results.reached': 'You reached {cards} cards.',
+    'value.results.again':   'Play again',
 
 });

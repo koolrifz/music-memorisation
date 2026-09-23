@@ -930,3 +930,51 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .vsmash-tree-card h3 { color: var(--accent-gold); margin: 0 0 12px; }
 #value-tree-card-rows { display: flex; flex-direction: column; gap: 6px; }
 #value-tree-card-rows .vsmash-tree-row { border-style: solid; }
+
+
+/* ---------- Smash ---------- */
+.vsmash-hud { width: 100%; max-width: 640px; margin: 0 auto 8px; display: flex; align-items: center; gap: 10px; font-weight: 900; }
+.vsmash-hud[hidden], .vsmash-beatkey[hidden], .vsmash-flash[hidden], .vsmash-nothing[hidden] { display: none; }
+.vsmash-streak .streak-dot { width: 11px; height: 11px; }
+.vsmash-joker { color: var(--accent-purple); font-size: 14px; }
+.vsmash-combo { color: var(--accent-orange); font-size: 15px; }
+.vsmash-score { margin-left: auto; color: white; font-size: 16px; }
+.vsmash-clock.gain { animation: vsmashGain 0.5s; }
+.vsmash-clock.lose { animation: vsmashLose 0.5s; }
+@keyframes vsmashGain { 30% { color: var(--accent-green); border-color: var(--accent-green); transform: scale(1.12); } }
+@keyframes vsmashLose { 30% { color: var(--accent-red); border-color: var(--accent-red); transform: scale(1.12); } }
+.vsmash-beatkey { margin: -2px auto 8px; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,0.08); color: white; font-weight: 800; font-size: 14px; }
+.vsmash-flash { width: 100%; max-width: 640px; height: 6px; margin: 0 auto 8px; background: #324a64; border-radius: 3px; overflow: hidden; }
+.vsmash-flash-fill { height: 100%; width: 100%; background: var(--accent-red); transition: width 0.1s linear; }
+
+.vsmash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.vsmash-card { position: relative; box-sizing: border-box; min-height: 88px; padding: 4px 4px 6px; background: #ffffff; border: 3px solid #324a64; border-radius: 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; touch-action: manipulation; }
+.vsmash-card:active { transform: scale(0.96); }
+/* Gold paper BEHIND the notes - never anything on top of them. */
+.vsmash-card.gold { background: #ffe79a; border-color: var(--accent-gold); box-shadow: 0 0 0 2px var(--accent-gold), 0 0 14px rgba(255,200,0,0.6); }
+.vsmash-card-notes { line-height: 0; }
+.vsmash-card.shake { animation: vsmashShake 0.4s; border-color: var(--accent-red); }
+.vsmash-card.missed { border-color: var(--accent-green); box-shadow: inset 0 0 0 3px var(--accent-green); }
+.vsmash-card.dud-right, .vsmash-card.screen-clear { border-color: var(--accent-green); }
+.vsmash-nothing.shake { animation: vsmashShake 0.4s; }
+
+/* The duration bar: tier 1 shows it, tier 2 fades it, tiers 3-4 take it away. */
+.vsmash-dur { width: 100%; height: 7px; margin-top: 2px; }
+.vsmash-dur span { display: block; height: 100%; border-radius: 4px; background: var(--accent-orange); }
+.vsmash-grid.tier-2 .vsmash-dur { opacity: 0.25; }
+.vsmash-grid.tier-3 .vsmash-dur, .vsmash-grid.tier-4 .vsmash-dur { visibility: hidden; }
+
+/* A smashed card: its pieces fly apart inside its own box, then it rests
+   as an empty green tile. */
+.vsmash-card.smashed { background: rgba(88,204,2,0.18); border-color: var(--accent-green); cursor: default; }
+.vsmash-card.smashed > .vsmash-card-notes, .vsmash-card.smashed > .vsmash-dur { visibility: hidden; }
+.vsmash-shard { position: absolute; top: 4px; left: 4px; line-height: 0; background: #ffffff; pointer-events: none; animation: 0.45s ease-out forwards; }
+.vsmash-shard.shard-0 { animation-name: vsmashShard0; }
+.vsmash-shard.shard-1 { animation-name: vsmashShard1; }
+.vsmash-shard.shard-2 { animation-name: vsmashShard2; }
+.vsmash-shard.shard-3 { animation-name: vsmashShard3; }
+@keyframes vsmashShard0 { to { transform: translate(-7px, -6px) rotate(-10deg); opacity: 0; } }
+@keyframes vsmashShard1 { to { transform: translate(7px, -6px) rotate(9deg); opacity: 0; } }
+@keyframes vsmashShard2 { to { transform: translate(-6px, 7px) rotate(8deg); opacity: 0; } }
+@keyframes vsmashShard3 { to { transform: translate(6px, 7px) rotate(-9deg); opacity: 0; } }
+.vsmash-nothing { max-width: 640px; min-height: 56px; margin-top: 14px; }

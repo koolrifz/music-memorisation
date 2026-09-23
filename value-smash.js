@@ -29,6 +29,12 @@ const VSMASH_FLOORS = [
 const VSMASH_TREE_REFUSALS_ALLOWED = 1;      // a Tree round counts only with at most this many refused tiles
 const VSMASH_TREE_BEAT_SECONDS = 0.5;        // snare timing when a finished Tree row plays back
 const VSMASH_STAR_TIME = { tree: 60, smash: 120 };   // seconds to beat for the second star
+const VSMASH_DUD_RATE = 0.15;                // share of Smash screens with nothing to smash
+const VSMASH_GOLD_RATE = 1 / 12;             // share of Smash screens with a gold (triple) card
+const VSMASH_CLOCK_SECONDS = 60;             // the Smash clock, which starts at tier 2
+const VSMASH_WRONG_TAP_SECONDS = 2;          // what a wrong tap costs once the clock is running
+const VSMASH_WATCH_SCREENS = 3;              // a missed target comes back more often for this many clears
+const VSMASH_WATCH_CHANCE = 0.5;             // ...picked this often while it is on the watchlist
 
 const VSMASH_PLAYERS_KEY = 'koolRiffsPlayers';
 const VSMASH_PROGRESS_KEY = 'koolRiffsValueProgress';
@@ -41,8 +47,12 @@ function vsmashLater(fn, ms) {
     vsmashTimers.push(setTimeout(fn, ms));
 }
 
+function vsmashEvery(fn, ms) {
+    vsmashTimers.push(setInterval(fn, ms));
+}
+
 function vsmashStopTimers() {
-    vsmashTimers.forEach(clearTimeout);
+    vsmashTimers.forEach(id => { clearTimeout(id); clearInterval(id); });
     vsmashTimers = [];
 }
 
@@ -203,6 +213,7 @@ function vsmashStars(count) {
 function showValuePathway() {
     vsmashStopTimers();
     vsmashTree = null;
+    vsmashSmash = null;
     const progress = vsmashLoad();
     KR.setNames(progress.namesSetting);
     renderValuePathway();
@@ -279,14 +290,20 @@ function startSelectedValueFloor() {
     vsmashSave(progress);
 
     vsmashStopTimers();
+    vsmashTree = null;
+    vsmashSmash = null;
     switchScreenState('value', 'value-screen-game');
     vsmashRefreshTreeButton();
     document.getElementById('value-floor-label').textContent = vsmashFloorName(floor.id);
     document.getElementById('value-stage').innerHTML = '';
+    ['value-hud', 'value-beatkey', 'value-flash', 'value-nothing'].forEach(id => {
+        document.getElementById(id).hidden = true;
+    });
     KR.event('value.floor.start', { floor: floor.id });
 
     if (floor.kind === 'tree') return startValueTree(floor);
-    // Smash and the Sprint arrive in later steps.
+    if (floor.kind === 'smash') return startValueSmash(floor);
+    // The Sprint arrives in a later step.
     KR.say('value.floor.empty', { box: vsmashGuide() });
 }
 
@@ -309,6 +326,7 @@ function vsmashFloorCleared(floor, result) {
     record.cleared = true;
     record.stars = Math.max(record.stars || 0, stars);
     if (record.bestTime == null || result.seconds < record.bestTime) record.bestTime = result.seconds;
+    result.newBest = vsmashRecordScore(record, result.score);
     progress.floors[floor.id] = record;
 
     const opened = VSMASH_FLOORS.filter(f => f.unlock === floor.id && !progress.unlocked.includes(f.id));
@@ -320,23 +338,53 @@ function vsmashFloorCleared(floor, result) {
     showValueResults(floor, stars, result, opened);
 }
 
-function showValueResults(floor, stars, result, opened) {
+// A personal best, where the floor keeps a score. Returns true when it is new.
+function vsmashRecordScore(record, score) {
+    if (score == null) return false;
+    if (record.bestScore != null && score <= record.bestScore) return false;
+    record.bestScore = score;
+    return true;
+}
+
+function vsmashResultsBody() {
     vsmashStopTimers();
     switchScreenState('value', 'value-screen-results');
     vsmashRefreshTreeButton();
     const body = document.getElementById('value-results-body');
     body.innerHTML = '';
-    const line = (className, words) => {
+    return (className, words) => {
         const el = document.createElement('p');
         el.className = className;
         el.textContent = words;
         body.appendChild(el);
     };
+}
+
+function vsmashScoreLines(line, floorId, result) {
+    if (result.score == null) return;
+    line('vsmash-result-line', KR.t('value.results.score', { n: result.score }));
+    const best = vsmashLoad().floors[floorId];
+    if (result.newBest) line('vsmash-result-open', KR.t('value.results.newBest'));
+    else if (best && best.bestScore != null) line('vsmash-result-line', KR.t('value.results.best', { n: best.bestScore }));
+}
+
+function showValueResults(floor, stars, result, opened) {
+    const line = vsmashResultsBody();
     line('vsmash-result-title', KR.t('value.results.cleared', { floor: vsmashFloorName(floor.id) }));
     line('vsmash-result-stars', vsmashStars(stars));
     line('vsmash-result-line', KR.t('value.results.time', { seconds: Math.round(result.seconds) }));
+    vsmashScoreLines(line, floor.id, result);
     opened.forEach(f => line('vsmash-result-open', KR.t('value.results.opened', { floor: vsmashFloorName(f.id) })));
     playSound('complete');
+}
+
+// The clock ran out before the floor was cleared. Nothing is lost.
+function showValueTimeUp(result) {
+    const line = vsmashResultsBody();
+    line('vsmash-result-title', KR.t('value.results.timeUp'));
+    line('vsmash-result-line', KR.t('value.results.reached', { cards: result.cards }));
+    line('vsmash-result-line', KR.t('value.results.score', { n: result.score }));
+    playSound('timeout');
 }
 
 /* ---------- Drawing notes ----------
@@ -349,6 +397,7 @@ function showValueResults(floor, stars, result, opened) {
 const VSMASH_DRAW_HEIGHT = 130;   // VexFlow's canvas...
 const VSMASH_CROP_TOP = 40;       // ...cropped to the band the music occupies -
 const VSMASH_CROP_HEIGHT = 65;    // Stomp Lab's window, which clears ties and rests
+const VSMASH_GLYPH_ROOM = 14;     // px kept free at the right for the last note or rest
 const vsmashDrawCache = {};
 
 function vsmashDrawNotes(el, specs, width) {
@@ -377,6 +426,21 @@ function vsmashDrawNotes(el, specs, width) {
         const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).setMode(VF.Voice.Mode.SOFT);
         voice.addTickables(notes);
         new VF.Formatter().joinVoices([voice]).format([voice], Math.max(10, width - 34));
+        // Then put every note ON ITS BEAT, as Stomp Lab's staff does (CLAUDE.md
+        // "Notes sit ON the slot grid"). VexFlow's own spacing squeezes a bar's
+        // worth of notes into a card until rests touch noteheads. On the grid
+        // the card reads as one bar of common time, and each note starts above
+        // its own stretch of the duration bar.
+        // The grid stops short of the right edge by one glyph's room, so a
+        // note on beat 4 is never clipped by the card.
+        const inset = notes.length ? notes[0].getAbsoluteX() : 0;
+        const span = width - inset - VSMASH_GLYPH_ROOM;
+        let beat = 0;
+        notes.forEach((note, i) => {
+            const tick = note.getTickContext();
+            tick.setX(tick.getX() + (inset + beat / VSMASH_BAR_BEATS * span) - note.getAbsoluteX());
+            beat += rstompSlotsFor(specs[i].value, 'q');
+        });
         voice.draw(context, stave);
         const svg = scratch.querySelector('svg');
         svg.setAttribute('viewBox', '0 ' + VSMASH_CROP_TOP + ' ' + width + ' ' + VSMASH_CROP_HEIGHT);
@@ -633,9 +697,15 @@ function vsmashTreeRoundDone() {
     vsmashLater(() => vsmashTreeRound(VSMASH_TREE_ROUNDS[vsmashTree.round].given()), 2200);
 }
 
-// A phone turned sideways changes the row width, so the tree is redrawn.
+// A phone turned sideways changes the width, so the tree or grid is redrawn.
 window.addEventListener('resize', () => {
-    if (vsmashTree && document.getElementById('value-screen-game').classList.contains('active')) renderValueTree();
+    if (!document.getElementById('value-screen-game').classList.contains('active')) return;
+    if (vsmashTree) renderValueTree();
+    if (vsmashSmash && vsmashSmash.cards) {
+        const smashed = vsmashSmash.cards.map(c => c.smashed);
+        renderValueSmashGrid();
+        vsmashSmash.cards.forEach((c, i) => { if (smashed[i]) c.el.classList.add('smashed'); });
+    }
 });
 
 /* ---------- The Tree as the help menu ----------
@@ -652,6 +722,7 @@ function openValueTreeCard() {
     const progress = vsmashLoad();
     const built = (progress.tree && progress.tree.built) || [];
     document.getElementById('modal-value-tree').classList.add('show');
+    vsmashPaused = true;   // looking at help costs no time
     const holder = document.getElementById('value-tree-card-rows');
     holder.innerHTML = '';
     const rowWidth = vsmashRowWidth(holder);
@@ -669,4 +740,446 @@ function openValueTreeCard() {
 
 function closeValueTreeCard() {
     document.getElementById('modal-value-tree').classList.remove('show');
+    vsmashPaused = false;
+}
+
+/* =========================================
+   FLOOR v1-smash: SMASH (time attack)
+   =========================================
+   Note Smash's grid, verb and timer, with note values on the cards.
+   Behaviour matched to loadG2Grid / handleG2Click / resolveG2Screen in
+   script.js, not imported from them.
+
+   - Tiers 3 -> 6 -> 9 -> 12 cards. Three cleared screens in a row moves up a
+     tier; clearing tier 4 clears the floor.
+   - Targets per screen, by tier: 1-2, 2-4, 2-3, 3-4.
+   - Duds: about 15% of screens have nothing to smash, never two in a row.
+     A dud handled correctly earns a JOKER - a spare life that saves the
+     streak the next time it would break.
+   - Tier 1 has NO CLOCK at all. A dud there is answered with the "Nothing
+     here" button, and a wrong tap breaks the streak (there is no time for it
+     to cost). From tier 2, each screen has Note Smash's flash timer,
+     (cards / 3 + 2) s: a dud passes when it runs out untouched, and a target
+     left unsmashed when it runs out is a miss. Rob's call, 2026-09-24.
+   - The 60 s clock starts at tier 2. Clearing a screen adds (cards / 3 + 2) s;
+     a wrong tap costs VSMASH_WRONG_TAP_SECONDS. Wrong taps never cost points.
+   - Combo: each correct tap in a row on a screen raises the crack a step and
+     scores one more point than the last. A wrong tap resets it.
+   - Gold card: about 1 screen in 12, one target card is gold, triple points.
+   - Watchlist: a target the student misses is asked more often for a while.
+   ========================================= */
+const VSMASH_TIERS = [3, 6, 9, 12];
+const VSMASH_TARGET_BANDS = [[1, 2], [2, 4], [2, 3], [3, 4]];
+const VSMASH_UNITS = ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'];
+const VSMASH_COMBO_STEPS = 8;       // the crack stops rising after this many
+
+// What a tier asks, and what its cards may hold.
+//   beats:  "Smash everything worth N beats"      (tiers 1-2)
+//   equals: "Smash everything that equals a ..."  (tiers 3-4)
+// units: how many notes and rests a card may hold, [fewest, most].
+function vsmashTierQuestions(tier) {
+    if (tier <= 1) return [1, 2, 4].map(n => ({ kind: 'beats', total: n, key: 'beats:' + n,
+        units: tier === 0 ? [1, 1] : [1, 3] }));
+    return ['half-note', 'whole-note'].map(v => ({ kind: 'equals', note: v, total: vsmashBeats(v),
+        key: 'equals:' + v, units: [1, 4] }));
+}
+
+/* ---------- Cards are real notation ----------
+   A card is a short run of notes and rests, read as the start of a bar of
+   common time. It has to be something a musician would write (CLAUDE.md,
+   "Engraving rules for rests" and "BEAT 3 MUST ALWAYS BE VISIBLE"):
+   - never longer than the bar;
+   - a whole note or whole rest only from beat 1;
+   - a half rest only from beat 1 or 3 - never across the middle;
+   - a half note from beat 2 only as quarter / half / quarter, Rob's one
+     named way to hide beat 3;
+   - a bar-long run of silence is one whole rest, never smaller rests. */
+function vsmashGroupIsReal(units) {
+    let at = 0;
+    for (let i = 0; i < units.length; i++) {
+        const beats = vsmashBeats(units[i]);
+        const rest = vsmashSpec(units[i]).isRest;
+        if (beats === 4 && at !== 0) return false;
+        if (beats === 2 && rest && at % 2 !== 0) return false;
+        if (beats === 2 && !rest && at === 1
+            && !(units[i - 1] === 'quarter-note' && units[i + 1] === 'quarter-note')) return false;
+        at += beats;
+    }
+    if (at > VSMASH_BAR_BEATS) return false;
+    const allRest = units.every(u => vsmashSpec(u).isRest);
+    if (allRest && at === VSMASH_BAR_BEATS && units.length > 1) return false;
+    return true;
+}
+
+function vsmashRandom(list) {
+    return list[Math.floor(Math.random() * list.length)];
+}
+
+function vsmashRandomInt(low, high) {
+    return low + Math.floor(Math.random() * (high - low + 1));
+}
+
+// Every card a musician could write, listed once: each run of 1-4 notes and
+// rests that passes vsmashGroupIsReal. Picking from this list (size first,
+// then a group of that size) gives groups a fair share of the cards. Random
+// guessing would hand out single notes nearly every time, because a random
+// run of three or four rarely fits in a bar.
+let vsmashGroups = null;
+
+function vsmashAllGroups() {
+    if (vsmashGroups) return vsmashGroups;
+    vsmashGroups = [];
+    const grow = units => {
+        if (units.length && vsmashGroupIsReal(units)) {
+            vsmashGroups.push({ units: units, total: units.reduce((sum, u) => sum + vsmashBeats(u), 0) });
+        }
+        if (units.length < VSMASH_BAR_BEATS) VSMASH_UNITS.forEach(u => grow(units.concat(u)));
+    };
+    grow([]);
+    return vsmashGroups;
+}
+
+// A card that is (or, for a distractor, is not) worth the question's total.
+function vsmashMakeCard(question, isTarget) {
+    const fits = vsmashAllGroups().filter(g => g.units.length >= question.units[0]
+        && g.units.length <= question.units[1] && (g.total === question.total) === isTarget);
+    const sizes = [...new Set(fits.map(g => g.units.length))];
+    if (!sizes.length) return null;
+    const size = vsmashRandom(sizes);
+    const group = vsmashRandom(fits.filter(g => g.units.length === size));
+    return { units: group.units.slice(), total: group.total, target: isTarget };
+}
+
+function vsmashShuffle(list) {
+    for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+}
+
+let vsmashSmash = null;    // the Smash floor in play, or null
+let vsmashPaused = false;  // true while the Tree help card is open
+
+function startValueSmash(floor) {
+    vsmashSmash = {
+        floor: floor, started: Date.now(),
+        tier: 0, streak: 0, joker: false, score: 0, wrong: 0,
+        clock: null,            // seconds left; null until tier 2
+        watch: {},              // question key -> clears left on the watchlist
+        lastDud: false, lastAnnounced: null,
+    };
+    document.getElementById('value-hud').hidden = false;
+    vsmashPaused = false;
+    let last = performance.now();
+    vsmashEvery(() => {
+        const now = performance.now();
+        const dt = (now - last) / 1000;
+        last = now;
+        if (!vsmashPaused) vsmashSmashTick(dt);
+    }, 100);
+    loadValueSmashScreen();
+}
+
+function vsmashPickQuestion() {
+    const s = vsmashSmash;
+    const questions = vsmashTierQuestions(s.tier);
+    const watched = questions.filter(q => s.watch[q.key] > 0);
+    if (watched.length && Math.random() < VSMASH_WATCH_CHANCE) return vsmashRandom(watched);
+    return vsmashRandom(questions);
+}
+
+function vsmashQuestionWords(question) {
+    if (question.kind === 'equals') return { id: 'value.smash.equals', vars: { note: KR.noteName(question.note) } };
+    if (question.total === 1) return { id: 'value.smash.beats.one', vars: {} };
+    return { id: 'value.smash.beats', vars: { n: question.total } };
+}
+
+function loadValueSmashScreen() {
+    const s = vsmashSmash;
+    const cardCount = VSMASH_TIERS[s.tier];
+    const question = vsmashPickQuestion();
+    const isDud = !s.lastDud && Math.random() < VSMASH_DUD_RATE;
+    const band = VSMASH_TARGET_BANDS[s.tier];
+    const targets = isDud ? 0 : Math.min(cardCount, vsmashRandomInt(band[0], band[1]));
+
+    const cards = [];
+    for (let i = 0; i < cardCount; i++) {
+        cards.push(vsmashMakeCard(question, i < targets) || vsmashMakeCard(question, false));
+    }
+    vsmashShuffle(cards);
+    if (targets > 0 && Math.random() < VSMASH_GOLD_RATE) cards.find(c => c.target).gold = true;
+
+    Object.assign(s, { question: question, cards: cards, isDud: isDud,
+        targets: cards.filter(c => c.target).length, found: 0, wrongHere: 0, combo: 0, busy: false });
+    s.flashTotal = s.tier === 0 ? null : cardCount / 3 + 2;
+    s.flash = s.flashTotal;
+
+    // The target is SPOKEN only when it changes (Note Smash's re-announcing
+    // is CLAUDE.md open item 4 - not to be copied). It is always SHOWN.
+    const words = vsmashQuestionWords(question);
+    KR.say(words.id, { box: vsmashGuide(), vars: words.vars, silent: question.key === s.lastAnnounced });
+    s.lastAnnounced = question.key;
+
+    document.getElementById('value-floor-label').textContent = KR.t('value.smash.header', {
+        floor: vsmashFloorName(s.floor.id), cards: cardCount });
+    document.getElementById('value-beatkey').hidden = question.kind !== 'beats';
+    document.getElementById('value-flash').hidden = s.flashTotal === null;
+    document.getElementById('value-nothing').hidden = s.tier !== 0;
+    renderValueSmashGrid();
+    vsmashUpdateHud();
+}
+
+function renderValueSmashGrid() {
+    const s = vsmashSmash;
+    const stage = document.getElementById('value-stage');
+    stage.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'vsmash-grid tier-' + (s.tier + 1); // text-ok
+    stage.appendChild(grid);
+    const gap = 8;
+    const cardWidth = Math.floor((stage.clientWidth - 2 * gap) / 3);
+    s.cards.forEach((card, index) => {
+        const el = document.createElement('button');
+        el.className = 'vsmash-card' + (card.gold ? ' gold' : '');
+        const notes = document.createElement('div');
+        notes.className = 'vsmash-card-notes';
+        el.appendChild(notes);
+        vsmashDrawNotes(notes, card.units.map(vsmashSpec), cardWidth - 8);
+        // The duration bar: as long as the card lasts, a whole bar being the
+        // full card. Tier 1 shows it, tier 2 fades it, tiers 3-4 take it away.
+        const bar = document.createElement('div');
+        bar.className = 'vsmash-dur';
+        const fill = document.createElement('span');
+        fill.style.width = (100 * card.total / VSMASH_BAR_BEATS) + '%';
+        bar.appendChild(fill);
+        el.appendChild(bar);
+        el.onclick = () => tapValueSmashCard(index, el);
+        card.el = el;
+        grid.appendChild(el);
+    });
+}
+
+function vsmashUpdateHud() {
+    const s = vsmashSmash;
+    document.getElementById('value-streak').innerHTML = [0, 1, 2]
+        .map(i => '<span class="streak-dot' + (i < s.streak ? ' active' : '') + '"></span>').join(''); // text-ok
+    document.getElementById('value-joker').hidden = !s.joker;
+    document.getElementById('value-combo').textContent = s.combo >= 2 ? KR.t('value.smash.combo', { n: s.combo }) : '';
+    document.getElementById('value-score').textContent = KR.t('value.smash.score', { n: s.score });
+    const clock = document.getElementById('value-clock');
+    clock.hidden = s.clock === null;
+    if (s.clock !== null) clock.textContent = KR.t('value.smash.clock', { n: Math.max(0, Math.ceil(s.clock)) });
+    const fill = document.getElementById('value-flash-fill');
+    if (s.flashTotal) fill.style.width = Math.max(0, 100 * s.flash / s.flashTotal) + '%';
+}
+
+function vsmashSmashTick(dt) {
+    const s = vsmashSmash;
+    if (!s || s.busy) return;
+    if (s.clock !== null) {
+        s.clock -= dt;
+        if (s.clock <= 0) return vsmashSmashTimeUp();
+    }
+    if (s.flashTotal !== null) {
+        s.flash -= dt;
+        if (s.flash <= 0) return vsmashSmashFlashOut();
+    }
+    vsmashUpdateHud();
+}
+
+function vsmashAddTime(seconds) {
+    const s = vsmashSmash;
+    if (s.clock === null) return;
+    s.clock = Math.max(0, s.clock + seconds);
+    const clock = document.getElementById('value-clock');
+    clock.classList.remove('gain', 'lose');
+    void clock.offsetWidth;
+    clock.classList.add(seconds > 0 ? 'gain' : 'lose');
+}
+
+function tapValueSmashCard(index, el) {
+    const s = vsmashSmash;
+    if (!s || s.busy) return;
+    const card = s.cards[index];
+    if (card.smashed) return;
+
+    if (card.target) {
+        card.smashed = true;
+        s.found++;
+        s.combo++;
+        const points = s.combo * (card.gold ? 3 : 1);
+        s.score += points;
+        vsmashCrack(Math.min(s.combo - 1, VSMASH_COMBO_STEPS));
+        vsmashShatter(el);
+        KR.event('value.smash.correct', { points: points, combo: s.combo });
+        if (card.gold) KR.event('value.smash.gold', { points: points });
+        vsmashUpdateHud();
+        if (s.found >= s.targets) {
+            s.busy = true;
+            vsmashLater(() => vsmashSmashResolve(true), 450);
+        }
+        return;
+    }
+    vsmashSmashWrong();
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+}
+
+// A wrong tap - on a card, or "Nothing here" when something was there.
+function vsmashSmashWrong() {
+    const s = vsmashSmash;
+    playSound('wrong');
+    s.wrong++;
+    s.wrongHere++;
+    s.combo = 0;
+    s.watch[s.question.key] = VSMASH_WATCH_SCREENS;
+    vsmashAddTime(-VSMASH_WRONG_TAP_SECONDS);
+    KR.event('value.smash.wrong', { question: s.question.key });
+    vsmashUpdateHud();
+}
+
+// Tier 1's answer to a dud screen. There is no clock to wait out.
+function tapValueNothing() {
+    const s = vsmashSmash;
+    if (!s || s.busy) return;
+    if (s.isDud) {
+        if (s.wrongHere === 0) return vsmashSmashDud();
+        // Right, but after a wrong tap: move on, and no joker for it.
+        s.busy = true;
+        s.lastDud = true;
+        return vsmashLater(loadValueSmashScreen, 400);
+    }
+    const button = document.getElementById('value-nothing');
+    button.classList.remove('shake');
+    void button.offsetWidth;
+    button.classList.add('shake');
+    vsmashSmashWrong();
+}
+
+function vsmashSmashDud() {
+    const s = vsmashSmash;
+    s.busy = true;
+    s.joker = true;
+    s.lastDud = true;
+    s.cards.forEach(c => c.el.classList.add('dud-right'));
+    playSound('correct');
+    vsmashAddTime(VSMASH_TIERS[s.tier] / 3 + 2);
+    KR.event('value.smash.dud');
+    KR.say('value.smash.dud', { box: vsmashGuide(), silent: true });
+    vsmashUpdateHud();
+    vsmashLater(loadValueSmashScreen, 900);
+}
+
+// The flash timer ran out (tier 2 and up).
+function vsmashSmashFlashOut() {
+    const s = vsmashSmash;
+    if (s.isDud) {
+        if (s.wrongHere === 0) return vsmashSmashDud();
+        s.busy = true;
+        s.lastDud = true;
+        return vsmashLater(loadValueSmashScreen, 400);
+    }
+    vsmashSmashResolve(false);
+}
+
+// A screen ends: cleared (every target smashed) or missed (time ran out).
+function vsmashSmashResolve(cleared) {
+    const s = vsmashSmash;
+    s.busy = true;
+    s.lastDud = false;
+    // Tier 1 has no clock, so a wrong tap there has nothing to cost but the
+    // streak - otherwise tapping everything would clear it.
+    const spoiled = !cleared || (s.tier === 0 && s.wrongHere > 0);
+
+    if (spoiled) {
+        if (!cleared) {
+            s.watch[s.question.key] = VSMASH_WATCH_SCREENS;
+            // Show them what they missed: every point is a teaching point.
+            s.cards.forEach(c => { if (c.target && !c.smashed) c.el.classList.add('missed'); });
+        }
+        if (s.joker) {
+            s.joker = false;
+            KR.say('value.smash.jokerUsed', { box: vsmashGuide(), silent: true });
+        } else {
+            s.streak = 0;
+            if (!cleared) KR.say('value.smash.missed', { box: vsmashGuide(), silent: true });
+        }
+        vsmashUpdateHud();
+        return vsmashLater(loadValueSmashScreen, cleared ? 450 : 1400);
+    }
+
+    s.streak++;
+    vsmashAddTime(VSMASH_TIERS[s.tier] / 3 + 2);
+    if (s.watch[s.question.key]) s.watch[s.question.key]--;
+    s.cards.forEach(c => c.el.classList.add('screen-clear'));
+    vsmashUpdateHud();
+
+    if (s.streak < 3) return vsmashLater(loadValueSmashScreen, 350);
+
+    s.streak = 0;
+    if (s.tier === VSMASH_TIERS.length - 1) return vsmashSmashCleared();
+    s.tier++;
+    KR.event('value.smash.tierUp', { tier: s.tier + 1 });
+    playSound('complete');
+    const startsClock = s.clock === null;
+    if (startsClock) s.clock = VSMASH_CLOCK_SECONDS;
+    KR.say(startsClock ? 'value.smash.tierUpClock' : 'value.smash.tierUp',
+        { box: vsmashGuide(), vars: { cards: VSMASH_TIERS[s.tier], seconds: VSMASH_CLOCK_SECONDS } });
+    s.lastAnnounced = null;   // a new tier announces its first target aloud
+    vsmashUpdateHud();
+    vsmashLater(loadValueSmashScreen, 2200);
+}
+
+function vsmashSmashCleared() {
+    const s = vsmashSmash;
+    vsmashSmash = null;
+    vsmashFloorCleared(s.floor, { seconds: (Date.now() - s.started) / 1000, wrong: s.wrong, score: s.score });
+}
+
+function vsmashSmashTimeUp() {
+    const s = vsmashSmash;
+    vsmashSmash = null;
+    showValueTimeUp({ cards: VSMASH_TIERS[s.tier], score: s.score });
+}
+
+/* ---------- Feel ---------- */
+
+// The snare crack from rhythm-audio.js (raudioTapSnare's own recipe), raised
+// a whole tone per step of the combo.
+function vsmashCrack(step) {
+    if (typeof rstompAudio !== 'function') return;
+    const ctx = rstompAudio();
+    if (!ctx) return;
+    const ratio = Math.pow(2, 2 * step / 12);
+    const fire = () => {
+        const when = raudioCtx.currentTime + 0.02;
+        try {
+            raudioNoise(when, 0.15, 0.90, 2200 * ratio, 0.7, 'rhythm');
+            raudioNoise(when, 0.04, 0.70, 5200 * ratio, 0.5, 'rhythm');
+            raudioTone(when, 205 * ratio, 0.055, 0.40, 'triangle', 'rhythm');
+        } catch (e) { /* a missing sound must never block the game */ }
+    };
+    if (ctx.state === 'suspended') ctx.resume().then(fire).catch(fire);
+    else fire();
+}
+
+// The card shatters INSIDE ITS OWN BOX (it clips its pieces), so the effect
+// never covers a card still in play.
+function vsmashShatter(el) {
+    const notes = el.querySelector('.vsmash-card-notes');
+    const pieces = [
+        'polygon(0 0, 50% 0, 50% 50%, 0 60%)', 'polygon(50% 0, 100% 0, 100% 45%, 50% 50%)',
+        'polygon(0 60%, 50% 50%, 45% 100%, 0 100%)', 'polygon(50% 50%, 100% 45%, 100% 100%, 45% 100%)',
+    ];
+    pieces.forEach((clip, i) => {
+        const piece = document.createElement('div');
+        piece.className = 'vsmash-shard shard-' + i; // text-ok
+        piece.style.clipPath = clip;
+        piece.innerHTML = notes.innerHTML;
+        el.appendChild(piece);
+    });
+    el.classList.add('smashed');
+    vsmashLater(() => el.querySelectorAll('.vsmash-shard').forEach(p => p.remove()), 500);
 }

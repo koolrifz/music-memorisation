@@ -616,18 +616,30 @@
         <div class="vsmash-header">
             <div class="vsmash-header-label" id="value-floor-label"></div>
         </div>
+        <!-- Smash only: streak, joker, combo, score and the clock -->
+        <div class="vsmash-hud" id="value-hud" hidden>
+            <span class="streak-dots vsmash-streak" id="value-streak"></span>
+            <span class="vsmash-joker" id="value-joker" hidden data-text="value.smash.joker"></span>
+            <span class="vsmash-combo" id="value-combo"></span>
+            <span class="vsmash-score" id="value-score"></span>
+            <span class="timer-badge vsmash-clock" id="value-clock" hidden></span>
+        </div>
         <div class="kr-guide" id="value-game-guide">
             <img class="kr-guide-portrait" hidden alt="">
             <div class="kr-guide-text"></div>
         </div>
+        <div class="vsmash-beatkey" id="value-beatkey" hidden data-text="value.beatKey"></div>
+        <div class="vsmash-flash" id="value-flash" hidden><div class="vsmash-flash-fill" id="value-flash-fill"></div></div>
         <div class="vsmash-stage" id="value-stage"></div>
+        <button class="btn btn-secondary vsmash-nothing" id="value-nothing" hidden onclick="tapValueNothing()" data-text="value.smash.nothing"></button>
     </div>
 
     <div id="value-screen-results" class="screen">
         <div class="pathway-card">
             <h1 data-text="value.results.title"></h1>
             <div id="value-results-body"></div>
-            <button class="btn btn-start" onclick="showValuePathway()" data-text="value.floor.back"></button>
+            <button class="btn btn-start" onclick="startSelectedValueFloor()" data-text="value.results.again"></button>
+            <button class="btn btn-secondary" onclick="showValuePathway()" data-text="value.floor.back"></button>
         </div>
     </div>
 </div>
