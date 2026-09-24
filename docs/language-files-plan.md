@@ -1,6 +1,16 @@
 # Plan: take the words out of the code
 
-**Status:** plan approved in principle by Rob on 2026-09-23. Step 0 (`text.js`, `lang/`, `content/`, `tools/check-text.py`) is built on `idea/value-smash`, and Value Smash uses it; the older games are not migrated yet.
+**Status:** plan approved in principle by Rob on 2026-09-23. Step 0 and Value Smash are on `main`. **Step 1 (Rhythm Stomp Lab) is done**, together with the change below. The other games are not migrated yet.
+
+**Changed 2026-09-24: one file per game, edited from a phone.** Rob works on
+this mostly from his phone, away from a computer, so `lang/` is now one short
+file per game (`common.js`, `value-smash.js`, `stomp-lab.js`, …, and
+`uk-english.js` for the UK differences) rather than one `en-US.js`. Every line
+is written ID-then-words, with the words in backticks so an apostrophe can't
+break it. Every push to `main` runs `tools/check-text.py` (now including a
+check that each file actually loads) and the site is published only if it
+passes: `.github/workflows/check-and-publish.yml`. Rob's guide is
+`lang/README.md`. Section 2's single-file layout below is superseded by this.
 
 Rob:
 
@@ -40,9 +50,10 @@ code. **This plan applies that pattern to the whole app.**
 ## 2. The shape
 
 ```
-lang/
-  en-US.js        every word in the app, by ID — the base language
-  en-GB.js        only the lines that differ (note names), by the same IDs
+lang/            one file per game (see the status note at the top)
+  common.js       note names, shared buttons, the dashboard
+  value-smash.js  stomp-lab.js  ...  every word of one game, by ID
+  uk-english.js   only the lines that differ (note names), by the same IDs
 content/
   dialogue.js     Riff & Tango lines: which event, who says it, which text ID
   audio.js        every sound and backing track, by ID

@@ -5,7 +5,21 @@ Read this before touching the code. It's the accumulated context from months of 
 ## What this is
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
-**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar and `value-smash.js` for the Value silo (being built on `idea/value-smash`). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
+**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar and `value-smash.js` for the Value silo. Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
+
+**The words: one file per game in `lang/`, edited by Rob on his phone.** He
+rarely sits at a computer, so `lang/` is laid out for GitHub's editor on a
+phone: each ID on its own line, the words on the next, **always in backticks**
+(an apostrophe can't break a line, and a phone's curly quotes are just text).
+`common.js` holds note names and shared buttons; `uk-english.js` only the UK
+differences; every other file is one game. `lang/README.md` is his guide.
+Rob edits straight onto `main`, so **`.github/workflows/check-and-publish.yml`
+runs `check-text.py` on every push and publishes the site only if it passes**
+— a broken save leaves the last good version live and emails him the line.
+(This needs the repo's Pages source set to "GitHub Actions".) When adding a
+file to `lang/`, add its `<script>` tag to `index.html`. **Converted so far:**
+Value Smash and Rhythm Stomp Lab. Still in the code: the dashboard, Staff /
+Note / Real Smash, the old Rhythm game, Kool Beat and Kool Tuner.
 
 **WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
 that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
@@ -1094,13 +1108,14 @@ has to change with it: *"Could we find every instance of that text box and give
 it a name and then I can fill in alternate text? Then I could teach through the
 rules for the level."*
 
-`RSTOMP_PROMPTS` holds the defaults; `rstompPrompt(name, vars)` resolves a
-level's own wording first and fills in `{braces}` at display time. A level
-overrides any line by name:
+The words are in `lang/stomp-lab.js` as `stomp.prompt.<name>`;
+`rstompPrompt(name, vars)` resolves a level's own wording first and fills in
+`{braces}` at display time. A level overrides any line by adding its own, with
+the level's ID in it, in the same file:
 
 ```js
-{ id: '7', ..., prompts: { 'write-bar': 'Bar {bar} — two tied crotchets ARE a
-                                         minim. Count what you SEE.' } }
+'stomp.level.7.prompt.write-bar':
+    `Bar {bar} — two tied crotchets ARE a minim. Count what you SEE.`,
 ```
 
 The names, and the variables each one can use:

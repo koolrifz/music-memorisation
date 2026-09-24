@@ -1,0 +1,56 @@
+# Check every change, and publish the site only if the check passes.
+#
+# Why: the words in lang/ are edited on a phone, straight onto main. Without
+# this, a missing backtick would go live the moment it was saved, and that
+# game would show [ids] instead of words to a whole class. With it, a broken
+# save never reaches the site: the site stays on the last good version, and
+# GitHub emails whoever made the change, naming the file and line.
+#
+# For this to control the live site, the repo's Pages setting must say
+# "GitHub Actions": Settings -> Pages -> Build and deployment -> Source.
+# See lang/README.md.
+
+name: Check and publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One publish at a time; a newer save replaces one still waiting.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The words load, and every ID the games use exists
+        run: python3 tools/check-text.py
+      - name: Every script loads
+        run: for f in *.js content/*.js; do node --check "$f" || exit 1; done
+
+  publish:
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4

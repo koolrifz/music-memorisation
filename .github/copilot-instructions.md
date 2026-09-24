@@ -14,7 +14,8 @@ JavaScript, and VexFlow 3.0.9 comes from a CDN.
 - **When building Value Smash, follow `docs/value-smash-build-guide.md`,** one
   step at a time, and stop after each step.
 - **No on-screen words in code.** Every word the student sees or hears comes
-  from `lang/en-US.js` by ID (`KR.t('id')`, or `data-text="id"` in HTML). See
+  from the game's own file in `lang/` by ID (`KR.t('id')`, or `data-text="id"`
+  in HTML), written in backticks. See `lang/README.md` and
   `docs/language-files-plan.md`.
 - **Don't change working games unless asked.** Staff Smash, Note Smash and Real
   Smash live in `script.js`; the old Rhythm game is `rhythm.js`; Rhythm Stomp

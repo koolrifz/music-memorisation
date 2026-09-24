@@ -3,32 +3,46 @@
 
     python3 tools/check-text.py        (on Windows: python tools/check-text.py)
 
-Three checks. Exits non-zero if any fails:
+The words live in lang/, one file per game. Each file is either US English
+(KR.lang('en-US', ...), the base: every ID must be in one of these) or UK
+English (KR.lang('en-GB', ...), only the differences).
 
+Five checks. Exits non-zero if any fails:
+
+  0. Every file in lang/ loads: no broken quote, missing comma or stray
+     backtick, and every entry is words. Needs node; skipped without it.
+     This is the check that matters most when a file was edited on a phone.
   1. Every ID used through KR.t('...'), KR.say('...'), KR.noteName('...') or
-     data-text="..." in the files listed in USES exists in lang/en-US.js.
-  2. Every ID in lang/en-GB.js also exists in lang/en-US.js.
-  3. The files listed in NO_WORDS contain no English sentence in quotes -
+     data-text="..." in the files listed in USES is in a US file in lang/.
+  2. Every ID in a UK file is also in a US file.
+  3. No ID is written twice - in one file or across two. The second would
+     silently win, and an edit to the first would seem to do nothing.
+  4. The files listed in NO_WORDS contain no English sentence in quotes -
      a string with two words separated by a space. A line ending in the
      comment  // text-ok  is allowed through, for the rare real exception
      (a CSS class list, say).
 
 See docs/language-files-plan.md and docs/value-smash-build-guide.md.
 """
+import glob
+import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Files whose ID uses are checked (1). Add each game here as it is converted.
-USES = ['value-smash.js', 'text.js', 'index.html']
+USES = ['value-smash.js', 'rhythm-stomp-lab.js', 'text.js', 'index.html']
 
 # Files that may hold no hard-coded words at all (3).
-NO_WORDS = ['value-smash.js']
+NO_WORDS = ['value-smash.js', 'rhythm-stomp-lab.js']
 
-LANG_BASE = 'lang/en-US.js'
-LANG_OTHERS = ['lang/en-GB.js']
+LANG_DIR = 'lang'
+LANG_BASE_CODE = 'en-US'
+LANG_CODE = re.compile(r"""KR\.lang\(\s*['"]([^'"]+)['"]""")
 
 # Only an ID written out whole: KR.t('a.b') or KR.t('a.b', vars). An ID
 # built at run time (KR.t('value.floor.' + id)) can't be checked here.
@@ -94,14 +108,73 @@ def string_literals(line):
 
 
 def lang_ids(rel):
-    return set(LANG_ENTRY.findall(strip_comments(read(rel))))
+    return LANG_ENTRY.findall(strip_comments(read(rel)))
+
+
+def lang_files():
+    """{code: [file, ...]} for every file in lang/."""
+    files = {}
+    for path in sorted(glob.glob(os.path.join(ROOT, LANG_DIR, '*.js'))):
+        rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+        m = LANG_CODE.search(strip_comments(read(rel)))
+        files.setdefault(m.group(1) if m else '?', []).append(rel)
+    return files
+
+
+# Runs each lang file the way the browser does, with a stand-in KR.lang.
+LOAD_CHECK = r"""
+const fs = require('fs'), vm = require('vm');
+const problems = [];
+for (const rel of JSON.parse(process.argv[1])) {
+    const KR = { lang(code, table) {
+        if (!table || typeof table !== 'object') throw new Error('KR.lang needs a list of words');
+        for (const [id, words] of Object.entries(table))
+            if (typeof words !== 'string') problems.push(rel + '  ' + id + ' is not words in backticks');
+    } };
+    try {
+        vm.runInNewContext(fs.readFileSync(rel, 'utf8'), { KR }, { filename: rel });
+    } catch (e) {
+        const where = (e.stack || '').split(String.fromCharCode(10))[0];
+        problems.push(where + '  ' + e.name + ': ' + e.message);
+    }
+}
+console.log(JSON.stringify(problems));
+"""
+
+
+def load_problems(rels):
+    node = shutil.which('node')
+    if not node:
+        print('  (skipped the load check - node is not installed)')
+        return []
+    out = subprocess.run([node, '-e', LOAD_CHECK, json.dumps(rels)], cwd=ROOT,
+                         capture_output=True, text=True)
+    if out.returncode != 0:
+        return ['load check could not run: ' + out.stderr.strip()]
+    return ['%s  (this file will not load, so its words are missing)' % p
+            for p in json.loads(out.stdout)]
 
 
 def main():
-    problems = []
-    base = lang_ids(LANG_BASE)
+    files = lang_files()
+    base_files = files.get(LANG_BASE_CODE, [])
+    other_files = [f for code, fs in files.items() if code != LANG_BASE_CODE for f in fs]
 
-    # 1. Every ID used exists in en-US.
+    # 0. Every lang file loads.
+    problems = load_problems(base_files + other_files)
+
+    # 3. No ID written twice.
+    for code, fs in files.items():
+        seen = {}
+        for rel in fs:
+            for i in lang_ids(rel):
+                if i in seen:
+                    problems.append('%s  %s is also in %s - keep one' % (rel, i, seen[i]))
+                seen[i] = rel
+
+    base = set(i for rel in base_files for i in lang_ids(rel))
+
+    # 1. Every ID used exists in a US file.
     for rel in USES:
         if not exists(rel):
             print('  (skipped %s - not written yet)' % rel)
@@ -112,14 +185,14 @@ def main():
             ids += ['note.' + m for m in NOTE_NAME_USE.findall(line)]
             for i in ids:
                 if i not in base:
-                    problems.append('%s:%d  ID not in %s: %s' % (rel, lineno, LANG_BASE, i))
+                    problems.append('%s:%d  ID not in any US file in lang/: %s' % (rel, lineno, i))
 
-    # 2. Every ID in the other languages exists in en-US.
-    for rel in LANG_OTHERS:
-        for i in sorted(lang_ids(rel) - base):
-            problems.append('%s  ID not in %s: %s' % (rel, LANG_BASE, i))
+    # 2. Every ID in the other languages exists in a US file.
+    for rel in other_files:
+        for i in sorted(set(lang_ids(rel)) - base):
+            problems.append('%s  ID not in any US file in lang/: %s' % (rel, i))
 
-    # 3. No sentences in the code.
+    # 4. No sentences in the code.
     for rel in NO_WORDS:
         if not exists(rel):
             continue
@@ -139,7 +212,7 @@ def main():
         for p in problems:
             print('  ' + p)
         return 1
-    print('check-text: OK (%d IDs in %s)' % (len(base), LANG_BASE))
+    print('check-text: OK (%d IDs in %d files in lang/)' % (len(base), len(base_files + other_files)))
     return 0
 
 

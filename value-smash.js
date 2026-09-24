@@ -8,7 +8,7 @@
    The spec is docs/value-smash-build-guide.md. The reasoning is in the
    private design brief, kool-riffs-docs/docs/value-smash-design-brief.md.
 
-   NO WORDS IN THIS FILE. Every word on screen comes from lang/en-US.js
+   NO WORDS IN THIS FILE. Every word on screen comes from lang/value-smash.js
    through KR.t / KR.say / KR.noteName. tools/check-text.py checks it.
    ========================================= */
 

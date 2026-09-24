@@ -435,47 +435,47 @@
 <!-- GAME 4B VIEW (Rhythm Stomp Lab — new interface prototype, separate from rhythm.js) -->
 <div id="view-rhythm-lab" class="view">
     <div class="game-nav">
-        <button class="btn-back" onclick="handleRstompBackButton()">⬅ Back</button>
+        <button class="btn-back" onclick="handleRstompBackButton()" data-text="common.back"></button>
     </div>
 
     <div id="rhythm-lab-screen-pathway" class="screen active">
         <div class="pathway-card">
-            <h1>Rhythm Stomp Lab</h1>
-            <p class="pathway-subtitle">New interface prototype — pick a level to test.</p>
+            <h1 data-text="stomp.title"></h1>
+            <p class="pathway-subtitle" data-text="stomp.subtitle"></p>
             <div class="pathway-track" id="rstomp-pathway-track"></div>
-            <button class="btn btn-start" id="rstomp-pathway-start" onclick="startSelectedRstompLevel()" disabled>Choose your mission</button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+            <button class="btn btn-start" id="rstomp-pathway-start" onclick="startSelectedRstompLevel()" disabled data-text="stomp.choose"></button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')" data-text="common.toDashboard"></button>
         </div>
     </div>
 
     <div id="rhythm-lab-screen-intro" class="screen">
         <div class="pathway-card">
-            <h1>Rhythm Stomp Lab</h1>
-            <p class="pathway-subtitle">Level 1 · Whole Notes and Rests</p>
+            <h1 data-text="stomp.title"></h1>
+            <p class="pathway-subtitle" data-text="stomp.intro.level"></p>
             <div class="rstomp-walkthrough">
-                <p>Every bar gets 4 beats. For each beat, you'll answer one simple question:</p>
+                <p data-text="stomp.intro.lead"></p>
                 <div class="rstomp-walkthrough-row">
-                    <div class="rstomp-walkthrough-btn rstomp-play-demo">▶ PLAY</div>
-                    <span>a new note starts here</span>
+                    <div class="rstomp-walkthrough-btn rstomp-play-demo">▶ <span data-text="stomp.button.play"></span></div>
+                    <span data-text="stomp.intro.playMeans"></span>
                 </div>
                 <div class="rstomp-walkthrough-row">
                     <div class="rstomp-walkthrough-btn rstomp-bracket-demo">( )</div>
-                    <span>nothing new — still ringing, or silence</span>
+                    <span data-text="stomp.intro.nothingNewMeans"></span>
                 </div>
-                <p>Tap one, and it's written under the music straight away. Fill all 4 bars, then check your answer. Three phrases right in a row and you've mastered the level.</p>
+                <p data-text="stomp.intro.howItWorks"></p>
             </div>
-            <button class="btn btn-start" onclick="startRstompLevel()">Start Level 1</button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+            <button class="btn btn-start" onclick="startRstompLevel()" data-text="stomp.intro.start"></button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')" data-text="common.toDashboard"></button>
         </div>
     </div>
 
     <div id="rhythm-lab-screen-game" class="screen">
         <div class="rstomp-header">
-            <div class="rstomp-header-label" id="rstomp-level-label">Level 1 · Whole Notes and Rests</div>
-            <div class="tier-tracker">Streak: <span class="streak-dots" id="rstomp-streak-dots"></span></div>
+            <div class="rstomp-header-label" id="rstomp-level-label"></div>
+            <div class="tier-tracker"><span data-text="stomp.streak"></span> <span class="streak-dots" id="rstomp-streak-dots"></span></div>
         </div>
 
-        <div class="rstomp-prompt" id="rstomp-prompt">Bar 1 · Beat 1 — does a new note start here?</div>
+        <div class="rstomp-prompt" id="rstomp-prompt"></div>
 
         <div class="rstomp-strip" id="rstomp-strip">
             <div class="rstomp-strip-inner" id="rstomp-strip-inner">
@@ -495,13 +495,13 @@
              exactly the bars being written. -->
         <div class="rstomp-strip-status">
             <span id="rstomp-strip-progress"></span>
-            <button class="rstomp-jump-chip" id="rstomp-jump-chip" hidden onclick="jumpRstompToCursor()">Jump to cursor</button>
+            <button class="rstomp-jump-chip" id="rstomp-jump-chip" hidden onclick="jumpRstompToCursor()" data-text="stomp.jump"></button>
             <!-- Hear it before you write it. Listening is free and always
                  available - it is not a hint that costs anything. -->
             <button class="rstomp-listen-btn" id="rstomp-listen-btn" onclick="toggleRstompListen()">
-                <span id="rstomp-listen-icon">&#9654;</span> Hear it
+                <span id="rstomp-listen-icon">&#9654;</span> <span data-text="stomp.hear"></span>
             </button>
-            <button class="rstomp-fullview-btn" id="rstomp-fullview-btn" hidden onclick="openRstompFullView()">Full view</button>
+            <button class="rstomp-fullview-btn" id="rstomp-fullview-btn" hidden onclick="openRstompFullView()" data-text="stomp.fullView"></button>
         </div>
 
         <div class="rstomp-feedback" id="rstomp-feedback" hidden></div>
@@ -514,13 +514,13 @@
             <div class="rstomp-answer-row">
                 <button class="rstomp-answer-btn rstomp-play" id="rstomp-play-btn" onclick="stampRstomp('play')">
                     <span class="rstomp-answer-symbol">▶</span>
-                    <span class="rstomp-answer-label">PLAY</span>
-                    <small>a new note starts</small>
+                    <span class="rstomp-answer-label" data-text="stomp.button.play"></span>
+                    <small data-text="stomp.button.playMeans"></small>
                 </button>
                 <button class="rstomp-answer-btn rstomp-bracket" id="rstomp-bracket-btn" onclick="stampRstomp('bracket')">
                     <span class="rstomp-answer-symbol">( )</span>
-                    <span class="rstomp-answer-label">NOTHING NEW</span>
-                    <small>held, or silent</small>
+                    <span class="rstomp-answer-label" data-text="stomp.button.nothingNew"></span>
+                    <small data-text="stomp.button.nothingNewMeans"></small>
                 </button>
             </div>
             <!-- Undo backs up one count; Restart clears the phrase. Rob,
@@ -528,8 +528,8 @@
                  undo... we have to back through the whole thing, one undo at
                  a time, or we should just be able to start." -->
             <div class="rstomp-step-row">
-                <button class="rstomp-undo-btn" id="rstomp-undo-btn" onclick="undoRstomp()">↺ Undo</button>
-                <button class="rstomp-undo-btn" id="rstomp-restart-btn" onclick="restartRstompPhrase()">⟲ Restart</button>
+                <button class="rstomp-undo-btn" id="rstomp-undo-btn" onclick="undoRstomp()" data-text="stomp.undo"></button>
+                <button class="rstomp-undo-btn" id="rstomp-restart-btn" onclick="restartRstompPhrase()" data-text="stomp.restart"></button>
             </div>
         </div>
 
@@ -545,23 +545,23 @@
                 <button class="rstomp-key rstomp-key-erase" id="rstomp-key-erase" onclick="rstompKey('erase')">⌫</button>
             </div>
             <div class="rstomp-step-row">
-                <button class="rstomp-undo-btn" id="rstomp-scribe-restart-btn" onclick="restartRstompPhrase()">⟲ Restart</button>
+                <button class="rstomp-undo-btn" id="rstomp-scribe-restart-btn" onclick="restartRstompPhrase()" data-text="stomp.restart"></button>
             </div>
         </div>
 
-        <button class="btn btn-start" id="rstomp-submit-button" onclick="submitRstompPhrase()" disabled>Check My Answer</button>
+        <button class="btn btn-start" id="rstomp-submit-button" onclick="submitRstompPhrase()" disabled data-text="stomp.submit"></button>
     </div>
 </div>
 
 <div class="modal-overlay" id="modal-rstomp-level-complete">
     <div class="stage-complete-box">
-        <div class="stage-complete-kicker">Level Mastered!</div>
-        <h3 id="rstomp-level-complete-title">Level 1 mastered!</h3>
-        <p>Three phrases counted correctly in a row.</p>
+        <div class="stage-complete-kicker" data-text="stomp.complete.kicker"></div>
+        <h3 id="rstomp-level-complete-title"></h3>
+        <p data-text="stomp.complete.body"></p>
         <div class="stage-complete-stats">
-            <div><strong id="rstomp-level-complete-score">0</strong><span>score</span></div>
+            <div><strong id="rstomp-level-complete-score">0</strong><span data-text="stomp.complete.score"></span></div>
         </div>
-        <button class="btn btn-start" onclick="continueAfterRstompLevel()">Continue</button>
+        <button class="btn btn-start" onclick="continueAfterRstompLevel()" data-text="stomp.complete.continue"></button>
     </div>
 </div>
 
@@ -575,10 +575,10 @@
 </div>
 
 <!-- VALUE SMASH (the Value silo) - value-smash.js. No words here: every
-     element carries data-text="some.id", filled from lang/en-US.js. -->
+     element carries data-text="some.id", filled from lang/value-smash.js. -->
 <div id="view-value" class="view">
     <div class="game-nav">
-        <button class="btn-back" onclick="handleValueBackButton()" data-text="value.back"></button>
+        <button class="btn-back" onclick="handleValueBackButton()" data-text="common.back"></button>
     </div>
     <!-- The student's own tree, as a help card. Only there once the Tree
          floor is cleared (value-smash.js vsmashRefreshTreeButton). -->
@@ -608,7 +608,7 @@
             <p class="pathway-subtitle" data-text="value.subtitle"></p>
             <div class="pathway-track" id="value-pathway-track"></div>
             <button class="btn btn-start" id="value-pathway-start" onclick="startSelectedValueFloor()" disabled data-text="value.choose"></button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')" data-text="value.toDashboard"></button>
+            <button class="btn btn-text" onclick="launchGame('view-dashboard')" data-text="common.toDashboard"></button>
         </div>
     </div>
 
@@ -751,8 +751,12 @@
 
 <!-- Words, dialogue, pictures and sounds by ID - loaded first, see docs/language-files-plan.md -->
 <script src="text.js"></script>
-<script src="lang/en-US.js"></script>
-<script src="lang/en-GB.js"></script>
+<!-- lang/: one file per game. A file that fails to load only loses its own
+     words ([id] shows instead); every other game still works. -->
+<script src="lang/common.js"></script>
+<script src="lang/value-smash.js"></script>
+<script src="lang/stomp-lab.js"></script>
+<script src="lang/uk-english.js"></script>
 <script src="content/dialogue.js"></script>
 <script src="content/art.js"></script>
 <script src="content/audio.js"></script>

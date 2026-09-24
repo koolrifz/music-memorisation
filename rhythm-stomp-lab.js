@@ -126,10 +126,13 @@ const RSTOMP_VOCABULARY = {
    Rob's request, and the reason is the whole design: his rules are the
    SCAFFOLDING - the bridging device that gets a student from unawareness to
    mastery - and the scaffolding changes level by level. So the wording has to
-   change with it. A level can override any line below by name:
+   change with it.
 
-       { id: '7', ..., prompts: { 'write-bar': 'Bar {bar} - two tied crotchets
-                                                are a minim. Count what you SEE.' } }
+   The words live in lang/stomp-lab.js, as 'stomp.prompt.<name>'. A level
+   rewords any line by adding its own, with the level's ID in it:
+
+       'stomp.level.7.prompt.write-bar':
+           `Bar {bar} - two tied crotchets are a minim. Count what you SEE.`,
 
    `{bar}` and the other braces are filled in at display time. The names, and
    what each one is for:
@@ -150,34 +153,24 @@ const RSTOMP_VOCABULARY = {
      walk-hint       two-button, a repeat wrong tap on the same count  {answer} {because}
      walk-missed     two-button, the walk finished but needed help     {n}
 
-   Keep them short and functional until Rob replaces them - the defaults are
-   placeholders, the names are not.
+   The words are Rob's to change; the names are the contract.
    ========================================================================= */
-const RSTOMP_PROMPTS = {
-    'write-bar':    'Bar {bar} — write the counting under the notes.',
-    'bracket-open': 'Bracket open — count the beats it holds for, then close it.',
-    'all-written':  'All {bars} bars written — check your answer below.',
-    'revealed':     "Here's the counting.",
-    'walk-beat':    'Bar {bar} · Beat {label} — does a new note start here?',
-    'walk-done':    'All filled in — check your answer below.',
-    'nailed':       'Nailed it! +{points}',
-    'miss-one':     "One bar isn't right. Can you find it before you submit again?",
-    'miss-some':    "{n} bars aren't right. Can you find them?",
-    'name-one':     "Bar {bar} isn't right — read it again.",
-    'name-some':    "Bars {bars} aren't right — read them again.",
-    'show-answer':  "Here's the counting — streak reset. New phrase next.",
-    'walk-wrong':   'Not quite — look again at the note the cursor is on.',
-    'walk-hint':    "Look again — it's {answer}: {because}",
-    'walk-missed':  'Good — but you needed {n} put right. Walk a clean one to build the streak.'
-};
 
 // The level's own wording if it has one, otherwise the default, with {braces}
 // filled in. A level teaches its own rule, so it gets to say its own line.
 function rstompPrompt(name, vars) {
-    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
-    const template = (level && level.prompts && level.prompts[name]) || RSTOMP_PROMPTS[name] || '';
-    return template.replace(/\{(\w+)\}/g, (whole, key) =>
-        (vars && Object.prototype.hasOwnProperty.call(vars, key)) ? vars[key] : whole);
+    const own = 'stomp.level.' + rstompSelectedLevel + '.prompt.' + name;
+    return KR.t(KR.lookup(own, KR.current) !== null ? own : 'stomp.prompt.' + name, vars);
+}
+
+// A level's names are in lang/stomp-lab.js, by the level's ID: the full
+// name while playing, the short one on the pathway.
+function rstompLevelName(level) {
+    return KR.t('stomp.level.' + level.id + '.name');
+}
+
+function rstompLevelShort(level) {
+    return KR.t('stomp.level.' + level.id + '.short');
 }
 
 const RSTOMP_LEVELS = [
@@ -216,17 +209,17 @@ const RSTOMP_LEVELS = [
     // A1. The two-button walkthrough - the tutorial for the whole idea, and a
     // complete experience on its own for a child who can't yet write numerals
     // (CLAUDE.md, "TWO interfaces").
-    { id: '1', label: 'Level 1: Whole Notes and Rests', shortLabel: 'Whole Notes and Rests',
+    { id: '1',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest'] },
 
     // A2. Two events in a bar - the first time anything happens twice.
-    { id: '2', label: 'Level 2: Half Notes and Rests', shortLabel: 'Half Notes and Rests',
+    { id: '2',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'] },
 
     // A3. Switching scale inside a bar.
-    { id: '3', label: 'Level 3: Whole and Half Notes Mixed', shortLabel: 'Whole and Half Mixed',
+    { id: '3',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'] },
 
@@ -238,7 +231,7 @@ const RSTOMP_LEVELS = [
     // the reason this level cannot be skipped. Quarters ALONE are trivial;
     // quarters with rests in every position are the fundamental reading
     // exercise.
-    { id: '4', label: 'Level 4: Quarter Notes and Rests', shortLabel: 'Quarter Notes and Rests',
+    { id: '4',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['quarter-note', 'quarter-rest'] },
 
@@ -246,7 +239,7 @@ const RSTOMP_LEVELS = [
     // is already known - so the level's one new idea is that the student now
     // writes the counting instead of answering it. A sprinkle of long-hand
     // starts here too, now that a minim has a spelling the student can read.
-    { id: '5', label: 'Level 5: Quarters, Halves and Wholes', shortLabel: 'Quarters, Halves, Wholes',
+    { id: '5',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
       spellOut: ['h'], longhandChance: 0.15, scribe: true },
@@ -265,7 +258,7 @@ const RSTOMP_LEVELS = [
     // misreading, and reversed. Rob: "It really has to pop back in on
     // beat 4. Beat 4 opens the door. It opens the door to beat 1. It's a
     // pickup beat."
-    { id: '6', label: 'Level 6: Syncopation', shortLabel: 'Syncopation',
+    { id: '6',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
       featureShape: ['quarter-note', 'half-note', 'quarter-note'], scribe: true },
@@ -279,14 +272,14 @@ const RSTOMP_LEVELS = [
     // spellOutEvery, so the short way and the long way appear in the same line
     // to be read against each other. This is also where the dotted minim is
     // first seen, as the thing three tied crotchets add up to.
-    { id: '7', label: 'Level 7: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+    { id: '7',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['half-note', 'half-rest', 'dotted-half-note', 'quarter-note', 'quarter-rest'],
       spellOut: ['h', 'hd'], longhandChance: 0.5, spellOutEvery: true, scribe: true },
 
     // A8. The shortcut A7 revealed, now in ordinary use. The scaffold comes
     // down: no spellOut here, so the dotted minim is written as a dotted minim.
-    { id: '8', label: 'Level 8: Dotted Half Notes', shortLabel: 'Dotted Half Notes',
+    { id: '8',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
       scribe: true },
@@ -295,7 +288,7 @@ const RSTOMP_LEVELS = [
     // generateRstompPhraseWithTie. Every phrase carries a tie, using only
     // durations already taught, per Rob's "a tie is just how we make really
     // long notes" framing.
-    { id: '9', label: 'Level 9: Ties Across the Barline', shortLabel: 'Ties Across the Barline',
+    { id: '9',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['whole-note', 'whole-rest', 'dotted-half-note', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest'],
       tieLevel: true, tieChance: 1, scribe: true },
@@ -312,13 +305,13 @@ const RSTOMP_LEVELS = [
 
     // B1. The beat divides. Quavers against the crotchet they split - the
     // contrast is the lesson, so a level of quavers alone would teach less.
-    { id: '10', label: 'Level 10: Paired Quavers', shortLabel: 'Paired Quavers',
+    { id: '10',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['quarter-note', 'quarter-rest', 'eighth-note'],
       subdivideWholeBeats: true, scribe: true },
 
     // B2. Divided beats among sustained ones.
-    { id: '11', label: 'Level 11: Quavers and Longer Notes', shortLabel: 'Quavers and Longer',
+    { id: '11',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest',
              'quarter-note', 'quarter-rest', 'eighth-note'],
@@ -326,7 +319,7 @@ const RSTOMP_LEVELS = [
 
     // B3. An odd number of quavers in a beat, and the off-beat rest - the
     // first time a beat is not either whole or evenly halved.
-    { id: '12', label: 'Level 12: Single Quavers and Quaver Rests', shortLabel: 'Single Quavers',
+    { id: '12',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'half-rest', 'quarter-note', 'quarter-rest',
              'eighth-note', 'eighth-rest'], scribe: true },
@@ -334,7 +327,7 @@ const RSTOMP_LEVELS = [
     // B4. Ties at this grid - the long-hand drill one generation down. Two
     // quavers tied make a crotchet; a quaver tied to a crotchet makes a
     // dotted crotchet, which is the figure B5 then uses in plain notation.
-    { id: '13', label: 'Level 13: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+    { id: '13',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
              'eighth-note', 'eighth-rest'],
@@ -344,13 +337,13 @@ const RSTOMP_LEVELS = [
     // crotchet then a quaver, two onsets always three quavers apart. On beat 1
     // the quaver lands on the "+" of 2, ANTICIPATING beat 3 - that flip into
     // the second strong beat is the funk in it.
-    { id: '14', label: 'Level 14: The Pump', shortLabel: 'The Pump',
+    { id: '14',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
       figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'downbeat' }, scribe: true },
 
     // B6. THE PUMPS I - the five positions that fit inside a bar.
-    { id: '15', label: 'Level 15: The Pumps Walk the Bar', shortLabel: 'Pumps in the Bar',
+    { id: '15',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
       figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
@@ -359,14 +352,14 @@ const RSTOMP_LEVELS = [
     // crotchet has to be written as a tie because a written note cannot cross
     // a barline either. Same rule as the counting bracket, and here it is the
     // lesson rather than an inconvenience.
-    { id: '16', label: 'Level 16: Pumps Across the Barline', shortLabel: 'Pumps Across the Bar',
+    { id: '16',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
       figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'crossing' }, scribe: true },
 
     // B8. SYNCOPATION I - quaver / crotchet / quaver, the A6 figure now at
     // quaver resolution, walked through every position it fits.
-    { id: '17', label: 'Level 17: Syncopation', shortLabel: 'Syncopation',
+    { id: '17',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
       figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'in-bar' },
@@ -374,7 +367,7 @@ const RSTOMP_LEVELS = [
 
     // B9. SYNCOPATION II - the syncopation figure anywhere, including across
     // the barline, with the pumps already in the vocabulary.
-    { id: '18', label: 'Level 18: Syncopation and Pumps', shortLabel: 'Syncopation + Pumps',
+    { id: '18',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
              'eighth-note', 'eighth-rest'],
@@ -383,7 +376,7 @@ const RSTOMP_LEVELS = [
 
     // B10. Barline ties and review - everything Stage B has taught, with a
     // tie over every barline.
-    { id: '19', label: 'Level 19: Quaver Review', shortLabel: 'Quaver Review',
+    { id: '19',
       labels: RSTOMP_LABELS_QUAVER, slot: '8', bars: 2,
       pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
              'quarter-rest', 'eighth-note', 'eighth-rest'],
@@ -412,14 +405,14 @@ const RSTOMP_LEVELS = [
        ===================================================================== */
 
     // C1. Sometimes the quaver gets the beat.
-    { id: '20', label: 'Level 20: Six-Eight, Counted in Six', shortLabel: 'Six-Eight in Six',
+    { id: '20',
       labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
       pool: ['dotted-half-rest', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
       scribe: true },
 
     // C2. Grouping in threes: the dotted crotchet fills a whole group, and
     // ties join them.
-    { id: '21', label: 'Level 21: Six-Eight, Dotted Crotchets and Ties', shortLabel: 'Six-Eight Groups',
+    { id: '21',
       labels: RSTOMP_LABELS_SIX_IN_SIX, slot: '8', bars: 4, beamSlots: 3,
       pool: ['dotted-half-note', 'dotted-half-rest', 'dotted-quarter-note', 'dotted-quarter-rest',
              'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest'],
@@ -451,13 +444,13 @@ const RSTOMP_LEVELS = [
     // D1. The Parent Rhythm. Four semiquavers, and beats kept whole - the beat
     // either divides evenly or stays intact, so nothing obscures the division
     // itself. Uneven beats are D3's job.
-    { id: '22', label: 'Level 22: Four Semiquavers', shortLabel: 'Four Semiquavers',
+    { id: '22',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'sixteenth-note'],
       subdivideWholeBeats: true, scribe: true },
 
     // D2. Mixed with everything above.
-    { id: '23', label: 'Level 23: Semiquavers Mixed', shortLabel: 'Semiquavers Mixed',
+    { id: '23',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['whole-note', 'half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note',
              'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
@@ -465,7 +458,7 @@ const RSTOMP_LEVELS = [
 
     // D3. Worksheet patterns 1 and 2, taught as a pair because the pair is the
     // lesson: the same three notes with the quaver at either end.
-    { id: '24', label: 'Level 24: Quaver and Two Semiquavers', shortLabel: 'Quaver + Two Semis',
+    { id: '24',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
       figure: [{ notes: [{ slots: 2 }, { slots: 1 }, { slots: 1 }], positions: 'in-bar' },
@@ -475,7 +468,7 @@ const RSTOMP_LEVELS = [
     // D4. Ties at this grid - the long-hand drill one generation down again.
     // Two semiquavers tied make a quaver; a semiquaver tied to a quaver makes
     // a dotted quaver, which is the figure D5 then uses in plain notation.
-    { id: '25', label: 'Level 25: Ties Inside the Bar', shortLabel: 'Ties Inside the Bar',
+    { id: '25',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'dotted-eighth-note',
              'eighth-note', 'eighth-rest', 'sixteenth-note'],
@@ -483,14 +476,14 @@ const RSTOMP_LEVELS = [
 
     // D5. Pattern 3 - dotted quaver then semiquaver. The pump's shape one
     // generation down: two onsets three slots apart, starting on the beat.
-    { id: '26', label: 'Level 26: Dotted Quaver and Semiquaver', shortLabel: 'Dotted Quaver + Semi',
+    { id: '26',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
       figure: { notes: [{ slots: 3 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
 
     // D6. Pattern 4 - reversed, and harder, because it IS a syncopation: the
     // long note starts off the beat.
-    { id: '27', label: 'Level 27: Semiquaver and Dotted Quaver', shortLabel: 'Semi + Dotted Quaver',
+    { id: '27',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
       figure: { notes: [{ slots: 1 }, { slots: 3 }], positions: 'in-bar' }, scribe: true },
@@ -499,13 +492,13 @@ const RSTOMP_LEVELS = [
     // This is the figure Rob marked by hand in his MusicXML, and the only
     // place a quaver has to be opened up to show where the next semiquaver
     // falls (brief S17.1).
-    { id: '28', label: 'Level 28: Semiquaver Syncopation', shortLabel: 'Semiquaver Syncopation',
+    { id: '28',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'quarter-note', 'quarter-rest', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
       figure: { notes: [{ slots: 1 }, { slots: 2 }, { slots: 1 }], positions: 'in-bar' }, scribe: true },
 
     // D8. Full review, with a tie over every barline.
-    { id: '29', label: 'Level 29: Semiquaver Review', shortLabel: 'Semiquaver Review',
+    { id: '29',
       labels: RSTOMP_LABELS_SEMIQUAVER, slot: '16', bars: 2,
       pool: ['half-note', 'half-rest', 'dotted-quarter-note', 'quarter-note', 'quarter-rest',
              'dotted-eighth-note', 'eighth-note', 'eighth-rest', 'sixteenth-note'],
@@ -821,7 +814,7 @@ function renderRstompPathway() {
         const node = document.createElement('button');
         node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${level.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
         node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${level.shortLabel}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${rstompLevelShort(level)}</span>${record?.bestScore != null ? `<small>${KR.t('common.points', { n: Math.round(record.bestScore) })}</small>` : ''}` : ''}`;  // text-ok: markup
         if (isUnlocked) node.onclick = () => selectRstompLevel(level.id);
         track.appendChild(node);
     });
@@ -838,7 +831,7 @@ function selectRstompLevel(levelId, rerender = true) {
     const startButton = document.getElementById('rstomp-pathway-start');
     if (startButton) {
         startButton.disabled = false;
-        startButton.innerText = `Start ${RSTOMP_LEVELS.find(level => level.id === levelId).shortLabel}`;
+        startButton.innerText = KR.t('stomp.start', { level: rstompLevelShort(RSTOMP_LEVELS.find(level => level.id === levelId)) });
     }
 }
 
@@ -1847,7 +1840,7 @@ function startRstompLevel() {
     switchScreenState('rhythm-lab', 'rhythm-lab-screen-game');
     ensureRstompStripListeners();
     applyRstompInterface();
-    document.getElementById('rstomp-level-label').innerText = level.label;
+    document.getElementById('rstomp-level-label').innerText = rstompLevelName(level);
     updateRstompStreakDots();
     startNewRstompPhrase();
 }
@@ -2090,9 +2083,9 @@ function stampRstomp(answer) {
 // learned.
 function rstompWalkHint(position) {
     const mode = rstompPhrase[position.barIndex][position.slotIndex];
-    if (mode === 'play') return { answer: 'PLAY', because: 'a new note starts on this count.' };
-    if (mode === 'rest') return { answer: 'NOTHING NEW', because: 'this count is silent, nothing is sounding.' };
-    return { answer: 'NOTHING NEW', because: 'the note before is still ringing through this count.' };
+    if (mode === 'play') return { answer: KR.t('stomp.button.play'), because: KR.t('stomp.because.play') };
+    if (mode === 'rest') return { answer: KR.t('stomp.button.nothingNew'), because: KR.t('stomp.because.rest') };
+    return { answer: KR.t('stomp.button.nothingNew'), because: KR.t('stomp.because.hold') };
 }
 
 // Clear the phrase and start writing it again, SAME phrase - not a new one.
@@ -2138,10 +2131,10 @@ function updateRstompPrompt() {
     const el = document.getElementById('rstomp-prompt');
     if (!el) return;
 
-    // Every line here is a NAMED prompt - see RSTOMP_PROMPTS. The defaults are
-    // placeholders and Rob will replace them; the names are the contract, and a
-    // level overrides any of them with its own `prompts` block so it can teach
-    // its own rule in its own words.
+    // Every line here is a NAMED prompt - see rstompPrompt(). The words are in
+    // lang/stomp-lab.js and Rob will replace them; the names are the contract,
+    // and a level overrides any of them with its own line there so it can
+    // teach its own rule in its own words.
     if (rstompScribe) {
         if (rstompRevealed) { el.textContent = rstompPrompt('revealed'); return; }
         if (rstompWriting && rstompWriting.inside) { el.textContent = rstompPrompt('bracket-open'); return; }
@@ -2315,8 +2308,8 @@ function updateRstompStripChrome() {
         const total = rstompPositions.length;
         const written = rstompScribe ? rstompWrittenBeats() : rstompCursor;
         progress.textContent = written >= total
-            ? `All ${total} counts in`
-            : `Count ${written + 1} of ${total}`;
+            ? KR.t('stomp.progress.all', { total })
+            : KR.t('stomp.progress.count', { n: written + 1, total });
     }
 
     // Nothing to expand when the whole phrase is already on screen.
@@ -2916,7 +2909,7 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
 
 function updateRstompStreakDots() {
     const dots = [0, 1, 2].map(index =>
-        `<span class="streak-dot${index < rstompStreak ? ' active' : ''}" aria-hidden="true"></span>`
+        `<span class="streak-dot${index < rstompStreak ? ' active' : ''}" aria-hidden="true"></span>`  // text-ok: markup
     ).join('');
     document.getElementById('rstomp-streak-dots').innerHTML = dots;
 }
@@ -3044,7 +3037,7 @@ function handleRstompWalkMisses(missed) {
 function showRstompLevelComplete() {
     recordRstompResult(true);
     const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
-    document.getElementById('rstomp-level-complete-title').innerText = `${level.shortLabel} mastered!`;
+    document.getElementById('rstomp-level-complete-title').innerText = KR.t('stomp.complete.title', { level: rstompLevelShort(level) });
     document.getElementById('rstomp-level-complete-score').innerText = rstompScore;
     playSound('complete');
     document.getElementById('modal-rstomp-level-complete').classList.add('show');

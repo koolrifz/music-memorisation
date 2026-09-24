@@ -8,7 +8,7 @@
    A line looks like:
      { on: 'value.license.awarded', speaker: 'tango',
        text: 'tango.license.1', pose: 'tango.cheer' },
-   'text' is an ID in lang/en-US.js. 'pose' is an ID in content/art.js.
+   'text' is an ID in a file in lang/. 'pose' is an ID in content/art.js.
 
    voices: the placeholder synthesised voice for each speaker, used until a
    recorded file for the line is listed in content/audio.js.

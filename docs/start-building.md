@@ -183,7 +183,7 @@ request.
 - **One step per chat.** If Copilot starts changing files the step didn't
   mention, especially `script.js`, stop it and Undo.
 - **If it writes words into the code** (sentences inside `.js` or `.html`),
-  ask it: *"Move that text into `lang/en-US.js` and use `KR.t()`."* The checker
+  ask it: *"Move that text into the game's file in `lang/` and use `KR.t()`."* The checker
   catches most of these.
 - **Copilot has usage limits too.** Agent mode with the stronger models uses up
   "premium requests". Short, one-step prompts make them go further.
