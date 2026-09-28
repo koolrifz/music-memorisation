@@ -1148,6 +1148,8 @@ Each game keeps its own localStorage key (`koolRiffsG1Progress`, `koolRiffsG2Pro
 ## Pathway screen pattern
 Each game's entry point is a pathway screen (`g1-screen-pathway`, etc.) — a compact horizontal track of stage nodes (locked = icon only, no text; unlocked = icon + label; cleared = icon + label + best score badge). The Start button never appears on this screen itself, only after a stage is selected. This was a deliberate fix — don't regress to a screen where a game launches straight into "Start" with no visible pathway.
 
+**Exception — Rhythm Stomp Lab shows locked levels' names.** Rob, stuck at Level 14 and unable to tell whether anything existed past it: 29 icon-only locked nodes read as "nothing built beyond here". The Rhythm pathway now shows every level's number and name; locked ones stay dimmed and unclickable, and only an unlocked level shows a score. The other three games keep icon-only locked nodes.
+
 ---
 
 ## Open items to fix now
