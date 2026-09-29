@@ -1241,7 +1241,11 @@ yet.** Every new game is designed so that it slots into it.
   (`ideas/beat-smash.md`), P plates from Value Smash V1 (today's "License" and
   Stomp Lab gate), and the Artistic License at the end of level one. Until that
   is designed, what V1 awards stays as built. Don't build a new gate against
-  either meaning without asking Rob, including which pillars count.
+  either meaning without asking Rob. **Since ruled (2026-09-29):** every pillar
+  counts toward the Artistic License, and Beat Smash's L plates are needed to
+  open Value Smash. How students climb a pillar and cross into the next is a
+  proposal in `kool-riffs-docs/docs/levels-and-licences.md`, still awaiting
+  Rob's answers.
 - **Values first, time signatures last.** Every note value is given in common
   time from the first screen (*"it takes up the whole bar and it commonly
   receives four beats"*, as in Rubank), but the *meaning* of time signatures
