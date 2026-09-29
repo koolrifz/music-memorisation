@@ -1,9 +1,16 @@
 # Beat Smash (working title): feel the beat, read it straight away
 
-**The full working document is private:**
-`kool-riffs-docs/docs/beat-smash-brainstorm.md` (version 4, a brainstorm for
-review by other AIs, not yet a design brief). This page is the one-page
-version, as `ideas/README.md` asks.
+**The design brief is private:** `kool-riffs-docs/docs/beat-smash-design-brief.md`
+(revision 1, 2026-09-29). How it was reached, and every parked idea, is in
+`kool-riffs-docs/docs/beat-smash-brainstorm.md`. **The brief supersedes this
+page wherever they differ**; this page is the one-page version, as
+`ideas/README.md` asks.
+
+**In one line (the brief):** a recording studio. Each musician (Tango on drums,
+Riff on bass, Riff on keys) is won by one bar three times in a row, two bars
+three times in a row, then four bars in one take, reading real notation; the
+student then picks one of three ready-made parts. Last, it's the student's turn
+in the booth, which earns the Learner's Permit.
 
 ## What it teaches
 
