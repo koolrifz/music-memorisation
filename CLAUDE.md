@@ -1234,6 +1234,14 @@ yet.** Every new game is designed so that it slots into it.
   It stops only a student with no License who has **never** played Stomp Lab
   (`totalPlays` 0 and only level 1 open). So on a fresh device Stomp Lab does
   not open: that is the gate, not a bug.
+- **The Artistic License is being REDEFINED: direction only, not built.**
+  Rob, 2026-09-29: the License is for *"clearing all four pillars… the summation
+  of all of the very basic knowledge"*, with a **Learner's Permit** and
+  probationary stages before it. Proposed ladder: L plates from Beat Smash
+  (`ideas/beat-smash.md`), P plates from Value Smash V1 (today's "License" and
+  Stomp Lab gate), and the Artistic License at the end of level one. Until that
+  is designed, what V1 awards stays as built. Don't build a new gate against
+  either meaning without asking Rob, including which pillars count.
 - **Values first, time signatures last.** Every note value is given in common
   time from the first screen (*"it takes up the whole bar and it commonly
   receives four beats"*, as in Rubank), but the *meaning* of time signatures
