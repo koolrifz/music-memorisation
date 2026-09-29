@@ -1,7 +1,9 @@
 # Beat Smash (working title): feel the beat, read it straight away
 
-**The full brief is private:** `kool-riffs-docs/docs/beat-smash-design-brief.md`
-(draft 3). This page is the one-page version, as `ideas/README.md` asks.
+**The full working document is private:**
+`kool-riffs-docs/docs/beat-smash-brainstorm.md` (version 4, a brainstorm for
+review by other AIs, not yet a design brief). This page is the one-page
+version, as `ideas/README.md` asks.
 
 ## What it teaches
 
@@ -21,8 +23,11 @@ picture the student chose (blocks, dice, counting, a secret code…) → play it
 again with the notation underneath → play it in notation alone. Three clean
 rounds in a row win a part.
 
-**A level is a groove:** each part won (drums, bass, keys, guitar, lead) joins
-the band, and the rhythm the student played becomes that instrument's part.
+**A level is a groove:** three clean rounds earn the right to **choose** a
+part (drums, then bass, keys, guitar, lead) from a library, shuffling through
+presets over the band so far. The reading stays simple; the band's parts are
+real music and are never played by the student (Rob, 2026-09-29: *"that rhythm
+they're learning does not have to be the same one"*).
 Four grooves, then **the Gig**: the student plays lead, in notation, over the
 song their band makes. The Gig awards the **Learner's Permit**.
 
