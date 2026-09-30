@@ -66,6 +66,9 @@ KR.lang('en-US', {
     'beat.padMode.four':     'Four',
     'beat.padMode.one':      'One big',
     'beat.settings.picture': 'Picture',
+    /* Shown only with the teacher code on. {lean} {steady} are in ms. */
+    'beat.stats.late':       'Last beat test: {onBeat}% on the beat in {taps} taps. Leans {lean} ms late (the device included), steady to ±{steady} ms. Tests kept: {tests}.',
+    'beat.stats.early':      'Last beat test: {onBeat}% on the beat in {taps} taps. Leans {lean} ms early (the device included), steady to ±{steady} ms. Tests kept: {tests}.',
 
     /* ---------- Beat Smash: who is playing ---------- */
     'beat.player.ask':             "Who's playing? Tap your name, or type it. Then tap your age.",
@@ -79,9 +82,12 @@ KR.lang('en-US', {
     'beat.age.11+':                '11+',
 
     /* ---------- Beat Smash: the studio ---------- */
+    'beat.step.jam':         'Warm-up',
+    'beat.step.band':        'My band',
     'beat.step.1':           'One bar',
     'beat.step.2':           'Two bars',
     'beat.step.3':           'The big take',
+    'beat.jam.next':         'Show me what I played',
     'beat.button.record':    '● Record',
     'beat.button.reroll':    '🎲 New roll',
     'beat.picture.blocks':   'Blocks',
@@ -110,6 +116,9 @@ KR.lang('en-US', {
     'beat.line.copy':        'Copy me!',
     'beat.line.watch':       'Watch me. Boom, boom, boom, boom!',
     'beat.line.morph':       "That's what you just played!",
+    'beat.line.layer.bass':  'Here comes the bass!',
+    'beat.line.layer.keys':  'And the keys! Keep it going!',
+    'beat.line.full':        "That's the groove! Keep it going as long as you like.",
     'beat.line.bluetooth':   'Bluetooth headphones are slow. Plug in, or play without them.',
     'beat.line.clean.1':     "That's a take!",
     'beat.line.clean.2':     "In the can!",
@@ -132,6 +141,14 @@ KR.lang('en-US', {
     'beat.locked.drums.1':   '{style} drums, locked in. This is your band now.',
     'beat.line.playback':    "Listen to that. Look how much you've built.",
 
+
+    /* ---------- Teacher codes (teacher-codes.js) ---------- */
+    'code.placeholder':      'Teacher code',
+    'code.enter':            'Enter',
+    'code.reset':            'Everything is back to zero on this device. Starting again…',
+    'code.open':             'Every level in every game is open on this device. Type the code again to turn it off.',
+    'code.closed':           'Turned off. Levels open as they are won again; anything already played stays open.',
+    'code.unknown':          "That's not a code I know.",
 
     /* ---------- Dashboard: the Value Smash card ---------- */
     'home.value.icon':       '♩',

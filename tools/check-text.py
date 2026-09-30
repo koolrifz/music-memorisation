@@ -22,10 +22,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Files whose ID uses are checked (1). Add each game here as it is converted.
-USES = ['value-smash.js', 'beat-smash.js', 'beat-pads.js', 'text.js', 'index.html']
+USES = ['value-smash.js', 'beat-smash.js', 'beat-pads.js', 'teacher-codes.js', 'text.js', 'index.html']
 
 # Files that may hold no hard-coded words at all (3).
-NO_WORDS = ['value-smash.js', 'beat-smash.js', 'beat-pads.js']
+NO_WORDS = ['value-smash.js', 'beat-smash.js', 'beat-pads.js', 'teacher-codes.js']
 
 LANG_BASE = 'lang/en-US.js'
 LANG_OTHERS = ['lang/en-GB.js']

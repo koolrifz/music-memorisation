@@ -20,6 +20,13 @@
     </div>
 
     <div class="menu-container">
+        <div class="game-card red" onclick="enterBeatSmash()">
+            <div class="game-icon icon-red" data-text="home.beat.icon"></div>
+            <div class="game-details">
+                <h2 data-text="home.beat.title"></h2>
+                <p data-text="home.beat.blurb"></p>
+            </div>
+        </div>
         <div class="game-card purple" onclick="launchGame('view-game1')">
             <div class="game-icon icon-purple">1</div>
             <div class="game-details">
@@ -39,13 +46,6 @@
             <div class="game-details">
                 <h2>Real Smash</h2>
                 <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
-            </div>
-        </div>
-        <div class="game-card red" onclick="enterBeatSmash()">
-            <div class="game-icon icon-red" data-text="home.beat.icon"></div>
-            <div class="game-details">
-                <h2 data-text="home.beat.title"></h2>
-                <p data-text="home.beat.blurb"></p>
             </div>
         </div>
         <div class="game-card gold" onclick="launchGame('view-rhythm')">
@@ -724,9 +724,11 @@
                 <div class="kr-guide-text"></div>
             </div>
             <div class="pathway-track" id="beat-pathway-track"></div>
+            <div class="bsmash-steps" id="beat-steps"></div>
             <button class="btn btn-start" id="beat-pathway-start" onclick="startSelectedBeat()" disabled data-text="beat.start"></button>
             <div class="bsmash-settings" id="beat-settings"></div>
             <button class="btn btn-secondary" onclick="retuneBeatTiming()" data-text="beat.retune"></button>
+            <p class="bsmash-stats" id="beat-stats" hidden></p>
             <button class="btn btn-text" onclick="leaveBeatSmash()" data-text="beat.toDashboard"></button>
         </div>
     </div>
@@ -751,6 +753,9 @@
             <button class="btn btn-secondary" onclick="rerollBeatTake()" data-text="beat.button.reroll"></button>
         </div>
         <div class="bsmash-picture-choice" id="beat-picture-choice" hidden></div>
+        <!-- The first minute: the meter fills as the beat is held. -->
+        <div class="bsmash-jam-meter" id="beat-jam-meter"><div class="bsmash-jam-fill" id="beat-jam-fill"></div></div>
+        <button class="btn btn-start bsmash-jam-next" id="beat-jam-next" hidden onclick="showBeatJamNotes()" data-text="beat.jam.next"></button>
         <div class="krpads" id="beat-pads"></div>
     </div>
 
@@ -773,6 +778,12 @@
     <div class="credits-box">
         <h3>🎷 Kool Riffs</h3>
         <p>Building better musical reflexes through focused, gamified repetition.</p>
+        <!-- Teacher codes (teacher-codes.js): start everything again, or open every level. -->
+        <div class="kr-code">
+            <input class="kr-code-input" id="kr-code-input" type="text" autocomplete="off" autocapitalize="characters">
+            <button class="btn btn-secondary kr-code-btn" onclick="enterTeacherCode()" data-text="code.enter"></button>
+            <p class="kr-code-result" id="kr-code-result"></p>
+        </div>
         <button class="btn-close" onclick="toggleCredits(false)">Close</button>
     </div>
 </div>
@@ -837,6 +848,7 @@
 <script src="text.js"></script>
 <script src="lang/en-US.js"></script>
 <script src="lang/en-GB.js"></script>
+<script src="teacher-codes.js"></script>
 <script src="content/dialogue.js"></script>
 <script src="content/art.js"></script>
 <script src="content/audio.js"></script>

@@ -100,10 +100,18 @@ const BSMASH_WINDOW_MS = { '6-8': 220, '9-10': 195, '11+': 170 };   // how far f
 const BSMASH_WINDOW_START_EXTRA_MS = 40;   // generous at first (§14)...
 const BSMASH_WINDOW_TIGHTEN_MS = 5;        // ...and this much tighter per clean take, down to the age's window
 const BSMASH_PASS_MARK = { '6-8': 0.80, '9-10': 0.85, '11+': 0.90 };  // the big take (§6)
-const BSMASH_JAM_IN_A_ROW = 4;             // on-beat taps before the pads turn into notes (§11)
-const BSMASH_JAM_WINDOW_MS = 200;          // the first minute can't fail; this only decides when a pad lights
+const BSMASH_JAM_GOAL = 24;                // on-beat taps that fill the meter: about 15 seconds at 100 bpm
+const BSMASH_JAM_WINDOW_MS = 150;          // the first minute can't fail; this decides when a pad lights and the meter fills
 const BSMASH_JAM_DEMO_EVERY_BARS = 4;      // Tango shows the way again if the taps don't settle
+// The band builds as the student holds the beat: at a third of the meter the
+// bass joins, at two thirds the keys. A taste of the band they will win.
+const BSMASH_JAM_LAYERS = [
+    { at: 1 / 3, instrument: 'bass', style: 'smooth' },
+    { at: 2 / 3, instrument: 'keys', style: 'smooth' },
+];
+const BSMASH_BEAT_TESTS_KEPT = 20;         // beat tests remembered per player
 const BSMASH_DELAY_MAX = 0.45;             // seconds; a measured delay beyond this is thrown out
+const BSMASH_DELAY_MIN = -0.05;            // seconds; a student who plays a touch early leans below zero
 const BSMASH_DELAY_BLUETOOTH = 0.2;        // seconds; above this, say so (§14)
 const BSMASH_MORPH_FIRST_S = 6;            // picture into notation, the first time (§4: 5-10 s)
 const BSMASH_MORPH_S = 1.5;                // ...and once the student has seen it
@@ -251,6 +259,17 @@ function bsmashNow() {
     return raudioCtx ? raudioCtx.currentTime : 0;
 }
 
+// When a tap REALLY happened, on the audio clock. The handler runs a little
+// after the finger lands - more on a busy phone - so the event's own time
+// stamp is used to take that lag back off. (Rob: "I really thought I was
+// hitting on the beat.")
+function bsmashEventTime(e) {
+    const now = bsmashNow();
+    if (!e || !e.timeStamp || typeof performance === 'undefined') return now;
+    const lag = (performance.now() - e.timeStamp) / 1000;
+    return lag > 0 && lag < 0.5 ? now - lag : now;
+}
+
 // What the student is HEARING now: the audio clock less the output delay
 // the browser reports. Lights follow this, so they flash with the sound.
 function bsmashHeardNow() {
@@ -360,6 +379,12 @@ function bsmashBandSetPart(instrument, style) {
     const booked = bsmashBand.next - BSMASH_LOOP;
     if (booked > bsmashNow()) bsmashPlayCycle(instrument, style, booked - BSMASH_LOOP);
     bsmashPlayCycle(instrument, style, booked);
+}
+
+function bsmashBandRemovePart(instrument) {
+    if (!bsmashBand || !(instrument in bsmashBand.parts)) return;
+    bsmashSilencePart(instrument);
+    delete bsmashBand.parts[instrument];
 }
 
 function bsmashBandLevel(level, seconds) {
@@ -746,7 +771,7 @@ function bsmashOpenStudio() {
         bsmash.pads = KRPads.create({
             container: bsmashEl('beat-pads'),
             count: bsmashPadCount(),
-            now: bsmashNow,
+            now: bsmashEventTime,
             delay: () => (bsmash ? bsmash.delay : 0),
             label: (i, n) => n === 1 ? KR.t('beat.pad.big') : KR.t('beat.pad.beat', { n: i + 1 }),
             onPress: bsmashPress,
@@ -905,17 +930,27 @@ function bsmashOnBeat(beat) {
 }
 
 /* =========================================
-   THE FIRST MINUTE (§11)
+   THE FIRST MINUTE (§11): JAM WITH TANGO'S BEAT
    =========================================
    Tango is warming up: her groove is already playing. She hits the four
    pads in turn, boom boom boom boom, and says one thing: "Copy me!" Nothing
    to read, and nothing can fail - a tap off the beat still sounds, it just
    doesn't light.
 
-   THIS IS ALSO WHERE THE DELAY IS MEASURED (§14): every tap is a tap to a
-   known beat. Once four taps in a row have landed on the beat - and only
-   then - the four lit pads turn into four quarter notes, and "That's what
-   you just played!" is true. */
+   THEN IT'S THEIRS FOR AS LONG AS THEY LIKE. Rob, playing the first version,
+   which turned the pads into notes after four taps: "I think I've been robbed
+   of the fun of maintaining that beat and wanting everything around me to
+   maintain that beat for as long as they're happy to maintain it." So a
+   meter fills with every tap on the beat (and slips back one for a tap off
+   it), the band builds with it - the bass joins, then the keys - and when it
+   is full (about 15 seconds of steady beat) "Show me what I played" appears.
+   The jam carries on until they press it. Notation arrives when the
+   experience is ready to move on, not before.
+
+   THE JAM IS ALSO THE BEAT TEST (§14, and Rob's "handicap"). Every tap is a
+   tap to a known beat, so it measures the device's delay, and it measures
+   the student: which way they lean, how steady they are, how many taps land.
+   Those numbers are kept per player (bsmashRecordBeatTest). */
 function startBeatJam() {
     bsmashStopAll();
     bsmash = {
@@ -923,16 +958,20 @@ function startBeatJam() {
         musician: BSMASH_MUSICIANS[0],
         delay: bsmashDelay(),
         lastBeat: null,
-        jam: { offsets: [], inARow: 0, lastHitBeat: null, demoBars: new Set(), lastDemoBar: 0, morphed: false },
+        jam: { offsets: [], meter: 0, inARow: 0, lastHitBeat: null, demoBars: new Set(),
+               lastDemoBar: 0, layers: 0, full: false, morphed: false },
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.add('jam');
     bsmashHeader();
     bsmashEl('beat-reading').innerHTML = '';
     bsmashEl('beat-actions').hidden = true;
+    bsmashEl('beat-jam-next').hidden = true;
     bsmashDiceHide();
     bsmashBandStart({ drums: 'warmup' });
+    BSMASH_JAM_LAYERS.forEach(layer => bsmashLoadLoop(bsmashLoopId(layer.instrument, layer.style)));
     bsmashBandLevel(BSMASH_JAM_BAND);
+    bsmashJamMeter();
     bsmashJamDemo(1);
     bsmashEvent('beat.jam.start');
 }
@@ -953,7 +992,7 @@ function bsmashJamBeat(beat, bar, inBar) {
     if (jam.demoBars.has(bar)) bsmash.pads.flash(inBar, 'demo', 320);
     else bsmash.pads.glow(inBar, inBar === 0 ? 'beat-one' : 'beat');
     // If the taps haven't settled, Tango shows the way again.
-    if (!jam.morphed && inBar === 0 && bar - jam.lastDemoBar >= BSMASH_JAM_DEMO_EVERY_BARS && jam.inARow < 2) {
+    if (!jam.full && inBar === 0 && bar - jam.lastDemoBar >= BSMASH_JAM_DEMO_EVERY_BARS && jam.inARow < 2) {
         bsmashJamDemo(bar + 1);
         bsmashEvent('beat.jam.again');
     }
@@ -971,33 +1010,108 @@ function bsmashMeasureDelay(offsets) {
     const median = bsmashMedian(offsets);
     const near = offsets.filter(o => Math.abs(o - median) <= 0.08);
     const mean = near.reduce((a, b) => a + b, 0) / near.length;
-    return Math.min(BSMASH_DELAY_MAX, Math.max(0, mean));
+    return Math.min(BSMASH_DELAY_MAX, Math.max(BSMASH_DELAY_MIN, mean));
 }
 
 function bsmashJamPress(p) {
     const jam = bsmash.jam;
-    if (!bsmashBand) return;
-    const estimate = jam.offsets.length >= 3 ? bsmashMedian(jam.offsets.slice(-8)) : bsmash.delay;
-    const beat = Math.round((p.raw - estimate - bsmashBand.start) / BSMASH_BEAT);
+    if (!bsmashBand || jam.morphed) return;
+    // Each tap is placed against the beat nearest it by the delay this device
+    // had BEFORE the jam - a fixed reference. Placing it by the running
+    // estimate instead let a few early wild taps drag the estimate half a
+    // beat off, after which every good tap was placed on the wrong beat and
+    // could never pull it back.
+    const beat = Math.round((p.raw - bsmash.delay - bsmashBand.start) / BSMASH_BEAT);
     const offset = p.raw - (bsmashBand.start + beat * BSMASH_BEAT);
-    if (offset > -0.2 && offset < BSMASH_DELAY_MAX) jam.offsets.push(offset);
+    jam.offsets.push(offset);
+    const estimate = jam.offsets.length >= 3
+        ? Math.min(BSMASH_DELAY_MAX, Math.max(BSMASH_DELAY_MIN, bsmashMedian(jam.offsets.slice(-8))))
+        : bsmash.delay;
+    // On the beat means steady against the student's OWN lean: the device's
+    // delay and a habit of playing a touch early are not the student's fault.
     const onBeat = Math.abs(offset - estimate) <= BSMASH_JAM_WINDOW_MS / 1000 && beat !== jam.lastHitBeat;
     if (onBeat) {
         jam.inARow++;
         jam.lastHitBeat = beat;
+        jam.meter = Math.min(BSMASH_JAM_GOAL, jam.meter + 1);
         bsmash.pads.flash(p.pad, 'hit', 420);
     } else {
         jam.inARow = 0;
+        jam.meter = Math.max(0, jam.meter - 1);
     }
-    if (!jam.morphed && jam.inARow >= BSMASH_JAM_IN_A_ROW && jam.offsets.length >= BSMASH_JAM_IN_A_ROW) bsmashJamMorph();
+    bsmashJamMeter();
+}
+
+// The meter, and the band building with it.
+function bsmashJamMeter() {
+    const jam = bsmash.jam;
+    const level = jam.meter / BSMASH_JAM_GOAL;
+    bsmashEl('beat-jam-fill').style.width = Math.round(level * 100) + '%';
+    bsmashEl('beat-pads').style.setProperty('--hype', level.toFixed(2));
+    bsmashBandLevel(BSMASH_JAM_BAND + (BSMASH_BAND_FULL - BSMASH_JAM_BAND) * level, 0.6);
+    while (jam.layers < BSMASH_JAM_LAYERS.length && level >= BSMASH_JAM_LAYERS[jam.layers].at) {
+        const layer = BSMASH_JAM_LAYERS[jam.layers++];
+        bsmashBandSetPart(layer.instrument, layer.style);
+        bsmashEvent('beat.jam.layer.' + layer.instrument);
+    }
+    if (!jam.full && jam.meter >= BSMASH_JAM_GOAL) {
+        jam.full = true;
+        bsmashEl('beat-jam-next').hidden = false;
+        bsmashEvent('beat.jam.full');
+    }
+}
+
+/* ---------- The beat test ----------
+   Rob: "If you can get somebody for 15 seconds to tap this... we can see
+   where this all sits on a chart. Then we can allow for their overall
+   handicap." Kept per player, the last few, so the change over weeks shows:
+     lean    ms  - the average tap against the beat, delay included:
+                   the device's share and the student's own habit together
+     steady  ms  - how far a typical tap strays from that average (the spread)
+     onBeat  %   - taps within the jam's window of the student's own lean
+   The lean and the spread are taken from the on-beat taps only.
+   Recorded, not yet used to grade: see CLAUDE.md "The beat test". */
+function bsmashBeatTestResult(offsets) {
+    // The lean and the steadiness are measured on the taps that were on the
+    // beat; the ones that weren't show up in onBeat instead of blurring both.
+    const median = bsmashMedian(offsets);
+    const kept = offsets.filter(o => Math.abs(o - median) <= BSMASH_JAM_WINDOW_MS / 1000);
+    const mean = kept.reduce((a, b) => a + b, 0) / kept.length;
+    const sd = Math.sqrt(kept.reduce((a, b) => a + (b - mean) * (b - mean), 0) / kept.length);
+    const on = kept.length;
+    return {
+        at: Date.now(),
+        taps: offsets.length,
+        leanMs: Math.round(mean * 1000),
+        steadyMs: Math.round(sd * 1000),
+        onBeat: Math.round(100 * on / offsets.length),
+        delayMs: Math.round(bsmashMeasureDelay(offsets) * 1000),
+    };
+}
+
+function bsmashRecordBeatTest(result) {
+    const progress = bsmashLoad();
+    progress.beatTests = (progress.beatTests || []).concat([result]).slice(-BSMASH_BEAT_TESTS_KEPT);
+    bsmashSave(progress);
+}
+
+// "Show me what I played": the jam's taps become the beat test and the
+// delay, and the pads they just played turn into the notes they just played.
+function showBeatJamNotes() {
+    if (!bsmash || bsmash.mode !== 'jam' || !bsmash.jam.full || bsmash.jam.morphed) return;
+    bsmashJamMorph();
 }
 
 function bsmashJamMorph() {
     const jam = bsmash.jam;
     jam.morphed = true;
-    bsmash.delay = bsmashMeasureDelay(jam.offsets.slice(-12));
+    bsmashEl('beat-jam-next').hidden = true;
+    bsmash.delay = bsmashMeasureDelay(jam.offsets);
     bsmashSaveDelay(bsmash.delay);
-    // The pads they just played turn into the notes they just played.
+    bsmashRecordBeatTest(bsmashBeatTestResult(jam.offsets));
+    // The band steps back to Tango alone: the rest of it is still to be won.
+    BSMASH_JAM_LAYERS.forEach(layer => bsmashBandRemovePart(layer.instrument));
+    bsmashBandLevel(BSMASH_JAM_BAND);
     bsmash.bars = [bsmashParseBar('q q q q')]; // text-ok: a bar, not words
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
     bsmashRenderReading();
@@ -1019,7 +1133,10 @@ function bsmashJamMorph() {
 /* =========================================
    WINNING A MUSICIAN: the three steps (§3)
    ========================================= */
-function startBeatMusician(id, keepBand) {
+// step: which step to play. Leave it out to carry on from where the student
+// is; name an earlier one to go back and play it again (Rob: "I'm locked out
+// of being able to replay the previous level").
+function startBeatMusician(id, keepBand, step) {
     const musician = BSMASH_MUSICIANS.find(m => m.id === id);
     if (!musician || !musician.built) return;
     const record = bsmashUpdateMusician(id, { plays: bsmashMusicianRecord(id).plays + 1 });
@@ -1027,15 +1144,25 @@ function startBeatMusician(id, keepBand) {
     const pads = bsmash && bsmash.pads;
     const frame = bsmash && bsmash.frame;
     bsmashStopTimers();
+    const playing = step || record.step;
     bsmash = {
-        mode: 'steps', musician: musician, step: record.step, streak: record.streak,
+        mode: 'steps', musician: musician, step: playing,
+        streak: bsmashOnRecord(record, playing) ? record.streak : 0,
         delay: bsmashDelay(), lastBeat: null, pads: pads, frame: frame, take: null, bars: null,
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.remove('jam');
+    bsmashEl('beat-jam-next').hidden = true;
     bsmashBandStart({ drums: record.won ? record.part : 'warmup' });
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();
+}
+
+// Is this step the one the student is working on? Only then do its stars
+// count towards the saved row. Going back to an earlier step is practice:
+// its stars show and fill as usual, but nothing already won is touched.
+function bsmashOnRecord(record, step) {
+    return !record.won && step === record.step;
 }
 
 // The adaptive window (§14): generous at first, tightening as the student
@@ -1048,8 +1175,6 @@ function bsmashWindow() {
 
 function bsmashNewRoll() {
     const record = bsmashMusicianRecord(bsmash.musician.id);
-    bsmash.step = record.step;
-    bsmash.streak = record.streak;
     bsmash.scaffold = bsmash.step === 3 ? 'big' : ['star1', 'star2', 'star3'][bsmash.streak];
     bsmash.bars = bsmashRoll(bsmash.musician, bsmash.step, record.clean, bsmash.bars);
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
@@ -1261,7 +1386,9 @@ function bsmashTakeTwo(big) {
     // practice until it's clean, then a new roll starts again at the first star.
     if (bsmash.scaffold !== 'star1') {
         bsmash.streak = 0;
-        bsmashUpdateMusician(bsmash.musician.id, { streak: 0 });
+        if (bsmashOnRecord(bsmashMusicianRecord(bsmash.musician.id), bsmash.step)) {
+            bsmashUpdateMusician(bsmash.musician.id, { streak: 0 });
+        }
         bsmashHeader();
         bsmash.scaffold = 'retake';
     }
@@ -1291,13 +1418,14 @@ function bsmashReveal() {
 function bsmashStarLands() {
     const id = bsmash.musician.id;
     const record = bsmashMusicianRecord(id);
-    bsmash.streak = record.streak + 1;
+    const clearedStep = bsmash.step;
+    bsmash.streak++;
     const cleared = bsmash.streak >= 3;
-    bsmashUpdateMusician(id, {
-        streak: cleared ? 0 : bsmash.streak,
-        step: cleared ? record.step + 1 : record.step,
-        clean: record.clean + 1,
-    });
+    const changes = { clean: record.clean + 1 };
+    if (bsmashOnRecord(record, clearedStep)) changes.streak = cleared ? 0 : bsmash.streak;
+    // Clearing a step opens the next one - never closes one already open.
+    if (cleared && !record.won && clearedStep + 1 > record.step) { changes.step = clearedStep + 1; changes.streak = 0; }
+    bsmashUpdateMusician(id, changes);
     bsmashStarsShown(bsmash.streak);
     const stars = bsmashEl('beat-stars').querySelectorAll('.bsmash-star');
     if (stars[bsmash.streak - 1]) stars[bsmash.streak - 1].classList.add('pop');
@@ -1308,7 +1436,11 @@ function bsmashStarLands() {
         progress.firstStar = true;
         bsmashSave(progress);
     }
-    if (cleared) bsmashLater(() => bsmashEvent('beat.step.cleared.' + record.step), 1300);
+    if (cleared) {
+        bsmashLater(() => bsmashEvent('beat.step.cleared.' + clearedStep), 1300);
+        bsmash.step = clearedStep + 1;
+        bsmash.streak = 0;
+    }
     const next = () => {
         bsmashRenderPictureChoice();
         // The name and age are asked after the first win, never before (§11).
@@ -1633,6 +1765,7 @@ function renderBeatPathway() {
         }
     });
     selectBeatMusician(bsmashSelected);
+    bsmashRenderStats();
     const drumsWon = progress.musicians.drums.won;
     KR.say(drumsWon ? 'beat.soon.riff' : 'beat.pathway.say', { box: bsmashEl('beat-pathway-guide'), silent: true });
     bsmashRenderPathwaySettings();
@@ -1640,20 +1773,68 @@ function renderBeatPathway() {
 
 function selectBeatMusician(id) {
     bsmashSelected = id;
-    const record = bsmashMusicianRecord(id);
     document.querySelectorAll('#beat-pathway-track .pathway-node').forEach((node, i) =>
         node.classList.toggle('recommended', BSMASH_MUSICIANS[i].id === id));
+    const progress = bsmashLoad();
+    const record = progress.musicians[id];
+    if (!progress.jamDone) bsmashSelectedStep = 'jam';
+    else if (record.won) bsmashSelectedStep = 'band';
+    else bsmashSelectedStep = record.step;
+    bsmashRenderSteps();
+}
+
+/* ---------- The steps, on the pathway ----------
+   Every step the student has reached can be played again, the warm-up
+   included: nothing opened is ever closed. With the teacher code on
+   (teacher-codes.js) every step is open. */
+let bsmashSelectedStep = null;
+
+function bsmashStepChoices(id) {
+    const progress = bsmashLoad();
+    const record = progress.musicians[id];
+    const reached = KR.openAll() || record.won ? 3 : record.step;
+    const choices = ['jam'];
+    for (let step = 1; step <= reached; step++) choices.push(step);
+    if (record.won) choices.push('band');
+    return choices;
+}
+
+function bsmashRenderSteps() {
+    const row = bsmashEl('beat-steps');
+    row.innerHTML = '';
+    bsmashStepChoices(bsmashSelected).forEach(step => {
+        const chip = bsmashMake('button', 'bsmash-chip bsmash-step-chip', row); // text-ok
+        chip.type = 'button';
+        chip.textContent = KR.t('beat.step.' + step);
+        chip.classList.toggle('on', step === bsmashSelectedStep);
+        chip.onclick = () => { bsmashSelectedStep = step; bsmashRenderSteps(); };
+    });
     const start = bsmashEl('beat-pathway-start');
     start.disabled = false;
-    start.textContent = KR.t(record.won ? 'beat.playBand' : 'beat.start');
+    start.textContent = KR.t(bsmashSelectedStep === 'band' ? 'beat.playBand' : 'beat.start');
 }
 
 function startSelectedBeat() {
     const id = bsmashSelected;
     if (!id) return;
     bsmashAudio();
-    if (bsmashMusicianRecord(id).won) return openBeatBand();
-    startBeatMusician(id, false);
+    if (bsmashSelectedStep === 'band') return openBeatBand();
+    if (bsmashSelectedStep === 'jam') return startBeatJam();
+    startBeatMusician(id, false, bsmashSelectedStep);
+}
+
+// The beat test's numbers, for the teacher: shown only with the teacher
+// code on. A child sees no milliseconds, ever.
+function bsmashRenderStats() {
+    const box = bsmashEl('beat-stats');
+    const tests = bsmashLoad().beatTests || [];
+    box.hidden = !KR.openAll() || !tests.length;
+    if (box.hidden) return;
+    const last = tests[tests.length - 1];
+    box.textContent = KR.t(last.leanMs >= 0 ? 'beat.stats.late' : 'beat.stats.early', {
+        onBeat: last.onBeat, taps: last.taps, lean: Math.abs(last.leanMs),
+        steady: last.steadyMs, tests: tests.length,
+    });
 }
 
 // Settings a tester can change (§7): the pad's sound, one pad or four, and

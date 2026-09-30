@@ -576,7 +576,7 @@ const g1PathwayStages = [
 
 function getG1PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
-    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG1Progress') || '{}') }; }
+    try { return KR.openStages({ ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsG1Progress') || '{}') }, g1PathwayStages.map(stage => stage.id)); }
     catch (error) { return fallback; }
 }
 
@@ -1349,7 +1349,7 @@ function getG2PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
     const progress = { ...fallback, ...(loadAllG2Progress()[getClefPreference()] || {}) };
     progress.unlockedStages = normalizeUnlockedStages(progress, g2PathwayStages);
-    return progress;
+    return KR.openStages(progress, g2PathwayStages.map(stage => stage.id));
 }
 
 function saveG2PathwayProgress(progress) {
@@ -1782,7 +1782,7 @@ function getG3PathwayProgress() {
     const fallback = { unlockedStages: ['lines'], stageProgress: {}, lastPosition: 'lines', totalPlays: 0 };
     const progress = { ...fallback, ...(loadAllG3Progress()[getClefPreference()] || {}) };
     progress.unlockedStages = normalizeUnlockedStages(progress, g3PathwayStages);
-    return progress;
+    return KR.openStages(progress, g3PathwayStages.map(stage => stage.id));
 }
 
 function saveG3PathwayProgress(progress) {

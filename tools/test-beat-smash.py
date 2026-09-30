@@ -253,6 +253,8 @@ def test_first_minute(page):
     check('Four beat pads for the first minute', page.locator('#beat-pads .krpad').count() == 4)
     check('Nothing to read in the first minute: no stars, no step', page.evaluate(
         "document.getElementById('beat-stars').hidden && document.getElementById('beat-step-label').hidden"))
+    check('Beat Smash is first on the dashboard', page.evaluate(
+        "document.querySelector('#view-dashboard .game-card').classList.contains('red')"))
     # Off-beat taps: they sound, nothing lights, nothing fails.
     offset = clock_offset(page)
     start = page.evaluate('bsmashBand.start')
@@ -260,19 +262,40 @@ def test_first_minute(page):
     beat = int((now - start) / 0.6) + 2
     for k in range(3):
         press_at(page, offset, start + (beat + k) * 0.6 + 0.3, index=k)
-    check('Off-beat taps don\'t turn the pads into notes', not page.evaluate('bsmash.jam.morphed'))
-    # Now four on the beat, with a steady 40 ms of "device delay".
+    check('Off-beat taps don\'t fill the meter', page.evaluate('bsmash.jam.meter') == 0, page.evaluate('bsmash.jam.meter'))
+    # Back on the beat: a wobbly start doesn't stop the meter filling, and
+    # four taps are no longer enough - the jam is the student's to keep.
     beat += 4
-    for k in range(6):
+    for k in range(8):
         press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
-        if page.evaluate('bsmash.jam.morphed'):
+    page.wait_for_timeout(200)
+    check('Back on the beat after a wobbly start: the meter fills, the pads stay pads',
+          page.evaluate('bsmash.jam.meter') >= 3 and not page.evaluate('bsmash.jam.morphed')
+          and page.is_hidden('#beat-jam-next'), page.evaluate('bsmash.jam.meter'))
+    # Hold the beat, with a steady 40 ms of "device delay", until the meter is full.
+    beat += 4
+    for k in range(40):
+        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        if page.evaluate('bsmash.jam.full'):
             break
     page.wait_for_timeout(300)
-    check('Four taps in a row on the beat turn the pads into four quarter notes',
+    parts = page.evaluate('Object.keys(bsmashBand.parts).sort()')
+    check('Holding the beat builds the band: the bass and keys join in', parts == ['bass', 'drums', 'keys'], parts)
+    check('About 15 seconds of steady beat fills the meter, and "Show me what I played" appears',
+          page.evaluate('bsmash.jam.full') and page.is_visible('#beat-jam-next'), page.evaluate('bsmash.jam.meter'))
+    page.wait_for_timeout(1500)
+    check('...and the jam carries on until they press it', not page.evaluate('bsmash.jam.morphed'))
+    page.click('#beat-jam-next')
+    page.wait_for_timeout(300)
+    check('Show me: the pads turn into four quarter notes',
           page.evaluate('bsmash.jam.morphed') and page.locator('#beat-reading svg').count() == 1)
     check('...and Tango says so', "That's what you just played" in guide(page), guide(page))
+    check('...and the band steps back to Tango alone', page.evaluate('Object.keys(bsmashBand.parts)') == ['drums'])
     delay = page.evaluate('bsmashDelay()')
     check('The device delay is measured and stored', 0.0 <= delay < 0.2, round(delay, 3))
+    test = page.evaluate('bsmashLoad().beatTests[0]')
+    check('The jam is a beat test: taps, lean, steadiness and % on the beat are kept',
+          test and test['taps'] >= 20 and test['onBeat'] >= 80 and 0 <= test['leanMs'] < 200 and test['steadyMs'] < 80, test)
     page.wait_for_function("bsmash && bsmash.mode === 'steps'", timeout=10000)
     check('Then the first roll: Tango\'s one-bar step', state(page)['step'] == 1 and state(page)['scaffold'] == 'star1')
 
@@ -405,6 +428,21 @@ def test_picker(page):
     check('Riff is next, and not built yet', page.evaluate(
         "document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').disabled"))
     check('Leaving the studio stops the band', page.evaluate('bsmashBand === null'))
+    chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
+    check('Every step reached can be played again, the warm-up too', chips == ['Warm-up', 'One bar', 'Two bars', 'The big take', 'My band'], chips)
+    page.click('#beat-steps .bsmash-chip:nth-child(2)')
+    page.click('#beat-pathway-start')
+    page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.take", timeout=10000)
+    check('...One bar again, from an empty row of stars, with Tango still won',
+          state(page)['step'] == 1 and state(page)['streak'] == 0 and record(page)['won'] and record(page)['step'] == 3)
+    play_take(page)
+    page.wait_for_timeout(300)
+    play_take(page)
+    page.wait_for_timeout(600)
+    check('...its stars fill as usual, and nothing already won is touched',
+          state(page)['streak'] == 1 and record(page)['won'] and record(page)['step'] == 3, (state(page), record(page)))
+    page.click('#view-beat .btn-back')
+    page.wait_for_timeout(400)
     page.click('#beat-player-chip')
     page.wait_for_timeout(300)
     check('"Playing as" lists every name, to switch or add one', screen(page) == 'beat-screen-player'
@@ -478,6 +516,56 @@ def test_layout(browser):
             page.close()
 
 
+def code(page, text):
+    page.evaluate("launchGame('view-dashboard'); toggleCredits(true)")
+    page.fill('#kr-code-input', text)
+    page.click('#modal-credits .kr-code-btn')
+    page.wait_for_timeout(200)
+    return page.inner_text('#kr-code-result')
+
+
+def test_teacher_codes(page):
+    fresh(page)
+    said = code(page, 'koolopen')
+    check('The OPEN code turns on every level, on this device', 'open' in said and page.evaluate('KR.openAll()'), said)
+    page.evaluate("toggleCredits(false)")
+    locked = page.evaluate("""(() => {
+        const out = {};
+        launchGame('view-game1'); out.staff = document.querySelectorAll('#g1-pathway-track .locked').length;
+        launchGame('view-game2'); out.note = document.querySelectorAll('#g2-pathway-track .locked').length;
+        launchGame('view-game3'); out.real = document.querySelectorAll('#g3-pathway-track .locked').length;
+        launchGame('view-rhythm'); out.rhythm = document.querySelectorAll('#rhythm-pathway-track .locked').length;
+        launchGame('view-rhythm-lab'); out.lab = document.querySelectorAll('#rstomp-pathway-track .locked').length;
+        out.gate = document.getElementById('modal-value-gate').classList.contains('show');
+        out.value = vsmashLoad().unlocked.length === VSMASH_FLOORS.length;
+        return out;
+    })()""")
+    check('...every stage of every game is open, and Stomp Lab needs no License',
+          locked == {'staff': 0, 'note': 0, 'real': 0, 'rhythm': 0, 'lab': 0, 'gate': False, 'value': True}, locked)
+    page.evaluate("localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                  "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,beatTests:[{at:1,taps:26,leanMs:-35,steadyMs:42,onBeat:92,delayMs:0}],"
+                  "musicians:{drums:{step:1,streak:0,clean:0,won:false,part:null,plays:1}}}}}));"
+                  "launchGame('view-dashboard');")
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
+    check('...Beat Smash: every step open', chips == ['Warm-up', 'One bar', 'Two bars', 'The big take'], chips)
+    stats = page.inner_text('#beat-stats')
+    check('...and the teacher sees the last beat test', '92% on the beat' in stats and '35 ms early' in stats, stats)
+    said = code(page, 'KOOLOPEN')
+    check('Typing it again turns it off', not page.evaluate('KR.openAll()'), said)
+    check('A wrong code says so', 'not a code' in code(page, 'banana'))
+    code(page, 'KoolReset')
+    page.wait_for_timeout(1800)
+    left = page.evaluate("Object.keys(localStorage).filter(k => k.indexOf('koolRiffs') === 0)")
+    check('The RESET code takes every game on this device back to zero', left == [], left)
+    page.evaluate('KR.speak = () => {}')
+    page.click('.game-card.red')
+    page.wait_for_timeout(600)
+    check('...so Beat Smash starts from the warm-up again', screen(page) == 'beat-screen-studio'
+          and page.evaluate("bsmash && bsmash.mode") == 'jam')
+
+
 def test_rest_of_app(page):
     fresh(page)
     page.click('.game-card.orange')
@@ -508,6 +596,7 @@ def main():
         test_big_take(page)
         test_picker(page)
         test_picker_leave(page)
+        test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()
         test_layout(browser)
