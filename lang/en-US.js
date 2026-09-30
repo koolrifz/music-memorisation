@@ -66,6 +66,7 @@ KR.lang('en-US', {
     'beat.padMode.four':     'Four',
     'beat.padMode.one':      'One big',
     'beat.settings.picture': 'Picture',
+    'beat.settings.song':    'Jam song',
     /* Shown only with the teacher code on. {lean} {steady} are in ms. */
     'beat.stats.late':       'Last beat test: {onBeat}% on the beat in {taps} taps. Leans {lean} ms late (the device included), steady to ±{steady} ms. Tests kept: {tests}.',
     'beat.stats.early':      'Last beat test: {onBeat}% on the beat in {taps} taps. Leans {lean} ms early (the device included), steady to ±{steady} ms. Tests kept: {tests}.',
@@ -88,6 +89,8 @@ KR.lang('en-US', {
     'beat.step.2':           'Two bars',
     'beat.step.3':           'The big take',
     'beat.jam.next':         'Show me what I played',
+    'beat.jam.keepGoing':    'Keep jamming',
+    'beat.jam.menu':         'Beat Smash menu',
     'beat.button.record':    '● Record',
     'beat.button.reroll':    '🎲 New roll',
     'beat.picture.blocks':   'Blocks',
@@ -119,6 +122,8 @@ KR.lang('en-US', {
     'beat.line.layer.bass':  'Here comes the bass!',
     'beat.line.layer.keys':  'And the keys! Keep it going!',
     'beat.line.full':        "That's the groove! Keep it going as long as you like.",
+    'beat.line.lost':        'Find the beat! Listen for the drums.',
+    'beat.line.stopped':     'The band stopped when you did. Tap a pad to bring it back!',
     'beat.line.bluetooth':   'Bluetooth headphones are slow. Plug in, or play without them.',
     'beat.line.clean.1':     "That's a take!",
     'beat.line.clean.2':     "In the can!",
@@ -141,6 +146,11 @@ KR.lang('en-US', {
     'beat.locked.drums.1':   '{style} drums, locked in. This is your band now.',
     'beat.line.playback':    "Listen to that. Look how much you've built.",
 
+
+    /* ---------- The band's songs (content/songs.js) ---------- */
+    'song.c':                'C: I IV I V',
+    'song.ab-6dim':          'A♭: I6 ♭iii°7 ii7 V7',
+    'song.ab-6dim-tritone':  'A♭: I6 ♭iii°7 ii7 ♭II7(♭5)',
 
     /* ---------- Teacher codes (teacher-codes.js) ---------- */
     'code.placeholder':      'Teacher code',

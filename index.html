@@ -756,6 +756,11 @@
         <!-- The first minute: the meter fills as the beat is held. -->
         <div class="bsmash-jam-meter" id="beat-jam-meter"><div class="bsmash-jam-fill" id="beat-jam-fill"></div></div>
         <button class="btn btn-start bsmash-jam-next" id="beat-jam-next" hidden onclick="showBeatJamNotes()" data-text="beat.jam.next"></button>
+        <!-- When the student stops, the band stops, and the way on is here. -->
+        <div class="bsmash-jam-nav" id="beat-jam-nav" hidden>
+            <button class="btn btn-start" onclick="keepBeatJamming()" data-text="beat.jam.keepGoing"></button>
+            <button class="btn btn-secondary" onclick="showBeatPathway()" data-text="beat.jam.menu"></button>
+        </div>
         <div class="krpads" id="beat-pads"></div>
     </div>
 
@@ -852,6 +857,7 @@
 <script src="content/dialogue.js"></script>
 <script src="content/art.js"></script>
 <script src="content/audio.js"></script>
+<script src="content/songs.js"></script>
 <script src="script.js"></script>
 <script src="rhythm.js"></script>
 <script src="rhythm-audio.js"></script>

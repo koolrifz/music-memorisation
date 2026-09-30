@@ -5,7 +5,7 @@ Read this before touching the code. It's the accumulated context from months of 
 ## What this is
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
-**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"), and `teacher-codes.js` (see "TEACHER CODES"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
+**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"), `teacher-codes.js` (see "TEACHER CODES"), and `content/songs.js`, Rob's chord progressions for the band (see "ROB'S SONGS"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
 
 **WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
 that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
@@ -1455,6 +1455,24 @@ Smash's players list. Beat Smash adds an **age** to a player.
   graded against the wrong beat. Taps are now placed against a **fixed**
   reference (the delay the device had before the jam), and the estimate can't
   run below −50 ms. Reproduced in the test (three off-beat taps first).
+- **The band sags when the beat is lost, and stops when the student stops.**
+  Rob: *"If they tap really poorly out of time… the music slows down like a
+  record slowing down, and then they start pushing the beat back in time…
+  It's nice and clean and that's how they know."* Two taps off the beat in a
+  row and the band starts to sink (`bsmashBandSag()`: a low-pass filter and
+  a level after the mix, gliding, never stepping); each tap back on the beat
+  returns some of its power. Two bars with no taps and the band powers down
+  and stops, Tango says so, and **Keep jamming / Beat Smash menu** appear
+  (`#beat-jam-nav`); a tap on any pad brings it back, in time, because the
+  band's clock never stopped. That stop screen is where Rob wants call and
+  response offered.
+  **Not a real slow-down, and why:** the band's clock is what every beat,
+  every tap and every take is measured against, so bending its tempo means
+  re-timing the loops live. Parked; the sag is the clean version of the idea.
+- **The jam can be played over one of Rob's songs** (the "Jam song" setting;
+  see "ROB'S SONGS" below). Then the bass joins in whole notes, the keys in
+  whole notes, and a full meter switches both to his pump comping: the longer
+  the beat is held, the groovier it gets.
 - **A tap's time comes from the event, not the handler.** `bsmashEventTime()`
   takes the lag between the touch and the code running (bigger on a busy
   phone) back off, using the event's own time stamp. Rob: *"I really thought
@@ -1517,15 +1535,49 @@ history, kept per player, is the chart of maturity over weeks. Children
 tapping to a beat typically stray more the younger they are, which is the case
 for measuring each child rather than assuming by age.
 
+### ROB'S SONGS: chords, voicings and comping rhythms as data
+Rob: *"If I can dictate the choice of piano/keys voicing then I can write my
+Barry Harris rules into the backing track."* So a song is **data he writes**,
+in `content/songs.js`, and the synthesised band plays it live (he likes the
+synth sound: *"I think it's part of the generation"*). Per bar: a chord name
+(for reading), a bass note (`'Ab2'`), and the Rhodes voicing, bottom up
+(`['Eb4', 'G4', 'Bb4', 'C5']`), played exactly as written. `comp` names the
+keys' rhythms in his own note values: `w h q 8 16`, `.` dotted, `r` rest,
+repeated to fill four bars: `'q. q. q. q. q q'`.
+
+- **The anticipation is a rule, not a setting:** a hit struck before a barline
+  and held across it plays the NEXT bar's voicing. In his rhythm that is the
+  dotted quarter on beat 4. `BeatSmashBand.songHits()` is the one place it
+  lives.
+- **The bass plays each bar's bass note on every keys hit**, so the two push
+  together.
+- A part is named `'song:<song>:<comp>'` and can join mid-loop from its next
+  hit. Live parts go through `BSMASH_LIVE_SCALE` (0.47), the factor the loop
+  files were rendered at; without it a song clipped at 1.46.
+- **Hear them in `tools/beat-smash-band/lab.html`** (Song and Keys rhythm).
+- **Two songs so far**, Ab major, one bar each: `ab-6dim` (I6 · ♭iii°7 · ii7 ·
+  V7) and `ab-6dim-tritone` (the last chord ♭II7(♭5)).
+- **Open for Rob:** his fourth voicing was written "F7: Eb F# A C" against a
+  V7; the bass plays Eb (V), one word to change to F. The ♭II7(♭5) voicing
+  (Eb G A C#) is Claude's, since he gave none. And his "Bdim7" voicing
+  (D# F# A C) is a different diminished chord from B D F Ab; it is played
+  exactly as written.
+
 ### Parked from Rob's first play (2026-09-30)
+- **The groove grows the longer it's held**, beyond what's built: the bass
+  getting more complicated, richer voicings, a stop, *"all sorts of things
+  happen… I can help you write that."* The songs format is where it would go.
+- **A true record slow-down** when the beat is lost (see the sag, above).
 - **Jam with Tango: call and response**, no notation: Tango plays a figure
   (son clave, tresillo…), the student plays it back. A game of its own.
   `ideas/jam-with-tango.md`.
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (108 checks): the engraving sweep,
-the jam (the meter, the band building, a wobbly start, the beat test), all
+**Tests.** `python tools/test-beat-smash.py` (125 checks): the engraving sweep,
+the jam (the meter, the band building, a wobbly start, the beat test, the
+sag, the stop and its menu, a jam over Rob's song), his songs (rhythm,
+anticipation, voicings, level), all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,
@@ -1559,6 +1611,25 @@ Rob's, made on 2026-09-23 and applied to the whole app, not just one game:
 - **Addictive never means easier.** Every hook still has to pass "only correct
   taps score", and the rule of three and the all-or-nothing gates are untouched.
   A hook that pays off guessing is a bug.
+
+### REPETITION IS THE DOORWAY: don't design it away
+Rob, 2026-09-30, answering reviewers (other AIs) who called parts of the app
+repetitive and offered "more interesting gameplay" instead:
+
+> *"This is not just gameplay. We have to make various engines that create
+> engagement with repetition, and the repetition is the doorway that
+> progresses you to the next point… Of course it has to be interesting
+> gameplay. What you do is you make it interesting and the repetitive
+> exercise fun."*
+
+> *"Right now they need to hit that button 10,000 times. And you have to give
+> them 100,000 reasons why."*
+
+So a proposal that **replaces** the repetition with variety is answering the
+wrong question. The job is to make the same action rewarding the ten
+thousandth time: the band building, the groove getting groovier, a new song,
+a new figure. The warm-up jam, where he *"just wanted to keep it going"*, is
+the first thing in the app he felt that about.
 
 ## Design philosophy (useful context, not a task list)
 Rob's teaching background is built around rote memorization drilled to automaticity (flashcard-style, "rule of three" mastery checks) rather than repertoire-first instruction — he considers this the biggest gap in how music reading is currently taught, and it's the whole reason this app exists. When in doubt about how strict a mastery gate should be, or whether to add a hint/scaffold, the answer is usually "make them actually prove it" rather than "make it easier to pass." This app is explicitly not meant to feel like generic edutainment — the "Smash" branding and the strict all-or-nothing mastery checks are deliberate, not to be softened without asking.
