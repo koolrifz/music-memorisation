@@ -404,11 +404,79 @@
   const LEVEL = { drums: 0.85, bass: 0.5, keys: 1.7, warmup: 0.85 };
   const TRIM = { 'drums-smooth': 1.7, 'keys-hop': 2.2 };
 
-  function schedulePart(ctx, dest, instrument, style, t0) {
+  // ---------- Rob's songs (content/songs.js) ----------
+  // A song part is named 'song:<song id>:<comp name>', e.g.
+  // 'song:ab-6dim:pump'. The keys play the song's voicings on the comp's
+  // rhythm; the bass plays each bar's bass note on the same hits.
+  const NOTE_STEPS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const VALUE_BEATS = { w: 4, h: 2, q: 1, '8': 0.5, '16': 0.25 };
+
+  // 'Eb4' -> 63. Middle C is C4 (60).
+  function noteMidi(name) {
+    const m = /^([A-G])(#|b)?(-?\d)$/.exec(String(name).trim());
+    if (!m) throw new Error('Not a note: ' + name);
+    return 12 * (Number(m[3]) + 1) + NOTE_STEPS[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  }
+
+  // 'q. q. q. q. q q' -> [{ start, beats, rest }], repeated to fill the loop.
+  function rhythmHits(text) {
+    const one = String(text).trim().split(/\s+/).map((token) => {
+      const m = /^(w|h|q|8|16)(\.)?(r)?$/.exec(token);
+      if (!m) throw new Error('Not a rhythm value: ' + token);
+      return { beats: VALUE_BEATS[m[1]] * (m[2] ? 1.5 : 1), rest: !!m[3] };
+    });
+    const total = BARS * 4;
+    const cycle = one.reduce((a, h) => a + h.beats, 0);
+    if (!(cycle > 0)) throw new Error('An empty rhythm');
+    const hits = [];
+    for (let start = 0, i = 0; start < total - 1e-9; i++) {
+      const h = one[i % one.length];
+      hits.push({ start, beats: Math.min(h.beats, total - start), rest: h.rest });
+      start += h.beats;
+    }
+    return hits;
+  }
+
+  // Which bar's chord a hit plays: its own bar's, unless it is held across
+  // the barline, in which case the NEXT bar's - the anticipation.
+  function songHits(song, compName) {
+    const rhythm = song.comp && song.comp[compName];
+    if (!rhythm) throw new Error('No comp called ' + compName);
+    return rhythmHits(rhythm).filter((h) => !h.rest).map((h) => {
+      const bar = Math.floor(h.start / 4 + 1e-9);
+      const crosses = h.start + h.beats > (bar + 1) * 4 + 1e-9;
+      return Object.assign({ chord: crosses ? (bar + 1) % BARS : bar }, h);
+    });
+  }
+
+  function findSong(id) {
+    const songs = (root.KR && root.KR.songs) || {};
+    if (!songs[id]) throw new Error('No song called ' + id);
+    return songs[id];
+  }
+
+  // from: skip any hit before this time, so a part can join mid-loop cleanly.
+  function songPart(ctx, out, instrument, songId, compName, t0, from) {
+    const song = findSong(songId);
+    songHits(song, compName).forEach((h) => {
+      const t = t0 + h.start * BEAT;
+      if (from && t < from) return;
+      const bar = song.bars[h.chord];
+      const len = h.beats * BEAT;
+      if (instrument === 'keys') note(keysVoice.rhodes, ctx, out, t, bar.keys.map(noteMidi), len * 0.95, h.beats >= 4 ? 0.85 : 0.9);
+      else if (instrument === 'bass') note(bassVoice.electric, ctx, out, t, noteMidi(bar.bass), len * 0.92, 1);
+    });
+  }
+
+  // from (optional): an audio time before which nothing is played. Only
+  // Rob's songs can use it; the fixed loops always start at their top.
+  function schedulePart(ctx, dest, instrument, style, t0, from) {
     const g = ctx.createGain();
-    g.gain.value = LEVEL[instrument] * (TRIM[instrument + '-' + style] || 1);
+    const song = /^song:([^:]+):(.+)$/.exec(style);
+    g.gain.value = LEVEL[instrument] * (song ? 1 : (TRIM[instrument + '-' + style] || 1));
     g.connect(dest);
-    PARTS[instrument][style](ctx, g, t0);
+    if (song) songPart(ctx, g, instrument, song[1], song[2], t0, from);
+    else PARTS[instrument][style](ctx, g, t0);
     return g;
   }
 
@@ -437,5 +505,7 @@
     PAD_SOUNDS: ['kick', 'snare', 'bass-electric', 'bass-acoustic', 'rhodes', 'organ'],
     schedulePart,
     pad,
+    noteMidi,
+    songHits: (songId, compName) => songHits(findSong(songId), compName),
   };
 })(typeof window !== 'undefined' ? window : globalThis);

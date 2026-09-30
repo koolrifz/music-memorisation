@@ -31,6 +31,8 @@ KR.dialogue = {
         { on: 'beat.jam.layer.bass',   speaker: 'tango', text: 'beat.line.layer.bass' },
         { on: 'beat.jam.layer.keys',   speaker: 'tango', text: 'beat.line.layer.keys' },
         { on: 'beat.jam.full',         speaker: 'tango', text: 'beat.line.full' },
+        { on: 'beat.jam.lost',         speaker: 'tango', text: 'beat.line.lost' },
+        { on: 'beat.jam.stopped',      speaker: 'tango', text: 'beat.line.stopped' },
         { on: 'beat.jam.morph',        speaker: 'tango', text: 'beat.line.morph' },
         { on: 'beat.delay.bluetooth',  speaker: 'tango', text: 'beat.line.bluetooth' },
         { on: 'beat.take.clean',       speaker: 'tango', text: 'beat.line.clean.1' },

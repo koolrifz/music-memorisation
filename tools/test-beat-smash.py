@@ -516,6 +516,103 @@ def test_layout(browser):
             page.close()
 
 
+def test_songs(page):
+    """Rob's songs (content/songs.js): voicings as dictated, the anticipation,
+    and a level that doesn't clip."""
+    fresh(page)
+    hits = page.evaluate("BeatSmashBand.songHits('ab-6dim', 'pump').map(h => [h.start, h.beats, h.chord])")
+    check('Rob\'s rhythm: dotted quarters on 1, the and of 2, 4 and the and of 1, quarters on 3 and 4',
+          [h[0] for h in hits[:6]] == [0, 1.5, 3, 4.5, 6, 7] and [h[1] for h in hits[:6]] == [1.5, 1.5, 1.5, 1.5, 1, 1], hits[:6])
+    check('The dotted quarter on beat 4, held over the barline, plays the NEXT bar\'s chord',
+          hits[2][2] == 1 and hits[8][2] == 3 and hits[1][2] == 0 and hits[5][2] == 1, hits)
+    check('The rhythm fills the four bars exactly', sum(h[1] for h in hits) == 16)
+    whole = page.evaluate("BeatSmashBand.songHits('ab-6dim', 'whole').map(h => [h.start, h.chord])")
+    check('Whole notes: one chord a bar', whole == [[0, 0], [4, 1], [8, 2], [12, 3]], whole)
+    voicings = page.evaluate("KR.songs['ab-6dim'].bars.map(b => b.keys.map(BeatSmashBand.noteMidi))")
+    check('The voicings as Rob dictated them: Eb G Bb C, D# F# A C, Eb F Ab C, Eb F# A C',
+          voicings == [[63, 67, 70, 72], [63, 66, 69, 72], [63, 65, 68, 72], [63, 66, 69, 72]], voicings)
+    peak = page.evaluate("""(async () => {
+        const B = BeatSmashBand;
+        let loudest = 0;
+        for (const song of Object.keys(KR.songs)) for (const comp of Object.keys(KR.songs[song].comp)) {
+            const ctx = new OfflineAudioContext(1, 32000 * B.LOOP, 32000);
+            const live = ctx.createGain(); live.gain.value = BSMASH_LIVE_SCALE; live.connect(ctx.destination);
+            B.schedulePart(ctx, live, 'warmup', 'tango', 0);
+            B.schedulePart(ctx, live, 'bass', 'song:' + song + ':' + comp, 0);
+            B.schedulePart(ctx, live, 'keys', 'song:' + song + ':' + comp, 0);
+            const d = (await ctx.startRendering()).getChannelData(0);
+            for (const x of d) loudest = Math.max(loudest, Math.abs(x));
+        }
+        return loudest;
+    })()""")
+    check('Every song, drums + bass + keys, stays clear of clipping', peak < 0.9, round(peak, 3))
+
+
+def test_song_jam(page):
+    """The warm-up jam over one of Rob's songs: whole notes, then his pump;
+    the band sags when the beat is lost and stops when the student stops."""
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,settings:{jamSong:'ab-6dim'},"
+                "musicians:{drums:{step:1,streak:0,clean:0,won:false,part:null,plays:1}}}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    songs = page.evaluate("[...document.querySelectorAll('#beat-settings .bsmash-setting')].map(r => r.textContent)")
+    check('The pathway offers a jam song', any('Jam song' in r and 'A♭' in r for r in songs), songs)
+    page.click('#beat-steps .bsmash-chip:nth-child(1)')
+    page.click('#beat-pathway-start')
+    page.wait_for_timeout(600)
+    offset = clock_offset(page)
+    start = page.evaluate('bsmashBand.start')
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    parts = {}
+    for k in range(40):
+        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        meter = page.evaluate('bsmash.jam.meter')
+        if meter in (10, 18):
+            parts[meter] = page.evaluate('Object.assign({}, bsmashBand.parts)')
+        if page.evaluate('bsmash.jam.full'):
+            break
+    beat += k + 1
+    check('Over Rob\'s song the bass joins in whole notes', parts.get(10, {}).get('bass') == 'song:ab-6dim:whole', parts)
+    check('...then the keys, his voicings in whole notes', parts.get(18, {}).get('keys') == 'song:ab-6dim:whole', parts)
+    full = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('...and a full meter brings his pump comping, bass and keys together',
+          full.get('keys') == 'song:ab-6dim:pump' and full.get('bass') == 'song:ab-6dim:pump', full)
+    # Lose the beat: taps half a beat out.
+    for k in range(4):
+        press_at(page, offset, start + (beat + k) * 0.6 + 0.34, index=k % 4)
+    page.wait_for_timeout(600)
+    sag = page.evaluate('[bsmash.jam.sag, bsmashSagFilter.frequency.value]')
+    check('Losing the beat: the band sinks (muffled and quieter), cleanly, not in steps', sag[0] > 0.3 and sag[1] < 8000, sag)
+    beat += 4
+    for k in range(5):
+        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+    page.wait_for_timeout(900)
+    back = page.evaluate('[bsmash.jam.sag, bsmashSagFilter.frequency.value]')
+    check('...and pushing the beat back brings its power back', back[0] == 0 and back[1] > sag[1] * 4, back)
+    # Stop tapping: after two bars the band stops, and the way on is there.
+    page.wait_for_function('bsmash.jam.stopped', timeout=9000)
+    page.wait_for_timeout(300)
+    check('Stop playing and the band stops too', page.evaluate('bsmash.jam.stopped'))
+    check('...Tango says so, and the menu is right there',
+          'band stopped' in guide(page) and page.is_visible('#beat-jam-nav'), guide(page))
+    page.click('#beat-jam-nav .btn-start')
+    page.wait_for_timeout(300)
+    check('"Keep jamming" brings the band back, in time', not page.evaluate('bsmash.jam.stopped')
+          and page.is_hidden('#beat-jam-nav') and page.evaluate('bsmashBand !== null'))
+    page.wait_for_function('bsmash.jam.stopped', timeout=9000)
+    offset = clock_offset(page)
+    now = page.evaluate('raudioCtx.currentTime')
+    press_at(page, offset, now + 0.3, index=0)
+    page.wait_for_timeout(200)
+    check('...and so does just tapping a pad', not page.evaluate('bsmash.jam.stopped'))
+    page.wait_for_function('bsmash.jam.stopped', timeout=9000)
+    page.click('#beat-jam-nav .btn-secondary')
+    page.wait_for_timeout(400)
+    check('The menu button goes to the Beat Smash menu, and the band stops', screen(page) == 'beat-screen-pathway'
+          and page.evaluate('bsmashBand === null'))
+
+
 def code(page, text):
     page.evaluate("launchGame('view-dashboard'); toggleCredits(true)")
     page.fill('#kr-code-input', text)
@@ -596,6 +693,8 @@ def main():
         test_big_take(page)
         test_picker(page)
         test_picker_leave(page)
+        test_songs(page)
+        test_song_jam(page)
         test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()

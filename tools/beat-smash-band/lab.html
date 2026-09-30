@@ -78,6 +78,8 @@
   .rubber.cued { outline: 2px dashed var(--lcd); outline-offset: 2px; }
 
   .transport { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .transport.songs { margin-bottom: 6px; }
+  .transport select { font: inherit; font-weight: 700; padding: 8px 10px; border-radius: 10px; margin-left: 6px; }
   .transport .combo { color: var(--muted); font-size: 0.88rem; flex: 1 1 200px; min-width: 0; }
   .transport .primary { font-family: var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
 
@@ -129,6 +131,12 @@
     </div>
   </section>
 
+  <div class="transport songs">
+    <label>Song <select id="song"></select></label>
+    <label>Keys rhythm <select id="comp"></select></label>
+  </div>
+  <p class="hint">Rob's songs are in <code>content/songs.js</code>: each bar's bass note and Rhodes voicing, and the keys' rhythms. With one of them chosen, the drums play the part picked above and the bass and keys play the song (set either to Off to leave it out).</p>
+
   <div class="transport">
     <button class="rubber primary" id="play" type="button">Play the band</button>
     <button class="rubber" id="warmup" type="button">Tango warming up</button>
@@ -158,6 +166,7 @@
   </footer>
 </main>
 
+<script src="../../content/songs.js"></script>
 <script src="../../beat-smash-band.js"></script>
 <script>
 (function () {
@@ -167,6 +176,8 @@
   const sel = { drums: 'spicy', bass: 'smooth', keys: 'hop' };
   const cued = {};
   let padSound = 'rhodes';
+  const SONGS = (window.KR && window.KR.songs) || {};
+  let song = 'c', comp = 'whole';
 
   let ctx = null, master = null;
   let playing = false, mode = 'band', startTime = 0, nextLoop = 0, timer = null;
@@ -190,12 +201,34 @@
     });
   });
   const barsEl = document.getElementById('bars');
-  B.SONG_NAMES.forEach((name) => {
-    const d = document.createElement('div');
-    d.className = 'bar';
-    d.innerHTML = '<b>' + name + '</b><div class="leds"><span></span><span></span><span></span><span></span></div>';
-    barsEl.appendChild(d);
-  });
+  function drawBars() {
+    barsEl.innerHTML = '';
+    const names = song === 'c' ? B.SONG_NAMES : SONGS[song].bars.map((b) => b.chord);
+    names.forEach((name) => {
+      const d = document.createElement('div');
+      d.className = 'bar';
+      d.innerHTML = '<b>' + name + '</b><div class="leds"><span></span><span></span><span></span><span></span></div>';
+      barsEl.appendChild(d);
+    });
+  }
+  drawBars();
+
+  // ---- Rob's songs ----
+  const songEl = document.getElementById('song');
+  const compEl = document.getElementById('comp');
+  [['c', 'C: I IV I V (the loops)']].concat(Object.keys(SONGS).map((id) => [id, id]))
+    .forEach(([id, label]) => songEl.add(new Option(label, id)));
+  function fillComps() {
+    compEl.innerHTML = '';
+    compEl.disabled = song === 'c';
+    if (song === 'c') return;
+    Object.keys(SONGS[song].comp).forEach((name) => compEl.add(new Option(name + ': ' + SONGS[song].comp[name], name)));
+    if (!SONGS[song].comp[comp]) comp = Object.keys(SONGS[song].comp)[0];
+    compEl.value = comp;
+  }
+  fillComps();
+  songEl.addEventListener('change', () => { song = songEl.value; fillComps(); drawBars(); if (playing && mode === 'band') start('band'); });
+  compEl.addEventListener('change', () => { comp = compEl.value; if (playing && mode === 'band') start('band'); });
 
   // ---- audio ----
   function ensureCtx() {
@@ -211,7 +244,8 @@
   function scheduleLoop(t) {
     const parts = mode === 'warmup'
       ? [['warmup', 'tango']]
-      : B.INSTRUMENTS.filter((i) => sel[i] !== 'off').map((i) => [i, sel[i]]);
+      : B.INSTRUMENTS.filter((i) => sel[i] !== 'off')
+          .map((i) => [i, song !== 'c' && i !== 'drums' ? 'song:' + song + ':' + comp : sel[i]]);
     parts.forEach(([i, s]) => live.push({ g: B.schedulePart(ctx, master, i, s, t), end: t + B.LOOP + 1.5 }));
     Object.keys(cued).forEach((k) => delete cued[k]);
     render();
@@ -254,7 +288,7 @@
     ensureCtx();
     if (held) return;
     const pos = position();
-    const chord = pos ? B.SONG_NAMES[pos.bar] : 'I';
+    const chord = pos && song === 'c' ? B.SONG_NAMES[pos.bar] : 'I';
     held = B.pad(ctx, master, ctx.currentTime + 0.005, padSound, chord);
     padEl.classList.add('down');
   }

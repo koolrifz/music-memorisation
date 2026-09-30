@@ -109,6 +109,24 @@ const BSMASH_JAM_LAYERS = [
     { at: 1 / 3, instrument: 'bass', style: 'smooth' },
     { at: 2 / 3, instrument: 'keys', style: 'smooth' },
 ];
+// With one of Rob's songs (content/songs.js) the keys join as whole notes and,
+// once the meter is full, switch to his pump comping, bass and all: the
+// longer the beat is held, the groovier it gets. {song} is the song's id.
+const BSMASH_JAM_SONG_LAYERS = [
+    { at: 1 / 3, instrument: 'bass', style: 'song:{song}:whole' },
+    { at: 2 / 3, instrument: 'keys', style: 'song:{song}:whole' },
+    { at: 1, instrument: 'keys', style: 'song:{song}:pump' },
+    { at: 1, instrument: 'bass', style: 'song:{song}:pump' },
+];
+// Parts played live by the synth (Rob's songs, and any loop whose file hasn't
+// loaded) go through this. It is the factor tools/beat-smash-band/render.js
+// scaled the loop files by, measured: 0.47 for every part. Without it a live
+// part is twice as loud as the recorded ones, and a song clipped at 1.46.
+const BSMASH_LIVE_SCALE = 0.47;
+const BSMASH_SAG_OPEN_HZ = 18000;          // the band at full power...
+const BSMASH_SAG_LOW_HZ = 450;             // ...and sunk, when the beat is lost
+const BSMASH_SAG_AFTER = 2;                // taps off the beat in a row before the band starts to sag
+const BSMASH_JAM_IDLE_BARS = 2;            // bars without a tap before the band stops and the menu appears
 const BSMASH_BEAT_TESTS_KEPT = 20;         // beat tests remembered per player
 const BSMASH_DELAY_MAX = 0.45;             // seconds; a measured delay beyond this is thrown out
 const BSMASH_DELAY_MIN = -0.05;            // seconds; a student who plays a touch early leans below zero
@@ -167,7 +185,7 @@ function bsmashBlankProgress() {
         firstStar: false,
         seenMorph: false,
         musicians: {},
-        settings: { padMode: 'auto', picture: 'blocks', sound: { drums: 'kick' } },
+        settings: { padMode: 'auto', picture: 'blocks', sound: { drums: 'kick' }, jamSong: 'c' },
     };
 }
 
@@ -239,6 +257,9 @@ function bsmashSaveDelay(delay) {
    groove. The count (raudioClick) uses Stomp Lab's click bus, unchanged. */
 let bsmashBandBus = null;
 let bsmashPadBus = null;
+let bsmashLiveBus = null;
+let bsmashSagFilter = null;
+let bsmashSagGain = null;
 const bsmashBuffers = {};       // loop id -> AudioBuffer, 'loading' or 'failed'
 
 function bsmashAudio() {
@@ -247,7 +268,18 @@ function bsmashAudio() {
     if (!bsmashBandBus) {
         bsmashBandBus = ctx.createGain();
         bsmashBandBus.gain.value = BSMASH_JAM_BAND;
-        bsmashBandBus.connect(ctx.destination);
+        // The sag (bsmashBandSag): a filter and a level after the band's own
+        // level, so losing the beat can take the band's power away and
+        // getting it back can return it, without touching the mix.
+        bsmashSagFilter = ctx.createBiquadFilter();
+        bsmashSagFilter.type = 'lowpass';
+        bsmashSagFilter.frequency.value = BSMASH_SAG_OPEN_HZ;
+        bsmashSagFilter.Q.value = 0.7;
+        bsmashSagGain = ctx.createGain();
+        bsmashBandBus.connect(bsmashSagFilter).connect(bsmashSagGain).connect(ctx.destination);
+        bsmashLiveBus = ctx.createGain();
+        bsmashLiveBus.gain.value = BSMASH_LIVE_SCALE;
+        bsmashLiveBus.connect(bsmashBandBus);
         bsmashPadBus = ctx.createGain();
         bsmashPadBus.gain.value = 0.9;
         bsmashPadBus.connect(ctx.destination);
@@ -278,7 +310,7 @@ function bsmashHeardNow() {
 }
 
 function bsmashLoadLoop(id) {
-    if (bsmashBuffers[id]) return;
+    if (!id || bsmashBuffers[id]) return;
     const file = KR.audio && KR.audio[id];
     const ctx = bsmashAudio();
     if (!file || !ctx) { bsmashBuffers[id] = 'failed'; return; }
@@ -314,12 +346,20 @@ function bsmashBandStart(parts) {
     if (!bsmashTicker) bsmashTicker = setInterval(bsmashTick, 25);
 }
 
+// A part is 'warmup', a style ('spicy'...), or one of Rob's songs,
+// 'song:<song>:<comp>' (content/songs.js), which is always played live.
 function bsmashPartLoopId(instrument, style) {
+    if (bsmashIsSongPart(style)) return null;
     return style === 'warmup' ? 'beat.loop.warmup' : bsmashLoopId(instrument, style);
+}
+
+function bsmashIsSongPart(style) {
+    return typeof style === 'string' && style.indexOf('song:') === 0;
 }
 
 function bsmashBandStop() {
     if (bsmashTicker) { clearInterval(bsmashTicker); bsmashTicker = null; }
+    bsmashBandSag(0, 0.05);
     if (bsmashBand) Object.keys(bsmashBand.sources).forEach(bsmashSilencePart);
     bsmashBand = null;
     bsmashQueue = [];
@@ -356,11 +396,17 @@ function bsmashPlayCycle(instrument, style, when) {
         if (offset >= buffer.duration) return;
         src.start(Math.max(when, now + 0.02), offset);
         list.push({ src: src, gain: gain });
+    } else if (bsmashIsSongPart(style)) {
+        // Rob's songs are played note by note, so one can join part-way
+        // through a cycle: every hit from now on is booked, none before.
+        if (when + BSMASH_LOOP < now) return;
+        const gain = BeatSmashBand.schedulePart(ctx, bsmashLiveBus, instrument, style, when, now + 0.03);
+        list.push({ src: null, gain: gain });
     } else {
         // The placeholder synth books whole cycles only - a synthesised loop
         // can't start part-way through without firing every note it missed.
         if (when < now) return;
-        const gain = BeatSmashBand.schedulePart(ctx, bsmashBandBus,
+        const gain = BeatSmashBand.schedulePart(ctx, bsmashLiveBus,
             style === 'warmup' ? 'warmup' : instrument, style === 'warmup' ? 'tango' : style, when);
         list.push({ src: null, gain: gain });
     }
@@ -385,6 +431,26 @@ function bsmashBandRemovePart(instrument) {
     if (!bsmashBand || !(instrument in bsmashBand.parts)) return;
     bsmashSilencePart(instrument);
     delete bsmashBand.parts[instrument];
+}
+
+/* ---------- The sag: the band loses its power when the beat is lost ----------
+   Rob: "If they tap really poorly out of time, the music slows down like a
+   record slowing down, and then they start pushing the beat back in time...
+   It's nice and clean and that's how they know." 0 is the full band; 1 is
+   the band muffled and sunk, as if the power were running down. It moves
+   smoothly both ways, never in steps, so it reads as music, not a glitch.
+   (A real slow-down would bend the band's clock, which every beat and every
+   take is counted from: parked, see CLAUDE.md.) */
+function bsmashBandSag(amount, seconds) {
+    if (!bsmashSagFilter) return;
+    const now = bsmashNow();
+    const a = Math.max(0, Math.min(1, amount));
+    const hz = BSMASH_SAG_OPEN_HZ * Math.pow(BSMASH_SAG_LOW_HZ / BSMASH_SAG_OPEN_HZ, a);
+    const time = (seconds || 0.6) / 3;
+    bsmashSagFilter.frequency.cancelScheduledValues(now);
+    bsmashSagFilter.frequency.setTargetAtTime(hz, now, time);
+    bsmashSagGain.gain.cancelScheduledValues(now);
+    bsmashSagGain.gain.setTargetAtTime(1 - 0.55 * a, now, time);
 }
 
 function bsmashBandLevel(level, seconds) {
@@ -959,7 +1025,9 @@ function startBeatJam() {
         delay: bsmashDelay(),
         lastBeat: null,
         jam: { offsets: [], meter: 0, inARow: 0, lastHitBeat: null, demoBars: new Set(),
-               lastDemoBar: 0, layers: 0, full: false, morphed: false },
+               lastDemoBar: 0, layers: 0, full: false, morphed: false,
+               layerList: bsmashJamLayers(), missesInRow: 0, sag: 0,
+               taps: 0, lastTap: 0, stopped: false },
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.add('jam');
@@ -967,13 +1035,24 @@ function startBeatJam() {
     bsmashEl('beat-reading').innerHTML = '';
     bsmashEl('beat-actions').hidden = true;
     bsmashEl('beat-jam-next').hidden = true;
+    bsmashEl('beat-jam-nav').hidden = true;
     bsmashDiceHide();
     bsmashBandStart({ drums: 'warmup' });
-    BSMASH_JAM_LAYERS.forEach(layer => bsmashLoadLoop(bsmashLoopId(layer.instrument, layer.style)));
+    bsmash.jam.layerList.forEach(layer => bsmashLoadLoop(bsmashPartLoopId(layer.instrument, layer.style)));
     bsmashBandLevel(BSMASH_JAM_BAND);
     bsmashJamMeter();
     bsmashJamDemo(1);
     bsmashEvent('beat.jam.start');
+}
+
+// The layers the band builds with: the fixed loops, or one of Rob's songs
+// if the student (or Rob) chose one as the jam song.
+function bsmashJamLayers() {
+    const song = bsmashLoad().settings.jamSong;
+    const songs = (window.KR && KR.songs) || {};
+    if (!songs[song]) return BSMASH_JAM_LAYERS;
+    return BSMASH_JAM_SONG_LAYERS.map(layer =>
+        Object.assign({}, layer, { style: layer.style.replace('{song}', song) }));
 }
 
 // Tango hits the four pads, one per beat, for one bar.
@@ -989,6 +1068,9 @@ function bsmashJamDemo(bar) {
 
 function bsmashJamBeat(beat, bar, inBar) {
     const jam = bsmash.jam;
+    if (jam.stopped || jam.morphed) return;
+    // The student has stopped playing: so does the band.
+    if (jam.taps && bsmashNow() - jam.lastTap > BSMASH_JAM_IDLE_BARS * BSMASH_BAR) return bsmashJamStop();
     if (jam.demoBars.has(bar)) bsmash.pads.flash(inBar, 'demo', 320);
     else bsmash.pads.glow(inBar, inBar === 0 ? 'beat-one' : 'beat');
     // If the taps haven't settled, Tango shows the way again.
@@ -1016,6 +1098,9 @@ function bsmashMeasureDelay(offsets) {
 function bsmashJamPress(p) {
     const jam = bsmash.jam;
     if (!bsmashBand || jam.morphed) return;
+    jam.taps++;
+    jam.lastTap = bsmashNow();
+    if (jam.stopped) bsmashJamResume();
     // Each tap is placed against the beat nearest it by the delay this device
     // had BEFORE the jam - a fixed reference. Placing it by the running
     // estimate instead let a few early wild taps drag the estimate half a
@@ -1032,14 +1117,54 @@ function bsmashJamPress(p) {
     const onBeat = Math.abs(offset - estimate) <= BSMASH_JAM_WINDOW_MS / 1000 && beat !== jam.lastHitBeat;
     if (onBeat) {
         jam.inARow++;
+        jam.missesInRow = 0;
         jam.lastHitBeat = beat;
         jam.meter = Math.min(BSMASH_JAM_GOAL, jam.meter + 1);
         bsmash.pads.flash(p.pad, 'hit', 420);
+        // Back on the beat: the band gets its power back, a step at a time.
+        if (jam.sag > 0) { jam.sag = Math.max(0, jam.sag - 0.4); bsmashBandSag(jam.sag, 0.8); }
     } else {
         jam.inARow = 0;
+        jam.missesInRow++;
         jam.meter = Math.max(0, jam.meter - 1);
+        // Losing the beat: the band sinks with it (bsmashBandSag).
+        if (jam.missesInRow >= BSMASH_SAG_AFTER) {
+            if (jam.sag === 0) bsmashEvent('beat.jam.lost');
+            jam.sag = Math.min(1, (jam.missesInRow - BSMASH_SAG_AFTER + 1) / 3);
+            bsmashBandSag(jam.sag, 1.2);
+        }
     }
     bsmashJamMeter();
+}
+
+// Nobody tapping for two bars: the band powers down and stops, and the way
+// on is right there. Rob: "When the game comes to a stop because the player
+// has stopped engaging with the buttons, make sure they have navigation
+// buttons easily available." The band's clock keeps running underneath, so
+// a tap brings it straight back, in time.
+function bsmashJamStop() {
+    const jam = bsmash.jam;
+    jam.stopped = true;
+    bsmashBandSag(1, 1.5);
+    bsmashBandLevel(0.0001, 2.4);
+    bsmashEl('beat-jam-nav').hidden = false;
+    bsmashEvent('beat.jam.stopped');
+}
+
+function bsmashJamResume() {
+    const jam = bsmash.jam;
+    jam.stopped = false;
+    jam.sag = 0;
+    bsmashBandSag(0, 0.3);
+    bsmashEl('beat-jam-nav').hidden = true;
+    bsmashJamMeter();
+}
+
+// "Keep jamming": the band comes back before the first tap.
+function keepBeatJamming() {
+    if (!bsmash || bsmash.mode !== 'jam' || !bsmash.jam.stopped) return;
+    bsmash.jam.lastTap = bsmashNow();
+    bsmashJamResume();
 }
 
 // The meter, and the band building with it.
@@ -1049,10 +1174,12 @@ function bsmashJamMeter() {
     bsmashEl('beat-jam-fill').style.width = Math.round(level * 100) + '%';
     bsmashEl('beat-pads').style.setProperty('--hype', level.toFixed(2));
     bsmashBandLevel(BSMASH_JAM_BAND + (BSMASH_BAND_FULL - BSMASH_JAM_BAND) * level, 0.6);
-    while (jam.layers < BSMASH_JAM_LAYERS.length && level >= BSMASH_JAM_LAYERS[jam.layers].at) {
-        const layer = BSMASH_JAM_LAYERS[jam.layers++];
+    const layers = jam.layerList;
+    while (jam.layers < layers.length && level >= layers[jam.layers].at) {
+        const layer = layers[jam.layers++];
+        const joining = !(bsmashBand.parts && layer.instrument in bsmashBand.parts);
         bsmashBandSetPart(layer.instrument, layer.style);
-        bsmashEvent('beat.jam.layer.' + layer.instrument);
+        if (joining) bsmashEvent('beat.jam.layer.' + layer.instrument);
     }
     if (!jam.full && jam.meter >= BSMASH_JAM_GOAL) {
         jam.full = true;
@@ -1110,7 +1237,8 @@ function bsmashJamMorph() {
     bsmashSaveDelay(bsmash.delay);
     bsmashRecordBeatTest(bsmashBeatTestResult(jam.offsets));
     // The band steps back to Tango alone: the rest of it is still to be won.
-    BSMASH_JAM_LAYERS.forEach(layer => bsmashBandRemovePart(layer.instrument));
+    jam.layerList.forEach(layer => bsmashBandRemovePart(layer.instrument));
+    bsmashEl('beat-jam-nav').hidden = true;
     bsmashBandLevel(BSMASH_JAM_BAND);
     bsmash.bars = [bsmashParseBar('q q q q')]; // text-ok: a bar, not words
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
@@ -1153,6 +1281,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.remove('jam');
     bsmashEl('beat-jam-next').hidden = true;
+    bsmashEl('beat-jam-nav').hidden = true;
     bsmashBandStart({ drums: record.won ? record.part : 'warmup' });
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();
@@ -1861,6 +1990,11 @@ function bsmashRenderPathwaySettings() {
         progress.settings.sound.drums, v => save(s => { s.sound.drums = v; }));
     row('beat.settings.pads', ['auto', 'four', 'one'].map(v => ({ value: v, text: 'beat.padMode.' + v })),
         progress.settings.padMode, v => save(s => { s.padMode = v; }));
+    // The warm-up jam's song: the band's own loops, or one of Rob's songs.
+    const songs = (window.KR && KR.songs) || {};
+    row('beat.settings.song', [{ value: 'c', text: 'song.c' }].concat(
+        Object.keys(songs).map(id => ({ value: id, text: songs[id].name }))),
+        progress.settings.jamSong || 'c', v => save(s => { s.jamSong = v; }));
     if (progress.firstStar) {
         row('beat.settings.picture', ['blocks', 'counting', 'machine'].map(v => ({ value: v, text: 'beat.picture.' + v })),
             progress.settings.picture, v => save(s => { s.picture = v; }));

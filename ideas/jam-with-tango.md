@@ -44,11 +44,43 @@ the teacher plays, the class plays it back.
 - **Only afterwards**, as a reward, "this is what it looks like": the figure in
   notation. Never before, and never tested here.
 
+## Rob, second round (2026-09-30), after playing the longer jam
+
+> *"I think they will love a Tango session playing rhythm games and you just
+> keep encouraging them. Let's say Tango taps beat one, she skips beat two,
+> and she taps three and four. They have to know how to tune into where beat
+> one is… just keep them doing this as long as possible. There is no other
+> way."*
+
+> *"When the game comes to a stop because the player has stopped engaging
+> with the buttons, make sure they have navigation buttons easily available.
+> This is where they could have a chance to play call and response with
+> Tango."* The stop and its buttons are built (the warm-up jam); the call and
+> response button is the next thing that belongs there.
+
+**The material Rob has ready**, to be turned into figures:
+
+- **Clave:** son clave in both directions, 3-2 and 2-3.
+- **Bells:** cowbell patterns, the mambo bell, the cha-cha bell.
+- **Bongo:** the martillo.
+- **Timbales and sticks:** palito patterns, cascara.
+- **Keys and bass:** piano montunos, the bass tumbao ("so I can do a really
+  cool mambo").
+- **Further out:** batá, choro.
+- **And today's music:** the same figures infused with electronic drum beats.
+  *"I can't reproduce authentic guaguancó music, but I'm sure we could get our
+  imaginations together and see what the limitations are and work backwards
+  to what is realistic but engaging."*
+
+**Why it matters, in his words:** *"Right now they need to hit that button
+10,000 times. And you have to give them 100,000 reasons why."* (And: *"I'll
+charge $0.99."*)
+
 ## Not decided
 
-1. **Where it sits.** Before Beat Smash's reading steps (the experience
-   first)? As the warm-up itself, growing out of Tango's "Copy me!"? Or its
-   own card, a game you return to between musicians?
+1. **Where it sits.** Rob has placed one door already: the warm-up jam's stop
+   screen. Is that the only way in, or does it also have its own card, or
+   come before Beat Smash's reading steps?
 2. **Does it earn anything** (stars, a figure collection, a musician), or is
    it pure play?
 3. **The figures:** which, in what order, and at what tempo. The loops are

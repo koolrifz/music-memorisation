@@ -1143,6 +1143,9 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-jam-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff9600, #ffc800); box-shadow: 0 0 12px rgba(255,200,0,0.8); transition: width 0.25s ease-out; }
 .bsmash-jam-next { max-width: 480px; min-height: 56px; margin: 10px auto 0; }
 .bsmash-jam-next[hidden] { display: none; }
+.bsmash-jam-nav { display: flex; gap: 10px; width: 100%; max-width: 480px; margin: 10px auto 0; }
+.bsmash-jam-nav[hidden] { display: none; }
+.bsmash-jam-nav .btn { margin-top: 0; min-height: 56px; font-size: 15px; }
 #beat-pads { --hype: 0; }
 #beat-screen-studio.jam .krpad.beat, #beat-screen-studio.jam .krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #6d8fb0, 0 0 calc(12px + 26px * var(--hype)) rgba(255,200,0, calc(0.3 + 0.6 * var(--hype))); }
 
