@@ -134,6 +134,7 @@
   <div class="transport songs">
     <label>Song <select id="song"></select></label>
     <label>Keys rhythm <select id="comp"></select></label>
+    <label>Bass style <select id="bassStyle"></select></label>
   </div>
   <p class="hint">Rob's songs are in <code>content/songs.js</code>: each bar's bass note and Rhodes voicing, and the keys' rhythms. With one of them chosen, the drums play the part picked above and the bass and keys play the song (set either to Off to leave it out).</p>
 
@@ -177,7 +178,7 @@
   const cued = {};
   let padSound = 'rhodes';
   const SONGS = (window.KR && window.KR.songs) || {};
-  let song = 'c', comp = 'whole';
+  let song = 'c', comp = 'whole', bassStyle = 'walk';
 
   let ctx = null, master = null;
   let playing = false, mode = 'band', startTime = 0, nextLoop = 0, timer = null;
@@ -221,6 +222,7 @@
   function fillComps() {
     compEl.innerHTML = '';
     compEl.disabled = song === 'c';
+    document.getElementById('bassStyle').disabled = song === 'c';
     if (song === 'c') return;
     const comps = B.song(song).comp;
     Object.keys(comps).forEach((name) => {
@@ -232,6 +234,10 @@
     compEl.value = comp;
   }
   fillComps();
+  const bassEl = document.getElementById('bassStyle');
+  B.BASS_STYLES.forEach((st) => bassEl.add(new Option(st, st)));
+  bassEl.value = bassStyle;
+  bassEl.addEventListener('change', () => { bassStyle = bassEl.value; if (playing && mode === 'band') start('band'); });
   songEl.addEventListener('change', () => { song = songEl.value; fillComps(); drawBars(); if (playing && mode === 'band') start('band'); });
   compEl.addEventListener('change', () => { comp = compEl.value; if (playing && mode === 'band') start('band'); });
 
@@ -250,7 +256,7 @@
     const parts = mode === 'warmup'
       ? [['warmup', 'tango']]
       : B.INSTRUMENTS.filter((i) => sel[i] !== 'off')
-          .map((i) => [i, song !== 'c' && i !== 'drums' ? 'song:' + song + ':' + comp : sel[i]]);
+          .map((i) => [i, song === 'c' || i === 'drums' ? sel[i] : 'song:' + song + ':' + (i === 'bass' ? bassStyle : comp)]);
     parts.forEach(([i, s]) => live.push({ g: B.schedulePart(ctx, master, i, s, t), end: t + B.LOOP + 1.5 }));
     Object.keys(cued).forEach((k) => delete cued[k]);
     render();

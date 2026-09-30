@@ -403,6 +403,9 @@
   // each loop's level so these can be checked by number as well as by ear.
   const LEVEL = { drums: 0.85, bass: 0.5, keys: 1.7, warmup: 0.85 };
   const TRIM = { 'drums-smooth': 1.7, 'keys-hop': 2.2 };
+  // Rob's songs: a walking or half-note bass sustains under every keys hit,
+  // so it sits a little lower than a loop's bass to leave the mix headroom.
+  const SONG_TRIM = { bass: 0.8 };
 
   // ---------- Rob's songs (content/songs.js) ----------
   // A song part is named 'song:<song id>:<comp name>', e.g.
@@ -473,6 +476,7 @@
     return {
       id,
       comp: song.comp || base.comp,
+      bass: song.bass || base.bass,
       bars: base.bars.map((bar, i) => ({
         chord: (song.chords && song.chords[i]) || bar.chord,
         bass: noteMidi(bar.bass) + shift,
@@ -481,12 +485,106 @@
     };
   }
 
+  // ---------- The bass: its own line, by STYLE ----------
+  // Rob: "The only pump rhythm a bass plays is dotted quarter followed by
+  // eighth. It mostly plays according to the style of music. The tumbao in
+  // Cuban music. Half notes in traditional choro or bossa nova. Quarter notes
+  // for walking in steps towards the next root note of the next chord."
+  // So the bass does NOT follow the keys. Each style is a rule that makes a
+  // line from the song's roots and the notes of each bar's voicing:
+  //   whole   the root, a whole note
+  //   halves  root on 1, fifth on 3 (choro, traditional bossa)
+  //   pump    root dotted quarter, fifth on the "and" of 2; fifth, root again
+  //   walk    quarters: root, two chord tones, then a half step into the next root
+  //   tumbao  the Cuban anticipated bass: on the "and" of 2 the next chord's
+  //           fifth, on 4 its root, held over the barline. Beat 1 is silent.
+  // "The fifth" is the chord's own: the voicing note nearest a perfect fifth
+  // above the root, so a diminished chord gets its diminished fifth.
+  const BASS_STYLES = ['whole', 'halves', 'pump', 'walk', 'tumbao'];
+  const BASS_LOW = 36, BASS_HIGH = 57;     // C2 to A3: where the walking line may go
+
+  function chordTones(bar) {
+    const pcs = new Set(bar.keys.map((m) => ((m % 12) + 12) % 12));
+    pcs.add(((bar.bass % 12) + 12) % 12);
+    return pcs;
+  }
+
+  function nearestTone(tones, target) {
+    for (let d = 0; d < 7; d++) {
+      if (tones.has(((target - d) % 12 + 12) % 12)) return target - d;
+      if (tones.has(((target + d) % 12 + 12) % 12)) return target + d;
+    }
+    return target;
+  }
+
+  function fifthOf(bar) {
+    return nearestTone(chordTones(bar), bar.bass + 7);
+  }
+
+  function nearestOctave(note, to) {
+    return note + 12 * Math.round((to - note) / 12);
+  }
+
+  function bassLine(song, style) {
+    const bars = song.bars, hits = [];
+    const add = (start, beats, midi) => hits.push({ start, beats, midi });
+    if (style === 'walk') {
+      let prev = null;
+      bars.forEach((bar, b) => {
+        let r = prev === null ? bar.bass : nearestOctave(bar.bass, prev);
+        while (r > BASS_HIGH) r -= 12;
+        while (r < BASS_LOW) r += 12;
+        const tones = chordTones(bar);
+        const up = (from, gap) => { let m = from + gap; while (!tones.has(((m % 12) + 12) % 12)) m++; return m; };
+        const down = (from, gap) => { let m = from - gap; while (!tones.has(((m % 12) + 12) % 12)) m--; return m; };
+        let two = up(r, 3), three = up(two, 2);
+        if (three > BASS_HIGH) { two = down(r, 3); three = down(two, 2); }
+        const next = bars[(b + 1) % bars.length];
+        let target = nearestOctave(next.bass, three);
+        while (target > BASS_HIGH) target -= 12;
+        while (target < BASS_LOW) target += 12;
+        let approach = target > three ? target - 1 : target + 1;
+        if (approach === three) approach = target > three ? target + 1 : target - 1;
+        [r, two, three, approach].forEach((m, k) => add(b * 4 + k, 1, m));
+        prev = approach;
+      });
+      return hits;
+    }
+    bars.forEach((bar, b) => {
+      const r = bar.bass, five = fifthOf(bar), next = bars[(b + 1) % bars.length];
+      const at = b * 4;
+      if (style === 'whole') add(at, 4, r);
+      else if (style === 'halves') { add(at, 2, r); add(at + 2, 2, five); }
+      else if (style === 'pump') { add(at, 1.5, r); add(at + 1.5, 0.5, five); add(at + 2, 1.5, five); add(at + 3.5, 0.5, r); }
+      else if (style === 'tumbao') { add(at + 1.5, 1.5, fifthOf(next)); add(at + 3, 2, next.bass); }
+      else throw new Error('No bass style called ' + style);
+    });
+    return hits;
+  }
+
+  // A song's bass part by name: song.bass maps a name ('whole', 'groove') to a
+  // style; a style's own name works too.
+  function bassStyle(song, name) {
+    const map = Object.assign({ whole: 'whole', groove: 'walk' }, song.bass);
+    const style = map[name] || name;
+    if (BASS_STYLES.indexOf(style) === -1) throw new Error('No bass style called ' + name);
+    return style;
+  }
+
   // from: skip any hit before this time, so a part can join mid-loop cleanly.
-  // Keys and bass asked for the same cycle get the same rhythm, so they push
-  // together: the pick is remembered per song and cycle start.
+  // The keys' rhythm is picked once per song and cycle start, so a part
+  // booked twice for the same cycle plays the same rhythm both times.
   const picks = {};
   function songPart(ctx, out, instrument, songId, compName, t0, from) {
     const song = findSong(songId);
+    if (instrument === 'bass') {
+      bassLine(song, bassStyle(song, compName)).forEach((h) => {
+        const t = t0 + h.start * BEAT;
+        if (from && t < from) return;
+        note(bassVoice.electric, ctx, out, t, h.midi, h.beats * BEAT * 0.92, 1);
+      });
+      return;
+    }
     const key = songId + '|' + compName + '|' + t0.toFixed(3);
     let hits;
     if (picks[key]) hits = picks[key];
@@ -503,7 +601,6 @@
       const bar = song.bars[h.chord];
       const len = h.beats * BEAT;
       if (instrument === 'keys') note(keysVoice.rhodes, ctx, out, t, bar.keys, len * 0.95, h.beats >= 4 ? 0.85 : 0.9);
-      else if (instrument === 'bass') note(bassVoice.electric, ctx, out, t, bar.bass, len * 0.92, 1);
     });
   }
 
@@ -512,7 +609,7 @@
   function schedulePart(ctx, dest, instrument, style, t0, from) {
     const g = ctx.createGain();
     const song = /^song:([^:]+):(.+)$/.exec(style);
-    g.gain.value = LEVEL[instrument] * (song ? 1 : (TRIM[instrument + '-' + style] || 1));
+    g.gain.value = LEVEL[instrument] * (song ? (SONG_TRIM[instrument] || 1) : (TRIM[instrument + '-' + style] || 1));
     g.connect(dest);
     if (song) songPart(ctx, g, instrument, song[1], song[2], t0, from);
     else PARTS[instrument][style](ctx, g, t0);
@@ -547,6 +644,8 @@
     noteMidi,
     songHits: (songId, compName, lastPick) => songHits(findSong(songId), compName, lastPick),
     lastPick: () => songHits.lastPick,
+    BASS_STYLES,
+    bassLine: (songId, name) => bassLine(findSong(songId), bassStyle(findSong(songId), name)),
     song: findSong,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

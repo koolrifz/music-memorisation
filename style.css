@@ -1108,11 +1108,13 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-cursor { position: absolute; top: 4px; bottom: 4px; background: rgba(255,200,0,0.35); border-radius: 6px; }
 .bsmash-cursor[hidden] { display: none; }
 
-.bsmash-block { position: absolute; top: 12px; height: 40px; border-radius: 7px; box-sizing: border-box; display: flex; overflow: hidden; }
+.bsmash-block { position: absolute; top: 6px; height: 52px; border-radius: 7px; box-sizing: border-box; display: flex; overflow: hidden; }
 .bsmash-block.quarter { --c: #0072B2; }
 .bsmash-block.half { --c: #CC79A7; }
 .bsmash-block.whole { --c: #56B4E9; }
-.bsmash-block.pic-blocks { background: var(--c); background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(var(--beat) - 2px), rgba(255,255,255,0.25) calc(var(--beat) - 2px), rgba(255,255,255,0.25) var(--beat)); }
+.bsmash-block.pic-blocks { background: var(--c); }
+.bsmash-block.pic-blocks .bsmash-cell + .bsmash-cell { border-left: 2px solid rgba(255,255,255,0.3); }
+.bsmash-block.pic-blocks.rest .bsmash-cell + .bsmash-cell { border-left-color: var(--c); border-left-style: dashed; }
 .bsmash-block.pic-blocks.rest { background: transparent; border: 3px solid var(--c); }
 .bsmash-block.pic-counting { color: var(--c); font-weight: 900; font-size: 20px; }
 .bsmash-block.pic-machine { background: #222c36; border-radius: 10px; }

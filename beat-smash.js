@@ -109,15 +109,16 @@ const BSMASH_JAM_LAYERS = [
     { at: 1 / 3, instrument: 'bass', style: 'smooth' },
     { at: 2 / 3, instrument: 'keys', style: 'smooth' },
 ];
-// With one of Rob's songs (content/songs.js) the keys join as whole notes and,
-// once the meter is full, switch to his pumps - a different pump rhythm each
-// time round - bass and all: the longer the beat is held, the groovier it
-// gets. {song} is the song's id.
+// With one of Rob's songs (content/songs.js) the bass and keys join in whole
+// notes; once the meter is full the keys switch to his pumps (a different
+// pump rhythm each time round) and the bass to the song's own groove, its
+// style (a walking line, a tumbao...). The longer the beat is held, the
+// groovier it gets. {song} is the song's id.
 const BSMASH_JAM_SONG_LAYERS = [
     { at: 1 / 3, instrument: 'bass', style: 'song:{song}:whole' },
     { at: 2 / 3, instrument: 'keys', style: 'song:{song}:whole' },
     { at: 1, instrument: 'keys', style: 'song:{song}:pumps' },
-    { at: 1, instrument: 'bass', style: 'song:{song}:pumps' },
+    { at: 1, instrument: 'bass', style: 'song:{song}:groove' },
 ];
 // Parts played live by the synth (Rob's songs, and any loop whose file hasn't
 // loaded) go through this. It is the factor tools/beat-smash-band/render.js
@@ -624,6 +625,8 @@ function bsmashWithStompGrid(fn) {
    Below it, the verdict: the notes that went wrong are marked there. Nothing
    is ever drawn over the notation. */
 const BSMASH_VALUE_CLASS = { q: 'quarter', h: 'half', w: 'whole' };
+const BSMASH_BLOCK_MAX = 52;      // px: the largest a beat's square gets (the paper is 65 high)
+const BSMASH_BLOCK_GAP = 8;       // px between neighbouring squares
 
 function bsmashEl(id) {
     return document.getElementById(id);
@@ -683,15 +686,22 @@ function bsmashDrawPicture(barIndex) {
         const block = bsmashMake('div', 'bsmash-block', entry.picture);
         block.classList.add('pic-' + kind, valueClass);
         if (spec.isRest) block.classList.add('rest');
-        const left = x(spec.slot);
-        const right = x(spec.slot + spec.slots);
-        block.style.left = (left + 1) + 'px';
-        block.style.width = Math.max(8, right - left - 4) + 'px';
-        block.style.setProperty('--beat', (x(1) - x(0)) + 'px');
+        // Every beat is a SQUARE (Rob: "too much a rectangle. Make them
+        // square"), centred in its slot, so a quarter is one square and a
+        // half is two squares joined: width still shows length.
+        const slotWidth = x(1) - x(0);
+        const side = Math.min(BSMASH_BLOCK_MAX, Math.round(slotWidth) - BSMASH_BLOCK_GAP);
+        const inset = (slotWidth - side) / 2;
+        block.style.left = (x(spec.slot) + inset) + 'px';
+        block.style.width = ((spec.slots - 1) * slotWidth + side) + 'px';
+        block.style.height = side + 'px';
+        block.style.top = Math.round((RSTOMP_STAFF_CROP_HEIGHT - side) / 2) + 'px';
         for (let k = 0; k < spec.slots; k++) {
-            const beat = spec.slot + k;
             const cell = bsmashMake('span', 'bsmash-cell', block);
-            cell.style.width = (x(beat + 1) - x(beat)) + 'px';
+            // The cells split the block at the beats: the first and last
+            // reach from the square's edge to the slot's edge.
+            const edge = spec.slots === 1 ? side : (k === 0 || k === spec.slots - 1 ? (slotWidth + side) / 2 : slotWidth);
+            cell.style.width = edge + 'px';
             if (kind === 'counting') cell.textContent = bsmashCountLabel(spec, k);
             if (kind === 'machine') cell.classList.add(spec.isRest ? 'off' : (k === 0 ? 'on' : 'held'));
         }
