@@ -110,13 +110,14 @@ const BSMASH_JAM_LAYERS = [
     { at: 2 / 3, instrument: 'keys', style: 'smooth' },
 ];
 // With one of Rob's songs (content/songs.js) the keys join as whole notes and,
-// once the meter is full, switch to his pump comping, bass and all: the
-// longer the beat is held, the groovier it gets. {song} is the song's id.
+// once the meter is full, switch to his pumps - a different pump rhythm each
+// time round - bass and all: the longer the beat is held, the groovier it
+// gets. {song} is the song's id.
 const BSMASH_JAM_SONG_LAYERS = [
     { at: 1 / 3, instrument: 'bass', style: 'song:{song}:whole' },
     { at: 2 / 3, instrument: 'keys', style: 'song:{song}:whole' },
-    { at: 1, instrument: 'keys', style: 'song:{song}:pump' },
-    { at: 1, instrument: 'bass', style: 'song:{song}:pump' },
+    { at: 1, instrument: 'keys', style: 'song:{song}:pumps' },
+    { at: 1, instrument: 'bass', style: 'song:{song}:pumps' },
 ];
 // Parts played live by the synth (Rob's songs, and any loop whose file hasn't
 // loaded) go through this. It is the factor tools/beat-smash-band/render.js
