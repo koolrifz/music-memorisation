@@ -149,7 +149,9 @@ KR.lang('en-US', {
 
     /* ---------- The band's songs (content/songs.js) ---------- */
     'song.c':                'C: I IV I V',
-    'song.ab-6dim':          'A♭: I6 ♭iii°7 ii7 V7',
+    'song.c-6dim':           'C: I6 ♭iii°7 ii7 V7(♭9)',
+    'song.c-6dim-tritone':   'C: I6 ♭iii°7 ii7 ♭II7(♭5)',
+    'song.ab-6dim':          'A♭: I6 ♭iii°7 ii7 V7(♭9)',
     'song.ab-6dim-tritone':  'A♭: I6 ♭iii°7 ii7 ♭II7(♭5)',
 
     /* ---------- Teacher codes (teacher-codes.js) ---------- */

@@ -1471,8 +1471,8 @@ Smash's players list. Beat Smash adds an **age** to a player.
   re-timing the loops live. Parked; the sag is the clean version of the idea.
 - **The jam can be played over one of Rob's songs** (the "Jam song" setting;
   see "ROB'S SONGS" below). Then the bass joins in whole notes, the keys in
-  whole notes, and a full meter switches both to his pump comping: the longer
-  the beat is held, the groovier it gets.
+  whole notes, and a full meter switches both to his pumps, a different pump
+  rhythm each time round: the longer the beat is held, the groovier it gets.
 - **A tap's time comes from the event, not the handler.** `bsmashEventTime()`
   takes the lag between the touch and the code running (bigger on a busy
   phone) back off, using the event's own time stamp. Rob: *"I really thought
@@ -1540,28 +1540,40 @@ Rob: *"If I can dictate the choice of piano/keys voicing then I can write my
 Barry Harris rules into the backing track."* So a song is **data he writes**,
 in `content/songs.js`, and the synthesised band plays it live (he likes the
 synth sound: *"I think it's part of the generation"*). Per bar: a chord name
-(for reading), a bass note (`'Ab2'`), and the Rhodes voicing, bottom up
-(`['Eb4', 'G4', 'Bb4', 'C5']`), played exactly as written. `comp` names the
+(for reading), a bass note (`'C3'`), and the Rhodes voicing, bottom up
+(`['G4', 'A4', 'C5', 'E5']`), played exactly as written. `comp` names the
 keys' rhythms in his own note values: `w h q 8 16`, `.` dotted, `r` rest,
-repeated to fill four bars: `'q. q. q. q. q q'`.
+repeated to fill four bars.
 
+- **Written once, in C, then transposed:** `{ like: 'c-6dim', transpose: -4,
+  chords: [...] }` is the same song a major third down, with its own chord
+  names. A song can only be `like` a song written out in full.
+- **The progression, as Rob corrected it (2026-09-30), in C:** C6 with G A C
+  E on top (second inversion) · the outside voices down a semitone, F# A C Eb
+  over Eb · down again, F A C D over D · the F becomes F diminished over G, F
+  Ab B D, the flat nine. The inner A and C hold for three bars. **This
+  replaces his first message's voicings**, which he called a draft.
+- **The comping is PUMPS, and a list of them.** Rob: *"Just use the different
+  pumps. They can be long, they can be short. They can be connected together,
+  tied together… balance that against some downbeats. I'm interested to see
+  how loose we can make it. But tight."* `KR_COMP_PUMPS` is six four-bar
+  rhythms (long pumps, short pumps, pumps tied into 3+3+2, downbeats). A comp
+  that is a list plays **a different one each time round**, never the same
+  twice running; `'pumps#2'` names one. The 3-3-3-3-2-2 rhythm from his first
+  message is gone: *"That was too big."*
 - **The anticipation is a rule, not a setting:** a hit struck before a barline
-  and held across it plays the NEXT bar's voicing. In his rhythm that is the
-  dotted quarter on beat 4. `BeatSmashBand.songHits()` is the one place it
-  lives.
-- **The bass plays each bar's bass note on every keys hit**, so the two push
-  together.
+  and held across it plays the NEXT bar's voicing. `BeatSmashBand.songHits()`
+  is the one place it lives.
+- **The bass plays each bar's bass note on every keys hit**, and keys and bass
+  booked for the same cycle get the same rhythm, so the two push together.
 - A part is named `'song:<song>:<comp>'` and can join mid-loop from its next
   hit. Live parts go through `BSMASH_LIVE_SCALE` (0.47), the factor the loop
   files were rendered at; without it a song clipped at 1.46.
-- **Hear them in `tools/beat-smash-band/lab.html`** (Song and Keys rhythm).
-- **Two songs so far**, Ab major, one bar each: `ab-6dim` (I6 · ♭iii°7 · ii7 ·
-  V7) and `ab-6dim-tritone` (the last chord ♭II7(♭5)).
-- **Open for Rob:** his fourth voicing was written "F7: Eb F# A C" against a
-  V7; the bass plays Eb (V), one word to change to F. The ♭II7(♭5) voicing
-  (Eb G A C#) is Claude's, since he gave none. And his "Bdim7" voicing
-  (D# F# A C) is a different diminished chord from B D F Ab; it is played
-  exactly as written.
+- **Hear them in `tools/beat-smash-band/lab.html`**: pick the song and a keys
+  rhythm, including each pump rhythm on its own.
+- **Four songs:** `c-6dim`, `c-6dim-tritone` (the last chord ♭II7(♭5)), and
+  both in A flat. **Open for Rob:** the ♭II7(♭5) voicing (F G B D♭ in C) is
+  Claude's, since he gave none.
 
 ### Parked from Rob's first play (2026-09-30)
 - **The groove grows the longer it's held**, beyond what's built: the bass
@@ -1574,10 +1586,10 @@ repeated to fill four bars: `'q. q. q. q. q q'`.
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (125 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (128 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
-sag, the stop and its menu, a jam over Rob's song), his songs (rhythm,
-anticipation, voicings, level), all
+sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
+transposition, every pump rhythm, anticipation, variety, level), all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,

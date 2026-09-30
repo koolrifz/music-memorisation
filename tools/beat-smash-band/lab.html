@@ -203,7 +203,7 @@
   const barsEl = document.getElementById('bars');
   function drawBars() {
     barsEl.innerHTML = '';
-    const names = song === 'c' ? B.SONG_NAMES : SONGS[song].bars.map((b) => b.chord);
+    const names = song === 'c' ? B.SONG_NAMES : B.song(song).bars.map((b) => b.chord);
     names.forEach((name) => {
       const d = document.createElement('div');
       d.className = 'bar';
@@ -222,8 +222,13 @@
     compEl.innerHTML = '';
     compEl.disabled = song === 'c';
     if (song === 'c') return;
-    Object.keys(SONGS[song].comp).forEach((name) => compEl.add(new Option(name + ': ' + SONGS[song].comp[name], name)));
-    if (!SONGS[song].comp[comp]) comp = Object.keys(SONGS[song].comp)[0];
+    const comps = B.song(song).comp;
+    Object.keys(comps).forEach((name) => {
+      if (!Array.isArray(comps[name])) return compEl.add(new Option(name + ': ' + comps[name], name));
+      compEl.add(new Option(name + ': a different one each time round', name));
+      comps[name].forEach((r, i) => compEl.add(new Option(name + ' #' + (i + 1) + ': ' + r, name + '#' + i)));
+    });
+    if (![...compEl.options].some((o) => o.value === comp)) comp = compEl.options[0].value;
     compEl.value = comp;
   }
   fillComps();

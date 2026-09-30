@@ -517,24 +517,44 @@ def test_layout(browser):
 
 
 def test_songs(page):
-    """Rob's songs (content/songs.js): voicings as dictated, the anticipation,
-    and a level that doesn't clip."""
+    """Rob's songs (content/songs.js): voicings as dictated, transposition,
+    the pump rhythms and their anticipations, and a level that doesn't clip."""
     fresh(page)
-    hits = page.evaluate("BeatSmashBand.songHits('ab-6dim', 'pump').map(h => [h.start, h.beats, h.chord])")
-    check('Rob\'s rhythm: dotted quarters on 1, the and of 2, 4 and the and of 1, quarters on 3 and 4',
-          [h[0] for h in hits[:6]] == [0, 1.5, 3, 4.5, 6, 7] and [h[1] for h in hits[:6]] == [1.5, 1.5, 1.5, 1.5, 1, 1], hits[:6])
-    check('The dotted quarter on beat 4, held over the barline, plays the NEXT bar\'s chord',
-          hits[2][2] == 1 and hits[8][2] == 3 and hits[1][2] == 0 and hits[5][2] == 1, hits)
-    check('The rhythm fills the four bars exactly', sum(h[1] for h in hits) == 16)
+    c = page.evaluate("BeatSmashBand.song('c-6dim').bars.map(b => [b.bass].concat(b.keys))")
+    check('C as Rob dictated: C6 G A C E, the outside voices down (F# A C Eb), down again (F A C D), F dim over G',
+          c == [[48, 67, 69, 72, 76], [51, 66, 69, 72, 75], [50, 65, 69, 72, 74], [43, 65, 68, 71, 74]], c)
+    ab = page.evaluate("BeatSmashBand.song('ab-6dim').bars.map(b => [b.bass].concat(b.keys))")
+    check('A flat is the same song down a major third', ab == [[n - 4 for n in bar] for bar in c], ab)
+    names = page.evaluate("BeatSmashBand.song('ab-6dim').bars.map(b => b.chord)")
+    check('...with its own chord names', names == ['A♭6', 'C♭°7', 'B♭m7', 'E♭7(♭9)'], names)
+    pumps = page.evaluate("""KR.songs['c-6dim'].comp.pumps.map((r, i) => {
+        const h = BeatSmashBand.songHits('c-6dim', 'pumps#' + i);
+        return { total: h.reduce((a, x) => a + x.beats, 0),
+                 early: h.filter(x => x.chord !== Math.floor(x.start / 4)).length,
+                 grid: h.every(x => Math.abs(x.start * 4 - Math.round(x.start * 4)) < 1e-9) };
+    })""")
+    check('Every pump rhythm fills the four bars exactly, on the grid',
+          all(p['total'] == 16 and p['grid'] for p in pumps), pumps)
+    check('Most anticipate the next chord across a barline', sum(1 for p in pumps if p['early']) >= 4, pumps)
+    hits = page.evaluate("BeatSmashBand.songHits('c-6dim', 'pumps#0').map(h => [h.start, h.chord])")
+    check('A pump held over the barline plays the NEXT bar\'s chord (beat 4 +, into bar 2)',
+          [3.5, 1] in hits and [1.5, 0] in hits, hits)
+    picks = page.evaluate("""(() => {
+        const seen = new Set(); let last = null, repeats = 0;
+        for (let i = 0; i < 60; i++) {
+            BeatSmashBand.songHits('c-6dim', 'pumps', last);
+            const p = BeatSmashBand.lastPick(); if (p === last) repeats++; last = p; seen.add(p);
+        }
+        return { seen: seen.size, repeats };
+    })()""")
+    check('Loose: a different pump rhythm each time round, never the same twice running',
+          picks['seen'] >= 5 and picks['repeats'] == 0, picks)
     whole = page.evaluate("BeatSmashBand.songHits('ab-6dim', 'whole').map(h => [h.start, h.chord])")
     check('Whole notes: one chord a bar', whole == [[0, 0], [4, 1], [8, 2], [12, 3]], whole)
-    voicings = page.evaluate("KR.songs['ab-6dim'].bars.map(b => b.keys.map(BeatSmashBand.noteMidi))")
-    check('The voicings as Rob dictated them: Eb G Bb C, D# F# A C, Eb F Ab C, Eb F# A C',
-          voicings == [[63, 67, 70, 72], [63, 66, 69, 72], [63, 65, 68, 72], [63, 66, 69, 72]], voicings)
     peak = page.evaluate("""(async () => {
         const B = BeatSmashBand;
         let loudest = 0;
-        for (const song of Object.keys(KR.songs)) for (const comp of Object.keys(KR.songs[song].comp)) {
+        for (const song of Object.keys(KR.songs)) for (const comp of ['whole'].concat(BeatSmashBand.song(song).comp.pumps.map((r, i) => 'pumps#' + i))) {
             const ctx = new OfflineAudioContext(1, 32000 * B.LOOP, 32000);
             const live = ctx.createGain(); live.gain.value = BSMASH_LIVE_SCALE; live.connect(ctx.destination);
             B.schedulePart(ctx, live, 'warmup', 'tango', 0);
@@ -576,8 +596,8 @@ def test_song_jam(page):
     check('Over Rob\'s song the bass joins in whole notes', parts.get(10, {}).get('bass') == 'song:ab-6dim:whole', parts)
     check('...then the keys, his voicings in whole notes', parts.get(18, {}).get('keys') == 'song:ab-6dim:whole', parts)
     full = page.evaluate('Object.assign({}, bsmashBand.parts)')
-    check('...and a full meter brings his pump comping, bass and keys together',
-          full.get('keys') == 'song:ab-6dim:pump' and full.get('bass') == 'song:ab-6dim:pump', full)
+    check('...and a full meter brings his pumps, bass and keys together',
+          full.get('keys') == 'song:ab-6dim:pumps' and full.get('bass') == 'song:ab-6dim:pumps', full)
     # Lose the beat: taps half a beat out.
     for k in range(4):
         press_at(page, offset, start + (beat + k) * 0.6 + 0.34, index=k % 4)

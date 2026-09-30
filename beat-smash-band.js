@@ -439,9 +439,21 @@
 
   // Which bar's chord a hit plays: its own bar's, unless it is held across
   // the barline, in which case the NEXT bar's - the anticipation.
-  function songHits(song, compName) {
-    const rhythm = song.comp && song.comp[compName];
-    if (!rhythm) throw new Error('No comp called ' + compName);
+  // compName may name one rhythm of a list, 'pumps#2'; a list named on its
+  // own ('pumps') gives a different rhythm each time it is asked.
+  function songHits(song, compName, lastPick) {
+    const m = /^(.+?)(?:#(\d+))?$/.exec(compName);
+    const comp = song.comp && song.comp[m[1]];
+    if (!comp) throw new Error('No comp called ' + compName);
+    let rhythm = comp;
+    if (Array.isArray(comp)) {
+      let pick = m[2] !== undefined ? Number(m[2]) : Math.floor(Math.random() * comp.length);
+      // Loose, not repetitive: never the same rhythm twice running.
+      if (m[2] === undefined && comp.length > 1 && pick === lastPick) pick = (pick + 1) % comp.length;
+      if (!(pick in comp)) throw new Error('No rhythm ' + compName);
+      rhythm = comp[pick];
+      songHits.lastPick = pick;
+    }
     return rhythmHits(rhythm).filter((h) => !h.rest).map((h) => {
       const bar = Math.floor(h.start / 4 + 1e-9);
       const crosses = h.start + h.beats > (bar + 1) * 4 + 1e-9;
@@ -449,22 +461,49 @@
     });
   }
 
+  // A song as the band plays it: every note a MIDI number. A song written
+  // { like: 'c-6dim', transpose: -4 } is that song moved by semitones.
   function findSong(id) {
     const songs = (root.KR && root.KR.songs) || {};
-    if (!songs[id]) throw new Error('No song called ' + id);
-    return songs[id];
+    const song = songs[id];
+    if (!song) throw new Error('No song called ' + id);
+    const base = song.like ? songs[song.like] : song;
+    if (!base || base.like) throw new Error('A song can only be like a song written out: ' + id);
+    const shift = song.like ? (song.transpose || 0) : 0;
+    return {
+      id,
+      comp: song.comp || base.comp,
+      bars: base.bars.map((bar, i) => ({
+        chord: (song.chords && song.chords[i]) || bar.chord,
+        bass: noteMidi(bar.bass) + shift,
+        keys: bar.keys.map((k) => noteMidi(k) + shift),
+      })),
+    };
   }
 
   // from: skip any hit before this time, so a part can join mid-loop cleanly.
+  // Keys and bass asked for the same cycle get the same rhythm, so they push
+  // together: the pick is remembered per song and cycle start.
+  const picks = {};
   function songPart(ctx, out, instrument, songId, compName, t0, from) {
     const song = findSong(songId);
-    songHits(song, compName).forEach((h) => {
+    const key = songId + '|' + compName + '|' + t0.toFixed(3);
+    let hits;
+    if (picks[key]) hits = picks[key];
+    else {
+      hits = songHits(song, compName, picks[songId + '|' + compName + '|last']);
+      picks[songId + '|' + compName + '|last'] = songHits.lastPick;
+      picks[key] = hits;
+      const keys = Object.keys(picks);
+      if (keys.length > 64) keys.slice(0, keys.length - 64).forEach((k) => { if (k.slice(-5) !== '|last') delete picks[k]; });
+    }
+    hits.forEach((h) => {
       const t = t0 + h.start * BEAT;
       if (from && t < from) return;
       const bar = song.bars[h.chord];
       const len = h.beats * BEAT;
-      if (instrument === 'keys') note(keysVoice.rhodes, ctx, out, t, bar.keys.map(noteMidi), len * 0.95, h.beats >= 4 ? 0.85 : 0.9);
-      else if (instrument === 'bass') note(bassVoice.electric, ctx, out, t, noteMidi(bar.bass), len * 0.92, 1);
+      if (instrument === 'keys') note(keysVoice.rhodes, ctx, out, t, bar.keys, len * 0.95, h.beats >= 4 ? 0.85 : 0.9);
+      else if (instrument === 'bass') note(bassVoice.electric, ctx, out, t, bar.bass, len * 0.92, 1);
     });
   }
 
@@ -506,6 +545,8 @@
     schedulePart,
     pad,
     noteMidi,
-    songHits: (songId, compName) => songHits(findSong(songId), compName),
+    songHits: (songId, compName, lastPick) => songHits(findSong(songId), compName, lastPick),
+    lastPick: () => songHits.lastPick,
+    song: findSong,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
