@@ -755,6 +755,9 @@
         <div class="bsmash-picture-choice" id="beat-picture-choice" hidden></div>
         <!-- The first minute: the meter fills as the beat is held. -->
         <div class="bsmash-jam-meter" id="beat-jam-meter"><div class="bsmash-jam-fill" id="beat-jam-fill"></div></div>
+        <!-- Once the groove is going: one dot for each time round with the
+             beat held. Four, and the band changes. -->
+        <div class="bsmash-jam-coming" id="beat-jam-coming" hidden><span></span><span></span><span></span><span></span></div>
         <button class="btn btn-start bsmash-jam-next" id="beat-jam-next" hidden onclick="showBeatJamNotes()" data-text="beat.jam.next"></button>
         <!-- When the student stops, the band stops, and the way on is here. -->
         <div class="bsmash-jam-nav" id="beat-jam-nav" hidden>

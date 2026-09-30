@@ -120,6 +120,33 @@ const BSMASH_JAM_SONG_LAYERS = [
     { at: 1, instrument: 'keys', style: 'song:{song}:pumps' },
     { at: 1, instrument: 'bass', style: 'song:{song}:groove' },
 ];
+// THE GROOVE KEEPS MOVING. Rob: "We play a four-bar loop four times; on the
+// fifth time that sets up a variation of the band. And it keeps pumping away
+// for another four bars until another variation happens." Once the meter is
+// full, every BSMASH_JAM_VARIATION_EVERY times round the loop with the beat
+// held, the drums play a fill and the band turns to the next line of a
+// variations list at the top of the next time round. A line changes only the
+// instruments it names; 'off' drops one out. Rob's songs carry their own list
+// (`jam` in content/songs.js); these are for a song without one, and for the
+// C loops. bass and keys name a song's bass styles and comps; for the C
+// loops, a style.
+const BSMASH_JAM_VARIATION_EVERY = 4;      // times round the loop, beat held, between variations
+const BSMASH_JAM_STEADY_TAPS = 6;          // on-beat taps in the first three bars that make a time round count
+const BSMASH_JAM_VARIATIONS = [
+    { drums: 'smooth' },
+    { drums: 'spicy', bass: 'spicy', keys: 'spicy' },
+    { drums: 'off', say: 'beat.jam.drop' },
+    { drums: 'hop', bass: 'hop', keys: 'hop' },
+    { drums: 'smooth', bass: 'smooth', keys: 'smooth' },
+    { drums: 'warmup' },
+];
+const BSMASH_JAM_SONG_VARIATIONS = [
+    { drums: 'smooth' },
+    { drums: 'spicy', bass: 'tumbao' },
+    { drums: 'off', say: 'beat.jam.drop' },
+    { drums: 'hop', bass: 'pump', keys: 'pumps' },
+    { drums: 'warmup', bass: 'groove' },
+];
 // Parts played live by the synth (Rob's songs, and any loop whose file hasn't
 // loaded) go through this. It is the factor tools/beat-smash-band/render.js
 // scaled the loop files by, measured: 0.47 for every part. Without it a live
@@ -331,7 +358,7 @@ function bsmashLoadLoop(id) {
    Each four-bar cycle is booked a little ahead as a new source at an exact
    time; a loop that hasn't loaded yet is synthesised by the placeholder band
    instead, so the music never waits for a download. */
-let bsmashBand = null;          // { start, parts: {instrument: style}, next, sources: {instrument: [..]} }
+let bsmashBand = null;          // { start, parts: {instrument: style}, next, sources: {instrument: [..]}, pending }
 let bsmashTicker = null;
 let bsmashQueue = [];           // [{ when, play, tag }] - sounds booked on the audio clock
 
@@ -467,6 +494,11 @@ function bsmashTick() {
     const now = raudioCtx.currentTime;
     while (bsmashBand.next < now + 0.6) {
         const when = bsmashBand.next;
+        const pending = bsmashBand.pending;
+        if (pending && when >= pending.at - 1e-6) {
+            bsmashBand.pending = null;
+            pending.apply();
+        }
         Object.keys(bsmashBand.parts).forEach(instrument =>
             bsmashPlayCycle(instrument, bsmashBand.parts[instrument], when));
         bsmashBand.next += BSMASH_LOOP;
@@ -1038,7 +1070,9 @@ function startBeatJam() {
         jam: { offsets: [], meter: 0, inARow: 0, lastHitBeat: null, demoBars: new Set(),
                lastDemoBar: 0, layers: 0, full: false, morphed: false,
                layerList: bsmashJamLayers(), missesInRow: 0, sag: 0,
-               taps: 0, lastTap: 0, stopped: false },
+               taps: 0, lastTap: 0, stopped: false,
+               song: bsmashJamSong(), variations: null, variation: 0,
+               rounds: 0, cycleTaps: {} },
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.add('jam');
@@ -1047,23 +1081,107 @@ function startBeatJam() {
     bsmashEl('beat-actions').hidden = true;
     bsmashEl('beat-jam-next').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
+    bsmashEl('beat-jam-coming').hidden = true;
     bsmashDiceHide();
     bsmashBandStart({ drums: 'warmup' });
+    bsmash.jam.variations = bsmashJamVariations();
     bsmash.jam.layerList.forEach(layer => bsmashLoadLoop(bsmashPartLoopId(layer.instrument, layer.style)));
+    bsmash.jam.variations.forEach(v => Object.keys(v.parts).forEach(instrument =>
+        bsmashLoadLoop(bsmashPartLoopId(instrument, v.parts[instrument]))));
     bsmashBandLevel(BSMASH_JAM_BAND);
     bsmashJamMeter();
     bsmashJamDemo(1);
     bsmashEvent('beat.jam.start');
 }
 
-// The layers the band builds with: the fixed loops, or one of Rob's songs
-// if the student (or Rob) chose one as the jam song.
-function bsmashJamLayers() {
+// The jam song's id, if the student (or Rob) chose one of Rob's songs.
+function bsmashJamSong() {
     const song = bsmashLoad().settings.jamSong;
     const songs = (window.KR && KR.songs) || {};
-    if (!songs[song]) return BSMASH_JAM_LAYERS;
+    return songs[song] ? song : null;
+}
+
+// The layers the band builds with: the fixed loops, or one of Rob's songs.
+function bsmashJamLayers() {
+    const song = bsmashJamSong();
+    if (!song) return BSMASH_JAM_LAYERS;
     return BSMASH_JAM_SONG_LAYERS.map(layer =>
         Object.assign({}, layer, { style: layer.style.replace('{song}', song) }));
+}
+
+// The variations, as parts the band can play: { parts: {instrument: style
+// or null for 'off'}, say }. A song's own list if it has one.
+function bsmashJamVariations() {
+    const song = bsmash.jam.song;
+    let list = BSMASH_JAM_VARIATIONS;
+    if (song) {
+        try { list = BeatSmashBand.song(song).jam || BSMASH_JAM_SONG_VARIATIONS; }
+        catch (e) { list = BSMASH_JAM_SONG_VARIATIONS; }
+    }
+    return list.map(line => {
+        const parts = {};
+        ['drums', 'bass', 'keys'].forEach(instrument => {
+            if (!(instrument in line)) return;
+            const direction = line[instrument];
+            if (direction === 'off') parts[instrument] = null;
+            else if (song && instrument !== 'drums') parts[instrument] = 'song:' + song + ':' + direction;
+            else parts[instrument] = direction;
+        });
+        return { parts: parts, say: line.say || null };
+    });
+}
+
+// Once the groove is going: each time round the loop, at the top of its last
+// bar, did the student hold the beat? Four of those and the drums fill in
+// that bar, and the band turns a corner at the top of the next time round.
+// Only the times round with the beat held count, and nothing is lost by a
+// wobble: the dots stay where they were.
+function bsmashJamRound(bar) {
+    const jam = bsmash.jam;
+    if (!jam.full) return;
+    const round = Math.floor(bar / 4);
+    const steady = !jam.stopped && jam.sag === 0 && (jam.cycleTaps[round] || 0) >= BSMASH_JAM_STEADY_TAPS;
+    delete jam.cycleTaps[round - 1];
+    if (!steady) return;
+    jam.rounds++;
+    if (jam.rounds >= BSMASH_JAM_VARIATION_EVERY) {
+        jam.rounds = 0;
+        bsmashJamVariation(bsmashBand.start + bar * BSMASH_BAR);
+    }
+    bsmashJamComing();
+}
+
+// The fill in the bar starting at barStart, and the next variation at the
+// top of the bar after it.
+function bsmashJamVariation(barStart) {
+    const jam = bsmash.jam;
+    const variation = jam.variations[jam.variation % jam.variations.length];
+    jam.variation++;
+    const at = barStart + BSMASH_BAR;
+    const fill = BeatSmashBand.fill(raudioCtx, bsmashLiveBus, barStart);
+    bsmashBand.sources.drums = (bsmashBand.sources.drums || []).concat([{ src: null, gain: fill }]);
+    bsmashBand.pending = {
+        at: at,
+        apply: () => {
+            Object.keys(variation.parts).forEach(instrument => {
+                const style = variation.parts[instrument];
+                if (style === null) delete bsmashBand.parts[instrument];
+                else bsmashBand.parts[instrument] = style;
+            });
+            bsmashEl('beat-jam-coming').classList.add('turned');
+            bsmashLater(() => bsmashEl('beat-jam-coming').classList.remove('turned'), 1200);
+        },
+    };
+    bsmashEvent('beat.jam.variation');
+    if (variation.say) bsmashLater(() => bsmashEvent(variation.say), Math.max(0, (at - bsmashNow()) * 1000));
+}
+
+// The dots under the meter: how close the next change of the band is.
+function bsmashJamComing() {
+    const jam = bsmash.jam;
+    const box = bsmashEl('beat-jam-coming');
+    box.hidden = !jam.full;
+    [...box.children].forEach((dot, i) => dot.classList.toggle('lit', i < jam.rounds));
 }
 
 // Tango hits the four pads, one per beat, for one bar.
@@ -1082,6 +1200,7 @@ function bsmashJamBeat(beat, bar, inBar) {
     if (jam.stopped || jam.morphed) return;
     // The student has stopped playing: so does the band.
     if (jam.taps && bsmashNow() - jam.lastTap > BSMASH_JAM_IDLE_BARS * BSMASH_BAR) return bsmashJamStop();
+    if (inBar === 0 && ((bar % 4) + 4) % 4 === 3) bsmashJamRound(bar);
     if (jam.demoBars.has(bar)) bsmash.pads.flash(inBar, 'demo', 320);
     else bsmash.pads.glow(inBar, inBar === 0 ? 'beat-one' : 'beat');
     // If the taps haven't settled, Tango shows the way again.
@@ -1130,6 +1249,8 @@ function bsmashJamPress(p) {
         jam.inARow++;
         jam.missesInRow = 0;
         jam.lastHitBeat = beat;
+        const round = Math.floor(beat / 16);
+        jam.cycleTaps[round] = (jam.cycleTaps[round] || 0) + 1;
         jam.meter = Math.min(BSMASH_JAM_GOAL, jam.meter + 1);
         bsmash.pads.flash(p.pad, 'hit', 420);
         // Back on the beat: the band gets its power back, a step at a time.
@@ -1195,6 +1316,7 @@ function bsmashJamMeter() {
     if (!jam.full && jam.meter >= BSMASH_JAM_GOAL) {
         jam.full = true;
         bsmashEl('beat-jam-next').hidden = false;
+        bsmashJamComing();
         bsmashEvent('beat.jam.full');
     }
 }
@@ -1248,7 +1370,10 @@ function bsmashJamMorph() {
     bsmashSaveDelay(bsmash.delay);
     bsmashRecordBeatTest(bsmashBeatTestResult(jam.offsets));
     // The band steps back to Tango alone: the rest of it is still to be won.
-    jam.layerList.forEach(layer => bsmashBandRemovePart(layer.instrument));
+    bsmashBand.pending = null;
+    ['bass', 'keys'].forEach(bsmashBandRemovePart);
+    if (bsmashBand.parts.drums !== 'warmup') bsmashBandSetPart('drums', 'warmup');
+    bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashBandLevel(BSMASH_JAM_BAND);
     bsmash.bars = [bsmashParseBar('q q q q')]; // text-ok: a bar, not words
@@ -1293,6 +1418,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmashEl('beat-screen-studio').classList.remove('jam');
     bsmashEl('beat-jam-next').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
+    bsmashEl('beat-jam-coming').hidden = true;
     bsmashBandStart({ drums: record.won ? record.part : 'warmup' });
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();

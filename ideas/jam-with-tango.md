@@ -76,6 +76,30 @@ the teacher plays, the class plays it back.
 10,000 times. And you have to give them 100,000 reasons why."* (And: *"I'll
 charge $0.99."*)
 
+## Rob, third round (2026-09-30): songs to unlock, and the curiosity stage
+
+> *"So the chord progressions can become our song list that they can unlock
+> through progress?"*
+
+> *"I have so many students that can read well but have no sense of rhythm…
+> They haven't spent enough time in the curiosity stage playing with the
+> beat."*
+
+Built in answer: the jam's **variations** (every four times round with the
+beat held, a fill and the band changes; one change is **the drop**, drums
+out, the student is the drummer) and **two chords in a bar**, with his B♭
+`I6 vi7 | ii7 V7` and D minor `i6 | iiø7 V7alt`. See CLAUDE.md, "The jam
+keeps moving".
+
+**Proposed, not built: songs as the reward for holding the beat.** A song
+opens after a number of variations reached in the jam (say every three), in
+Rob's order, so the list is a ladder: the C loops first, then the 6-dim
+songs, then the two-fives. Nothing is gated behind a reading test: the jam
+stays the curiosity stage, and what it pays is more music to play in. Unlocks
+would go through `KR.openStages()`/`KR.openAll()` like every other game.
+Waiting on Rob: the order, the number, and whether a song can also be won in
+call and response.
+
 ## Not decided
 
 1. **Where it sits.** Rob has placed one door already: the warm-up jam's stop

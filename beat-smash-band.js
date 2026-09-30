@@ -130,6 +130,10 @@
       });
       tone(ctx, out, t, 'sine', 3150, 3150, 0, 0.35, 0.03 * v);   // the bell
     },
+    crash(ctx, out, t, v) {
+      noiseBurst(ctx, out, t, 1.0, 'highpass', 5200, 0.5, 0.3 * v, 0.004);
+      noiseBurst(ctx, out, t, 0.5, 'bandpass', 3400, 0.8, 0.16 * v);
+    },
   };
 
   // ---------- bass voices ----------
@@ -440,10 +444,14 @@
     return hits;
   }
 
-  // Which bar's chord a hit plays: its own bar's, unless it is held across
-  // the barline, in which case the NEXT bar's - the anticipation.
+  // Which chord a hit plays. A hit held across a chord change plays the NEW
+  // chord if it starts within the beat before the change: that is the
+  // anticipation (a pump on the "and" of 4 held over the barline). Starting
+  // any earlier, it plays its own chord and the new one is struck again at
+  // the change, so no chord ever sounds over the wrong bass.
   // compName may name one rhythm of a list, 'pumps#2'; a list named on its
   // own ('pumps') gives a different rhythm each time it is asked.
+  // `chord` in each hit is an index into song.changes.
   function songHits(song, compName, lastPick) {
     const m = /^(.+?)(?:#(\d+))?$/.exec(compName);
     const comp = song.comp && song.comp[m[1]];
@@ -457,15 +465,35 @@
       rhythm = comp[pick];
       songHits.lastPick = pick;
     }
-    return rhythmHits(rhythm).filter((h) => !h.rest).map((h) => {
-      const bar = Math.floor(h.start / 4 + 1e-9);
-      const crosses = h.start + h.beats > (bar + 1) * 4 + 1e-9;
-      return Object.assign({ chord: crosses ? (bar + 1) % BARS : bar }, h);
+    const changes = song.changes;
+    const at = (beat) => { let c = 0; while (c + 1 < changes.length && changes[c + 1].start <= beat + 1e-9) c++; return c; };
+    const nextChange = (from, to) => changes.find((c) => c.start > from + 1e-9 && c.start < to - 1e-9);
+    const hits = [];
+    rhythmHits(rhythm).filter((h) => !h.rest).forEach((h) => {
+      let start = h.start, restrike = false;
+      const end = h.start + h.beats;
+      while (start < end - 1e-9) {
+        let chord = at(start);
+        let change = nextChange(start, end);
+        if (change && change.start - start <= 1 + 1e-9 && !restrike) {
+          chord = changes.indexOf(change);          // the anticipation
+          change = nextChange(change.start, end);
+        }
+        const stop = change ? change.start : end;
+        hits.push({ start, beats: stop - start, rest: false, chord, restrike });
+        start = stop; restrike = true;
+      }
     });
+    return hits;
   }
 
-  // A song as the band plays it: every note a MIDI number. A song written
-  // { like: 'c-6dim', transpose: -4 } is that song moved by semitones.
+  // A song as the band plays it: every note a MIDI number, and its chords
+  // laid out as `changes` over the four bars: [{ start, beats, chord, bass,
+  // keys }], start and beats in beats from the top of the loop.
+  // A bar is one chord, or a list of chords sharing the bar (evenly, unless
+  // a chord says how many `beats` it takes). A song of one or two bars is
+  // repeated to fill the four. A song written { like: 'c-6dim', transpose: -4 }
+  // is that song moved by semitones.
   function findSong(id) {
     const songs = (root.KR && root.KR.songs) || {};
     const song = songs[id];
@@ -473,15 +501,43 @@
     const base = song.like ? songs[song.like] : song;
     if (!base || base.like) throw new Error('A song can only be like a song written out: ' + id);
     const shift = song.like ? (song.transpose || 0) : 0;
+    const written = base.bars;
+    if (!written || BARS % written.length) throw new Error('A song is 1, 2 or 4 bars long: ' + id);
+    let name = 0;
+    const one = written.map((bar) => {
+      const list = Array.isArray(bar) ? bar : [bar];
+      const given = list.reduce((a, c) => a + (c.beats || 0), 0);
+      const unsized = list.filter((c) => !c.beats).length;
+      const each = unsized ? (4 - given) / unsized : 0;
+      let beat = 0;
+      const chords = list.map((c) => {
+        const out = {
+          start: beat, beats: c.beats || each,
+          chord: (song.chords && song.chords[name]) || c.chord,
+          bass: noteMidi(c.bass) + shift,
+          keys: c.keys.map((k) => noteMidi(k) + shift),
+        };
+        name++; beat += out.beats;
+        return out;
+      });
+      if (Math.abs(beat - 4) > 1e-9 || chords.some((c) => !(c.beats > 0))) throw new Error('A bar of ' + id + ' is not four beats');
+      return chords;
+    });
+    const changes = [], bars = [];
+    for (let b = 0; b < BARS; b++) {
+      const chords = one[b % one.length].map((c) => Object.assign({}, c, { start: b * 4 + c.start }));
+      chords.forEach((c) => changes.push(c));
+      // For reading, and for a one-chord bar exactly as before: the bar's
+      // chord names together, its first bass note and voicing.
+      bars.push({ chord: chords.map((c) => c.chord).join(' '), bass: chords[0].bass, keys: chords[0].keys, chords });
+    }
     return {
       id,
       comp: song.comp || base.comp,
       bass: song.bass || base.bass,
-      bars: base.bars.map((bar, i) => ({
-        chord: (song.chords && song.chords[i]) || bar.chord,
-        bass: noteMidi(bar.bass) + shift,
-        keys: bar.keys.map((k) => noteMidi(k) + shift),
-      })),
+      drums: song.drums || base.drums,
+      jam: song.jam || base.jam,
+      bars, changes,
     };
   }
 
@@ -491,15 +547,19 @@
   // Cuban music. Half notes in traditional choro or bossa nova. Quarter notes
   // for walking in steps towards the next root note of the next chord."
   // So the bass does NOT follow the keys. Each style is a rule that makes a
-  // line from the song's roots and the notes of each bar's voicing:
-  //   whole   the root, a whole note
-  //   halves  root on 1, fifth on 3 (choro, traditional bossa)
-  //   pump    root dotted quarter, fifth on the "and" of 2; fifth, root again
-  //   walk    quarters: root, two chord tones, then a half step into the next root
-  //   tumbao  the Cuban anticipated bass: on the "and" of 2 the next chord's
-  //           fifth, on 4 its root, held over the barline. Beat 1 is silent.
-  // "The fifth" is the chord's own: the voicing note nearest a perfect fifth
-  // above the root, so a diminished chord gets its diminished fifth.
+  // line from the song's roots and the notes of each chord's voicing:
+  //   whole   the root, held for the whole chord
+  //   halves  root, then fifth halfway (choro, traditional bossa); a chord
+  //           lasting two beats gets its root only
+  //   pump    root dotted quarter, fifth on the "and"; fifth, root again
+  //   walk    quarters: root, chord tones, then a half step into the next root
+  //   tumbao  the Cuban anticipated bass: on the "and" of 2 the fifth of the
+  //           chord coming next, on 4 the next chord's root, held over the
+  //           barline. Beat 1 is silent.
+  // "The fifth" is the chord's own: the perfect fifth if the voicing has it,
+  // else its flat or sharp fifth (a diminished chord gets its diminished
+  // fifth, an alt chord its flat 13), else the perfect fifth anyway (an F13
+  // voiced without its C still has a C in the bass).
   const BASS_STYLES = ['whole', 'halves', 'pump', 'walk', 'tumbao'];
   const BASS_LOW = 36, BASS_HIGH = 57;     // C2 to A3: where the walking line may go
 
@@ -509,55 +569,78 @@
     return pcs;
   }
 
-  function nearestTone(tones, target) {
-    for (let d = 0; d < 7; d++) {
-      if (tones.has(((target - d) % 12 + 12) % 12)) return target - d;
-      if (tones.has(((target + d) % 12 + 12) % 12)) return target + d;
-    }
-    return target;
-  }
-
   function fifthOf(bar) {
-    return nearestTone(chordTones(bar), bar.bass + 7);
+    const tones = chordTones(bar);
+    const has = (m) => tones.has(((m % 12) + 12) % 12);
+    for (const gap of [7, 6, 8]) if (has(bar.bass + gap)) return bar.bass + gap;
+    return bar.bass + 7;
   }
 
   function nearestOctave(note, to) {
     return note + 12 * Math.round((to - note) / 12);
   }
 
+  function inBassRange(m) {
+    while (m > BASS_HIGH) m -= 12;
+    while (m < BASS_LOW) m += 12;
+    return m;
+  }
+
   function bassLine(song, style) {
-    const bars = song.bars, hits = [];
+    const changes = song.changes, hits = [];
     const add = (start, beats, midi) => hits.push({ start, beats, midi });
+    const after = (i) => changes[(i + 1) % changes.length];
     if (style === 'walk') {
       let prev = null;
-      bars.forEach((bar, b) => {
-        let r = prev === null ? bar.bass : nearestOctave(bar.bass, prev);
-        while (r > BASS_HIGH) r -= 12;
-        while (r < BASS_LOW) r += 12;
-        const tones = chordTones(bar);
+      changes.forEach((c, i) => {
+        const r = inBassRange(prev === null ? c.bass : nearestOctave(c.bass, prev));
+        const tones = chordTones(c);
         const up = (from, gap) => { let m = from + gap; while (!tones.has(((m % 12) + 12) % 12)) m++; return m; };
         const down = (from, gap) => { let m = from - gap; while (!tones.has(((m % 12) + 12) % 12)) m--; return m; };
-        let two = up(r, 3), three = up(two, 2);
-        if (three > BASS_HIGH) { two = down(r, 3); three = down(two, 2); }
-        const next = bars[(b + 1) % bars.length];
-        let target = nearestOctave(next.bass, three);
-        while (target > BASS_HIGH) target -= 12;
-        while (target < BASS_LOW) target += 12;
-        let approach = target > three ? target - 1 : target + 1;
-        if (approach === three) approach = target > three ? target + 1 : target - 1;
-        [r, two, three, approach].forEach((m, k) => add(b * 4 + k, 1, m));
-        prev = approach;
+        const steps = Math.max(1, Math.round(c.beats));
+        const line = [r];
+        // chord tones climbing (or falling, if climbing leaves the bass)
+        let goingUp = true;
+        for (let k = 1; k < steps - 1; k++) {
+          const from = line[line.length - 1];
+          let m = goingUp ? up(from, k === 1 ? 3 : 2) : down(from, k === 1 ? 3 : 2);
+          if (goingUp && m > BASS_HIGH) { goingUp = false; m = down(from, k === 1 ? 3 : 2); }
+          line.push(m);
+        }
+        if (steps > 1) {
+          const last = line[line.length - 1];
+          const target = inBassRange(nearestOctave(after(i).bass, last));
+          let approach = target > last ? target - 1 : target + 1;
+          if (approach === last) approach = target > last ? target + 1 : target - 1;
+          line.push(approach);
+        }
+        line.forEach((m, k) => add(c.start + k * (c.beats / steps), c.beats / steps, m));
+        prev = line[line.length - 1];
       });
       return hits;
     }
-    bars.forEach((bar, b) => {
-      const r = bar.bass, five = fifthOf(bar), next = bars[(b + 1) % bars.length];
-      const at = b * 4;
-      if (style === 'whole') add(at, 4, r);
-      else if (style === 'halves') { add(at, 2, r); add(at + 2, 2, five); }
-      else if (style === 'pump') { add(at, 1.5, r); add(at + 1.5, 0.5, five); add(at + 2, 1.5, five); add(at + 3.5, 0.5, r); }
-      else if (style === 'tumbao') { add(at + 1.5, 1.5, fifthOf(next)); add(at + 3, 2, next.bass); }
-      else throw new Error('No bass style called ' + style);
+    if (style === 'tumbao') {
+      // Bar by bar: the "and" of 2 and beat 4 each look ahead to the chord
+      // after the one sounding there.
+      const chordAt = (beat) => { let k = 0; while (k + 1 < changes.length && changes[k + 1].start <= beat + 1e-9) k++; return k; };
+      for (let b = 0; b < BARS; b++) {
+        add(b * 4 + 1.5, 1.5, fifthOf(after(chordAt(b * 4 + 1.5))));
+        add(b * 4 + 3, 2, after(chordAt(b * 4 + 3)).bass);
+      }
+      return hits;
+    }
+    changes.forEach((c) => {
+      const r = c.bass, five = fifthOf(c), at = c.start;
+      if (style === 'whole') add(at, c.beats, r);
+      else if (style === 'halves') {
+        if (c.beats >= 4) { add(at, c.beats / 2, r); add(at + c.beats / 2, c.beats / 2, five); }
+        else add(at, c.beats, r);
+      } else if (style === 'pump') {
+        for (let k = 0; k + 2 <= c.beats + 1e-9; k += 2) {
+          const [a, b] = (k / 2) % 2 ? [five, r] : [r, five];
+          add(at + k, 1.5, a); add(at + k + 1.5, 0.5, b);
+        }
+      } else throw new Error('No bass style called ' + style);
     });
     return hits;
   }
@@ -598,9 +681,9 @@
     hits.forEach((h) => {
       const t = t0 + h.start * BEAT;
       if (from && t < from) return;
-      const bar = song.bars[h.chord];
+      const chord = song.changes[h.chord];
       const len = h.beats * BEAT;
-      if (instrument === 'keys') note(keysVoice.rhodes, ctx, out, t, bar.keys, len * 0.95, h.beats >= 4 ? 0.85 : 0.9);
+      if (instrument === 'keys') note(keysVoice.rhodes, ctx, out, t, chord.keys, len * 0.95, h.beats >= 4 ? 0.85 : 0.9);
     });
   }
 
@@ -613,6 +696,22 @@
     g.connect(dest);
     if (song) songPart(ctx, g, instrument, song[1], song[2], t0, from);
     else PARTS[instrument][style](ctx, g, t0);
+    return g;
+  }
+
+  // ---------- the fill: the band is about to turn a corner ----------
+  // In the bar starting at t0: the snare builds through beats 3 and 4, the
+  // last beat in sixteenths, and a crash and a kick land on the next beat 1,
+  // where the band changes. Returns the gain node, so it can be silenced.
+  function fill(ctx, dest, t0) {
+    const g = ctx.createGain();
+    g.gain.value = LEVEL.drums;
+    g.connect(dest);
+    [[8, 0.45], [10, 0.55], [12, 0.65], [13, 0.7], [14, 0.8], [15, 0.9]]
+      .forEach(([s, v]) => drum.snare(ctx, g, at(t0, 0, s), v));
+    [8, 12].forEach((s) => drum.kick(ctx, g, at(t0, 0, s), 0.8));
+    drum.kick(ctx, g, t0 + BAR, 1);
+    drum.crash(ctx, g, t0 + BAR, 1);
     return g;
   }
 
@@ -640,6 +739,7 @@
     STYLES: ['spicy', 'smooth', 'hop'],
     PAD_SOUNDS: ['kick', 'snare', 'bass-electric', 'bass-acoustic', 'rhodes', 'organ'],
     schedulePart,
+    fill,
     pad,
     noteMidi,
     songHits: (songId, compName, lastPick) => songHits(findSong(songId), compName, lastPick),

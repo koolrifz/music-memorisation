@@ -1590,14 +1590,64 @@ repeated to fill four bars.
   under everything: the loudest song and style now peaks at 0.89.
 - **Hear them in `tools/beat-smash-band/lab.html`**: pick the song, a keys
   rhythm (each pump rhythm on its own, too) and a bass style.
-- **Four songs:** `c-6dim`, `c-6dim-tritone` (the last chord ♭II7(♭5)), and
-  both in A flat. **Open for Rob:** the ♭II7(♭5) voicing (F G B D♭ in C) is
-  Claude's, since he gave none.
+- **Six songs:** `c-6dim`, `c-6dim-tritone` (the last chord ♭II7(♭5)), both
+  in A flat, `bb-rhythm-changes` (Rob's `||: Bb6 G- | C-7 F7 :||`) and
+  `d-minor-two-five` (`Dm6 | Em7b5 A7alt`). **Open for Rob:** the ♭II7(♭5)
+  voicing and every voicing in the last two are Claude's, since he gave
+  chords only. B♭ holds a D on top throughout; D minor moves every voice by
+  a half step or holds, so the alt chord falls back into Dm6.
+- **Two chords in a bar, and short loops.** A bar is one chord or a list
+  (split evenly, or by `beats`); a one- or two-bar song repeats to fill the
+  four-bar cycle, so the song clock never changes. `findSong()` lays every
+  song out as `changes` (`{start, beats, chord, bass, keys}`), and a hit's
+  `chord` is an index into them. **The anticipation is now one rule for
+  barlines and mid-bar changes alike:** a keys hit that crosses a change and
+  starts within the beat before it plays the new chord; struck earlier, it
+  is cut at the change and the new chord struck there. So no chord ever
+  sounds over the wrong bass (tested across every song and comp). The bass
+  styles fit themselves to the chord's length: a walk over two beats is the
+  root and a half step into the next root; the tumbao's two notes each look
+  ahead to the chord after the one sounding there.
+- **"The fifth" is a real fifth first**: perfect if the voicing has it, else
+  its ♭5 or ♯5/♭13 (the diminished and alt chords), else the perfect fifth
+  anyway. The old "nearest voicing note" gave D for an F13 voiced without C.
+
+### The jam keeps moving: variations every four times round
+Rob: *"We play a four-bar loop four times; on the fifth time that sets up a
+variation of the band. And it keeps pumping away for another four bars until
+another variation happens."* And the aim: *"keep them tapping… to hear what's
+coming up next."*
+
+- Once the meter is full, each time round the loop is judged at the top of
+  its last bar: **held** if the band isn't sagging or stopped and the first
+  three bars had at least `BSMASH_JAM_STEADY_TAPS` (6) on-beat taps. Four
+  held (`BSMASH_JAM_VARIATION_EVERY`) and the drums play a **fill** in that
+  last bar (`BeatSmashBand.fill`: snare building through beats 3–4, crash and
+  kick on the next 1), and the band turns to the next line of directions **at
+  the top of the next time round**: `bsmashBand.pending`, applied by
+  `bsmashTick` just before it books that cycle, so the change is clean on the
+  barline and nothing already sounding is cut.
+- **A wobble loses nothing:** a time round not held simply doesn't count.
+  Four dots under the meter (`#beat-jam-coming`) show how close the next
+  change is: that is the "what's coming up next".
+- **The directions are the song's**: `jam` in `content/songs.js`, a list of
+  lines naming `drums` / `bass` / `keys` (and `'off'`), plus an optional
+  `say` event. A line changes only what it names. Songs without one, and the
+  C loops, use `BSMASH_JAM_SONG_VARIATIONS` / `BSMASH_JAM_VARIATIONS`.
+- **The drop**: a line with `drums: 'off'` takes the drums out and Tango says
+  *"You're the drummer now!"* The band has only the student's beat to go on,
+  which is the pulse held from the inside: Rob's students who *"read well but
+  have no sense of rhythm"* are the reason it's in every list.
+- "Show me what I played" clears anything pending and puts the band back to
+  Tango alone, whatever the variations did.
 
 ### Parked from Rob's first play (2026-09-30)
-- **The groove grows the longer it's held**, beyond what's built: the bass
-  getting more complicated, richer voicings, a stop, *"all sorts of things
-  happen… I can help you write that."* The songs format is where it would go.
+- **The groove grows the longer it's held**: the variations above are the
+  first of it. Still to come, when Rob writes them: the bass getting more
+  complicated and richer voicings within a song (a per-variation comp or
+  voicing set is the natural shape).
+- **Songs unlocked through progress** (Rob asked, 2026-09-30): proposed, not
+  built. See the chat answer recorded in `ideas/jam-with-tango.md`.
 - **A true record slow-down** when the beat is lost (see the sag, above).
 - **Jam with Tango: call and response**, no notation: Tango plays a figure
   (son clave, tresillo…), the student plays it back. A game of its own.
@@ -1605,11 +1655,13 @@ repeated to fill four bars.
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (135 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (156 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
-level), the square blocks, all
+level, two chords in a bar, the anticipation rule across every song),
+the jam's variations (the dots, the fill, the change on the barline, the drop),
+the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,
