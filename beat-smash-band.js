@@ -15,7 +15,11 @@
    Pure Web Audio, no page needed: the same code plays live in the loop lab
    and renders the placeholder files in an OfflineAudioContext
    (tools/beat-smash-band/render.js). When Garnet's recordings arrive they
-   replace the rendered files; nothing here is part of the game itself.
+   replace the rendered files.
+
+   The game (beat-smash.js) uses this file for two things only: the
+   student's PAD SOUNDS, played live so a held note sustains until release,
+   and a stand-in for any loop file that hasn't loaded yet.
    ========================================= */
 (function (root) {
   'use strict';

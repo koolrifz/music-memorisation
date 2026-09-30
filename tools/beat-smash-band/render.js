@@ -1,4 +1,4 @@
-/* Renders the placeholder band (band.js) to the loop files named in the
+/* Renders the placeholder band (beat-smash-band.js) to the loop files named in the
    Beat Smash loop spec, in headless Chromium, and checks the mix.
 
      NODE_PATH=$(npm root -g) node tools/beat-smash-band/render.js
@@ -12,7 +12,7 @@
    Before writing, it sums every one of the 27 drums + bass + keys
    combinations and scales all nine loops by one common factor so the
    loudest combination peaks at -1 dBFS. Balance between the parts is set
-   in band.js (LEVEL) and is never changed here. */
+   in beat-smash-band.js (LEVEL) and is never changed here. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -45,7 +45,7 @@ const db = (x) => (20 * Math.log10(x)).toFixed(1) + ' dB';
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.setContent('<!doctype html><html><body></body></html>');
-  await page.addScriptTag({ path: path.join(HERE, 'band.js') });
+  await page.addScriptTag({ path: path.join(HERE, '..', '..', 'beat-smash-band.js') });
 
   const render = (instrument, style) => page.evaluate(async ([instrument, style, sr]) => {
     const B = window.BeatSmashBand;

@@ -5,7 +5,7 @@ Read this before touching the code. It's the accumulated context from months of 
 ## What this is
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
-**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar and `value-smash.js` for the Value silo (being built on `idea/value-smash`). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
+**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), and `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
 
 **WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
 that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
@@ -1376,6 +1376,89 @@ commit.
   but there are no shortcut keys for Chromebooks.
 - **The brief's "near-miss" hook** ("1 beat over", "0.3 s off your best") is
   listed for phase 1 in the brief but not in the build guide; not built.
+
+## BEAT SMASH — Phase 1 built (branch `claude/beat-game-design-y00yax`)
+The first rhythm game, and the step before Stomp Lab that Garnet asked for.
+The spec is the private brief, `kool-riffs-docs/docs/beat-smash-design-brief.md`
+(rev 7); section numbers below are its. **Phase 1** is built: the first minute,
+the pads, the delay calibration, and **Tango on drums end to end**. Riff on bass
+and keys is Phase 2, the booth and the Learner's Permit Phase 3. The brief
+says `idea/beat-smash`; this session could only push to the branch above.
+
+**Files.** `beat-smash.js` (the game), `beat-pads.js` (the pads, written for
+Stomp Lab's performance round to reuse), `beat-smash-band.js` (the placeholder
+band synth, moved up from `tools/beat-smash-band/`: the game plays the
+student's pad sounds live from it, and falls back on it if a loop file hasn't
+loaded), `view-beat` in `index.html`, a Beat Smash block at the end of
+`style.css`. Loops by ID in `content/audio.js`; words in `lang/en-US.js`
+(`beat.*`); Tango's lines in `content/dialogue.js`. The dashboard card is red,
+for the recording light.
+
+**Reused, never copied:** the vocabulary, grid and engraving rules
+(`rstompGridFor`, `buildRstompUnitShapes`), the notation renderer
+(`renderRstompStaff`, called through `bsmashWithStompGrid()`, which sets Stomp
+Lab's four grid globals for the one call and puts them back), the one
+AudioContext and its instruments (`rstompAudio`, `raudioClick`), and Value
+Smash's players list. Beat Smash adds an **age** to a player.
+
+**How it runs.**
+- **The song clock.** `bsmashBand.start` is bar 1 of the song on the audio
+  clock. Loops are booked a cycle at a time as new sources at exact times;
+  takes start on a barline of the song; the pad plays the chord of the bar
+  under it. Everything is counted from that one number.
+- **The band has its own buses to the speakers**, bypassing Stomp Lab's
+  master, because `rstompAudioStop()` fades that master and the groove
+  would dip whenever anything else stopped.
+- **The first minute.** Warm-up groove, four big pads in the middle, Tango
+  demos a bar, "Copy me!". It can't fail. Every tap is a tap to a known beat,
+  which is the **delay calibration**: median, then the mean of the taps within
+  80 ms of it, stored per device (`koolRiffsBeatDelay`). Four on-beat taps in a
+  row and the pads become four quarter notes. If the taps don't settle, Tango
+  demos again every four bars.
+- **The dice table is data** (`BSMASH_MUSICIANS[].steps`), bars written
+  `'q qr q q'`. `'all'` = every legal bar by the engraving rules (Tango: 15).
+  Tango's one-bar step is a **ladder climbed by clean takes**: every beat ·
+  strong beats · backbeat · one rest anywhere · the full map. So the first
+  three stars are always `q q q q`, `q 𝄽 q 𝄽`, `𝄽 q 𝄽 q`.
+- **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
+  same bar from notation), `star2` (picture until two beats before beat 1),
+  `star3` (notation only), `retake`, `big`. The picture is laid out on the
+  notation's own slot grid, so the morph is a change of look, not of place.
+- **Grading** is against the audio clock, the delay taken off each press.
+  A press takes the nearest unplayed note in the window; anything else is a
+  rest tap or a stray. Steps 1–2 need a clean take. The big take needs the
+  **age's pass mark** (hits over notes plus extra taps) **and** the first note
+  after any slip's barline played: that is "back in by the next beat 1".
+  The window starts 40 ms wide of the age's and tightens 5 ms per clean take.
+
+**Calls made where the brief left room (Rob to confirm):**
+- **One die per bar**, its face the bar's four dots (§4). §4.1 says "four
+  dice" for one bar; the two sentences disagree.
+- **On four beat pads, any pad counts.** The pads show where the beat is; a
+  child who reads the rhythm right and taps the wrong pad isn't failed. This
+  follows the same reasoning as dropping the accent pad.
+- **A miss on the first star just repeats that go** (the stars were already
+  empty), so the child still sees the bar in notation. From the second star
+  a miss empties the row and the bar is retaken as practice (§4).
+- **The name and age are asked after the first star**, never before (§11).
+  Until then progress lives in memory and moves to the player when added.
+- **Every event with several lines takes turns** (`KR.event` in `text.js`,
+  the §8.3 build note). An event with one line is unchanged, and tested.
+- **Ages 6–8 / 9–10 / 11+**: windows 220 / 195 / 170 ms, pass marks 80 / 85 /
+  90%. All the tunable numbers are the constants at the top of the file.
+
+**Not built yet:** anything of Riff's; the booth and the Permit; "my bit";
+Tango noticing "You didn't need the blocks!"; re-offering calibration when the
+audio output changes (there is a **Re-time my taps** button instead); art
+(the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
+exist); swapping a part later (open in the brief).
+
+**Tests.** `python tools/test-beat-smash.py` (87 checks): the engraving sweep,
+the first minute, all three steps **played on the real pads with the mouse and
+the Space bar in time with the audio clock**, a missed take, a rest tap, the
+comeback rule both ways, the picker, and layout at 390×844, 360×640 and
+1366×657. `KR_VEXFLOW` / `KR_CHROME` let it run with no network. Run it with
+`tools/check-text.py` before every commit.
 
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that

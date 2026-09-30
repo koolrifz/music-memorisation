@@ -22,10 +22,11 @@ built to the loop spec in the Beat Smash design brief (§8.1, private docs repo)
 | `beat-l1-warmup.wav` | Tango warming up, for the first minute |
 
 Mono, 16-bit, 32 kHz. **Synthesised, not recorded**: made by
-`tools/beat-smash-band/band.js`, rendered by
+`beat-smash-band.js` (in the app root, because the game plays its pad
+sounds live), rendered by
 `NODE_PATH=$(npm root -g) node tools/beat-smash-band/render.js`, and playable
 live in `tools/beat-smash-band/lab.html`. The student's pad sounds (kick,
-snare, electric and acoustic bass, suitcase Rhodes, organ) are in `band.js` as
+snare, electric and acoustic bass, suitcase Rhodes, organ) are in `beat-smash-band.js` as
 live voices, so a held note sustains until release.
 
 **Replacing them:** when Garnet's files arrive, give them these same names and
