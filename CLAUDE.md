@@ -1482,6 +1482,11 @@ Smash's players list. Beat Smash adds an **age** to a player.
   Tango's one-bar step is a **ladder climbed by clean takes**: every beat ·
   strong beats · backbeat · one rest anywhere · the full map. So the first
   three stars are always `q q q q`, `q 𝄽 q 𝄽`, `𝄽 q 𝄽 q`.
+- **The picture's blocks are SQUARES**, one per beat, centred in the beat's
+  slot (Rob, on his phone: *"too much a rectangle. Make them square"*). A
+  half note is two squares joined, a whole note four, so width still shows
+  length; the cells inside split exactly at the beats. The square's side is
+  the slot width less a gap, at most 52 px (`BSMASH_BLOCK_MAX`).
 - **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
   same bar from notation), `star2` (picture until two beats before beat 1),
   `star3` (notation only), `retake`, `big`. The picture is laid out on the
@@ -1564,13 +1569,27 @@ repeated to fill four bars.
 - **The anticipation is a rule, not a setting:** a hit struck before a barline
   and held across it plays the NEXT bar's voicing. `BeatSmashBand.songHits()`
   is the one place it lives.
-- **The bass plays each bar's bass note on every keys hit**, and keys and bass
-  booked for the same cycle get the same rhythm, so the two push together.
+- **The bass plays its OWN line, by style — it never copies the keys.** Rob:
+  *"The only pump rhythm a bass plays is dotted q, followed by eighth. It
+  mostly plays according to the style of music. The tumbao in Cuban music.
+  Half notes in traditional choro or bossa nova. Quarter notes for walking in
+  steps towards the next root note of the next chord."* (An earlier version
+  put the bass on every keys hit; that is what he corrected.) The styles are
+  rules in `beat-smash-band.js` (`bassLine()`), made from each bar's root and
+  its voicing's notes: `whole`, `halves` (root, fifth), `pump` (q. 8 only),
+  `walk` (quarters, a half step into the next root, kept between C2 and A3),
+  `tumbao` (beat 1 silent, the next chord's fifth on the and of 2, its root
+  on 4 held over the barline). **"The fifth" is the chord's own**: the voicing
+  note nearest a fifth above the root, so a diminished chord gets its
+  diminished fifth. A song's `bass: { whole, groove }` names which style the
+  jam plays; both 6-dim songs groove on `walk`, one word to change.
 - A part is named `'song:<song>:<comp>'` and can join mid-loop from its next
   hit. Live parts go through `BSMASH_LIVE_SCALE` (0.47), the factor the loop
-  files were rendered at; without it a song clipped at 1.46.
-- **Hear them in `tools/beat-smash-band/lab.html`**: pick the song and a keys
-  rhythm, including each pump rhythm on its own.
+  files were rendered at; without it a song clipped at 1.46. A song's bass
+  sits a little lower again (`SONG_TRIM`), because a walking line sustains
+  under everything: the loudest song and style now peaks at 0.89.
+- **Hear them in `tools/beat-smash-band/lab.html`**: pick the song, a keys
+  rhythm (each pump rhythm on its own, too) and a bass style.
 - **Four songs:** `c-6dim`, `c-6dim-tritone` (the last chord ♭II7(♭5)), and
   both in A flat. **Open for Rob:** the ♭II7(♭5) voicing (F G B D♭ in C) is
   Claude's, since he gave none.
@@ -1586,10 +1605,11 @@ repeated to fill four bars.
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (128 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (135 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
-transposition, every pump rhythm, anticipation, variety, level), all
+transposition, every pump rhythm, anticipation, variety, every bass style,
+level), the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,

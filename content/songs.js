@@ -29,8 +29,16 @@
    voicing: that is the anticipation. It happens by itself - write a value
    that crosses the barline and the next chord arrives early.
 
-   The bass plays each bar's bass note on every keys hit, so the two push
-   together.
+   bass: THE BASS PART, by style - the bass does not copy the keys. Rob:
+   "It mostly plays according to the style of music." Each bar's bass note
+   is the root; the styles make a line from it:
+     whole   the root, a whole note
+     halves  root on 1, fifth on 3 (traditional choro, bossa nova)
+     pump    dotted quarter + eighth, the only pump a bass plays: root, fifth
+     walk    quarter notes, walking in steps to the next chord's root
+     tumbao  the Cuban bass: the next chord's fifth on the "and" of 2, its
+             root on 4 held over the barline, beat 1 silent
+   `groove` is the one the jam plays once the meter is full.
    ========================================= */
 window.KR = window.KR || {};
 
@@ -72,6 +80,7 @@ window.KR.songs = {
             { chord: 'G7(♭9)', bass: 'G2',  keys: ['F4',  'Ab4', 'B4', 'D5'] },
         ],
         comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'walk' },
     },
 
     /* The variation: the last chord a tritone substitute, bII7(b5).
@@ -86,6 +95,7 @@ window.KR.songs = {
             { chord: 'D♭7(♭5)', bass: 'Db3', keys: ['F4',  'G4', 'B4', 'Db5'] },
         ],
         comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'walk' },
     },
 
     // The same two, down a major third in A flat.

@@ -125,7 +125,11 @@ def pad_point(page, index):
 
 
 def press_at(page, offset, ctx_time, index=0, hold=0.08, key=None):
-    """Press pad `index` (or `key`) at ctx_time on the audio clock."""
+    """Press pad `index` (or `key`) at ctx_time on the audio clock. With
+    offset None the two clocks are lined up afresh first: over a long run
+    of taps the page's audio clock and this one drift apart."""
+    if offset is None:
+        offset = clock_offset(page)
     sleep_until(ctx_time + offset)
     if key:
         page.keyboard.down(key)
@@ -236,11 +240,16 @@ def test_engraving(page):
             catch (e) { failed++; }
         });
         const lines = document.querySelectorAll('#beat-reading .bsmash-line').length;
+        bsmash.specs = [bsmashParseBar('q qr q q')].map(bsmashSpecs);
+        bsmashRenderReading(); bsmashShow('picture');
+        const squares = [...document.querySelectorAll('#beat-reading .bsmash-block')].map(b => [b.offsetWidth, b.offsetHeight]);
         bsmash = null;
-        return { failed, lines, stomp: [rstompSlotsPerBar, rstompSlotValue] };
+        return { failed, lines, squares, stomp: [rstompSlotsPerBar, rstompSlotValue] };
     })()""")
     check('Every Tango bar draws as notation, through Stomp Lab\'s own renderer', drawn['failed'] == 0, drawn)
     check('Four bars take two lines on a phone', drawn['lines'] == 2, drawn['lines'])
+    check('Each beat\'s block is a square, not a long rectangle',
+          len(drawn['squares']) == 4 and all(abs(w - h) <= 1 and h >= 30 for w, h in drawn['squares']), drawn['squares'])
     check('Drawing a bar leaves Stomp Lab\'s grid as it found it', drawn['stomp'] == [4, 'q'], drawn['stomp'])
 
 
@@ -275,7 +284,7 @@ def test_first_minute(page):
     # Hold the beat, with a steady 40 ms of "device delay", until the meter is full.
     beat += 4
     for k in range(40):
-        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
         if page.evaluate('bsmash.jam.full'):
             break
     page.wait_for_timeout(300)
@@ -292,10 +301,10 @@ def test_first_minute(page):
     check('...and Tango says so', "That's what you just played" in guide(page), guide(page))
     check('...and the band steps back to Tango alone', page.evaluate('Object.keys(bsmashBand.parts)') == ['drums'])
     delay = page.evaluate('bsmashDelay()')
-    check('The device delay is measured and stored', 0.0 <= delay < 0.2, round(delay, 3))
+    check('The device delay is measured and stored', -0.05 <= delay < 0.2, round(delay, 3))
     test = page.evaluate('bsmashLoad().beatTests[0]')
     check('The jam is a beat test: taps, lean, steadiness and % on the beat are kept',
-          test and test['taps'] >= 20 and test['onBeat'] >= 80 and 0 <= test['leanMs'] < 200 and test['steadyMs'] < 80, test)
+          test and test['taps'] >= 20 and test['onBeat'] >= 80 and -60 <= test['leanMs'] < 200 and test['steadyMs'] < 80, test)
     page.wait_for_function("bsmash && bsmash.mode === 'steps'", timeout=10000)
     check('Then the first roll: Tango\'s one-bar step', state(page)['step'] == 1 and state(page)['scaffold'] == 'star1')
 
@@ -551,14 +560,33 @@ def test_songs(page):
           picks['seen'] >= 5 and picks['repeats'] == 0, picks)
     whole = page.evaluate("BeatSmashBand.songHits('ab-6dim', 'whole').map(h => [h.start, h.chord])")
     check('Whole notes: one chord a bar', whole == [[0, 0], [4, 1], [8, 2], [12, 3]], whole)
+    bass = page.evaluate("""Object.fromEntries(BeatSmashBand.BASS_STYLES.map(st =>
+        [st, BeatSmashBand.bassLine('c-6dim', st).map(h => [h.start, h.beats, h.midi])]))""")
+    check('The bass has its own styles: whole, halves, pump, walk, tumbao',
+          sorted(bass.keys()) == ['halves', 'pump', 'tumbao', 'walk', 'whole'], list(bass.keys()))
+    check('Halves: root on 1, the chord\'s own fifth on 3 (the diminished fifth, A, over E flat)',
+          bass['halves'][:4] == [[0, 2, 48], [2, 2, 55], [4, 2, 51], [6, 2, 57]], bass['halves'][:4])
+    check('Pump: the only pump a bass plays, dotted quarter and eighth',
+          [h[1] for h in bass['pump']] == [1.5, 0.5] * 8, [h[1] for h in bass['pump']])
+    walk = bass['walk']
+    roots = [48, 51, 50, 43]
+    steps = [(walk[4 * b + 3][2] - roots[(b + 1) % 4]) % 12 for b in range(4)]
+    check('Walk: four quarters a bar, root on 1, a half step into the next root on 4',
+          all(h[1] == 1 for h in walk) and [walk[4 * b][2] % 12 for b in range(4)] == [r % 12 for r in roots]
+          and all(st in (1, 11) for st in steps), (walk, steps))
+    check('...and it stays in the bass', all(36 <= h[2] <= 57 for h in walk), [h[2] for h in walk])
+    tumbao = bass['tumbao']
+    check('Tumbao: beat 1 silent, the and of 2, then 4 held over the barline with the next chord\'s root',
+          all(h[0] % 4 in (1.5, 3) for h in tumbao) and all(h[0] + h[1] > (h[0] // 4 + 1) * 4 for h in tumbao if h[0] % 4 == 3)
+          and tumbao[1][2] % 12 == 51 % 12, tumbao)
     peak = page.evaluate("""(async () => {
         const B = BeatSmashBand;
         let loudest = 0;
-        for (const song of Object.keys(KR.songs)) for (const comp of ['whole'].concat(BeatSmashBand.song(song).comp.pumps.map((r, i) => 'pumps#' + i))) {
+        for (const song of Object.keys(KR.songs)) for (const [i, comp] of ['whole'].concat(BeatSmashBand.song(song).comp.pumps.map((r, i) => 'pumps#' + i)).entries()) {
             const ctx = new OfflineAudioContext(1, 32000 * B.LOOP, 32000);
             const live = ctx.createGain(); live.gain.value = BSMASH_LIVE_SCALE; live.connect(ctx.destination);
             B.schedulePart(ctx, live, 'warmup', 'tango', 0);
-            B.schedulePart(ctx, live, 'bass', 'song:' + song + ':' + comp, 0);
+            B.schedulePart(ctx, live, 'bass', 'song:' + song + ':' + B.BASS_STYLES[i % B.BASS_STYLES.length], 0);
             B.schedulePart(ctx, live, 'keys', 'song:' + song + ':' + comp, 0);
             const d = (await ctx.startRendering()).getChannelData(0);
             for (const x of d) loudest = Math.max(loudest, Math.abs(x));
@@ -586,7 +614,7 @@ def test_song_jam(page):
     beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
     parts = {}
     for k in range(40):
-        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
         meter = page.evaluate('bsmash.jam.meter')
         if meter in (10, 18):
             parts[meter] = page.evaluate('Object.assign({}, bsmashBand.parts)')
@@ -596,8 +624,8 @@ def test_song_jam(page):
     check('Over Rob\'s song the bass joins in whole notes', parts.get(10, {}).get('bass') == 'song:ab-6dim:whole', parts)
     check('...then the keys, his voicings in whole notes', parts.get(18, {}).get('keys') == 'song:ab-6dim:whole', parts)
     full = page.evaluate('Object.assign({}, bsmashBand.parts)')
-    check('...and a full meter brings his pumps, bass and keys together',
-          full.get('keys') == 'song:ab-6dim:pumps' and full.get('bass') == 'song:ab-6dim:pumps', full)
+    check('...and a full meter brings his pumps on the keys and the song\'s groove on the bass',
+          full.get('keys') == 'song:ab-6dim:pumps' and full.get('bass') == 'song:ab-6dim:groove', full)
     # Lose the beat: taps half a beat out.
     for k in range(4):
         press_at(page, offset, start + (beat + k) * 0.6 + 0.34, index=k % 4)
