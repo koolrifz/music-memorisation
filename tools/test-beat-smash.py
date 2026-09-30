@@ -579,6 +579,52 @@ def test_songs(page):
     check('Tumbao: beat 1 silent, the and of 2, then 4 held over the barline with the next chord\'s root',
           all(h[0] % 4 in (1.5, 3) for h in tumbao) and all(h[0] + h[1] > (h[0] // 4 + 1) * 4 for h in tumbao if h[0] % 4 == 3)
           and tumbao[1][2] % 12 == 51 % 12, tumbao)
+    # Two chords in a bar, and a song shorter than four bars.
+    bb = page.evaluate("BeatSmashBand.song('bb-rhythm-changes')")
+    check('Rob\'s B flat: ||: Bb6 G-7 | C-7 F7 :||, two beats each, round twice to fill four bars',
+          [[c['start'], c['beats'], c['chord']] for c in bb['changes']]
+          == [[2 * i, 2, n] for i, n in enumerate(['B♭6', 'G–7', 'C–7', 'F7'] * 2)]
+          and [b['chord'] for b in bb['bars']] == ['B♭6 G–7', 'C–7 F7'] * 2, bb['changes'])
+    check('...as voiced: the D on top held all the way through',
+          [[c['bass']] + c['keys'] for c in bb['changes'][:4]]
+          == [[46, 65, 67, 70, 74], [43, 65, 69, 70, 74], [48, 63, 67, 70, 74], [41, 63, 67, 69, 74]], bb['changes'][:4])
+    dm = page.evaluate("BeatSmashBand.song('d-minor-two-five').changes.map(c => [c.start, c.beats, c.chord, c.bass].concat(c.keys))")
+    check('Rob\'s D minor: Dm6 for a bar, then Em7b5 and A7alt two beats each, every voice by a half step or held',
+          dm[:3] == [[0, 4, 'D–6', 50, 65, 69, 71, 74], [4, 2, 'E–7(♭5)', 52, 64, 67, 70, 74], [6, 2, 'A7alt', 45, 65, 67, 70, 73]], dm)
+    rule = page.evaluate("""(() => {
+        const bad = [];
+        for (const id of Object.keys(KR.songs)) {
+            const song = BeatSmashBand.song(id);
+            const comps = ['whole'].concat(song.comp.pumps.map((r, i) => 'pumps#' + i));
+            for (const comp of comps) for (const h of BeatSmashBand.songHits(id, comp)) {
+                const c = song.changes[h.chord], end = h.start + h.beats;
+                const early = c.start - h.start;
+                if (early > 1 + 1e-9 || h.start >= c.start + c.beats - 1e-9 || end > c.start + c.beats + 1e-9)
+                    bad.push([id, comp, h.start, h.beats, h.chord]);
+            }
+        }
+        return bad;
+    })()""")
+    check('Every keys hit plays the chord under it, or the next one if struck in the beat before it - never over the wrong bass',
+          rule == [], rule[:5])
+    mid = page.evaluate("BeatSmashBand.songHits('bb-rhythm-changes', 'pumps#2').map(h => [h.start, h.beats, h.chord])")
+    check('The anticipation works in the middle of a bar too: the pump on beat 2 held over beat 3 plays the G-7',
+          [1, 1.5, 1] in mid, mid)
+    split = page.evaluate("BeatSmashBand.songHits('bb-rhythm-changes', 'pumps#3').map(h => [h.start, h.beats, h.chord, !!h.restrike])")
+    check('...and a long note struck well before a change is struck again at the change, with the new chord',
+          split[:2] == [[0, 2, 0, False], [2, 1, 1, True]], split)
+    whole = page.evaluate("BeatSmashBand.songHits('d-minor-two-five', 'whole').map(h => [h.start, h.beats, h.chord])")
+    check('Whole notes: one chord struck for each chord, however long it lasts',
+          whole == [[0, 4, 0], [4, 2, 1], [6, 2, 2], [8, 4, 3], [12, 2, 4], [14, 2, 5]], whole)
+    walk2 = page.evaluate("""(() => { const s = BeatSmashBand.song('bb-rhythm-changes');
+        return { changes: s.changes.map(c => c.bass), walk: BeatSmashBand.bassLine('bb-rhythm-changes', 'walk').map(h => [h.start, h.beats, h.midi]) }; })()""")
+    w, roots = walk2['walk'], walk2['changes']
+    check('A walk over two-beat chords: the root, then a half step into the next root',
+          len(w) == 16 and all(w[2 * i][2] % 12 == roots[i] % 12 and (w[2 * i + 1][2] - roots[(i + 1) % 8]) % 12 in (1, 11)
+                                for i in range(8)), w)
+    tb = page.evaluate("BeatSmashBand.bassLine('bb-rhythm-changes', 'tumbao').map(h => [h.start, h.midi])")
+    check('The fifth is a real fifth when the voicing leaves it out: the tumbao plays C for the F13',
+          [5.5, 48] in tb, tb)
     peak = page.evaluate("""(async () => {
         const B = BeatSmashBand;
         let loudest = 0;
@@ -659,6 +705,85 @@ def test_song_jam(page):
     page.wait_for_timeout(400)
     check('The menu button goes to the Beat Smash menu, and the band stops', screen(page) == 'beat-screen-pathway'
           and page.evaluate('bsmashBand === null'))
+
+
+def test_jam_variations(page):
+    """The jam keeps moving: every four times round with the beat held, the
+    drums fill and the band turns to the song's next line of directions."""
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,settings:{jamSong:'bb-rhythm-changes'},"
+                "musicians:{drums:{step:1,streak:0,clean:0,won:false,part:null,plays:1}}}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.click('#beat-steps .bsmash-chip:nth-child(1)')
+    page.click('#beat-pathway-start')
+    page.wait_for_timeout(600)
+    lines = page.evaluate("bsmash.jam.variations")
+    check('The song\'s own directions become the variations: drums, bass, keys, or out',
+          lines[0] == {'parts': {'drums': 'smooth'}, 'say': None}
+          and lines[1]['parts'] == {'bass': 'song:bb-rhythm-changes:pump', 'keys': 'song:bb-rhythm-changes:pumps#3'}
+          and lines[2] == {'parts': {'drums': None}, 'say': 'beat.jam.drop'}, lines[:3])
+    check('No dots until the groove is going', page.is_hidden('#beat-jam-coming'))
+    start = page.evaluate('bsmashBand.start')
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    k = 0
+    while not page.evaluate('bsmash.jam.full') and k < 40:
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        k += 1
+    beat += k
+    check('The meter fills and the dots appear', page.is_visible('#beat-jam-coming'))
+    # Three times round already held (rather than 30 seconds more of tapping
+    # here): the fourth, played for real, brings the change.
+    page.evaluate('bsmash.jam.rounds = BSMASH_JAM_VARIATION_EVERY - 1; bsmashJamComing()')
+    lit = page.evaluate("document.querySelectorAll('#beat-jam-coming .lit').length")
+    check('A dot for each time round with the beat held', lit == 3, lit)
+    pending, landed, fill = None, None, None
+    for n in range(40):
+        press_at(page, None, start + (beat + n) * 0.6 + 0.04, index=n % 4)
+        info = page.evaluate("""({ pending: bsmashBand.pending && bsmashBand.pending.at, parts: Object.assign({}, bsmashBand.parts),
+                                    next: bsmashBand.next, said: document.querySelector('#beat-studio-guide .kr-guide-text').textContent })""")
+        if info['pending'] and pending is None:
+            pending = info['pending']
+            fill = info['said']
+            before = info['parts']
+        if pending and info['parts'].get('drums') == 'smooth':
+            landed = info
+            break
+    check('Four times round with the beat held: a fill, and the change is booked for the top of the loop',
+          pending is not None and abs(((pending - start) / 9.6) - round((pending - start) / 9.6)) < 1e-6, [pending, start])
+    check('...Tango says something is coming', fill and ('new' in fill or 'changing' in fill or 'beat' in fill), fill)
+    check('...and the band changes there, just the instruments the line names',
+          landed is not None and before.get('drums') == 'warmup' and landed['parts']['drums'] == 'smooth'
+          and landed['parts']['bass'] == before['bass'] and landed['parts']['keys'] == before['keys'], [before, landed])
+    check('...then the dots start again', page.evaluate("document.querySelectorAll('#beat-jam-coming .lit').length") == 0)
+    # A time round with the band sagging, or too few taps, doesn't count.
+    held = page.evaluate("""(() => {
+        const jam = bsmash.jam, bar = 4 * 999 + 3, before = jam.rounds;
+        jam.cycleTaps[999] = 12; jam.sag = 0.5; bsmashJamRound(bar);
+        const sagging = jam.rounds - before;
+        jam.sag = 0; jam.cycleTaps[999] = 3; bsmashJamRound(bar);
+        const few = jam.rounds - before;
+        jam.cycleTaps[999] = 9; bsmashJamRound(bar);
+        return [sagging, few, jam.rounds - before];
+    })()""")
+    check('Only a time round with the beat held counts; a wobble loses nothing', held == [0, 0, 1], held)
+    page.evaluate('bsmash.jam.rounds = 0; bsmash.jam.variation = 2; bsmashJamVariation(bsmashBand.start); bsmashBand.pending.apply()')
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('\'off\' drops an instrument out: with the drums out, the student is the drummer',
+          'drums' not in parts and 'bass' in parts and 'keys' in parts, parts)
+    page.click('#beat-jam-next')
+    page.wait_for_timeout(500)
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('"Show me what I played": back to Tango alone, whatever the variations did',
+          parts == {'drums': 'warmup'} and page.evaluate('bsmashBand.pending === null') and page.is_hidden('#beat-jam-coming'), parts)
+    loops = page.evaluate("""(() => { const out = []; const ctx = new OfflineAudioContext(1, 32000 * 5, 32000);
+        const live = ctx.createGain(); live.gain.value = BSMASH_LIVE_SCALE; live.connect(ctx.destination);
+        BeatSmashBand.fill(ctx, live, 0); return ctx.startRendering().then(b => {
+            const d = b.getChannelData(0); let peak = 0, early = 0;
+            for (let i = 0; i < d.length; i++) { peak = Math.max(peak, Math.abs(d[i])); if (i < 32000 * 1.15) early = Math.max(early, Math.abs(d[i])); }
+            return [peak, early]; }); })()""")
+    check('The fill is silent for the first half of its bar, then builds, and stays clear of clipping',
+          loops[1] < 0.001 and 0.2 < loops[0] < 0.9, loops)
 
 
 def code(page, text):
@@ -743,6 +868,7 @@ def main():
         test_picker_leave(page)
         test_songs(page)
         test_song_jam(page)
+        test_jam_variations(page)
         test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()
