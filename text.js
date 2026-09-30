@@ -16,6 +16,7 @@
      KR.on(eventName, fn)        listen for a game event
      KR.event(eventName, data)   announce a game event; a matching line in
                                  content/dialogue.js is shown and spoken
+                                 (several lines on one event take turns)
      KR.say(lineOrTextId, opts)  show a line in the guide box and speak it
 
    The game says WHAT HAPPENED (KR.event). The content files decide who, if
@@ -101,10 +102,16 @@ KR.event = function (eventName, data) {
     (KR.listeners[eventName] || []).forEach(fn => {
         try { fn(data); } catch (e) { console.error('KR.event listener failed:', eventName, e); }
     });
-    const lines = (KR.dialogue && KR.dialogue.lines) || [];
-    const line = lines.find(l => l.on === eventName);
-    if (line) KR.say(line.text, { speaker: line.speaker, pose: line.pose, vars: data });
+    const lines = ((KR.dialogue && KR.dialogue.lines) || []).filter(l => l.on === eventName);
+    if (!lines.length) return;
+    // Several lines on one event take turns, so a line heard every take
+    // doesn't wear thin. One line is always that line.
+    const turn = KR.turns[eventName] || 0;
+    KR.turns[eventName] = turn + 1;
+    const line = lines[turn % lines.length];
+    KR.say(line.text, { speaker: line.speaker, pose: line.pose, vars: data });
 };
+KR.turns = {};           // event name -> how many times it has spoken
 
 /* ---------- The guide box and speech ----------
    The guide box is the gold box that speaks to the student for the whole

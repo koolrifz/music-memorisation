@@ -1024,3 +1024,163 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
     .vsmash-tree-row, .vsmash-tray .vsmash-tile { height: 58px; }
     .vsmash-tree-row .vsmash-tile { height: 52px; }   /* the notation is drawn at 80% to match: vsmashTreeScale() */
 }
+
+
+/* =========================================
+   BEAT SMASH (beat-smash.js, beat-pads.js)
+   The studio: the MPC look - a dark screen, glowing pads, rubbery buttons.
+   The notation sits on WHITE PAPER. Nothing is ever drawn over it: the
+   home-base marks sit above each line, the verdict below.
+   Note-value colours (brief §12, Okabe-Ito): quarter #0072B2, half #CC79A7,
+   whole #56B4E9. A rest is its note's colour, hollow.
+   Phone first: every button at least 56px tall.
+   ========================================= */
+.game-card.red:active { border-color: var(--accent-red); }
+.icon-red { background: var(--accent-red); color: white; }
+
+#view-beat .game-nav { top: 8px; }
+#view-beat .btn-back { min-height: 56px; padding: 0 18px; font-size: 16px; }
+#view-beat .pathway-card { margin-top: 64px; }
+#view-beat .btn-secondary { min-height: 56px; }
+#beat-pathway-track { grid-template-columns: repeat(4, 1fr); }
+#beat-pathway-guide .kr-guide-text, #beat-player-guide .kr-guide-text { font-size: 14px; }
+#beat-pathway-guide { margin-top: 12px; }
+
+.bsmash-settings { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.bsmash-setting { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.bsmash-setting-title { color: var(--text-muted); font-weight: 800; font-size: 13px; min-width: 70px; text-align: right; }
+.bsmash-chip { min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 2px solid #526b85; background: rgba(255,255,255,0.04); color: var(--text-muted); font-weight: 900; font-size: 14px; cursor: pointer; }
+.bsmash-chip.on { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(255,200,0,0.12); }
+.bsmash-age-row { display: flex; justify-content: center; gap: 10px; margin: 16px 0 4px; }
+.bsmash-age { min-height: 56px; min-width: 80px; font-size: 18px; }
+
+/* ---------- The studio ---------- */
+#beat-screen-studio { padding: 72px 10px 12px; background: radial-gradient(ellipse at 50% 0%, #22303f 0%, #10171f 70%); }
+.bsmash-top { width: 100%; max-width: 640px; display: flex; align-items: center; gap: 10px; margin: 0 auto 8px; min-height: 28px; }
+.bsmash-rec { font-weight: 900; font-size: 13px; letter-spacing: 1px; color: #7a2b2b; padding: 3px 8px; border-radius: 6px; border: 2px solid #5a2323; }
+.bsmash-rec.recording { color: white; background: #b3261e; border-color: #ff4b4b; }
+.bsmash-rec.pulse { animation: bsmash-rec-pulse 0.28s ease-out; }
+.bsmash-rec.pulse.one { animation-name: bsmash-rec-one; }
+.bsmash-rec.pulse.comeback { animation: bsmash-rec-comeback 0.5s ease-out; }
+@keyframes bsmash-rec-pulse { from { box-shadow: 0 0 10px 2px rgba(255,75,75,0.6); color: #ff8a8a; } to { box-shadow: none; } }
+@keyframes bsmash-rec-one { from { box-shadow: 0 0 18px 6px rgba(255,75,75,0.9); color: white; transform: scale(1.12); } to { box-shadow: none; transform: none; } }
+@keyframes bsmash-rec-comeback { from { box-shadow: 0 0 28px 12px rgba(255,200,0,0.95); color: white; transform: scale(1.3); } to { box-shadow: none; transform: none; } }
+.bsmash-step-label { flex: 1 1 auto; text-align: center; color: var(--text-muted); font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+.bsmash-stars { color: var(--accent-gold); font-size: 24px; letter-spacing: 2px; line-height: 1; }
+.bsmash-star { display: inline-block; }
+.bsmash-star.pop { animation: bsmash-pop 0.5s ease-out; }
+@keyframes bsmash-pop { 0% { transform: scale(0.3); } 60% { transform: scale(1.6); text-shadow: 0 0 12px var(--accent-gold); } 100% { transform: scale(1); } }
+#beat-studio-guide { margin-bottom: 8px; }
+
+/* The mixing desk: a channel lights as each part is recorded (§9). */
+.bsmash-desk { display: flex; gap: 6px; width: 100%; max-width: 420px; margin: 0 auto 8px; }
+.bsmash-channel { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; padding: 4px; border-radius: 8px; background: #1b2530; border: 2px solid #2c3a49; color: #56677a; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; transition: all 0.4s; }
+.bsmash-channel-style { font-size: 10px; min-height: 12px; }
+.bsmash-channel.lit { color: white; border-color: var(--accent-green); box-shadow: 0 0 10px rgba(88,204,2,0.5); }
+.bsmash-channel.lit.style-spicy { border-color: #ff6b3d; box-shadow: 0 0 10px rgba(255,107,61,0.55); }
+.bsmash-channel.lit.style-smooth { border-color: #4ea8de; box-shadow: 0 0 10px rgba(78,168,222,0.55); }
+.bsmash-channel.lit.style-hop { border-color: #b388ff; box-shadow: 0 0 10px rgba(179,136,255,0.55); }
+.bsmash-desk.dim { opacity: 0.35; }
+
+/* The dice: one per bar, a face of four dots is a bar (§4). */
+.bsmash-dice { display: flex; justify-content: center; gap: 12px; min-height: 54px; margin-bottom: 6px; }
+.bsmash-dice[hidden] { display: none; }
+.bsmash-die { width: 86px; height: 46px; border-radius: 10px; background: #f4f4f4; box-shadow: 0 4px 0 #b9c0c8; display: flex; align-items: center; justify-content: space-evenly; }
+.bsmash-die.rolling { animation: bsmash-roll 0.25s linear infinite; }
+@keyframes bsmash-roll { 0% { transform: rotate(0) translateY(0); } 50% { transform: rotate(12deg) translateY(-6px); } 100% { transform: rotate(0) translateY(0); } }
+.bsmash-pip { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #0072B2; box-sizing: border-box; }
+.bsmash-pip.on { background: #0072B2; }
+
+/* The reading line, on white paper. */
+.bsmash-reading { width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; --morph: 0.25s; }
+.bsmash-line { display: flex; flex-direction: column; align-items: center; }
+.bsmash-marks, .bsmash-under { position: relative; height: 12px; }
+.bsmash-mark { position: absolute; top: 0; width: 0; height: 0; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 9px solid var(--accent-gold); opacity: 0.8; transition: transform 0.1s; }
+.bsmash-mark.strong { border-top-color: #ff4b4b; opacity: 1; transform: scale(1.6); }
+.bsmash-paper { position: relative; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.45); transition: box-shadow 0.3s; }
+.bsmash-reading.clean .bsmash-paper { box-shadow: 0 0 0 4px var(--accent-green), 0 0 22px rgba(88,204,2,0.7); }
+.bsmash-staff { height: 65px; overflow: hidden; transition: opacity var(--morph) ease-in-out; }
+.bsmash-picture { position: absolute; inset: 0; transition: opacity var(--morph) ease-in-out; }
+.show-picture .bsmash-staff { opacity: 0; }
+.show-notation .bsmash-picture { opacity: 0; pointer-events: none; }
+.show-notation .bsmash-block { transform: scale(0.35, 0.3); transition: transform var(--morph) ease-in-out; }
+.show-picture .bsmash-block { transform: none; transition: transform var(--morph) ease-in-out; }
+.bsmash-cursor { position: absolute; top: 4px; bottom: 4px; background: rgba(255,200,0,0.35); border-radius: 6px; }
+.bsmash-cursor[hidden] { display: none; }
+
+.bsmash-block { position: absolute; top: 12px; height: 40px; border-radius: 7px; box-sizing: border-box; display: flex; overflow: hidden; }
+.bsmash-block.quarter { --c: #0072B2; }
+.bsmash-block.half { --c: #CC79A7; }
+.bsmash-block.whole { --c: #56B4E9; }
+.bsmash-block.pic-blocks { background: var(--c); background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(var(--beat) - 2px), rgba(255,255,255,0.25) calc(var(--beat) - 2px), rgba(255,255,255,0.25) var(--beat)); }
+.bsmash-block.pic-blocks.rest { background: transparent; border: 3px solid var(--c); }
+.bsmash-block.pic-counting { color: var(--c); font-weight: 900; font-size: 20px; }
+.bsmash-block.pic-machine { background: #222c36; border-radius: 10px; }
+.bsmash-cell { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+.pic-machine .bsmash-cell::after { content: ''; width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--c); box-sizing: border-box; }
+.pic-machine .bsmash-cell.on::after { background: var(--c); box-shadow: 0 0 8px var(--c); }
+.pic-machine .bsmash-cell.held::after { background: var(--c); opacity: 0.45; }
+.bsmash-block.lit { box-shadow: 0 0 0 3px var(--accent-gold), 0 0 14px var(--accent-gold); }
+.bsmash-block.pic-blocks.lit:not(.rest) { background-color: var(--accent-gold); background-image: none; }
+.bsmash-block.missed { box-shadow: 0 0 0 3px #ff4b4b; }
+.bsmash-block.shake { animation: bsmash-shake 0.3s; }
+@keyframes bsmash-shake { 25% { margin-left: -5px; } 75% { margin-left: 5px; } }
+.bsmash-miss { position: absolute; top: 3px; height: 5px; border-radius: 3px; background: #ff4b4b; }
+
+.bsmash-actions { display: flex; gap: 10px; width: 100%; max-width: 420px; margin: 10px auto 0; }
+.bsmash-actions[hidden] { display: none; }
+.bsmash-actions .btn { margin-top: 0; min-height: 56px; }
+.bsmash-record { background: #d32f2f; box-shadow: 0 6px 0 #8e1b1b; }
+.bsmash-record:active { box-shadow: 0 0 0 #8e1b1b; }
+.bsmash-picture-choice { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bsmash-picture-choice[hidden] { display: none; }
+.bsmash-picture-choice .bsmash-chip { min-height: 56px; }
+
+/* ---------- The pads (beat-pads.js) ----------
+   It has to feel good to touch: the pad sinks, a burst of light, a held pad
+   stays down (§7). 'beat' is the pulse (where the beat is, not whether to
+   play), 'demo' is Tango's own hits, 'hit' is a tap that landed. */
+.krpads { width: 100%; max-width: 480px; margin: auto auto 0; padding-top: 12px; display: grid; gap: 10px; touch-action: none; }
+.krpads.krpads-four { grid-template-columns: repeat(4, 1fr); }
+.krpads.krpads-one { grid-template-columns: 1fr; }
+.krpad { position: relative; min-height: 88px; aspect-ratio: 1; border-radius: 16px; border: none; cursor: pointer; background: linear-gradient(#34465a, #253343); box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #3f556c; color: rgba(255,255,255,0.35); font-weight: 900; font-size: 20px; touch-action: none; user-select: none; -webkit-user-select: none; transition: transform 0.05s, box-shadow 0.05s; }
+.krpads-four .krpad { min-height: 0; min-width: 0; }
+.krpads-one .krpad { aspect-ratio: auto; min-height: 150px; }
+/* The first minute is the pads and nothing else: big, and in the middle. */
+#beat-screen-studio.jam .krpads { margin: auto; }
+#beat-screen-studio.jam .krpads-four .krpad { aspect-ratio: 3 / 4; font-size: 26px; }
+/* An empty guide box keeps its place but shows nothing. */
+#view-beat .kr-guide-text:empty { visibility: hidden; }
+.krpad.down { transform: translateY(5px); box-shadow: 0 1px 0 #141c25, inset 0 0 0 2px #7fa6cc, inset 0 0 24px rgba(127,166,204,0.6); }
+.krpad.burst { animation: krpad-burst 0.2s ease-out; }
+@keyframes krpad-burst { from { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px white, inset 0 0 40px rgba(255,255,255,0.8); } }
+.krpad.beat { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #6d8fb0, 0 0 12px rgba(109,143,176,0.6); }
+.krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 3px #ff6b6b, 0 0 18px rgba(255,75,75,0.7); }
+.krpad.demo { background: linear-gradient(#ffae42, #ff9600); color: white; box-shadow: 0 6px 0 #a35f00, 0 0 22px rgba(255,150,0,0.9); }
+.krpad.hit { background: linear-gradient(#ffe066, #ffc800); color: #4a3a00; box-shadow: 0 6px 0 #a88400, 0 0 24px rgba(255,200,0,0.95); }
+.krpad-label { pointer-events: none; }
+
+/* ---------- The part picker (§8.2) ---------- */
+#beat-screen-picker { padding: 72px 10px 16px; background: radial-gradient(ellipse at 50% 0%, #22303f 0%, #10171f 70%); gap: 10px; }
+.bsmash-picker-title { margin: 4px 0; color: var(--accent-gold); }
+.bsmash-style-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 480px; }
+.bsmash-style-cards[hidden] { display: none; }
+.bsmash-style-card { min-height: 120px; border-radius: 16px; border: 3px solid #3f556c; background: #1b2530; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 900; font-size: 16px; transition: transform 0.15s, border-color 0.15s; }
+.bsmash-style-card.style-spicy { --s: #ff6b3d; }
+.bsmash-style-card.style-smooth { --s: #4ea8de; }
+.bsmash-style-card.style-hop { --s: #b388ff; }
+.bsmash-style-card.heard { border-color: var(--s); }
+.bsmash-style-card.on { border-color: var(--s); box-shadow: 0 0 18px var(--s); transform: scale(1.05); }
+.bsmash-style-card.chosen { border-color: var(--s); box-shadow: 0 0 22px var(--s); }
+.bsmash-style-card:disabled:not(.chosen) { opacity: 0.3; }
+.bsmash-style-icon { font-size: 40px; line-height: 1; }
+.bsmash-style-art { width: 72px; height: 72px; object-fit: contain; }
+#beat-picker-keep { max-width: 480px; min-height: 56px; }
+#beat-picker-keep:disabled { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; opacity: 0.6; }
+#beat-picker-done { max-width: 480px; }
+
+/* Short screens: the pads come down so the reading line and the pads both fit. */
+@media (max-height: 700px) {
+    .krpads-one .krpad { min-height: 110px; }
+    #beat-screen-studio { padding-top: 68px; }
+}

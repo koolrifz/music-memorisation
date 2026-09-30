@@ -41,6 +41,13 @@
                 <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
             </div>
         </div>
+        <div class="game-card red" onclick="enterBeatSmash()">
+            <div class="game-icon icon-red" data-text="home.beat.icon"></div>
+            <div class="game-details">
+                <h2 data-text="home.beat.title"></h2>
+                <p data-text="home.beat.blurb"></p>
+            </div>
+        </div>
         <div class="game-card gold" onclick="launchGame('view-rhythm')">
             <div class="game-icon icon-gold">4</div>
             <div class="game-details">
@@ -684,6 +691,83 @@
     </div>
 </div>
 
+<!-- BEAT SMASH (beat-smash.js) - the first rhythm game, in the studio.
+     Every word comes from lang/en-US.js by ID. -->
+<div id="view-beat" class="view">
+    <div class="game-nav">
+        <button class="btn-back" onclick="handleBeatBackButton()" data-text="beat.back"></button>
+    </div>
+
+    <!-- Who is playing, and how old: asked once, after the first star. -->
+    <div id="beat-screen-player" class="screen">
+        <div class="pathway-card">
+            <h1 data-text="beat.title"></h1>
+            <div class="kr-guide" id="beat-player-guide">
+                <img class="kr-guide-portrait" hidden alt="">
+                <div class="kr-guide-text"></div>
+            </div>
+            <div id="beat-name-part">
+                <div class="vsmash-player-list" id="beat-player-list"></div>
+                <input class="vsmash-name-input" id="beat-name-input" type="text" maxlength="20" autocomplete="off">
+            </div>
+            <div class="bsmash-age-row" id="beat-age-row"></div>
+            <button class="btn btn-start" onclick="addBeatPlayer()" data-text="beat.player.add"></button>
+        </div>
+    </div>
+
+    <div id="beat-screen-pathway" class="screen">
+        <div class="pathway-card">
+            <h1 data-text="beat.title"></h1>
+            <button class="vsmash-player-chip" id="beat-player-chip" hidden onclick="showBeatPlayers(false, true)"></button>
+            <div class="kr-guide" id="beat-pathway-guide">
+                <img class="kr-guide-portrait" hidden alt="">
+                <div class="kr-guide-text"></div>
+            </div>
+            <div class="pathway-track" id="beat-pathway-track"></div>
+            <button class="btn btn-start" id="beat-pathway-start" onclick="startSelectedBeat()" disabled data-text="beat.start"></button>
+            <div class="bsmash-settings" id="beat-settings"></div>
+            <button class="btn btn-secondary" onclick="retuneBeatTiming()" data-text="beat.retune"></button>
+            <button class="btn btn-text" onclick="leaveBeatSmash()" data-text="beat.toDashboard"></button>
+        </div>
+    </div>
+
+    <!-- The studio: the coach and the stars on top, the band's desk, the
+         reading line on white paper, the pads at the bottom (brief §13). -->
+    <div id="beat-screen-studio" class="screen">
+        <div class="bsmash-top">
+            <span class="bsmash-rec" id="beat-rec" data-text="beat.rec"></span>
+            <span class="bsmash-step-label" id="beat-step-label"></span>
+            <span class="bsmash-stars" id="beat-stars"></span>
+        </div>
+        <div class="kr-guide" id="beat-studio-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <div class="bsmash-desk" id="beat-desk"></div>
+        <div class="bsmash-dice" id="beat-dice" hidden></div>
+        <div class="bsmash-reading" id="beat-reading"></div>
+        <div class="bsmash-actions" id="beat-actions" hidden>
+            <button class="btn btn-start bsmash-record" onclick="recordBeatTake()" data-text="beat.button.record"></button>
+            <button class="btn btn-secondary" onclick="rerollBeatTake()" data-text="beat.button.reroll"></button>
+        </div>
+        <div class="bsmash-picture-choice" id="beat-picture-choice" hidden></div>
+        <div class="krpads" id="beat-pads"></div>
+    </div>
+
+    <!-- The part picker, and playback (brief §8.2). -->
+    <div id="beat-screen-picker" class="screen">
+        <div class="kr-guide" id="beat-picker-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <h2 class="bsmash-picker-title" id="beat-picker-title"></h2>
+        <div class="bsmash-style-cards" id="beat-picker-cards" hidden></div>
+        <button class="btn btn-start" id="beat-picker-keep" hidden disabled onclick="keepBeatPart()" data-text="beat.button.keep"></button>
+        <div class="bsmash-desk" id="beat-picker-desk"></div>
+        <button class="btn btn-secondary" id="beat-picker-done" hidden onclick="showBeatPathway()" data-text="beat.button.studio"></button>
+    </div>
+</div>
+
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-credits">
     <div class="credits-box">
@@ -761,5 +845,8 @@
 <script src="rhythm-audio.js"></script>
 <script src="rhythm-stomp-lab.js"></script>
 <script src="value-smash.js"></script>
+<script src="beat-smash-band.js"></script>
+<script src="beat-pads.js"></script>
+<script src="beat-smash.js"></script>
 </body>
 </html>
