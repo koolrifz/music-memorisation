@@ -1136,6 +1136,28 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-picture-choice[hidden] { display: none; }
 .bsmash-picture-choice .bsmash-chip { min-height: 56px; }
 
+/* The first minute's meter: it fills as the beat is held. */
+.bsmash-jam-meter { display: none; width: 100%; max-width: 480px; height: 14px; margin: 12px auto 0; border-radius: 999px; background: #1b2530; border: 2px solid #2c3a49; overflow: hidden; }
+#beat-screen-studio.jam .bsmash-jam-meter { display: block; margin-top: auto; }
+#beat-screen-studio.jam .krpads { margin: 12px auto auto; }
+.bsmash-jam-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff9600, #ffc800); box-shadow: 0 0 12px rgba(255,200,0,0.8); transition: width 0.25s ease-out; }
+.bsmash-jam-next { max-width: 480px; min-height: 56px; margin: 10px auto 0; }
+.bsmash-jam-next[hidden] { display: none; }
+#beat-pads { --hype: 0; }
+#beat-screen-studio.jam .krpad.beat, #beat-screen-studio.jam .krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #6d8fb0, 0 0 calc(12px + 26px * var(--hype)) rgba(255,200,0, calc(0.3 + 0.6 * var(--hype))); }
+
+/* The steps on the pathway, and the teacher's beat-test numbers. */
+.bsmash-steps { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+.bsmash-step-chip { min-height: 48px; }
+.bsmash-stats { margin: 12px 0 0; color: var(--text-muted); font-size: 13px; font-weight: 700; line-height: 1.4; }
+.bsmash-stats[hidden] { display: none; }
+
+/* Teacher codes, on the About screen. */
+.kr-code { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+.kr-code-input { flex: 1 1 140px; min-height: 48px; padding: 8px 12px; border-radius: 12px; border: 2px solid #526b85; background: var(--bg-dark); color: white; font-weight: 800; font-size: 16px; text-transform: uppercase; }
+.kr-code-btn { flex: 0 0 auto; width: auto; margin-top: 0; min-height: 48px; }
+.kr-code-result { flex: 1 1 100%; margin: 4px 0 0; font-size: 14px; font-weight: 700; color: var(--accent-gold); min-height: 1em; }
+
 /* ---------- The pads (beat-pads.js) ----------
    It has to feel good to touch: the pad sinks, a burst of light, a held pad
    stays down (§7). 'beat' is the pulse (where the beat is, not whether to
@@ -1147,7 +1169,6 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .krpads-four .krpad { min-height: 0; min-width: 0; }
 .krpads-one .krpad { aspect-ratio: auto; min-height: 150px; }
 /* The first minute is the pads and nothing else: big, and in the middle. */
-#beat-screen-studio.jam .krpads { margin: auto; }
 #beat-screen-studio.jam .krpads-four .krpad { aspect-ratio: 3 / 4; font-size: 26px; }
 /* An empty guide box keeps its place but shows nothing. */
 #view-beat .kr-guide-text:empty { visibility: hidden; }

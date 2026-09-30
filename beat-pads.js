@@ -11,7 +11,7 @@
      const pads = KRPads.create({
          container,           // the element the pads are built into
          count: 4,            // 4 beat pads, or 1 big pad
-         now: () => seconds,  // the audio clock (AudioContext.currentTime)
+         now: e => seconds,   // the audio clock at the moment of event e
          delay: () => seconds,// the device's measured delay, taken off every time
          label: i => text,    // optional: what pad i shows
          onPress(press),      // press = { pad, time, raw, touch }
@@ -39,14 +39,14 @@ const KRPads = (function () {
         const held = {};          // pointerId or key -> the press it started
         let enabled = true;
 
-        function time() {
-            const raw = o.now();
+        function time(e) {
+            const raw = o.now(e);
             return { raw, time: raw - (o.delay() || 0) };
         }
 
-        function press(index, holder, touch) {
+        function press(index, holder, touch, e) {
             if (!enabled || index < 0 || index >= pads.length || held[holder]) return;
-            const t = time();
+            const t = time(e);
             const p = { pad: index, time: t.time, raw: t.raw, touch: !!touch, up: null, rawUp: null };
             held[holder] = p;
             pads[index].classList.add('down');
@@ -54,11 +54,11 @@ const KRPads = (function () {
             if (o.onPress) o.onPress(p);
         }
 
-        function release(holder) {
+        function release(holder, e) {
             const p = held[holder];
             if (!p) return;
             delete held[holder];
-            const t = time();
+            const t = time(e);
             p.up = t.time;
             p.rawUp = t.raw;
             const stillDown = Object.keys(held).some(k => held[k].pad === p.pad);
@@ -85,9 +85,9 @@ const KRPads = (function () {
                 pad.addEventListener('pointerdown', e => {
                     e.preventDefault();
                     try { pad.setPointerCapture(e.pointerId); } catch (err) {}
-                    press(i, 'p' + e.pointerId, e.pointerType === 'touch');
+                    press(i, 'p' + e.pointerId, e.pointerType === 'touch', e);
                 });
-                const up = e => release('p' + e.pointerId);
+                const up = e => release('p' + e.pointerId, e);
                 pad.addEventListener('pointerup', up);
                 pad.addEventListener('pointercancel', up);
                 pad.addEventListener('lostpointercapture', up);
@@ -113,12 +113,12 @@ const KRPads = (function () {
             if (index < 0) return;
             e.preventDefault();
             if (e.repeat) return;
-            press(index, 'k' + e.key, false);
+            press(index, 'k' + e.key, false, e);
         }
 
         function onKeyUp(e) {
             if (padForKey(e.key) < 0) return;
-            release('k' + e.key);
+            release('k' + e.key, e);
         }
 
         // A light on one pad for a moment: 'burst' on a press, 'hit' for a
@@ -153,7 +153,7 @@ const KRPads = (function () {
             },
         };
 
-        function releaseAll() { Object.keys(held).forEach(release); }
+        function releaseAll() { Object.keys(held).forEach(holder => release(holder)); }
     }
 
     return { create };

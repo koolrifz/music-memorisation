@@ -773,7 +773,7 @@ let rstompWrongBars = [];       // 1-based bar numbers to mark, when we're namin
 
 function getRstompProgress() {
     const fallback = { unlockedStages: ['1'], stageProgress: {}, lastPosition: '1', totalPlays: 0 };
-    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmLabProgress') || '{}') }; }
+    try { return KR.openStages({ ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmLabProgress') || '{}') }, RSTOMP_LEVELS.map(level => level.id)); }
     catch (error) { return fallback; }
 }
 

@@ -89,7 +89,7 @@ function vsmashCurrentPlayer() {
 function vsmashBlankProgress() {
     return {
         floors: {},
-        unlocked: VSMASH_FLOORS.filter(f => f.unlock === null).map(f => f.id),
+        unlocked: (KR.openAll() ? VSMASH_FLOORS : VSMASH_FLOORS.filter(f => f.unlock === null)).map(f => f.id),
         lastFloor: null,
         license: false,
         namesSetting: 'both',
@@ -115,6 +115,8 @@ function vsmashLoad() {
     VSMASH_FLOORS.forEach(f => {
         if (f.unlock === null && !progress.unlocked.includes(f.id)) progress.unlocked.push(f.id);
     });
+    // The teacher code (teacher-codes.js) opens every floor.
+    if (KR.openAll()) progress.unlocked = VSMASH_FLOORS.map(f => f.id);
     return progress;
 }
 

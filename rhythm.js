@@ -141,7 +141,7 @@ let rhythmRevealedBars = [];        // bars whose answer was auto-revealed after
 
 function getRhythmProgress() {
     const fallback = { unlockedStages: ['1'], stageProgress: {}, lastPosition: '1', totalPlays: 0 };
-    try { return { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmProgress') || '{}') }; }
+    try { return KR.openStages({ ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmProgress') || '{}') }, RHYTHM_LEVELS.map(level => level.id)); }
     catch (error) { return fallback; }
 }
 

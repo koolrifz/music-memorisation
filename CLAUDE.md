@@ -5,7 +5,7 @@ Read this before touching the code. It's the accumulated context from months of 
 ## What this is
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
-**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), and `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
+**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"), and `teacher-codes.js` (see "TEACHER CODES"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
 
 **WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
 that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
@@ -1145,6 +1145,20 @@ Each game keeps its own localStorage key (`koolRiffsG1Progress`, `koolRiffsG2Pro
 
 **Progress stays on the device** until networking is designed once, for the whole app (Rob: *"until we wrap this whole thing up in an umbrella"*). One addition Rob approved for shared school iPads and Chromebooks: a **local player picker**, a list of names on the device with no passwords and no network, so that each student's progress is their own. It arrives with Value Smash.
 
+## TEACHER CODES: reset everything, or open everything
+Rob: *"I should have two codes: one to reset all of my levels of all the games
+back to zero… and one that just allows me to jump into any level I want."*
+Typed into the box on the **About Kool Riffs** screen; `teacher-codes.js`
+holds the codes (`KR_CODES`, change them there) and acts on this device only.
+- **RESET** removes every `koolRiffs*` key: players, progress, settings, the
+  tap delay. The first time into everything again.
+- **OPEN** sets `koolRiffsOpenAll`. Every game's progress getter passes its
+  stages through `KR.openStages()` (Value Smash and Beat Smash check
+  `KR.openAll()` directly), so every stage is open wherever the game looks.
+  Typing it again turns it off; stages played meanwhile stay open (nothing
+  opened is ever closed). **A new game must route its unlocks through the
+  same helper.**
+
 ## Pathway screen pattern
 Each game's entry point is a pathway screen (`g1-screen-pathway`, etc.) — a compact horizontal track of stage nodes (locked = icon only, no text; unlocked = icon + label; cleared = icon + label + best score badge). The Start button never appears on this screen itself, only after a stage is selected. This was a deliberate fix — don't regress to a screen where a game launches straight into "Start" with no visible pathway.
 
@@ -1379,7 +1393,8 @@ commit.
 - **The brief's "near-miss" hook** ("1 beat over", "0.3 s off your best") is
   listed for phase 1 in the brief but not in the build guide; not built.
 
-## BEAT SMASH — Phase 1 built (branch `claude/beat-game-design-y00yax`)
+## BEAT SMASH — Phase 1 built, on main
+First on the dashboard (Rob: *"moved straight up to the very top of the menu"*).
 The first rhythm game, and the step before Stomp Lab that Garnet asked for.
 The spec is the private brief, `kool-riffs-docs/docs/beat-smash-design-brief.md`
 (rev 7); section numbers below are its. **Phase 1** is built: the first minute,
@@ -1411,12 +1426,39 @@ Smash's players list. Beat Smash adds an **age** to a player.
 - **The band has its own buses to the speakers**, bypassing Stomp Lab's
   master, because `rstompAudioStop()` fades that master and the groove
   would dip whenever anything else stopped.
-- **The first minute.** Warm-up groove, four big pads in the middle, Tango
-  demos a bar, "Copy me!". It can't fail. Every tap is a tap to a known beat,
-  which is the **delay calibration**: median, then the mean of the taps within
-  80 ms of it, stored per device (`koolRiffsBeatDelay`). Four on-beat taps in a
-  row and the pads become four quarter notes. If the taps don't settle, Tango
-  demos again every four bars.
+- **The first minute is a jam, and it is the student's for as long as they
+  like.** Warm-up groove, four big pads, Tango demos a bar, "Copy me!". It
+  can't fail. **This was reversed once, on Rob's call after playing it:** the
+  first version turned the pads into notes after four on-beat taps, and he
+  said *"I think I've been robbed of the fun of maintaining that beat."* Now a
+  meter fills with each tap on the beat (and slips back one for a tap off it),
+  the **band builds with it** (bass at a third, keys at two thirds:
+  `BSMASH_JAM_LAYERS`, a taste of the band still to be won), and when it is
+  full (`BSMASH_JAM_GOAL`, 24 taps, about 15 s) **"Show me what I played"**
+  appears. The jam carries on until it is pressed; then the band steps back to
+  Tango alone and the pads become four quarter notes. Notation arrives when the
+  experience is ready to move on. Tango demos again every four bars if the
+  taps don't settle.
+- **The jam is also the delay calibration and the BEAT TEST.** Every tap is a
+  tap to a known beat. The delay (median, then the mean of taps within 80 ms of
+  it) is stored per device (`koolRiffsBeatDelay`). The beat test is stored per
+  player (`beatTests`, the last 20): **lean** (average ms off the beat, the
+  device included), **steady** (the spread of the on-beat taps) and **onBeat**
+  (% of taps within the jam's window of the student's own lean). Recorded, not
+  yet used to grade: see "The beat test" below. With the teacher code on, the
+  pathway shows the last one.
+- **A calibration bug, fixed after Rob found the timing off on his phone.**
+  Each jam tap was placed against the beat nearest the *running* estimate. A
+  few wild taps at the start could drag that estimate half a beat off, after
+  which every good tap was placed on the wrong beat and excluded, and it never
+  recovered: a device calibrated half a beat out, and every take after it
+  graded against the wrong beat. Taps are now placed against a **fixed**
+  reference (the delay the device had before the jam), and the estimate can't
+  run below −50 ms. Reproduced in the test (three off-beat taps first).
+- **A tap's time comes from the event, not the handler.** `bsmashEventTime()`
+  takes the lag between the touch and the code running (bigger on a busy
+  phone) back off, using the event's own time stamp. Rob: *"I really thought
+  I was hitting on the beat."*
 - **The dice table is data** (`BSMASH_MUSICIANS[].steps`), bars written
   `'q qr q q'`. `'all'` = every legal bar by the engraving rules (Tango: 15).
   Tango's one-bar step is a **ladder climbed by clean takes**: every beat ·
@@ -1432,6 +1474,13 @@ Smash's players list. Beat Smash adds an **age** to a player.
   **age's pass mark** (hits over notes plus extra taps) **and** the first note
   after any slip's barline played: that is "back in by the next beat 1".
   The window starts 40 ms wide of the age's and tightens 5 ms per clean take.
+
+- **Every step reached can be played again** (Rob: *"I'm locked out of being
+  able to replay the previous level"*). The pathway shows a chip per step:
+  Warm-up, One bar, Two bars, The big take, and My band once won. Going back
+  is practice: the stars fill as usual but the saved row (`streak`) belongs to
+  the step the student is working on (`bsmashOnRecord()`), and clearing an
+  earlier step never moves `step` backwards.
 
 **Calls made where the brief left room (Rob to confirm):**
 - **One die per bar**, its face the bar's four dots (§4). §4.1 says "four
@@ -1455,11 +1504,32 @@ audio output changes (there is a **Re-time my taps** button instead); art
 (the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
 exist); swapping a part later (open in the brief).
 
-**Tests.** `python tools/test-beat-smash.py` (87 checks): the engraving sweep,
-the first minute, all three steps **played on the real pads with the mouse and
-the Space bar in time with the audio clock**, a missed take, a rest tap, the
-comeback rule both ways, the picker, and layout at 390×844, 360×640 and
-1366×657. `KR_VEXFLOW` / `KR_CHROME` let it run with no network. Run it with
+### The beat test — what the numbers could do (proposal, not built)
+Rob asked for a "handicap": *"They tap that beat for 15 seconds. If they're 95%
+or 100% you know where they are. If they're sitting at 65% we have to make sure
+we address that… you really just need to compete against yourself."* The jam
+now records the numbers; nothing uses them yet. Proposed uses, for Rob to rule
+on: the **lean** already sets the calibration; the **steadiness** could set
+each student's own timing window (their spread plus a margin, never wider than
+the youngest age's window, tightening as the spread shrinks); **onBeat** under
+about 70% could send the student back to the jam before reading; and the
+history, kept per player, is the chart of maturity over weeks. Children
+tapping to a beat typically stray more the younger they are, which is the case
+for measuring each child rather than assuming by age.
+
+### Parked from Rob's first play (2026-09-30)
+- **Jam with Tango: call and response**, no notation: Tango plays a figure
+  (son clave, tresillo…), the student plays it back. A game of its own.
+  `ideas/jam-with-tango.md`.
+- **"Playing as" in every game.** The players list is shared already; the
+  other games don't use it yet.
+
+**Tests.** `python tools/test-beat-smash.py` (108 checks): the engraving sweep,
+the jam (the meter, the band building, a wobbly start, the beat test), all
+three steps **played on the real pads with the mouse and the Space bar in time
+with the audio clock**, a missed take, a rest tap, the comeback rule both
+ways, the picker, replaying a step, the teacher codes, and layout at 390×844,
+360×640 and 1366×657. `KR_VEXFLOW` / `KR_CHROME` let it run with no network. Run it with
 `tools/check-text.py` before every commit.
 
 ## ADDICTIVE BY DESIGN: the whole app
