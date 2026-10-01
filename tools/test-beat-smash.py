@@ -358,10 +358,10 @@ def test_beat_light(page):
     # Dragging: a little slower.
     page.evaluate('bsmash.jam.lastCoach = -Infinity')
     beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 3
-    for k in range(4):
+    for k in range(8):
         press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
-    page.evaluate('bsmash.jam.lastCoach = -Infinity')
-    t = start + (beat + 4) * 0.6 + 0.04
+    page.evaluate('bsmash.jam.lastCoach = -Infinity; bsmash.jam.praiseAt = 999')
+    t = start + (beat + 8) * 0.6 + 0.04
     for k in range(6):
         press_at(page, None, t + k * 0.65, index=k % 4)
     said = guide(page)
@@ -369,6 +369,49 @@ def test_beat_light(page):
     page.evaluate('bsmashJamMorph()')
     page.wait_for_timeout(300)
     check('Once the notes appear, the light is gone', page.is_hidden('#beat-light'))
+
+
+def test_follow_me(page):
+    """Missing the beat: Tango counts "1 2 3 4" in time until order is
+    restored, says so; and if they fall apart and stop, she encourages."""
+    fresh(page)
+    page.click('.game-card.red')
+    page.wait_for_timeout(800)
+    page.evaluate("window.counted = []; const say = raudioSyllable;"
+                  "raudioSyllable = (t, label, strong, beat) => { counted.push([t, label]); say(t, label, strong, beat); }; 0")
+    start = page.evaluate('bsmashBand.start')
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    for k in range(3):
+        press_at(page, None, start + (beat + k) * 0.6 + 0.3, index=k)
+    check('Missing the beat: Tango says "Follow me! 1, 2, 3, 4!"',
+          'Follow me' in guide(page) and page.evaluate('bsmash.jam.follow !== null'), guide(page))
+    page.wait_for_timeout(3200)
+    counts = page.evaluate('counted.map(c => [Math.round((c[0] - bsmashBand.start) / 0.6 * 1000) / 1000, c[1]])')
+    check('...and counts, in time: every count lands on a beat, 1 2 3 4 by its place in the bar',
+          len(counts) >= 4 and all(c[0] == int(c[0]) and c[1] == str(int(c[0]) % 4 + 1) for c in counts), counts)
+    shown = page.evaluate("[document.getElementById('beat-light').classList.contains('counting'),"
+                          " document.querySelector('#beat-light .bsmash-light-count').textContent]")
+    check('...with the number in the middle of the beat light', shown[0] and shown[1] in ('1', '2', '3', '4'), shown)
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    for k in range(5):
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+    said = guide(page)
+    check('Back on the beat: the counting stops, and Tango congratulates them',
+          page.evaluate('bsmash.jam.follow === null') and ('back on the beat' in said or 'found it' in said), said)
+    page.wait_for_timeout(1500)
+    n = page.evaluate('counted.length')
+    page.wait_for_timeout(1300)
+    check('...and stays stopped', page.evaluate('counted.length') == n)
+    # Fall apart, then stop.
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    for k in range(3):
+        press_at(page, None, start + (beat + k) * 0.6 + 0.3, index=k)
+    page.wait_for_function('bsmash.jam.stopped', timeout=9000)
+    page.wait_for_timeout(200)
+    said = guide(page)
+    check('They fall apart and stop: everyone struggles at the beginning, keep trying',
+          'Everyone struggles' in said and page.is_visible('#beat-jam-nav'), said)
+    check('...and the counting stops with the band', page.evaluate('bsmash.jam.follow === null'))
 
 
 def test_one_bar_step(page):
@@ -395,6 +438,20 @@ def test_one_bar_step(page):
           screen(page) == 'beat-screen-studio' and record(page)['streak'] == 1, record(page))
     check('The age is stored on the player', page.evaluate('bsmashPlayer().age') == '6-8')
     check('The picture choice appears after the first star', page.evaluate("!document.getElementById('beat-picture-choice').hidden"))
+    chips = page.evaluate("[...document.querySelectorAll('#beat-picture-choice .bsmash-chip')].map(c => c.textContent)")
+    check('...as one button, "Need a hand?"', chips == ['Need a hand?'], chips)
+    page.click('#beat-picture-choice .bsmash-help')
+    chips = page.evaluate("[...document.querySelectorAll('#beat-picture-choice .bsmash-chip')].map(c => c.textContent)")
+    check('...which opens the styles, "Mix it up" first and on by default',
+          chips == ['Need a hand?', 'Mix it up', 'Blocks', 'Counting', 'Drum machine']
+          and page.evaluate("document.querySelector('#beat-picture-choice .bsmash-chip:nth-child(2)').classList.contains('on')"), chips)
+    mixed = page.evaluate("""(() => { const seen = []; for (let i = 0; i < 12; i++) { bsmashMixPicture(); seen.push(bsmash.mixPicture); }
+        return { kinds: new Set(seen).size, repeats: seen.filter((k, i) => i && k === seen[i - 1]).length }; })()""")
+    check('Mixed up: every style turns up, never the same twice running', mixed == {'kinds': 3, 'repeats': 0}, mixed)
+    page.click('#beat-picture-choice .bsmash-chip:nth-child(4)')
+    check('Picking one keeps it', page.evaluate("bsmashLoad().settings.pictureHelp === 'counting' && bsmashPictureKind() === 'counting'"))
+    page.click('#beat-picture-choice .bsmash-chip:nth-child(2)')
+    page.click('#beat-picture-choice .bsmash-help')
 
     # The second star: the picture only during the count-in.
     take = wait_for_take(page)
@@ -923,12 +980,13 @@ def main():
         page = new_page(browser)
         test_engraving(page)
         test_first_minute(page)
-        test_beat_light(page)
         test_one_bar_step(page)
         test_two_bar_step(page)
         test_big_take(page)
         test_picker(page)
         test_picker_leave(page)
+        test_beat_light(page)
+        test_follow_me(page)
         test_songs(page)
         test_song_jam(page)
         test_jam_variations(page)
