@@ -162,21 +162,22 @@ def wait_take_done(page, timeout=15):
     page.wait_for_function('!bsmash || !bsmash.take || bsmash.take.done', timeout=timeout * 1000)
 
 
-def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=()):
+def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=(), shift=None):
     """Play the take that is coming: every note on time, except the note
-    indexes in `skip`; with rest_tap, one tap in the first rest too. A long
-    note is held for its length, except the note indexes in `let_go`, which
-    are let go at once."""
+    indexes in `skip`; with rest_tap, one tap in the first rest too (early in
+    it, well clear of the next note). A long note is held for its length,
+    except the note indexes in `let_go`, which are let go at once. `shift`
+    moves one note's press: {index: seconds}."""
     take = wait_for_take(page)
     if not take:
         return None
     offset = clock_offset(page)
     pads = page.locator('#beat-pads .krpad').count()
-    presses = [(t, i) for i, t in enumerate(take['notes']) if i not in skip]
+    presses = [(t + (shift or {}).get(i, 0), i) for i, t in enumerate(take['notes']) if i not in skip]
     hold = lambda i: 0.08 if i < 0 or i in let_go or take['slots'][i] < 2 else (take['slots'][i] - 0.25) * 0.6
     if rest_tap and take['rests']:
         r0, r1 = take['rests'][0]
-        presses.append(((r0 + r1) / 2, -1))
+        presses.append((r0 + 0.3 * (r1 - r0), -1))
     presses.sort()
     for t, i in presses:
         beat = int(round((t - take['start']) / 0.6)) % 4
@@ -451,13 +452,14 @@ def test_one_bar_step(page):
     page.click('#beat-picture-choice .bsmash-help')
     chips = page.evaluate("[...document.querySelectorAll('#beat-picture-choice .bsmash-chip')].map(c => c.textContent)")
     check('...which opens the styles, "Mix it up" first and on by default',
-          chips == ['Need a hand?', 'Mix it up', 'Blocks', 'Counting', 'Drum machine']
+          chips == ['Need a hand?', 'Mix it up', 'Blocks', 'Drum machine']
           and page.evaluate("document.querySelector('#beat-picture-choice .bsmash-chip:nth-child(2)').classList.contains('on')"), chips)
     mixed = page.evaluate("""(() => { const seen = []; for (let i = 0; i < 12; i++) { bsmashMixPicture(); seen.push(bsmash.mixPicture); }
         return { kinds: new Set(seen).size, repeats: seen.filter((k, i) => i && k === seen[i - 1]).length }; })()""")
-    check('Mixed up: every style turns up, never the same twice running', mixed == {'kinds': 3, 'repeats': 0}, mixed)
+    check('Mixed up: both styles turn up, never the same twice running (no Counting: "we don\'t know what brackets are")',
+          mixed == {'kinds': 2, 'repeats': 0}, mixed)
     page.click('#beat-picture-choice .bsmash-chip:nth-child(4)')
-    check('Picking one keeps it', page.evaluate("bsmashLoad().settings.pictureHelp === 'counting' && bsmashPictureKind() === 'counting'"))
+    check('Picking one keeps it', page.evaluate("bsmashLoad().settings.pictureHelp === 'machine' && bsmashPictureKind() === 'machine'"))
     page.click('#beat-picture-choice .bsmash-chip:nth-child(2)')
     page.click('#beat-picture-choice .bsmash-help')
 
@@ -475,7 +477,9 @@ def test_one_bar_step(page):
     bars_before = page.evaluate("bsmash.bars.map(b => b.join()).join('|')")
     play_take(page, skip=(0,))
     page.wait_for_timeout(300)
-    check('A missed note: "Take two!"', 'Take two' in guide(page), guide(page))
+    check('A missed note: the verdict says so, and "Take two!"', 'Take two' in guide(page) and 'got away' in guide(page), guide(page))
+    check('...and the missed note is the one marked most strongly',
+          page.locator('#beat-reading .bsmash-under .bsmash-miss.named').count() == 1)
     check('...the row of stars empties', record(page)['streak'] == 0 and page.evaluate(
         "document.querySelectorAll('#beat-stars .bsmash-star.full').length") == 0)
     check('...and the wrong note is marked below the staff, not over it',
@@ -485,7 +489,8 @@ def test_one_bar_step(page):
           and page.evaluate("bsmash.bars.map(b => b.join()).join('|')") == bars_before)
     play_take(page, rest_tap=True) if page.evaluate("bsmash.take.rests.length") else play_take(page, skip=(0,))
     page.wait_for_timeout(300)
-    check('A tap in a rest is not clean either', 'Take two' in guide(page) and state(page)['scaffold'] == 'retake', guide(page))
+    check('A tap in a rest is not clean either, and the verdict counts: "Take three!"',
+          'Take three' in guide(page) and state(page)['scaffold'] == 'retake', guide(page))
     play_take(page)
     page.wait_for_timeout(1800)
     check('A clean retake earns no star; a new roll starts again at the first star',
@@ -557,6 +562,10 @@ def test_picker(page):
     page.wait_for_selector('#beat-picker-done', state='visible', timeout=6000)
     check('Playback: the band, loud', page.evaluate("bsmashBandBus.gain.value") > 0.8 or
           page.evaluate("bsmashBand.parts.drums") == 'spicy')
+    check('...with the drums alone it is where the band starts, not "how much you\'ve built"',
+          'drum part' in guide(page, 'beat-picker-guide'), guide(page, 'beat-picker-guide'))
+    check('...and it leads straight on: "Next: Riff · Bass"', page.is_visible('#beat-picker-next')
+          and page.inner_text('#beat-picker-next').strip().lower() == 'next: riff · bass', page.inner_text('#beat-picker-next'))
     page.click('#beat-picker-done')
     page.wait_for_timeout(500)
     check('Back on the pathway, Tango shows as won', page.evaluate(
@@ -626,6 +635,63 @@ def test_wrong_pad(page):
     check('...and the Space bar plays it, any beat', page.evaluate("bsmash.take.notes.every(n => n.hit && !n.wrongPad)"))
 
 
+def test_verdict_reasons(page):
+    """Playtest 1, 4.1: the verdict names the real reason, the picture marks
+    that note, and a press just before a note is that note early, not a tap
+    in the rest beside it. With the teacher code on, the take in ms."""
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
+                "musicians:{drums:{step:1,streak:1,clean:4,won:false,part:null,plays:3}}}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.click('#beat-pathway-start')
+    play_take(page, shift={0: -0.26})
+    page.wait_for_timeout(300)
+    check('A note played a quarter of a beat early: the verdict says EARLY, not "hold" or "rest"',
+          'early' in guide(page) and 'Take two' in guide(page)
+          and page.evaluate("bsmash.take.notes[0].near && !bsmash.take.rests.some(r => r.tapped)"), guide(page))
+    named = page.evaluate("[...document.querySelectorAll('#beat-reading .bsmash-miss.named')].map(m => m.getAttribute('data-why'))")
+    check('...and the picture marks that note, saying "early"', named == ['early'], named)
+    check('...no milliseconds for a child', page.evaluate("document.getElementById('beat-take-stats').hidden"))
+    page.evaluate("localStorage.setItem('koolRiffsOpenAll', '1')")
+    play_take(page, shift={0: 0.26})
+    page.wait_for_timeout(300)
+    check('Late is late, and the takes count on: "Take three!"', 'late' in guide(page) and 'Take three' in guide(page), guide(page))
+    stats = page.inner_text('#beat-take-stats') if page.is_visible('#beat-take-stats') else ''
+    check('With the teacher code on, the take note by note in ms', 'Window' in stats and 'outside the window' in stats, stats)
+    page.evaluate("localStorage.removeItem('koolRiffsOpenAll')")
+    page.wait_for_timeout(2200)
+    reasons = page.evaluate("""(() => {
+        const saved = bsmash.take, phase = bsmash.phase, scaffold = bsmash.scaffold;
+        bsmash.scaffold = 'star3';
+        // q qr q q: notes on beats 1, 3, 4; a rest on beat 2.
+        const run = times => {
+            const take = { start: 100, end: 102.4, bars: 1, win: 0.2, strays: [], presses: [],
+                comebackBars: new Set(), mustHit: new Set(), done: false,
+                notes: [0, 2, 3].map(s => ({ t: 100 + s * 0.6, end: 100.6 + s * 0.6, bar: 0, index: s, spec: { slot: s, slots: 1 } })),
+                rests: [{ t: 100.6, end: 101.2, bar: 0, index: 1, spec: { slot: 1, slots: 1 } }] };
+            bsmash.take = take;
+            times.forEach(t => bsmashPress({ pad: Math.max(0, Math.round((t - 100) / 0.6)) % 4, time: t, raw: t, touch: false, up: null }));
+            return bsmashTakeIssues(take).map(i => i.reason).join() + (take.rests[0].tapped ? '+tapped' : '');
+        };
+        const out = {
+            edge: run([100, 100.95, 101.8]),           // 0.25 before beat 3, inside beat 2's rest
+            rest: run([100, 100.75, 101.2, 101.8]),    // the middle of the rest
+            late: run([100, 101.45, 101.8]),           // beat 3, a quarter of a beat late
+            extra: run([100, 100.1, 101.2, 101.8]),    // beat 1 twice
+            first: run([99.74, 101.2, 101.8]),         // beat 1 early, in the count-in
+            missed: run([100, 101.8]),
+        };
+        bsmash.take = saved; bsmash.phase = phase; bsmash.scaffold = scaffold;
+        return out;
+    })()""")
+    check('A press in the last part of a rest, just before a note, is that note early: not a rest tap',
+          reasons['edge'] == 'early', reasons)
+    check('...one in the middle of the rest is a rest tap; late, one too many, missed: each named',
+          reasons['rest'] == 'rest' and reasons['late'] == 'late' and reasons['extra'] == 'extra' and reasons['missed'] == 'missed', reasons)
+    check('...and the first note played early, in the count-in, is early too', reasons['first'] == 'early', reasons)
+
+
 def test_riff_bass(page):
     """Phase 2: Riff on bass. Half notes, held; his own voice; his part."""
     fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
@@ -687,6 +753,9 @@ def test_riff_bass(page):
           rec['won'] and rec['part'] == 'smooth' and 'bass, locked in' in guide(page, 'beat-picker-guide')
           and page.evaluate("document.querySelectorAll('#beat-picker-desk .bsmash-channel.lit').length") == 2, rec)
     page.wait_for_selector('#beat-picker-done', state='visible', timeout=6000)
+    check('Two parts: the whole band so far (in Riff\'s words), and next, the keys',
+          'Listen to your band' in guide(page, 'beat-picker-guide') and page.inner_text('#beat-picker-next').strip().lower() == 'next: riff · keys',
+          [guide(page, 'beat-picker-guide'), page.inner_text('#beat-picker-next')])
     page.click('#beat-picker-done')
     page.wait_for_timeout(500)
     check('Back on the pathway: Riff won on bass, and the keys open next',
@@ -736,7 +805,13 @@ def test_riff_keys(page):
           and page.evaluate("document.querySelectorAll('#beat-picker-desk .bsmash-channel.lit').length") == 3,
           guide(page, 'beat-picker-guide'))
     page.wait_for_selector('#beat-picker-done', state='visible', timeout=6000)
-    page.click('#beat-picker-done')
+    check('Next: the booth', page.inner_text('#beat-picker-next').strip().lower() == 'next: the booth', page.inner_text('#beat-picker-next'))
+    page.click('#beat-picker-next')
+    page.wait_for_function("bsmash && bsmash.musician.id === 'booth' && bsmash.phase === 'ready'", timeout=15000)
+    check('...straight into the booth, the band still playing', screen(page) == 'beat-screen-studio'
+          and page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy', 'bass': 'smooth', 'keys': 'hop'},
+          page.evaluate("Object.assign({}, bsmashBand.parts)"))
+    page.evaluate("showBeatPathway()")
     page.wait_for_timeout(500)
     check('Back on the pathway: the booth is open, and it\'s YOUR turn',
           not page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(4)').disabled")
@@ -1226,6 +1301,7 @@ def main():
         test_picker(page)
         test_picker_leave(page)
         test_wrong_pad(page)
+        test_verdict_reasons(page)
         test_riff_bass(page)
         test_riff_keys(page)
         test_booth(page)

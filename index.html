@@ -748,6 +748,8 @@
         <div class="bsmash-desk" id="beat-desk"></div>
         <div class="bsmash-dice" id="beat-dice" hidden></div>
         <div class="bsmash-reading" id="beat-reading"></div>
+        <!-- The teacher's view (the teacher code on): the last take, note by note, in ms. -->
+        <p class="bsmash-stats bsmash-take-stats" id="beat-take-stats" hidden></p>
         <!-- The first minute: the beat light. Green, dead centre, is right on
              the beat; yellow left is early, yellow right is late. -->
         <div class="bsmash-light" id="beat-light" data-state="idle" hidden>
@@ -785,6 +787,7 @@
         <div class="bsmash-style-cards" id="beat-picker-cards" hidden></div>
         <button class="btn btn-start" id="beat-picker-keep" hidden disabled onclick="keepBeatPart()" data-text="beat.button.keep"></button>
         <div class="bsmash-desk" id="beat-picker-desk"></div>
+        <button class="btn btn-start" id="beat-picker-next" hidden onclick="startNextBeatMusician()"></button>
         <button class="btn btn-secondary" id="beat-picker-done" hidden onclick="showBeatPathway()" data-text="beat.button.studio"></button>
     </div>
 

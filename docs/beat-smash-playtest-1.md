@@ -304,7 +304,7 @@ Each also comes in a **minor version** where it makes sense. They become the
 
 ## 6. Proposed order of work
 
-1. **Clear fixes:**
+1. **Clear fixes** (**built**, 2026-10-01; see the notes below the list):
    - verdicts that name the real reason;
    - forgiving rest edges;
    - numbered takes;
@@ -313,6 +313,20 @@ Each also comes in a **minor version** where it makes sense. They become the
    - the counting picture removed;
    - the next musician straight after a part is kept;
    - the drum balance.
+   How they were built, where it differs from the text above:
+   - **The near zone is half a beat, not a third.** The timing window is
+     already about a third of a beat (195 ms at 9–10), so "the last third of
+     a beat before a note" would have changed nothing. A press outside the
+     window but within half a beat of a note still to be played is that
+     note, early or late. A press in the middle of a rest is still a rest tap.
+   - **One reason is said per take**, the first thing that went wrong, and
+     that note is marked most strongly. Every other slip is still marked
+     under the staff.
+   - **The first note played early in the count-in** now counts as early.
+     Before, any press before the take began was ignored.
+   - **The drum balance**: the upper kit sat 14–20 dB under the kick's low
+     end. In the loops the kick is now at 0.6 and the upper kit doubled,
+     about 10 dB closer in every style. The pad's own kick is unchanged.
 2. **The jam to Rob's spec:**
    - count after one silent bar;
    - stop after a second;

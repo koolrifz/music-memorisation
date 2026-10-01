@@ -1446,7 +1446,10 @@ Smash's players list. Beat Smash adds an **age** to a player.
   next bar, **in time**: her counting voice (`raudioSyllable`, the pitched
   placeholder, one scale degree per beat as in Stomp Lab) booked a beat ahead
   on the audio clock, the number in the middle of the beat light, the beat's
-  pad flashing. Three taps on the beat in a row (`BSMASH_FOLLOW_RESTORED`, the
+  pad flashing. The spoken line is only *"Follow me!"*: speech can't be
+  booked on the audio clock, so spoken numbers drifted against the band
+  (playtest 1, §2.1). The count is the in-time voice; recorded "one, two,
+  three, four" will replace the pitched placeholder. Three taps on the beat in a row (`BSMASH_FOLLOW_RESTORED`, the
   rule of three) end it, and she congratulates them ("Order restored"). If
   they fall apart and stop, the stop line is hers: *"Everyone struggles at the
   beginning. The important thing is to keep trying. Come back when you're
@@ -1506,15 +1509,34 @@ Smash's players list. Beat Smash adds an **age** to a player.
   the visual displaying… put it all under a helping hand."*). By default it
   **mixes**: each new roll draws in a different style from the last
   (`bsmashMixPicture()`), so no one picture becomes the way to play. One
-  button opens Mix it up / Blocks / Counting / Drum machine; a style picked
-  is kept (`settings.pictureHelp`) until "Mix it up" is picked again.
+  button opens Mix it up / Blocks / Drum machine; a style picked is kept
+  (`settings.pictureHelp`) until "Mix it up" is picked again. **No Counting
+  picture**: Rob, playtest 1, *"We don't know what brackets are."* Counting
+  arrives where it is taught, in Stomp Lab. A saved `'counting'` reads as mix.
 - **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
   same bar from notation), `star2` (picture until two beats before beat 1),
   `star3` (notation only), `retake`, `big`. The picture is laid out on the
   notation's own slot grid, so the morph is a change of look, not of place.
 - **Grading** is against the audio clock, the delay taken off each press.
-  A press takes the nearest unplayed note in the window; anything else is a
-  rest tap or a stray. Steps 1–2 need a clean take. The big take needs the
+  A press takes the nearest unplayed note in the window. One that misses the
+  window but lands **within half a beat of a note still to be played is that
+  note, early or late** (`BSMASH_NEAR_BEAT`), never a tap in the rest beside
+  it: Rob's "it was highlighting the rest" was a press a little early for
+  beat 3 landing in beat 2's rest. (The report said a third of a beat; the
+  window is already about a third, so a third would have changed nothing.)
+  Anything else is a rest tap or one tap too many. Steps 1–2 need a clean take.
+- **The verdict names the reason** (playtest 1, §4.1). `bsmashTakeIssues()`
+  lists what went wrong in time order, each one reason: `wrongPad`, `short`
+  (let go too soon), `early`, `late`, `missed`, `rest`, `extra`. The first is
+  said (`beat.take.why.<reason>`, Tango's or Riff's) and marked most strongly
+  under the staff, "early" or "late" written under it. Riff's *"Hold those long
+  notes right through"* is now his line for `short` only: it used to be his
+  line for every failed take, which is what Rob heard as the holding being
+  "intolerant". **Takes are counted**: "Take two", "Take three"… (§4.2),
+  from 1 on each new roll and again after the reveal.
+- **The teacher's view**: with the teacher code on, the last take note by
+  note in ms under the reading (`#beat-take-stats`), so the window and the
+  holding rule can be tuned from real play. A child never sees it. The big take needs the
   **age's pass mark** (hits over notes plus extra taps) **and** the first note
   after any slip's barline played: that is "back in by the next beat 1".
   The window starts 40 ms wide of the age's and tightens 5 ms per clean take.
@@ -1626,8 +1648,22 @@ the code, and the proposed changes, marked clear fix / question / Rob's call.
 The biggest finding: Riff's *"Hold those long notes right through"* is his line
 for **every** failed take (`beat.take.again.riff`), so takes that failed for
 another reason (an early press landing in a rest, most likely) blamed the
-holding. Verdicts must name the real reason. Rob also ruled the **Counting**
-picture out of Beat Smash (*"We don't know what brackets are"*).
+holding. **The clear fixes (§6 item 1) are built**: the verdict names the
+reason, a press just before a note is early (not a rest tap), the teacher's
+ms view, numbered takes, "as long as you can", "Follow me!", the Counting
+picture gone, "Next: Riff · Bass" after Keep (and a playback line for the
+drums alone: *"That's your drum part. The band starts here."*), and the
+drum balance. Still open from it: the jam to Rob's spec (§2.2), the
+mentors' language (§3.2), REC with pause (§4.4), reggae (§5.2), the jam
+songs (§5.3) and the reviewers' questions.
+
+**The drum loops' balance** (playtest 1, §5.1, *"All we're getting is a kick
+drum"*): measured, the upper kit (2–8 kHz) sat 14–20 dB under the kick's
+low end. In the loops the kick now plays at 0.6 and the upper kit at 2×
+(`LOOP_KICK`, `LOOP_UPPER` in `beat-smash-band.js`; the student's own pad
+kick and the fill are untouched), which brings it 9–10 dB closer in every
+style and lifts what a phone speaker plays (above 300 Hz) by about 4.5 dB.
+The loop files were re-rendered with `render.js`.
 
 **Not built yet:** sharing the Permit card as an image (open item 5's
 canvas snapshot would serve both); "my bit";
@@ -1794,7 +1830,10 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (228 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (242 checks): the engraving sweep,
+the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
+the first note early in the count-in), numbered takes, the teacher's ms view,
+"Next" after Keep straight into the next musician,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
