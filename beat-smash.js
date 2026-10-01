@@ -135,7 +135,8 @@ const BSMASH_MUSICIANS = [
 
 // How many bars each step reads (§3). The booth reads its own number.
 const BSMASH_STEP_BARS = { 1: 1, 2: 2, 3: 4 };
-const BSMASH_BOOTH_BARS = [8, 4];          // the booth's setting; the first is the default
+const BSMASH_BOOTH_BARS = [8, 12, 16, 32]; // the booth's setting; the first is the default
+const BSMASH_TAKES_IN_A_ROW = 3;           // the big take and the booth: the rule of three (Rob: "one time can be a fluke")
 
 /* ---------- Defaults Rob will tune ----------
    All in one place. Ages are asked once, when the player is added (§12). */
@@ -294,7 +295,7 @@ function bsmashBlankProgress() {
         firstStar: false,
         seenMorph: false,
         musicians: {},
-        settings: { padMode: 'four', pictureHelp: 'mix', sound: {}, jamSong: 'c', boothBars: BSMASH_BOOTH_BARS[0] },
+        settings: { padMode: 'four', sound: {}, jamSong: 'c', boothBars: BSMASH_BOOTH_BARS[0] },
     };
 }
 
@@ -782,17 +783,24 @@ function bsmashMake(tag, className, parent) {
 function bsmashRenderReading() {
     const reading = bsmashEl('beat-reading');
     reading.innerHTML = '';
-    reading.classList.remove('clean');
+    reading.classList.remove('clean', 'review');
+    reading.style.maxHeight = '';
+    reading.scrollTop = 0;
     bsmash.layout = [];
     const bars = bsmash.specs;
     if (!bars || !bars.length) return;
     const width = Math.max(240, reading.clientWidth || 340);
     const perLine = Math.min(bars.length, width < 560 ? 2 : 4);
     const perBar = Math.min(300, Math.floor((width - 16) / perLine));
+    const lines = [];
     for (let first = 0; first < bars.length; first += perLine) {
         const lineBars = bars.slice(first, first + perLine);
         const line = bsmashMake('div', 'bsmash-line', reading);
+        lines.push(line);
         const marks = bsmashMake('div', 'bsmash-marks', line);
+        // The bar number at the start of every line after the first, as in
+        // printed music: on a long take it says where you are.
+        if (first > 0) bsmashMake('span', 'bsmash-bar-number', marks).textContent = String(first + 1);
         const paper = bsmashMake('div', 'bsmash-paper', line);
         const staff = bsmashMake('div', 'bsmash-staff', paper);
         const picture = bsmashMake('div', 'bsmash-picture', paper);
@@ -811,50 +819,62 @@ function bsmashRenderReading() {
         const cursor = bsmashMake('div', 'bsmash-cursor', picture);
         cursor.hidden = true;
     }
+    bsmash.page = { lines: lines, perLine: perLine, size: Math.min(lines.length, perLine === 2 ? BSMASH_PAGE_LINES_PHONE : BSMASH_PAGE_LINES_WIDE), at: -1 };
+    bsmashTurnPage(0);
 }
 
-/* WHICH PICTURE. Rob, 2026-10-01: "If we are pushing them to notation on
-   the second playing and only reading on the third, then does it matter how
-   they see the first playing? We can actually mix up the visual displaying.
-   In the meantime, yes, put it all under a helping hand." So by default the
-   picture MIXES: each new roll draws in a different style from the last, so
-   no one picture becomes the way to play. "Need a hand?" opens the choice,
-   and a student who picks one style keeps it until they pick "Mix it up".
-   No counting picture: Rob, after playtest 1, "We don't know what brackets
-   are." Counting arrives where it is taught, in Rhythm Stomp Lab. A player
-   who had picked it is back on "Mix it up". */
-const BSMASH_PICTURES = ['blocks', 'machine'];
+/* A LONG TAKE TURNS ITS PAGES. Rob: "If we can make 12 or 16 bars I would be
+   delighted. If we could make up to 32 bars I would be over the moon." The
+   reading shows a page of lines (four on a phone, two lines of four bars on
+   a wider screen: exactly what eight bars always took, so the pads stay on
+   screen). Past that the page turns the way a musician turns a half page:
+   the moment a line has been played, its row is filled with the next line
+   still to come. Nothing moves under the line being read; after the last
+   row, the next line is waiting at the top, with its bar number. */
+const BSMASH_PAGE_LINES_PHONE = 4;
+const BSMASH_PAGE_LINES_WIDE = 2;
 
-// The saved choice: one of the pictures, or 'mix'.
-function bsmashPictureSetting() {
-    const chosen = bsmashLoad().settings.pictureHelp;
-    return BSMASH_PICTURES.indexOf(chosen) !== -1 ? chosen : 'mix';
+function bsmashTurnPage(current) {
+    const page = bsmash.page;
+    if (!page || page.at === current) return;
+    page.at = current;
+    if (page.lines.length <= page.size) return;
+    const first = Math.min(current, page.lines.length - page.size);
+    page.lines.forEach((line, i) => {
+        line.hidden = i < first || i >= first + page.size;
+        line.style.order = i % page.size;
+    });
 }
 
-function bsmashPictureKind() {
-    const chosen = bsmashPictureSetting();
-    if (chosen !== 'mix') return chosen;
-    return (bsmash && bsmash.mixPicture) || 'blocks';
+// After a long take: every line, in order, scrolled to the first slip.
+function bsmashOpenPage(firstBar) {
+    const page = bsmash.page;
+    if (!page || page.lines.length <= page.size) return;
+    const reading = bsmashEl('beat-reading');
+    const height = reading.offsetHeight;
+    page.lines.forEach(line => { line.hidden = false; line.style.order = ''; });
+    page.at = -1;
+    reading.classList.add('review');
+    reading.style.maxHeight = height + 'px';
+    const line = page.lines[Math.floor((firstBar || 0) / page.perLine)];
+    reading.scrollTop = line ? line.offsetTop - reading.offsetTop : 0;
 }
 
-// A different style from the last roll's, for "Mix it up".
-function bsmashMixPicture() {
-    const others = BSMASH_PICTURES.filter(kind => kind !== bsmash.mixPicture);
-    bsmash.mixPicture = others[Math.floor(Math.random() * others.length)];
-}
-
-// The picture of one bar, in the style above (§12): blocks or a drum
-// machine. Width shows length; solid or hollow shows sound or silence;
-// colour only repeats the length.
+/* ONE PICTURE: SQUARES. Rob, 2026-10-01, after playing it: "just give them
+   one interface of squares. We don't need to give them different ways of
+   representing the sound… the drum loop interface just doesn't do it for
+   me." The Counting and Drum machine pictures, "Mix it up" and "Need a
+   hand?" are gone; the picture is the squares, the scaffold that fades. */
+// The picture of one bar (§12): squares. Width shows length; solid or
+// hollow shows sound or silence; colour only repeats the length.
 function bsmashDrawPicture(barIndex) {
     const entry = bsmash.layout[barIndex];
-    const kind = bsmashPictureKind();
     const x = entry.layout.pulseX;
     entry.blocks = [];
     entry.specs.forEach((spec, index) => {
         const valueClass = BSMASH_VALUE_CLASS[spec.value] || 'quarter';
         const block = bsmashMake('div', 'bsmash-block', entry.picture);
-        block.classList.add('pic-' + kind, valueClass);
+        block.classList.add('pic-blocks', valueClass); // text-ok: class names
         if (spec.isRest) block.classList.add('rest');
         // Every beat is a SQUARE (Rob: "too much a rectangle. Make them
         // square"), centred in its slot, so a quarter is one square and a
@@ -872,7 +892,6 @@ function bsmashDrawPicture(barIndex) {
             // reach from the square's edge to the slot's edge.
             const edge = spec.slots === 1 ? side : (k === 0 || k === spec.slots - 1 ? (slotWidth + side) / 2 : slotWidth);
             cell.style.width = edge + 'px';
-            if (kind === 'machine') cell.classList.add(spec.isRest ? 'off' : (k === 0 ? 'on' : 'held'));
         }
         entry.blocks[index] = block;
     });
@@ -885,6 +904,46 @@ function bsmashShow(what, seconds) {
     reading.classList.toggle('show-picture', what === 'picture');
     reading.classList.toggle('show-notation', what !== 'picture');
     bsmash.showing = what;
+}
+
+/* THE COUNT-IN, made unmistakable. Rob, 2026-10-01: "I love how the music
+   continues all the way through and we're talking over the top of it, so
+   make sure it's very clear the count in… the vacant screen in the middle
+   needs to pulse in red one, two, three, four, then the exercise starts. Or
+   use the same method that we use when somebody gets off the beat."
+   It IS that method, so no new metaphor: Tango's counting voice on the beat
+   (booked on the audio clock in bsmashScheduleTake), the number in a ring,
+   each beat's pad lighting as it is counted. Red, because red is the
+   recording light: this is the count before REC. The ring sits in the empty
+   space between the music and the pads, never over the notation; where a
+   short screen has no room for it, the red pads carry the count alone. */
+const BSMASH_COUNTIN_MAX = 140;     // px: the ring's largest size
+const BSMASH_COUNTIN_MIN = 56;      // px: smaller than this, the pads count alone
+
+function bsmashCountIn(n) {
+    const ring = bsmashEl('beat-countin');
+    if (n === null) { ring.hidden = true; return; }
+    if (n === 1) bsmashPlaceCountIn(ring);
+    if (!ring.sized) return;
+    ring.hidden = false;
+    ring.firstChild.textContent = String(n);
+    ring.classList.remove('pulse');
+    void ring.offsetWidth;
+    ring.classList.add('pulse');
+}
+
+// Centre the ring in the gap above the pads, as large as the gap allows.
+function bsmashPlaceCountIn(ring) {
+    const reading = bsmashEl('beat-reading');
+    const above = [reading, bsmashEl('beat-take-stats')].filter(el => el && !el.hidden && el.offsetHeight);
+    const top = Math.max(...above.map(el => el.offsetTop + el.offsetHeight));
+    const bottom = bsmashEl('beat-pads').offsetTop + 8;
+    const size = Math.min(BSMASH_COUNTIN_MAX, bottom - top - 16);
+    ring.sized = size >= BSMASH_COUNTIN_MIN;
+    if (!ring.sized) return;
+    ring.style.width = ring.style.height = size + 'px';
+    ring.style.top = Math.round(top + (bottom - top - size) / 2) + 'px';
+    ring.style.fontSize = Math.round(size * 0.55) + 'px';
 }
 
 function bsmashPictureCursor(takeBeat) {
@@ -988,6 +1047,7 @@ function handleBeatBackButton() {
 
 function bsmashStopAll() {
     bsmashStopTimers();
+    bsmashEl('beat-countin').hidden = true;
     if (bsmash) {
         if (bsmash.frame) cancelAnimationFrame(bsmash.frame);
         if (bsmash.pads) bsmash.pads.destroy();
@@ -1017,7 +1077,6 @@ function bsmashOpenStudio() {
     }
     if (!bsmash.frame) bsmash.frame = requestAnimationFrame(bsmashFrame);
     bsmashRenderDesk('beat-desk');
-    bsmashRenderPictureChoice();
 }
 
 // A game event. A line attached to it in content/dialogue.js is shown in the
@@ -1062,13 +1121,12 @@ function bsmashHeader() {
     const jam = bsmash.mode === 'jam';
     const stars = bsmashEl('beat-stars');
     const label = bsmashEl('beat-step-label');
-    stars.hidden = jam || bsmash.step === 3;
+    stars.hidden = jam;
     label.hidden = jam;
     if (!jam) {
         label.textContent = KR.t(bsmash.musician.booth ? 'beat.step.booth' : 'beat.step.' + bsmash.step);
         bsmashStarsShown(bsmash.streak);
-        bsmashRenderPictureChoice();
-    }
+        }
 }
 
 function bsmashRenderDesk(id) {
@@ -1086,45 +1144,6 @@ function bsmashRenderDesk(id) {
         const style = bsmashMake('span', 'bsmash-channel-style', channel);
         style.textContent = record.won ? KR.t('beat.style.' + record.part) : '';
     });
-}
-
-// The picture is the student's choice, after their first star, and can be
-// switched at any time (§12).
-// "Need a hand?": one button, which opens the picture styles. Help, not a
-// way of playing (the outside reviews, 2026-10-01, and Rob).
-function bsmashRenderPictureChoice() {
-    const row = bsmashEl('beat-picture-choice');
-    const progress = bsmashLoad();
-    // Never on the big take: it is read from notation only.
-    row.hidden = !progress.firstStar || !bsmash || bsmash.mode !== 'steps' || bsmash.step === 3;
-    row.innerHTML = '';
-    const hand = bsmashMake('button', 'bsmash-chip bsmash-help', row); // text-ok: class names
-    hand.type = 'button';
-    hand.textContent = KR.t('beat.help.button');
-    hand.classList.toggle('on', !!(bsmash && bsmash.helpOpen));
-    hand.onclick = () => { bsmash.helpOpen = !bsmash.helpOpen; bsmashRenderPictureChoice(); };
-    if (!bsmash || !bsmash.helpOpen) return;
-    ['mix'].concat(BSMASH_PICTURES).forEach(kind => {
-        const chip = bsmashMake('button', 'bsmash-chip', row);
-        chip.type = 'button';
-        chip.textContent = KR.t('beat.picture.' + kind);
-        chip.classList.toggle('on', bsmashPictureSetting() === kind);
-        chip.onclick = () => chooseBeatPicture(kind);
-    });
-}
-
-function chooseBeatPicture(kind) {
-    const progress = bsmashLoad();
-    progress.settings.pictureHelp = kind;
-    bsmashSave(progress);
-    bsmashRenderPictureChoice();
-    if (bsmash && bsmash.layout) {
-        bsmash.layout.forEach((entry, i) => {
-            entry.picture.querySelectorAll('.bsmash-block').forEach(b => b.remove());
-            bsmashDrawPicture(i);
-        });
-    }
-    bsmashRenderPathwaySettings();
 }
 
 /* ---------- The frame: lights follow the sound ----------
@@ -1168,13 +1187,15 @@ function bsmashOnBeat(beat) {
     if (bsmash.mode === 'jam') return bsmashJamBeat(beat, bar, inBar);
     if (!take || take.done) return;
     const takeBeat = beat - take.firstBeat;
-    if (takeBeat >= -4 && takeBeat < take.bars * 4) {
-        bsmash.pads.glow(bsmash.pads.count === 1 ? 0 : inBar, inBar === 0 ? 'beat-one' : 'beat');
-    }
+    const pad = bsmash.pads.count === 1 ? 0 : inBar;
+    if (takeBeat >= -4 && takeBeat < 0) bsmash.pads.flash(pad, 'countin', 380);
+    else if (takeBeat >= 0 && takeBeat < take.bars * 4) bsmash.pads.glow(pad, inBar === 0 ? 'beat-one' : 'beat');
+    bsmashCountIn(takeBeat >= -4 && takeBeat < 0 ? takeBeat + 5 : null);
     // The second star: the picture shows during the count-in, and the
     // notation replaces it before beat 1 (§3).
     if (take.flashPicture && takeBeat === -2) bsmashShow('notation', 0.3);
     if (take.go === 'picture') bsmashPictureCursor(takeBeat >= 0 && takeBeat < take.bars * 4 ? takeBeat : null);
+    if (takeBeat >= 0 && takeBeat < take.bars * 4 && bsmash.page) bsmashTurnPage(Math.floor(takeBeat / 4 / bsmash.page.perLine));
     if (takeBeat === -4) bsmash.phase = 'countin';
     if (takeBeat === 0) { bsmash.phase = 'take'; bsmashEl('beat-rec').classList.add('recording'); }
 }
@@ -1669,7 +1690,7 @@ function startBeatMusician(id, keepBand, step) {
     const playing = musician.booth ? 3 : (step || record.step);
     bsmash = {
         mode: 'steps', musician: musician, step: playing,
-        streak: bsmashOnRecord(record, playing) ? record.streak : 0,
+        streak: (musician.booth ? !record.won : bsmashOnRecord(record, playing)) ? record.streak : 0,
         delay: bsmashDelay(), lastBeat: null, pads: pads, frame: frame, take: null, bars: null,
     };
     bsmashOpenStudio();
@@ -1717,10 +1738,10 @@ function bsmashNewRoll() {
     bsmash.scaffold = bsmash.step === 3 ? 'big' : ['star1', 'star2', 'star3'][bsmash.streak];
     bsmash.bars = bsmashRoll(bsmash.musician, bsmash.step, record.clean, bsmash.bars);
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
-    bsmashMixPicture();
     bsmash.take = null;
     bsmash.takeNo = 1;
     bsmashEl('beat-take-stats').hidden = true;
+    bsmashEl('beat-countin').hidden = true;
     bsmash.phase = 'roll';
     bsmash.pads.setCount(bsmashPadCount());
     bsmashHeader();
@@ -1732,7 +1753,7 @@ function bsmashNewRoll() {
         bsmashShow(bsmash.scaffold === 'star1' || bsmash.scaffold === 'star2' ? 'picture' : 'notation');
         bsmashLater(() => {
             bsmashDiceHide();
-            if (bsmash.scaffold === 'big') return bsmashBigReady(true);
+            if (bsmash.scaffold === 'big') return bsmashBigReady(!bsmash.streak);
             bsmashScheduleTake(bsmash.scaffold === 'star1' ? 'picture' : 'notation');
         }, 500);
     }, 1000);
@@ -1812,6 +1833,8 @@ function bsmashScheduleTake(go) {
         const takeBar = Math.floor(beat / 4);
         bsmashAt(start + beat * BSMASH_BEAT,
             t => bsmashClick(t, inBar, inBar === 0 && take.comebackBars.has(takeBar)), 'take');
+        // Tango counts it in, in time: the same voice as "Follow me".
+        if (beat < 0) bsmashAt(start + beat * BSMASH_BEAT, t => raudioSyllable(t, String(inBar + 1), inBar === 0, inBar), 'take');
     }
     bsmash.take = take;
     bsmash.phase = 'wait';
@@ -1945,6 +1968,7 @@ function bsmashVerdict() {
     const take = bsmash.take;
     bsmash.phase = 'verdict';
     const issues = bsmashTakeIssues(take);
+    bsmashOpenPage(issues.length ? issues[0].place.bar : 0);
     issues.forEach((issue, i) => bsmashMarkIssue(issue, i === 0));
     bsmashTakeStats(take);
     if (bsmash.scaffold === 'big') {
@@ -2023,7 +2047,15 @@ function bsmashTakeTwo(big, issues) {
     const reason = issues && issues.length ? issues[0].reason : 'missed';
     bsmash.takeNo = (bsmash.takeNo || 1) + 1;
     bsmashEvent('beat.take.why.' + reason, { take: bsmashTakeWords(big) });
-    if (big) return bsmashLater(() => bsmashBigReady(false), 1600);
+    if (big) {
+        // Three IN A ROW: a take that doesn't pass empties the row.
+        if (bsmash.streak) {
+            bsmash.streak = 0;
+            if (bsmashBigCounts(bsmashMusicianRecord(bsmash.musician.id))) bsmashUpdateMusician(bsmash.musician.id, { streak: 0 });
+            bsmashHeader();
+        }
+        return bsmashLater(() => bsmashBigReady(false), 1600);
+    }
     // A miss empties the row of stars (§6). On the first star the stars were
     // already empty, so the same go simply runs again; after that it is
     // practice until it's clean, then a new roll starts again at the first star.
@@ -2126,8 +2158,7 @@ function bsmashStarLands() {
         bsmash.streak = 0;
     }
     const next = () => {
-        bsmashRenderPictureChoice();
-        // The name and age are asked after the first win, never before (§11).
+            // The name and age are asked after the first win, never before (§11).
         const player = bsmashPlayer();
         if (firstStar && (!player || BSMASH_AGES.indexOf(player.age) === -1)) return showBeatPlayers(true);
         bsmashNewRoll();
@@ -2135,14 +2166,37 @@ function bsmashStarLands() {
     bsmashLater(next, cleared ? 4200 : 2200);
 }
 
+/* The big take and the booth are won by the RULE OF THREE: three passing
+   takes in a row, a new roll each time, the stars filling as they do on the
+   first two steps. Rob, 2026-10-01: "The four bars doesn't make sense to me
+   because one time can be a fluke… their turn of eight bars in three takes
+   would be fantastic. That gets us back to our rule of three." A take that
+   doesn't pass empties the row, as everywhere else. */
+function bsmashBigCounts(record) {
+    return bsmash.musician.booth ? !record.won : bsmashOnRecord(record, bsmash.step);
+}
+
 function bsmashBigPassed(take) {
     bsmashEl('beat-reading').classList.add('clean');
     bsmashBandLevel(BSMASH_BAND_FULL);
     bsmashStarSound();
-    if (bsmash.musician.booth) return bsmashBoothPassed(take);
     const id = bsmash.musician.id;
-    const record = bsmashMusicianRecord(id);
-    bsmashUpdateMusician(id, { clean: record.clean + 1 });
+    const booth = !!bsmash.musician.booth;
+    let record = bsmashMusicianRecord(id);
+    bsmash.streak++;
+    const done = bsmash.streak >= BSMASH_TAKES_IN_A_ROW;
+    const changes = { clean: record.clean + 1 };
+    if (bsmashBigCounts(record)) changes.streak = done ? 0 : bsmash.streak;
+    record = bsmashUpdateMusician(id, changes);
+    bsmashStarsShown(bsmash.streak);
+    const stars = bsmashEl('beat-stars').querySelectorAll('.bsmash-star');
+    if (stars[bsmash.streak - 1]) stars[bsmash.streak - 1].classList.add('pop');
+    if (!done) {
+        bsmashEvent((booth ? 'beat.booth.passed.' : 'beat.big.passed.') + bsmash.streak);
+        return bsmashLater(bsmashNewRoll, 2600);
+    }
+    bsmash.streak = 0;
+    if (booth) return bsmashBoothPassed(take);
     if (record.won) {
         // Already in the band: a good take, and back to the band.
         bsmashEvent('beat.take.clean');
@@ -2167,11 +2221,10 @@ function bsmashBoothPracticed(passed) {
 
 function bsmashBoothPassed(take) {
     const firstTime = !bsmashLoad().permit;
-    const record = bsmashMusicianRecord('booth');
-    bsmashUpdateMusician('booth', { clean: record.clean + 1, won: true });
+    bsmashUpdateMusician('booth', { won: true });
     if (firstTime) {
         const progress = bsmashLoad();
-        progress.permit = { at: Date.now(), bars: take.bars, score: Math.round((bsmash.lastScore || 0) * 100) };
+        progress.permit = { at: Date.now(), bars: take.bars, takes: BSMASH_TAKES_IN_A_ROW, score: Math.round((bsmash.lastScore || 0) * 100) };
         bsmashSave(progress);
     }
     bsmashEvent('beat.booth.passed');
@@ -2686,10 +2739,6 @@ function bsmashRenderPathwaySettings() {
     row('beat.settings.song', [{ value: 'c', text: 'song.c' }].concat(
         Object.keys(songs).map(id => ({ value: id, text: songs[id].name }))),
         progress.settings.jamSong || 'c', v => save(s => { s.jamSong = v; }));
-    if (progress.firstStar) {
-        row('beat.settings.picture', ['mix'].concat(BSMASH_PICTURES).map(v => ({ value: v, text: 'beat.picture.' + v })),
-            bsmashPictureSetting(), v => save(s => { s.pictureHelp = v; }));
-    }
 }
 
 function retuneBeatTiming() {

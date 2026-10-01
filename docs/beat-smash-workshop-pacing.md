@@ -1,5 +1,12 @@
 # Beat Smash workshop: is the first level too quick to its big win?
 
+> **Rob ruled, 1 October 2026: the rule of three.** The four-bar big take and
+> the booth's eight bars are each won by **three passing takes in a row**
+> (*"one time can be a fluke"*). That is close to Option A below. The booth
+> can also read 12, 16 or 32 bars. The ten-track record was not chosen. What
+> comes next, a song at a time, is in `docs/beat-smash-songs-proposal.md`.
+> The rest of this document is kept as the question was put.
+
 **A question for outside reviewers, 1 October 2026.**
 
 Background, for anyone who hasn't seen the game:

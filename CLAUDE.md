@@ -1505,16 +1505,23 @@ Smash's players list. Beat Smash adds an **age** to a player.
   half note is two squares joined, a whole note four, so width still shows
   length; the cells inside split exactly at the beats. The square's side is
   the slot width less a gap, at most 52 px (`BSMASH_BLOCK_MAX`).
-- **The picture is help, under "Need a hand?"** (Rob, 2026-10-01: *"If we
-  are pushing them to notation on the second playing and only reading on the
-  third, then does it matter how they see the first playing? We can mix up
-  the visual displaying… put it all under a helping hand."*). By default it
-  **mixes**: each new roll draws in a different style from the last
-  (`bsmashMixPicture()`), so no one picture becomes the way to play. One
-  button opens Mix it up / Blocks / Drum machine; a style picked is kept
-  (`settings.pictureHelp`) until "Mix it up" is picked again. **No Counting
-  picture**: Rob, playtest 1, *"We don't know what brackets are."* Counting
-  arrives where it is taught, in Stomp Lab. A saved `'counting'` reads as mix.
+- **One picture: the squares.** Rob, 2026-10-01: *"just give them one
+  interface of squares. We don't need to give them different ways of
+  representing the sound… the drum loop interface just doesn't do it for
+  me."* This **reverses** "Need a hand?" and its mixed pictures (Blocks /
+  Counting / Drum machine, `settings.pictureHelp`), which are gone. Counting
+  went first (*"We don't know what brackets are"*): it arrives where it is
+  taught, in Stomp Lab. Don't bring a second picture back.
+- **The count-in is unmistakable** (Rob: *"make sure it's very clear the
+  count in… the vacant screen in the middle needs to pulse in red one, two,
+  three, four… or use the same method that we use when somebody gets off the
+  beat"*). It **is** the follow-me method, so no new metaphor: Tango's
+  counting voice in time (`raudioSyllable`, booked in `bsmashScheduleTake`),
+  the number in a red ring in the empty space between the music and the pads
+  (`#beat-countin`, `bsmashCountIn()`), and each beat's pad lit red
+  (`countin`). Red because it is the recording light. The ring sizes itself
+  to the gap and never sits over the notation; where there is no room (the
+  booth on a 360×640 phone) the red pads count alone. It goes at beat 1.
 - **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
   same bar from notation), `star2` (picture until two beats before beat 1),
   `star3` (notation only), `retake`, `big`. The picture is laid out on the
@@ -1612,8 +1619,16 @@ Rob: *"Let's move on with Riff and the keys… build out this first section."*
   **A one-bar take is never a bar of silence** (`bsmashHasNote`): a whole-rest
   bar is in the pool, but a take with nothing to play teaches nothing.
 - **The booth** (§10) is a musician with `booth: true` and one step, the big
-  take's machinery. **Eight bars** by default, **four** with the "Booth"
-  setting (Rob: *"Eight bars would be brilliant to test"*). The bars come from
+  take's machinery. **Eight bars, three takes in a row** (the rule of three,
+  as the big take), and the "Booth" setting offers **12, 16 and 32** (Rob:
+  *"If we can make 12 or 16 bars I would be delighted. If we could make up to
+  32 bars I would be over the moon. That would give us access to incredible
+  sight reading material."*). A long take **turns its pages** (`bsmashTurnPage`):
+  the reading keeps the height eight bars always had (four lines on a phone,
+  two on a wide screen), and the moment a line has been played its row fills
+  with the next line to come, a musician's half-page turn: nothing moves under
+  the line being read, every line after the first carries its bar number, and
+  after the take every line opens, scrolled to the first slip. The bars come from
   the same 38, **weighted towards the busier ones** (a bar is as likely as it
   has notes and rests), so it is "a little more involved" with no new rhythm.
   The whole band plays under it, quietly.
@@ -1636,13 +1651,19 @@ Rob: *"Let's move on with Riff and the keys… build out this first section."*
   guarded line at the top of entering Value Smash, as Stomp Lab's gate is, but
   it closes a game Rob is still testing, so it waits for his word.
 
-**OPEN, being workshopped: the pace of level one.** Rob, after playing it
-through: *"we are getting to the end goal way too quick… ideally I would like
-them to do at least 10 different four-bar phrases"* before an eight-bar final,
-with a Consistency meter to fill. Three options (three takes in the can per
-musician / a ten-track "first record" before the booth / both) and the
-questions for outside reviewers are in `docs/beat-smash-workshop-pacing.md`.
-**Don't change the progression until Rob rules on it.**
+**The pace of level one: Rob ruled, 2026-10-01 — the RULE OF THREE.** The
+big take (four bars) and the booth (eight) are each won by **three passing
+takes in a row**, a new roll each time, the stars filling as on the first two
+steps, a take that doesn't pass emptying the row (`BSMASH_TAKES_IN_A_ROW`,
+`bsmashBigPassed`). *"The four bars doesn't make sense to me because one time
+can be a fluke. If they can do four bars then certainly they can make eight
+bars."* The row is saved on the musician (and on the booth until the Permit).
+So a student now reads at least 9 four-bar phrases and 3 eight-bar ones
+before the L plates. The workshop's ten-track "first record" was not chosen.
+**Next, proposed and NOT built: song by song.** *"When that's over that song
+is finished. And then you can play another song and build it up from the
+beginning. Each song you get to unlock… is higher up in the tier."* The
+questions it needs answered are in `docs/beat-smash-songs-proposal.md`.
 
 **Playtest 1 (Rob, 2026-10-01)** is written up in
 `docs/beat-smash-playtest-1.md`: what he saw, the diagnosis checked against
@@ -1832,7 +1853,10 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (242 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py`: the engraving sweep, the count-in
+(the red ring clear of the music, the pad lit, gone at beat 1), three takes in a
+row on the big take and the booth (one star of three, a miss empties the row,
+the saved row), the booth's pages turning over 16 bars,
 the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,
 "Next" after Keep straight into the next musician,
