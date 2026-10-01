@@ -812,6 +812,10 @@
         <div class="kr-code">
             <input class="kr-code-input" id="kr-code-input" type="text" autocomplete="off" autocapitalize="characters">
             <button class="btn btn-secondary kr-code-btn" onclick="enterTeacherCode()" data-text="code.enter"></button>
+            <div class="kr-code-buttons">
+                <button class="btn btn-secondary kr-code-btn" onclick="teacherResetButton()" data-text="code.button.reset"></button>
+                <button class="btn btn-secondary kr-code-btn" onclick="teacherOpenAll()" data-text="code.button.open"></button>
+            </div>
             <p class="kr-code-result" id="kr-code-result"></p>
         </div>
         <button class="btn-close" onclick="toggleCredits(false)">Close</button>

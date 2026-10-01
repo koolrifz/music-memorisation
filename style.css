@@ -1192,6 +1192,8 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .kr-code { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
 .kr-code-input { flex: 1 1 140px; min-height: 48px; padding: 8px 12px; border-radius: 12px; border: 2px solid #526b85; background: var(--bg-dark); color: white; font-weight: 800; font-size: 16px; text-transform: uppercase; }
 .kr-code-btn { flex: 0 0 auto; width: auto; margin-top: 0; min-height: 48px; }
+.kr-code-buttons { flex: 1 1 100%; display: flex; gap: 8px; }
+.kr-code-buttons .kr-code-btn { flex: 1 1 0; }
 .kr-code-result { flex: 1 1 100%; margin: 4px 0 0; font-size: 14px; font-weight: 700; color: var(--accent-gold); min-height: 1em; }
 
 /* ---------- The pads (beat-pads.js) ----------
