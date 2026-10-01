@@ -1243,10 +1243,10 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 /* ---------- Beat Smash: the booth and the Learner's Permit ---------- */
 /* Eight bars on a phone: the lines sit closer, and on a short screen the desk
    steps aside and the pad is shorter, so the pad is never below the fold. */
-#beat-screen-studio.booth .bsmash-marks, #beat-screen-studio.booth .bsmash-under { height: 8px; }
+#beat-screen-studio.long .bsmash-marks, #beat-screen-studio.long .bsmash-under { height: 8px; }
 @media (max-height: 760px) {
-    #beat-screen-studio.booth .bsmash-desk { display: none; }
-    #beat-screen-studio.booth .krpads-one .krpad { min-height: 84px; }
+    #beat-screen-studio.long .bsmash-desk { display: none; }
+    #beat-screen-studio.long .krpads-one .krpad { min-height: 84px; }
 }
 .bsmash-rec.recording.practice { background: #8a5a00; border-color: #ffc800; }
 #beat-screen-permit { padding: 72px 16px 16px; background: radial-gradient(ellipse at 50% 0%, #22303f 0%, #10171f 70%); gap: 12px; }
@@ -1269,3 +1269,23 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
     from { transform: translateX(-50%) scale(1.14); background: rgba(255,75,75,0.85); box-shadow: 0 0 40px rgba(255,75,75,0.9); }
     to { transform: translateX(-50%) scale(1); background: rgba(179,38,30,0.25); box-shadow: 0 0 0 rgba(255,75,75,0); }
 }
+
+/* ---------- Beat Smash: the studio's control room and transport ---------- */
+.bsmash-control { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 480px; margin: 8px auto 0; font-size: 13px; font-weight: 800; color: #c8d6e5; }
+.bsmash-control[hidden] { display: none; }
+.bsmash-control-title { text-transform: uppercase; letter-spacing: 1px; font-size: 11px; color: #8aa4bf; white-space: nowrap; }
+.bsmash-control-meter { position: relative; flex: 1; height: 12px; border-radius: 999px; background: #1b2530; border: 2px solid #2c3a49; overflow: visible; }
+.bsmash-control-fill { height: 100%; width: 0; border-radius: 999px; background: #ffc800; transition: width 0.8s ease-out; }
+.bsmash-control.passed .bsmash-control-fill { background: var(--accent-green); }
+.bsmash-control-mark { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1px; background: white; border-radius: 2px; }
+.bsmash-control-score { white-space: nowrap; }
+.bsmash-transport { display: flex; gap: 8px; width: 100%; max-width: 480px; margin: 8px auto 0; }
+.bsmash-transport[hidden] { display: none; }
+.bsmash-transport-btn { flex: 1; min-height: 52px; border: none; border-radius: 12px; background: #2c3a49; color: white; font-weight: 900; font-size: 15px; box-shadow: 0 5px 0 #141c25; cursor: pointer; }
+.bsmash-transport-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 #141c25; }
+.bsmash-transport-btn:disabled { opacity: 0.35; cursor: default; }
+.bsmash-transport-btn[hidden] { display: none; }
+.bsmash-transport-btn.record { background: #d32f2f; box-shadow: 0 5px 0 #8e1b1b; }
+.bsmash-transport.recording .bsmash-transport-btn.record { animation: bsmash-rec-blink 1.2s steps(2) infinite; }
+.bsmash-transport-btn.keep { background: var(--accent-green); box-shadow: 0 5px 0 #3a8a00; }
+@keyframes bsmash-rec-blink { 50% { opacity: 0.55; } }

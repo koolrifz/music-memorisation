@@ -7,7 +7,7 @@
 It serves the app from this folder, opens it in headless Chrome at phone
 size, and PLAYS it by pressing the real pads with the mouse and the
 keyboard, in time with the audio clock: the first minute, all three of
-Tango's steps, a missed take, the big take's comeback rule, the part
+Tango's steps, a missed take, the comeback rule, the studio, the part
 picker and playback. Then an engraving sweep of every bar the dice can
 roll, and the layout on a phone, a small phone and a Chromebook.
 
@@ -191,9 +191,9 @@ def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=
 
 
 def record_take(page, **kw):
-    """The big take or the booth: wait for Record, press it, play the take."""
-    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=15000)
-    page.click('#beat-actions .bsmash-record')
+    """The studio: wait for the transport, press Record, play the take."""
+    page.wait_for_function("bsmash && (bsmash.phase === 'ready' || bsmash.phase === 'verdict') && !document.getElementById('beat-transport-record').disabled", timeout=20000)
+    page.click('#beat-transport-record')
     return play_take(page, **kw)
 
 
@@ -500,49 +500,106 @@ def test_two_bar_step(page):
     check('...on the four beat pads (the default, every step)', page.locator('#beat-pads .krpad').count() == 4)
     # Played on the keyboard: keys 1 2 3 4 are the four beat pads.
     ok = play_until(page, "bsmashMusicianRecord('drums').step === 3", limit=10, use_key='beats')
-    check('Three clean two-bar takes, played on the keys 1 2 3 4, open the big take', ok, record(page))
+    check('Three clean two-bar takes, played on the keys 1 2 3 4, open four bars', ok, record(page))
 
 
-def test_big_take(page):
-    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=15000)
-    check('The big take waits: four bars, Record and New roll',
-          page.evaluate('bsmash.specs.length') == 4 and page.is_visible('#beat-actions'))
-    first = page.evaluate("bsmash.bars.map(b => b.join()).join('|')")
-    page.click('#beat-actions .btn-secondary')
-    page.wait_for_function("bsmash.phase === 'ready'", timeout=8000)
-    check('New roll gives new bars', page.evaluate("bsmash.bars.map(b => b.join()).join('|')") != first)
-
-    # Lose a note, and the first note of the next bar too: the bar is lost.
-    page.click('#beat-actions .bsmash-record')
+def test_long_steps(page):
+    """Rob, 2026-10-01: four bars and eight bars come "the normal way", three
+    in a row each, no Record button; then the studio, 32 bars once through,
+    with a transport, a control room, listening back and trying again."""
+    page.wait_for_function("bsmash && bsmash.step === 3 && bsmash.take && !bsmash.take.done", timeout=20000)
+    check('Four bars come the normal way: dice, count-in, straight into the take, no Record button',
+          page.evaluate('bsmash.specs.length') == 4 and page.evaluate("bsmash.scaffold") == 'star1'
+          and not page.is_visible('#beat-transport'), page.evaluate("bsmash.scaffold"))
     take = wait_for_take(page)
     bars = take['noteBars']
     lost = [0] + [i for i, b in enumerate(bars) if b >= bars[0] + 1][:1]
     play_take(page, skip=tuple(lost))
     page.wait_for_timeout(300)
-    check('Losing a note AND the next beat 1 loses the bar: "Take two!"', page.evaluate("bsmash.take.lostBar")
-          and state(page)['phase'] in ('verdict', 'ready') and 'Take two' in guide(page), guide(page))
-    page.wait_for_function("bsmash.phase === 'ready'", timeout=8000)
-
-    # Lose one note, come back in on the next bar: that's a take.
-    page.click('#beat-actions .bsmash-record')
+    check('Four bars: lose a note AND the next beat 1, and it is take two (the comeback rule)',
+          page.evaluate("bsmash.take.lostBar") and 'Take two' in guide(page), guide(page))
     wait_for_take(page)
     play_take(page, skip=(0,))
-    check('One note lost, back in by the next beat 1: the take passes',
-          page.evaluate("bsmash.take.cameBack && !bsmash.take.lostBar"), guide(page))
     page.wait_for_timeout(300)
-    check('...but one take can be a fluke: one star of three, still in the studio',
-          state(page)['streak'] == 1 and screen(page) == 'beat-screen-studio' and 'Two more' in guide(page),
-          [state(page)['streak'], guide(page)])
-    page.wait_for_function("bsmash.phase === 'ready'", timeout=8000)
-    check('...and a new roll for the next one', page.evaluate("bsmash.specs.length") == 4)
-    record_take(page, skip=tuple(range(64)))     # nothing played: the take fails
-    page.wait_for_timeout(300)
-    check('A take that doesn\'t pass empties the row: three IN A ROW', state(page)['streak'] == 0, state(page))
-    for n in range(3):
-        record_take(page)
-        page.wait_for_timeout(300)
+    check('...one note lost, back in by the next beat 1: that passes, by the pass mark',
+          page.evaluate("bsmash.take.cameBack && !bsmash.take.lostBar") and state(page)['phase'] == 'reveal', state(page)['phase'])
+    ok = play_until(page, "bsmashMusicianRecord('drums').step === 4", limit=8)
+    check('Four bars, three in a row: on to eight bars', ok, record(page))
+
+    # Eight bars: two in the row already, so one more passing take wins it.
+    page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p);"
+                  "bsmashUpdateMusician('drums', { step: 4, streak: 2 }); startBeatMusician('drums', true, 4)")
+    take = wait_for_take(page)
+    check('Eight bars, the normal way too: straight into the take, notation, no Record button',
+          len(take['noteBars']) and max(take['noteBars']) <= 7 and page.evaluate('bsmash.specs.length') == 8
+          and not page.is_visible('#beat-transport'))
+    play_take(page)
+    page.wait_for_function("bsmash && bsmash.step === 5 && bsmash.phase === 'ready'", timeout=20000)
+    check('Eight bars three in a row: into the studio', record(page)['step'] == 5
+          and page.inner_text('#beat-step-label').strip().lower() == 'the studio', page.inner_text('#beat-step-label'))
+    t = page.evaluate("""(() => { const b = id => document.getElementById(id);
+        return { shown: !b('beat-transport').hidden, rec: !b('beat-transport-record').disabled,
+                 play: !b('beat-transport-play').disabled, stop: !b('beat-transport-stop').disabled,
+                 keep: !b('beat-transport-keep').hidden, dice: !b('beat-dice').hidden }; })()""")
+    check('The studio has a transport: Record live; Listen and Stop not yet; no Keep; no dice',
+          t == {'shown': True, 'rec': True, 'play': False, 'stop': False, 'keep': False, 'dice': False}, t)
+    bars_before = page.evaluate("bsmash.bars.map(b => b.join()).join('|')")
+    page.click('#beat-transport-record')
+    page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=8000)
+    t = page.evaluate("[!document.getElementById('beat-transport-record').disabled, !document.getElementById('beat-transport-stop').disabled]")
+    check('Recording: Stop is live, Record is not', t == [False, True], t)
+    play_take(page, skip=tuple(range(200)))         # nothing played
+    page.wait_for_timeout(400)
+    c = page.evaluate("""(() => { const c = document.getElementById('beat-control');
+        return { shown: !c.hidden, passed: c.classList.contains('passed'), score: c.querySelector('.bsmash-control-score').textContent,
+                 keep: !document.getElementById('beat-transport-keep').hidden, play: !document.getElementById('beat-transport-play').disabled }; })()""")
+    check('Under the pass mark: the control room says so, no Keep, and they can listen back',
+          c['shown'] and not c['passed'] and '0%' in c['score'] and not c['keep'] and c['play']
+          and 'pass mark' in guide(page), [c, guide(page)])
+    page.click('#beat-transport-play')
+    page.wait_for_function("bsmash.phase === 'playback'", timeout=5000)
+    check('Listen: the take plays back, and Stop is live', not page.is_disabled('#beat-transport-stop'))
+    page.click('#beat-transport-stop')
+    page.wait_for_timeout(200)
+    check('Stop ends the listen-back', state(page)['phase'] == 'verdict')
+    take = record_take(page)
+    page.wait_for_timeout(400)
+    check('The same bars every take: the song is the song', page.evaluate("bsmash.bars.map(b => b.join()).join('|')") == bars_before)
+    c = page.evaluate("""[document.getElementById('beat-control').classList.contains('passed'),
+                          !document.getElementById('beat-transport-keep').hidden]""")
+    check('At the pass mark: the control room glows, Keep appears', c == [True, True] and 'keeper' in guide(page), [c, guide(page)])
+    page.click('#beat-transport-play')
+    page.wait_for_function("bsmash.phase === 'playback'", timeout=5000)
+    back = page.evaluate("""({ booked: bsmashQueue.filter(e => e.tag === 'playback').length,
+        start: bsmash.playback.start, band: bsmashBand.start })""")
+    check('Listen back: every tap they played, booked over the band, from the same place in the song',
+          back['booked'] == len(take['notes']) and round((back['start'] - back['band']) / 2.4) % 4 == round((take['start'] - back['band']) / 2.4) % 4
+          and 'Listen back' in guide(page), [back, guide(page)])
+    page.click('#beat-transport-stop')
+    page.wait_for_timeout(200)
+    paging = page.evaluate("""(() => {
+        const saved = bsmash.specs;
+        bsmash.specs = bsmashRoll(bsmash.musician, 5, 0, null).concat(bsmashRoll(bsmash.musician, 5, 0, null)).slice(0, 16).map(bsmashSpecs);
+        bsmashRenderReading();
+        const reading = document.getElementById('beat-reading');
+        const shown = () => bsmash.page.lines.map((l, i) => l.hidden ? null : [i, Number(l.style.order || 0)]).filter(Boolean);
+        const out = { bars: bsmash.specs.length, lines: bsmash.page.lines.length, size: bsmash.page.size, h0: reading.offsetHeight };
+        out.before = shown();
+        bsmashTurnPage(1); out.turned = shown(); out.h1 = reading.offsetHeight;
+        bsmashTurnPage(out.lines - 1); out.end = shown();
+        bsmashOpenPage(0); out.review = shown().length;
+        bsmash.specs = saved; bsmashRenderReading();
+        return out; })()""")
+    n, size = paging['lines'], paging['size']
+    check('A long take turns its pages a line at a time, without moving the line being read',
+          paging['bars'] == 16 and n > size
+          and [i for i, _ in paging['before']] == list(range(size))
+          and sorted(paging['turned']) == sorted([[i, i % size] for i in range(1, size + 1)])
+          and [i for i, _ in paging['end']] == list(range(n - size, n))
+          and paging['h0'] == paging['h1'] and paging['review'] == n, paging)
+    page.click('#beat-transport-keep')
     page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-picker'", timeout=6000)
-    check('Three passing takes in a row: the big take is won', screen(page) == 'beat-screen-picker')
+    check('Keep it: the part is theirs to choose', screen(page) == 'beat-screen-picker')
     page.wait_for_timeout(200)
 
 
@@ -583,12 +640,13 @@ def test_picker(page):
     page.wait_for_timeout(200)
     check('Leaving the studio stops the band', page.evaluate('bsmashBand === null'))
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('Every step reached can be played again, the warm-up too', chips == ['Warm-up', 'One bar', 'Two bars', 'The big take', 'My band'], chips)
+    check('Every step reached can be played again, the warm-up too',
+          chips == ['Warm-up', 'One bar', 'Two bars', 'Four bars', 'Eight bars', 'The studio', 'My band'], chips)
     page.click('#beat-steps .bsmash-chip:nth-child(2)')
     page.click('#beat-pathway-start')
     page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.take", timeout=10000)
     check('...One bar again, from an empty row of stars, with Tango still won',
-          state(page)['step'] == 1 and state(page)['streak'] == 0 and record(page)['won'] and record(page)['step'] == 3)
+          state(page)['step'] == 1 and state(page)['streak'] == 0 and record(page)['won'] and record(page)['step'] == 5)
     play_take(page)
     page.wait_for_timeout(300)
     play_take(page)
@@ -748,16 +806,19 @@ def test_riff_bass(page):
     play_take(page)
     page.wait_for_timeout(600)
     check('...then from the notation, held: the first star', state(page)['streak'] == 1, state(page))
-    # The big take, and the part.
-    # Two in the can already (the saved row): one more passing take wins the part.
-    page.evaluate("bsmashUpdateMusician('bass', { step: 3, streak: 2 }); startBeatMusician('bass', false, 3)")
+    # The studio, and the part.
+    # The studio (eight bars, to keep the test short): one take at the pass mark wins the part.
+    page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p);"
+                  "bsmashUpdateMusician('bass', { step: 5, streak: 0 }); startBeatMusician('bass', false, 5)")
     page.wait_for_function("bsmash.phase === 'ready'", timeout=15000)
     halves = page.evaluate("bsmash.bars.some(bar => bar.indexOf('half-note') !== -1 || bar.indexOf('half-rest') !== -1)")
     bars = page.evaluate("bsmash.bars.map(b => b.join(' '))")
-    page.click('#beat-actions .bsmash-record')
+    page.click('#beat-transport-record')
     play_take(page)
+    page.wait_for_selector('#beat-transport-keep', state='visible', timeout=6000)
+    page.click('#beat-transport-keep')
     page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-picker'", timeout=6000)
-    check('The big take lands: Riff says "That gives me a great idea!"',
+    check('The studio take lands: Riff says "That gives me a great idea!"',
           'great idea' in guide(page, 'beat-picker-guide'), [guide(page, 'beat-picker-guide'), bars, halves])
     page.wait_for_selector('#beat-picker-cards .bsmash-style-card', timeout=8000)
     check('Riff\'s picker: his title, three bass lines', page.inner_text('#beat-picker-title') == "Riff's bass"
@@ -809,12 +870,15 @@ def test_riff_keys(page):
     play_take(page)
     page.wait_for_timeout(600)
     check('...and the first star', state(page)['streak'] == 1, state(page))
-    page.evaluate("bsmashUpdateMusician('keys', { step: 3, streak: 2 }); startBeatMusician('keys', false, 3)")
+    page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p);"
+                  "bsmashUpdateMusician('keys', { step: 5, streak: 0 }); startBeatMusician('keys', false, 5)")
     page.wait_for_function("bsmash.phase === 'ready'", timeout=15000)
-    page.click('#beat-actions .bsmash-record')
+    page.click('#beat-transport-record')
     play_take(page)
+    page.wait_for_selector('#beat-transport-keep', state='visible', timeout=6000)
+    page.click('#beat-transport-keep')
     page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-picker'", timeout=6000)
-    check('The big take lands: Riff has an idea for the keys', 'idea for the keys' in guide(page, 'beat-picker-guide'),
+    check('The studio take lands: Riff has an idea for the keys', 'idea for the keys' in guide(page, 'beat-picker-guide'),
           guide(page, 'beat-picker-guide'))
     page.wait_for_selector('#beat-picker-cards .bsmash-style-card', timeout=8000)
     page.click('#beat-picker-cards .bsmash-style-card:nth-child(3)')
@@ -826,104 +890,29 @@ def test_riff_keys(page):
           and page.evaluate("document.querySelectorAll('#beat-picker-desk .bsmash-channel.lit').length") == 3,
           guide(page, 'beat-picker-guide'))
     page.wait_for_selector('#beat-picker-done', state='visible', timeout=6000)
-    check('Next: the booth', page.inner_text('#beat-picker-next').strip().lower() == 'next: the booth', page.inner_text('#beat-picker-next'))
+    check('The band is complete: the L plates are earned, and Next shows them',
+          page.evaluate('!!bsmashLoad().permit') and page.inner_text('#beat-picker-next').strip().lower() == 'show my permit',
+          page.inner_text('#beat-picker-next'))
     page.click('#beat-picker-next')
-    page.wait_for_function("bsmash && bsmash.musician.id === 'booth' && bsmash.phase === 'ready'", timeout=15000)
-    check('...straight into the booth, the band still playing', screen(page) == 'beat-screen-studio'
-          and page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy', 'bass': 'smooth', 'keys': 'hop'},
-          page.evaluate("Object.assign({}, bsmashBand.parts)"))
-    page.evaluate("showBeatPathway()")
-    page.wait_for_timeout(500)
-    check('Back on the pathway: the booth is open, and it\'s YOUR turn',
-          not page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(4)').disabled")
-          and 'YOUR turn' in guide(page, 'beat-pathway-guide'), guide(page, 'beat-pathway-guide'))
-
-
-def test_booth(page):
-    """Your turn in the booth: practise free, record over the full band,
-    listen back, and the Learner's Permit."""
-    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
-                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
-                "musicians:{drums:{step:3,streak:0,clean:12,won:true,part:'spicy',plays:4},"
-                "bass:{step:3,streak:0,clean:12,won:true,part:'smooth',plays:4},"
-                "keys:{step:3,streak:0,clean:12,won:true,part:'hop',plays:4}}}}}));")
-    page.click('.game-card.red')
-    page.wait_for_timeout(400)
-    rows = page.evaluate("[...document.querySelectorAll('#beat-settings .bsmash-setting')].map(r => r.textContent)")
-    check('The booth\'s length can be set: 8 bars (the default), 12, 16 or 32',
-          any('Booth' in r and all(b in r for b in ('8 bars', '12 bars', '16 bars', '32 bars')) for r in rows), rows)
-    chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('The booth is the step on offer', chips == ['Warm-up', 'The booth'], chips)
-    page.click('#beat-pathway-start')
-    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=15000)
-    check('Into the booth: eight bars, notation only, Record / New roll / Practice',
-          page.evaluate("bsmash.specs.length") == 8 and page.is_visible('#beat-practice')
-          and page.inner_text('#beat-step-label').strip().lower() == 'the booth', page.inner_text('#beat-step-label'))
-    check('...over the whole band, and Tango says it\'s their turn',
-          page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy', 'bass': 'smooth', 'keys': 'hop'}
-          and 'YOUR turn' not in guide(page) and 'turn in the booth' in guide(page), guide(page))
-    lines = page.evaluate("document.querySelectorAll('#beat-reading .bsmash-line').length")
-    check('Eight bars on a phone: four lines of two', lines == 4, lines)
-    page.click('#beat-practice')
-    play_take(page)
-    page.wait_for_timeout(300)
-    check('A practice take is marked, and never counts', 'practice' in guide(page).lower()
-          and not page.evaluate('bsmashLoad().permit') and not record(page, 'booth')['won'], guide(page))
-    record_take(page)
-    page.wait_for_timeout(400)
-    check('The first real take passes: one star of three, and no Permit yet (the rule of three)',
-          state(page)['streak'] == 1 and 'Two more' in guide(page) and not page.evaluate('bsmashLoad().permit'),
-          [state(page)['streak'], guide(page)])
-    page.wait_for_function("bsmash.phase === 'ready'", timeout=10000)
-    paging = page.evaluate("""(() => {
-        const p = bsmashLoad(); p.settings.boothBars = 16; bsmashSave(p);
-        bsmash.bars = bsmashRoll(bsmash.musician, 3, 0, null); bsmash.specs = bsmash.bars.map(bsmashSpecs);
-        bsmashRenderReading();
-        const reading = document.getElementById('beat-reading');
-        const shown = () => bsmash.page.lines.map((l, i) => l.hidden ? null : [i, Number(l.style.order || 0)]).filter(Boolean);
-        const out = { bars: bsmash.specs.length, lines: bsmash.page.lines.length, size: bsmash.page.size, h0: reading.offsetHeight };
-        out.before = shown();
-        bsmashTurnPage(1); out.turned = shown(); out.h1 = reading.offsetHeight;
-        bsmashTurnPage(out.lines - 1); out.end = shown();
-        bsmashOpenPage(0); out.review = shown().length;
-        return out; })()""")
-    n, size = paging['lines'], paging['size']
-    check('Sixteen bars: a page of lines, and the page turns as each line is played, without moving the one being read',
-          paging['bars'] == 16 and n > size
-          and [i for i, _ in paging['before']] == list(range(size))
-          and sorted(paging['turned']) == sorted([[i, i % size] for i in range(1, size + 1)])
-          and [i for i, _ in paging['end']] == list(range(n - size, n))
-          and paging['h0'] == paging['h1'] and paging['review'] == n, paging)
-    page.evaluate("const p = bsmashLoad(); p.settings.boothBars = 8; bsmashSave(p); bsmash.streak = 2; bsmashHeader(); rerollBeatTake()")
-    take = record_take(page)
-    page.wait_for_timeout(400)
-    check('Three in a row: that\'s a record, and the Permit', 'Three in a row' in guide(page)
-          and page.evaluate('!!bsmashLoad().permit'), guide(page))
-    page.wait_for_function("bsmash && bsmash.phase === 'playback'", timeout=5000)
-    back = page.evaluate("""({ booked: bsmashQueue.filter(e => e.tag === 'playback').length,
-        start: bsmash.playback.start, band: bsmashBand.start })""")
-    check('Listen back: every tap they played, booked over the band, from the same place in the song',
-          back['booked'] == len(take['notes']) and round((back['start'] - back['band']) / 2.4) % 4 == round((take['start'] - back['band']) / 2.4) % 4
-          and 'Listen back' in guide(page), [back, guide(page)])
-    page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-permit'", timeout=40000)   # eight bars of listening back
+    page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-permit'", timeout=6000)
     card = page.inner_text('#beat-permit-card')
     check('The Learner\'s Permit: L plates, their name, their band',
           'L' in card and 'Sam' in card and 'Drums: Spicy' in card and 'Bass: Smooth' in card and 'Keys: Hop' in card, card)
     check('...presented by Tango', 'Learner\'s Permit' in guide(page, 'beat-permit-guide'), guide(page, 'beat-permit-guide'))
     page.click('#beat-screen-permit .btn-secondary')
     page.wait_for_timeout(400)
-    page.click('#beat-pathway-track .pathway-node:nth-child(4)')
+    page.click('#beat-pathway-track .pathway-node:nth-child(3)')
     page.wait_for_timeout(200)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('Back on the pathway: the booth shows L plates, and the Permit can be seen again',
-          'L plates' in page.inner_text('#beat-pathway-track .pathway-node:nth-child(4)') and 'My Permit' in chips, chips)
+    check('Back on the pathway: three musicians, no booth, and the Permit can be seen again',
+          page.locator('#beat-pathway-track .pathway-node').count() == 3 and 'My Permit' in chips, chips)
 
 
 def test_picker_leave(page):
     """Leaving the picker without Keep never loses the musician."""
     fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
                 "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
-                "musicians:{drums:{step:3,streak:0,clean:9,won:false,part:null,plays:1}}}}}));")
+                "musicians:{drums:{step:5,streak:0,clean:9,won:false,part:null,plays:1}}}}}));")
     page.click('.game-card.red')
     page.wait_for_timeout(400)
     check('A returning player lands on the pathway', screen(page) == 'beat-screen-pathway')
@@ -938,37 +927,38 @@ def test_picker_leave(page):
     check('Leaving without Keep keeps the part last heard', rec['won'] and rec['part'] == 'smooth', rec)
 
 
-def test_booth_layout(browser):
-    """Eight bars in the booth: during the take the pad is on screen, on a
-    phone, a small phone and a Chromebook."""
+def test_studio_layout(browser):
+    """The studio, 32 bars: the transport on screen, and during the take the
+    pad on screen and below the music, on a phone, a small phone and a
+    Chromebook."""
     for size in ({'width': 390, 'height': 844}, {'width': 360, 'height': 640}, {'width': 1366, 'height': 657}):
         page = new_page(browser, size)
         fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
                     "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
-                    "musicians:{drums:{step:3,won:true,part:'spicy'},bass:{step:3,won:true,part:'smooth'},keys:{step:3,won:true,part:'hop'}}}}}));")
+                    "musicians:{drums:{step:5,streak:0,clean:20,won:false,part:null,plays:3}}}}}));")
         page.click('.game-card.red')
         page.wait_for_timeout(300)
         page.click('#beat-pathway-start')
         page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=15000)
-        ready = page.evaluate("document.getElementById('beat-practice').getBoundingClientRect().bottom <= innerHeight")
-        page.click('#beat-practice')
+        ready = page.evaluate("document.getElementById('beat-transport').getBoundingClientRect().bottom <= innerHeight")
+        page.click('#beat-transport-record')
         page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=8000)
         m = page.evaluate("""(() => { const pads = document.getElementById('beat-pads').getBoundingClientRect();
             const read = document.getElementById('beat-reading').getBoundingClientRect();
-            return { padsBottom: pads.bottom, padsTop: pads.top, readBottom: read.bottom, h: innerHeight,
+            return { bars: bsmash.specs.length, padsBottom: pads.bottom, padsTop: pads.top, readBottom: read.bottom, h: innerHeight,
                      wide: document.documentElement.scrollWidth > innerWidth }; })()""")
-        name = '%dx%d, the booth (8 bars)' % (size['width'], size['height'])
-        check(name + ': Record and Practice on screen', ready)
+        name = '%dx%d, the studio (%d bars)' % (size['width'], size['height'], m['bars'])
+        check(name + ': the transport is on screen', ready)
         check(name + ': during the take, the pad is on screen and below the music',
-              m['padsBottom'] <= m['h'] + 1 and m['padsTop'] >= m['readBottom'] and not m['wide'], m)
+              m['bars'] == 32 and m['padsBottom'] <= m['h'] + 1 and m['padsTop'] >= m['readBottom'] and not m['wide'], m)
         page.close()
 
 
 def test_layout(browser):
-    """The big take (four bars, Record, four beat pads) and the one-bar step
-    (four beat pads) on a phone, a small phone and a Chromebook."""
+    """Eight bars and the one-bar step, on the four beat pads, on a phone, a
+    small phone and a Chromebook."""
     for size in ({'width': 390, 'height': 844}, {'width': 360, 'height': 640}, {'width': 1366, 'height': 657}):
-        for step in (3, 1):
+        for step in (4, 1):
             page = new_page(browser, size)
             fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
                         "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
@@ -982,7 +972,7 @@ def test_layout(browser):
                 const r = el => el.getBoundingClientRect();
                 const pads = [...document.querySelectorAll('#beat-pads .krpad')].map(r);
                 const papers = [...document.querySelectorAll('#beat-reading .bsmash-paper')].map(r);
-                const record = document.querySelector('#beat-actions .bsmash-record');
+                const record = document.getElementById('beat-transport-record');
                 const above = papers.map(p => p.bottom).concat(record.offsetParent ? [r(record).bottom] : []);
                 const buttons = [...document.querySelectorAll('#beat-screen-studio button')]
                     .filter(b => b.offsetParent !== null).map(b => r(b).height);
@@ -994,7 +984,7 @@ def test_layout(browser):
                          offscreen: Math.max(...pads.map(p => p.bottom)) > window.innerHeight + 1,
                          smallest: Math.round(Math.min(...buttons)) };
             })()""")
-            name = '%dx%d, %s' % (size['width'], size['height'], 'four pads' if step == 1 else 'the big take')
+            name = '%dx%d, %s' % (size['width'], size['height'], 'four pads' if step == 1 else 'eight bars')
             check(name + ': nothing off the side of the screen', not m['wide'], m)
             check(name + ': the pads never cover the notation', not m['overlap'], m)
             check(name + ': the pads are on screen', not m['offscreen'], m)
@@ -1296,7 +1286,7 @@ def test_teacher_codes(page):
     page.click('.game-card.red')
     page.wait_for_timeout(400)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('...Beat Smash: every step open', chips == ['Warm-up', 'One bar', 'Two bars', 'The big take'], chips)
+    check('...Beat Smash: every step open', chips == ['Warm-up', 'One bar', 'Two bars', 'Four bars', 'Eight bars', 'The studio'], chips)
     stats = page.inner_text('#beat-stats')
     check('...and the teacher sees the last beat test', '92% on the beat' in stats and '35 ms early' in stats, stats)
     said = code(page, 'KOOLOPEN')
@@ -1357,14 +1347,13 @@ def main():
         test_first_minute(page)
         test_one_bar_step(page)
         test_two_bar_step(page)
-        test_big_take(page)
+        test_long_steps(page)
         test_picker(page)
         test_picker_leave(page)
         test_wrong_pad(page)
         test_verdict_reasons(page)
         test_riff_bass(page)
         test_riff_keys(page)
-        test_booth(page)
         test_beat_light(page)
         test_follow_me(page)
         test_songs(page)
@@ -1374,7 +1363,7 @@ def main():
         test_rest_of_app(page)
         page.close()
         test_layout(browser)
-        test_booth_layout(browser)
+        test_studio_layout(browser)
         browser.close()
     server.shutdown()
     check('No script errors', not errors, errors[:3])
