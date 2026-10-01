@@ -1,5 +1,7 @@
 # Beat Smash workshop: is the first level too quick to its big win?
 
+> **Ruled again, later on 1 October 2026:** every step comes the normal way, three in a row: one, two, four and eight bars. Each musician then ends in the studio, 32 bars once through at the pass mark, which wins the part. The booth is gone. See CLAUDE.md, "THE STEPS AND THE STUDIO".
+>
 > **Rob ruled, 1 October 2026: the rule of three.** The four-bar big take and
 > the booth's eight bars are each won by **three passing takes in a row**
 > (*"one time can be a fluke"*). That is close to Option A below. The booth

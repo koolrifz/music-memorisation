@@ -1401,7 +1401,7 @@ The first rhythm game, and the step before Stomp Lab that Garnet asked for.
 The spec is the private brief, `kool-riffs-docs/docs/beat-smash-design-brief.md`
 (rev 7); section numbers below are its. **All of level one is built**: the
 first minute, the pads, the delay calibration, Tango on drums, Riff on bass,
-Riff on keys, the booth and the Learner's Permit. The build report for outside
+Riff on keys, each musician's studio take and the Learner's Permit. The build report for outside
 reviewers is `docs/beat-smash-build-report.md`. The brief
 says `idea/beat-smash`; this session could only push to the branch above.
 
@@ -1521,10 +1521,10 @@ Smash's players list. Beat Smash adds an **age** to a player.
   (`#beat-countin`, `bsmashCountIn()`), and each beat's pad lit red
   (`countin`). Red because it is the recording light. The ring sizes itself
   to the gap and never sits over the notation; where there is no room (the
-  booth on a 360×640 phone) the red pads count alone. It goes at beat 1.
+  studio on a 360×640 phone) the red pads count alone. It goes at beat 1.
 - **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
   same bar from notation), `star2` (picture until two beats before beat 1),
-  `star3` (notation only), `retake`, `big`. The picture is laid out on the
+  `star3` (notation only), `retake`, and `studio` for the 32 bars. The picture is laid out on the
   notation's own slot grid, so the morph is a change of look, not of place.
 - **Grading** is against the audio clock, the delay taken off each press.
   A press takes the nearest unplayed note in the window. One that misses the
@@ -1545,14 +1545,16 @@ Smash's players list. Beat Smash adds an **age** to a player.
   from 1 on each new roll and again after the reveal.
 - **The teacher's view**: with the teacher code on, the last take note by
   note in ms under the reading (`#beat-take-stats`), so the window and the
-  holding rule can be tuned from real play. A child never sees it. The big take needs the
-  **age's pass mark** (hits over notes plus extra taps) **and** the first note
-  after any slip's barline played: that is "back in by the next beat 1".
+  holding rule can be tuned from real play. A child never sees it.
+- **Four and eight bars need the age's pass mark** (hits over notes plus
+  extra taps) **and** the first note after any slip's barline played: that
+  is "back in by the next beat 1". The studio needs the pass mark alone.
   The window starts 40 ms wide of the age's and tightens 5 ms per clean take.
 
 - **Every step reached can be played again** (Rob: *"I'm locked out of being
   able to replay the previous level"*). The pathway shows a chip per step:
-  Warm-up, One bar, Two bars, The big take, and My band once won. Going back
+  Warm-up, One bar, Two bars, Four bars, Eight bars, The studio, and My band
+  once won (and My Permit once the band is complete). Going back
   is practice: the stars fill as usual but the saved row (`streak`) belongs to
   the step the student is working on (`bsmashOnRecord()`), and clearing an
   earlier step never moves `step` backwards.
@@ -1609,7 +1611,7 @@ his own:
   great idea!"*, brief §8) and the three bass loops; Keep lights the bass
   channel. The pathway then says the keys are coming.
 
-### Riff on keys, the booth and the Learner's Permit — built 2026-10-01
+### Riff on keys and the Learner's Permit — built 2026-10-01
 Rob: *"Let's move on with Riff and the keys… build out this first section."*
 
 - **Riff on keys** is one more musician entry: whole notes and whole rests
@@ -1618,52 +1620,69 @@ Rob: *"Let's move on with Riff and the keys… build out this first section."*
   the whole note · whole and halves · longer notes among quarters · all 38).
   **A one-bar take is never a bar of silence** (`bsmashHasNote`): a whole-rest
   bar is in the pool, but a take with nothing to play teaches nothing.
-- **The booth** (§10) is a musician with `booth: true` and one step, the big
-  take's machinery. **Eight bars, three takes in a row** (the rule of three,
-  as the big take), and the "Booth" setting offers **12, 16 and 32** (Rob:
-  *"If we can make 12 or 16 bars I would be delighted. If we could make up to
-  32 bars I would be over the moon. That would give us access to incredible
-  sight reading material."*). A long take **turns its pages** (`bsmashTurnPage`):
-  the reading keeps the height eight bars always had (four lines on a phone,
-  two on a wide screen), and the moment a line has been played its row fills
-  with the next line to come, a musician's half-page turn: nothing moves under
-  the line being read, every line after the first carries its bar number, and
-  after the take every line opens, scrolled to the first slip. The bars come from
-  the same 38, **weighted towards the busier ones** (a bar is as likely as it
-  has notes and rests), so it is "a little more involved" with no new rhythm.
-  The whole band plays under it, quietly.
-  - **Practice** (a third button beside Record and New roll): marked exactly
-    like the real take, never counted. The REC light goes amber.
-  - **Record**: notation only, the age's pass mark and the comeback rule.
-  - **Listen back**: every press of the take is kept (`take.presses`) and
-    replayed in the student's own sound, over the band, **from the same bar of
-    the four-bar song** so every chord falls where it fell (`bsmashListenBack`).
-    *"Listen back and hear how they've played with the band."*
-  - **The Learner's Permit** (`bsmashShowPermit`, `#beat-screen-permit`): a card
-    with the L plate (black on yellow, as on a Victorian learner's car), their
-    name, their band and the date, presented by Tango. Saved as
-    `progress.permit`. The booth node then reads "L plates", and its chips
-    offer "My Permit" and "My band".
-  - **Eight bars on a phone** are four lines of two; in the booth the lines sit
-    closer, and on screens under 760 px tall the desk steps aside and the pad
-    is shorter, so the pad is on screen for the whole take (tested at 360×640).
+- **The booth is gone** (Rob, 2026-10-01): every musician now ends in their
+  own studio take (see "THE STEPS AND THE STUDIO" below), so a separate
+  "your turn" at the end would repeat it. **The Learner's Permit** is
+  awarded when the band is complete, the third part kept
+  (`bsmashKeepPart`). The card (`bsmashShowPermit`, `#beat-screen-permit`)
+  is as before: the L plate (black on yellow, as on a Victorian learner's
+  car), their name, their band and the date, presented by Tango, saved as
+  `progress.permit`. "Show my Permit" leads to it after the third part is
+  kept, and a "My Permit" chip stays on the pathway.
 - **Not built, ruled:** the L plates opening Value Smash (§15). It is one
   guarded line at the top of entering Value Smash, as Stomp Lab's gate is, but
   it closes a game Rob is still testing, so it waits for his word.
 
-**The pace of level one: Rob ruled, 2026-10-01 — the RULE OF THREE.** The
-big take (four bars) and the booth (eight) are each won by **three passing
-takes in a row**, a new roll each time, the stars filling as on the first two
-steps, a take that doesn't pass emptying the row (`BSMASH_TAKES_IN_A_ROW`,
-`bsmashBigPassed`). *"The four bars doesn't make sense to me because one time
-can be a fluke. If they can do four bars then certainly they can make eight
-bars."* The row is saved on the musician (and on the booth until the Permit).
-So a student now reads at least 9 four-bar phrases and 3 eight-bar ones
-before the L plates. The workshop's ten-track "first record" was not chosen.
-**Next, proposed and NOT built: song by song.** *"When that's over that song
-is finished. And then you can play another song and build it up from the
-beginning. Each song you get to unlock… is higher up in the tier."* The
-questions it needs answered are in `docs/beat-smash-songs-proposal.md`.
+### THE STEPS AND THE STUDIO — Rob's ruling, 2026-10-01
+> *"We're building up to it from three times for one bar, three times for two
+> bars, three times in a row for four bars, three times in a row for eight
+> bars, and then the 32… That wins you a chance to get into the studio and
+> lay down your own 32 bars. If you can lay down 32 bars, you get to choose
+> that instrument."*
+
+This **reverses** the big take of the first build (four bars, read it, then
+press Record) and the booth that followed the band. Rob, on the four-bar
+Record button: *"I'm a bit disappointed when the four bars comes and now I
+have to press record. I think it should just come the normal way."*
+
+- **Steps 1–4 all run the same way** (`BSMASH_STEP_BARS`: 1, 2, 4, 8 bars):
+  dice, the count-in, straight into the take, the fading picture, three in a
+  row. One and two bars need every note right; four and eight need the age's
+  pass mark **and** the comeback rule (back in by the next beat 1), the old
+  big take's marking (`BSMASH_CLEAN_STEPS`). Eight bars use the closer lines
+  (`#beat-screen-studio.long`).
+- **Step 5 is the studio** (`BSMASH_STUDIO_STEP`): **32 bars once through**
+  (`BSMASH_STUDIO_BARS`; 16 and 8 are a teacher's setting for trying it out),
+  over the band so far, notation only, the same 32 bars every take (*"the
+  song is the song"*), no dice. Graded by the age's **pass mark alone**: over
+  32 bars one lost bar shouldn't sink a take, so the comeback rule coaches
+  ("Find one!") but doesn't fail it.
+  - **The transport** (`#beat-transport`, `bsmashTransport()`): **Record**,
+    **Listen**, **Stop**, and **Keep it** once a take is at the pass mark.
+    Rob asked for record, play, pause, stop *"or some sort of that hybrid"*:
+    Stop ends a listen-back or abandons a take (nothing marked). A pause in
+    the middle of a recording would be a take that never happened, so it
+    isn't there.
+  - **The control room** (`#beat-control`, `bsmashControlRoom()`): the take's
+    score on a meter, the pass mark a line across it (*"Let them know how they
+    go from the recording control room"*). Tango runs it whoever's part it is.
+  - **Listen back** plays every press of the take in the student's sound,
+    from the same bar of the song, and the music scrolls with it. Then they
+    decide: keep it, or go again (*"They can listen back and decide if
+    they're happy, and then they can try it again"*).
+  - **Keep it** opens the part picker: the instrument is theirs to choose.
+- **A long take turns its pages** (`bsmashTurnPage`): four lines on a phone
+  (three under 700 px tall, `BSMASH_SHORT_SCREEN`, so the transport and the
+  pads both fit), two on a wide screen. The moment a line has been played its
+  row fills with the next line to come, a musician's half-page turn: nothing
+  moves under the line being read, and every line after the first carries its
+  bar number. After the take every line opens, scrolled to the first slip.
+- So a student now reads at least **12 phrases of four bars and more, and a
+  32-bar take, per musician** before choosing that musician's part.
+- **Next, proposed and NOT built:** Rob's own parts to choose from (cáscara,
+  tumbao, montunos…), and building a song with its form:
+  `docs/beat-smash-parts-proposal.md`. Song by song, each a tier up:
+  `docs/beat-smash-songs-proposal.md`. Both need Rob's answers.
 
 **Playtest 1 (Rob, 2026-10-01)** is written up in
 `docs/beat-smash-playtest-1.md`: what he saw, the diagnosis checked against
@@ -1854,9 +1873,12 @@ coming up next."*
   other games don't use it yet.
 
 **Tests.** `python tools/test-beat-smash.py`: the engraving sweep, the count-in
-(the red ring clear of the music, the pad lit, gone at beat 1), three takes in a
-row on the big take and the booth (one star of three, a miss empties the row,
-the saved row), the booth's pages turning over 16 bars,
+(the red ring clear of the music, the pad lit, gone at beat 1), four and eight
+bars the normal way (no Record, the comeback rule), the studio (the transport's
+buttons at each moment, under and at the pass mark, the control room, listen
+back and Stop, the same bars every take, Keep to the picker), the pages turning
+over 16 bars, the Permit when the band is complete, the studio's 32 bars on
+three screen sizes,
 the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,
 "Next" after Keep straight into the next musician,
@@ -1867,13 +1889,10 @@ level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),
 the beat light (green, early left, late right, way off, the glow) and Tango's
 rushing / dragging coaching, "Follow me" counted in time until order is
-restored (and the encouragement when they stop), "Need a hand?" and the mixed
-picture,
+restored (and the encouragement when they stop),
 Riff on bass (his ladder, his voice, a half note let go early and held through,
 the band won so far, his picker and part), Riff on keys (whole notes held
-four beats, the full band), the booth (practice that never counts, 8 and 4
-bars, listening back from the same bar of the song, the Permit card, the pad on
-screen for eight bars at 360×640), the wrong pad (not clean, the line, the right pad lit; one big pad and Space
+four beats, the full band), the wrong pad (not clean, the line, the right pad lit; one big pad and Space
 as the setting), the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both

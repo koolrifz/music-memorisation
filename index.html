@@ -759,10 +759,19 @@
             <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-count"></span></div>
             <span class="bsmash-light-word" data-text="beat.light.late"></span>
         </div>
-        <div class="bsmash-actions" id="beat-actions" hidden>
-            <button class="btn btn-start bsmash-record" onclick="recordBeatTake()" data-text="beat.button.record"></button>
-            <button class="btn btn-secondary" onclick="rerollBeatTake()" data-text="beat.button.reroll"></button>
-            <button class="btn btn-secondary" id="beat-practice" hidden onclick="practiceBeatTake()" data-text="beat.button.practice"></button>
+        <!-- The studio (32 bars): the control room says how the take went,
+             against the pass mark; the transport records, plays back, stops
+             and keeps. -->
+        <div class="bsmash-control" id="beat-control" hidden>
+            <span class="bsmash-control-title" data-text="beat.control.title"></span>
+            <div class="bsmash-control-meter"><div class="bsmash-control-fill"></div><div class="bsmash-control-mark"></div></div>
+            <span class="bsmash-control-score"></span>
+        </div>
+        <div class="bsmash-transport" id="beat-transport" hidden>
+            <button class="bsmash-transport-btn record" id="beat-transport-record" onclick="recordBeatTake()" data-text="beat.transport.record"></button>
+            <button class="bsmash-transport-btn" id="beat-transport-play" onclick="playBeatTake()" data-text="beat.transport.play"></button>
+            <button class="bsmash-transport-btn" id="beat-transport-stop" onclick="stopBeatTake()" data-text="beat.transport.stop"></button>
+            <button class="bsmash-transport-btn keep" id="beat-transport-keep" hidden onclick="keepBeatTake()" data-text="beat.transport.keep"></button>
         </div>
         <!-- The first minute: the meter fills as the beat is held. -->
         <div class="bsmash-jam-meter" id="beat-jam-meter"><div class="bsmash-jam-fill" id="beat-jam-fill"></div></div>
