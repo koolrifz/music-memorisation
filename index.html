@@ -758,6 +758,7 @@
         <div class="bsmash-actions" id="beat-actions" hidden>
             <button class="btn btn-start bsmash-record" onclick="recordBeatTake()" data-text="beat.button.record"></button>
             <button class="btn btn-secondary" onclick="rerollBeatTake()" data-text="beat.button.reroll"></button>
+            <button class="btn btn-secondary" id="beat-practice" hidden onclick="practiceBeatTake()" data-text="beat.button.practice"></button>
         </div>
         <div class="bsmash-picture-choice" id="beat-picture-choice" hidden></div>
         <!-- The first minute: the meter fills as the beat is held. -->
@@ -785,6 +786,17 @@
         <button class="btn btn-start" id="beat-picker-keep" hidden disabled onclick="keepBeatPart()" data-text="beat.button.keep"></button>
         <div class="bsmash-desk" id="beat-picker-desk"></div>
         <button class="btn btn-secondary" id="beat-picker-done" hidden onclick="showBeatPathway()" data-text="beat.button.studio"></button>
+    </div>
+
+    <!-- The Learner's Permit (brief §10, §15): the booth passed. -->
+    <div id="beat-screen-permit" class="screen">
+        <div class="kr-guide" id="beat-permit-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <div class="bsmash-permit" id="beat-permit-card"></div>
+        <button class="btn btn-start" onclick="openBeatBand()" data-text="beat.playBand"></button>
+        <button class="btn btn-secondary" onclick="showBeatPathway()" data-text="beat.jam.menu"></button>
     </div>
 </div>
 

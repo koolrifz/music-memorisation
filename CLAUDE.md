@@ -1393,13 +1393,14 @@ commit.
 - **The brief's "near-miss" hook** ("1 beat over", "0.3 s off your best") is
   listed for phase 1 in the brief but not in the build guide; not built.
 
-## BEAT SMASH — Phase 1 and Riff on bass built, on main
+## BEAT SMASH — level one built end to end, on main
 First on the dashboard (Rob: *"moved straight up to the very top of the menu"*).
 The first rhythm game, and the step before Stomp Lab that Garnet asked for.
 The spec is the private brief, `kool-riffs-docs/docs/beat-smash-design-brief.md`
-(rev 7); section numbers below are its. **Phase 1** is built: the first minute,
-the pads, the delay calibration, and **Tango on drums end to end**. Riff on bass
-and keys is Phase 2, the booth and the Learner's Permit Phase 3. The brief
+(rev 7); section numbers below are its. **All of level one is built**: the
+first minute, the pads, the delay calibration, Tango on drums, Riff on bass,
+Riff on keys, the booth and the Learner's Permit. The build report for outside
+reviewers is `docs/beat-smash-build-report.md`. The brief
 says `idea/beat-smash`; this session could only push to the branch above.
 
 **Files.** `beat-smash.js` (the game), `beat-pads.js` (the pads, written for
@@ -1570,8 +1571,42 @@ his own:
   great idea!"*, brief §8) and the three bass loops; Keep lights the bass
   channel. The pathway then says the keys are coming.
 
-**Not built yet:** Riff on keys (whole notes; the same shape, one more
-musician entry); the booth and the Permit; "my bit";
+### Riff on keys, the booth and the Learner's Permit — built 2026-10-01
+Rob: *"Let's move on with Riff and the keys… build out this first section."*
+
+- **Riff on keys** is one more musician entry: whole notes and whole rests
+  join everything before, 38 legal bars (§5), Rhodes or organ, sustained
+  while held. His one-bar ladder mixes whole notes with halves (§5's default:
+  the whole note · whole and halves · longer notes among quarters · all 38).
+  **A one-bar take is never a bar of silence** (`bsmashHasNote`): a whole-rest
+  bar is in the pool, but a take with nothing to play teaches nothing.
+- **The booth** (§10) is a musician with `booth: true` and one step, the big
+  take's machinery. **Eight bars** by default, **four** with the "Booth"
+  setting (Rob: *"Eight bars would be brilliant to test"*). The bars come from
+  the same 38, **weighted towards the busier ones** (a bar is as likely as it
+  has notes and rests), so it is "a little more involved" with no new rhythm.
+  The whole band plays under it, quietly.
+  - **Practice** (a third button beside Record and New roll): marked exactly
+    like the real take, never counted. The REC light goes amber.
+  - **Record**: notation only, the age's pass mark and the comeback rule.
+  - **Listen back**: every press of the take is kept (`take.presses`) and
+    replayed in the student's own sound, over the band, **from the same bar of
+    the four-bar song** so every chord falls where it fell (`bsmashListenBack`).
+    *"Listen back and hear how they've played with the band."*
+  - **The Learner's Permit** (`bsmashShowPermit`, `#beat-screen-permit`): a card
+    with the L plate (black on yellow, as on a Victorian learner's car), their
+    name, their band and the date, presented by Tango. Saved as
+    `progress.permit`. The booth node then reads "L plates", and its chips
+    offer "My Permit" and "My band".
+  - **Eight bars on a phone** are four lines of two; in the booth the lines sit
+    closer, and on screens under 760 px tall the desk steps aside and the pad
+    is shorter, so the pad is on screen for the whole take (tested at 360×640).
+- **Not built, ruled:** the L plates opening Value Smash (§15). It is one
+  guarded line at the top of entering Value Smash, as Stomp Lab's gate is, but
+  it closes a game Rob is still testing, so it waits for his word.
+
+**Not built yet:** sharing the Permit card as an image (open item 5's
+canvas snapshot would serve both); "my bit";
 Tango noticing "You didn't need the blocks!"; re-offering calibration when the
 audio output changes (there is a **Re-time my taps** button instead); art
 (the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
@@ -1735,7 +1770,7 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (196 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (223 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
@@ -1746,7 +1781,10 @@ rushing / dragging coaching, "Follow me" counted in time until order is
 restored (and the encouragement when they stop), "Need a hand?" and the mixed
 picture,
 Riff on bass (his ladder, his voice, a half note let go early and held through,
-the band won so far, his picker and part), the square blocks, all
+the band won so far, his picker and part), Riff on keys (whole notes held
+four beats, the full band), the booth (practice that never counts, 8 and 4
+bars, listening back from the same bar of the song, the Permit card, the pad on
+screen for eight bars at 360×640), the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,

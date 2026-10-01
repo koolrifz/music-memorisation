@@ -92,5 +92,16 @@ KR.dialogue = {
         { on: 'beat.take.findOne.riff',     speaker: 'riff', text: 'beat.riff.findOne' },
         { on: 'beat.take.comeback.riff',    speaker: 'riff', text: 'beat.riff.comeback' },
         { on: 'beat.playback.riff',         speaker: 'riff', text: 'beat.riff.playback' },
+        { on: 'beat.musician.intro.keys',   speaker: 'riff', text: 'beat.riff.intro.keys' },
+        { on: 'beat.part.won.keys',         speaker: 'riff', text: 'beat.won.keys.1' },
+        { on: 'beat.part.locked.keys',      speaker: 'riff', text: 'beat.locked.keys.1' },
+
+        /* The booth and the Learner's Permit: Tango. */
+        { on: 'beat.booth.ready',           speaker: 'tango', text: 'beat.booth.ready' },
+        { on: 'beat.booth.practice.good',   speaker: 'tango', text: 'beat.booth.practice.good' },
+        { on: 'beat.booth.practice.again',  speaker: 'tango', text: 'beat.booth.practice.again' },
+        { on: 'beat.booth.passed',          speaker: 'tango', text: 'beat.booth.passed' },
+        { on: 'beat.booth.listen',          speaker: 'tango', text: 'beat.booth.listen' },
+        { on: 'beat.permit.awarded',        speaker: 'tango', text: 'beat.permit.awarded' },
     ],
 };

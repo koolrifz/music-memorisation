@@ -102,12 +102,40 @@ const BSMASH_MUSICIANS = [
             3: ['all'],
         },
     },
-    { id: 'keys', coach: 'riff', built: false },    // Phase 2
-    { id: 'booth', coach: 'tango', built: false },  // Phase 3
+    /* Riff on keys (§2, §5): whole notes and whole rests join everything
+       before. "Gliding on top: longer notes and sustain, like an organ."
+       The pool gives the brief's 38 legal bars. "Riff's keys step mixes
+       whole notes with halves, because one bar of whole notes alone has only
+       two shapes" (§5), so the ladder runs: the whole note · whole and half
+       notes · longer notes among quarters · all 38. */
+    {
+        id: 'keys', coach: 'riff', built: true,
+        pool: ['quarter-note', 'quarter-rest', 'half-note', 'half-rest', 'whole-note', 'whole-rest'],
+        sounds: ['rhodes', 'organ'],
+        steps: {
+            1: [['w'], ['w', 'h h', 'h hr', 'hr h'], // text-ok: bars, not words
+                ['w', 'h q q', 'q q h', 'q h q', 'hr h', 'h qr q'], 'all'], // text-ok: bars, not words
+            2: ['all'],
+            3: ['all'],
+        },
+    },
+    /* YOUR TURN IN THE BOOTH (§10). The whole band is in; the student records
+       their own part from everything learned, a little more involved: the
+       same 38 bars, weighted towards the busier ones. No new rhythm. Eight
+       bars by default (Rob: "Eight bars would be brilliant to test"), four
+       with the setting. Practice takes are free and never count. Passing
+       awards the Learner's Permit. One step only, the big take's. */
+    {
+        id: 'booth', coach: 'tango', built: true, booth: true,
+        pool: ['quarter-note', 'quarter-rest', 'half-note', 'half-rest', 'whole-note', 'whole-rest'],
+        sounds: ['snare', 'kick', 'rhodes', 'organ', 'bass-electric', 'bass-acoustic'],
+        steps: { 3: ['all'] },
+    },
 ];
 
-// How many bars each step reads (§3).
+// How many bars each step reads (§3). The booth reads its own number.
 const BSMASH_STEP_BARS = { 1: 1, 2: 2, 3: 4 };
+const BSMASH_BOOTH_BARS = [8, 4];          // the booth's setting; the first is the default
 
 /* ---------- Defaults Rob will tune ----------
    All in one place. Ages are asked once, when the player is added (§12). */
@@ -261,7 +289,7 @@ function bsmashBlankProgress() {
         firstStar: false,
         seenMorph: false,
         musicians: {},
-        settings: { padMode: 'auto', pictureHelp: 'mix', sound: { drums: 'kick', bass: 'bass-electric' }, jamSong: 'c' },
+        settings: { padMode: 'auto', pictureHelp: 'mix', sound: {}, jamSong: 'c', boothBars: BSMASH_BOOTH_BARS[0] },
     };
 }
 
@@ -279,10 +307,14 @@ function bsmashLoad() {
     const blank = bsmashBlankProgress();
     const progress = Object.assign(blank, saved ? JSON.parse(JSON.stringify(saved)) : {});
     progress.settings = Object.assign(bsmashBlankProgress().settings, progress.settings);
-    progress.settings.sound = Object.assign({ drums: 'kick', bass: 'bass-electric' }, progress.settings.sound);
+    // Each musician's pad sound defaults to the first of theirs.
+    const sounds = {};
+    BSMASH_MUSICIANS.forEach(m => { if (m.sounds) sounds[m.id] = m.sounds[0]; });
+    progress.settings.sound = Object.assign(sounds, progress.settings.sound);
     progress.musicians = progress.musicians || {};
     BSMASH_MUSICIANS.forEach(m => {
         progress.musicians[m.id] = Object.assign(bsmashBlankMusician(), progress.musicians[m.id]);
+        if (m.booth) progress.musicians[m.id].step = 3;    // the booth has one step
     });
     return progress;
 }
@@ -655,18 +687,42 @@ function bsmashSameBar(a, b) {
 
 // Roll: random to the child, controlled to the curriculum (§4). Each bar is
 // a different bar from the one before it where the table allows.
+// How many bars a take reads: the step's, or the booth's setting.
+function bsmashBarCount(musician, step) {
+    if (!musician.booth) return BSMASH_STEP_BARS[step];
+    const chosen = bsmashLoad().settings.boothBars;
+    return BSMASH_BOOTH_BARS.indexOf(chosen) !== -1 ? chosen : BSMASH_BOOTH_BARS[0];
+}
+
+function bsmashHasNote(bar) {
+    return bar.some(key => !RSTOMP_VOCABULARY[key].isRest);
+}
+
+// Roll: random to the child, controlled to the curriculum (§4). Each bar is
+// a different bar from the one before it where the table allows. A take
+// always has something to play: a one-bar take is never a bar of silence.
+// The booth leans towards the busier bars ("a little more involved", §10):
+// a bar is as likely as it has notes and rests in it.
 function bsmashRoll(musician, step, clean, previous) {
-    const table = bsmashDiceTable(musician, step, clean);
-    const bars = [];
-    let last = previous && previous.length ? previous[previous.length - 1] : null;
-    for (let i = 0; i < BSMASH_STEP_BARS[step]; i++) {
-        const fresh = table.filter(bar => !bsmashSameBar(bar, last));
-        const from = fresh.length ? fresh : table;
-        const bar = from[Math.floor(Math.random() * from.length)];
-        bars.push(bar);
-        last = bar;
+    let table = bsmashDiceTable(musician, step, clean);
+    const count = bsmashBarCount(musician, step);
+    if (count === 1) table = table.filter(bsmashHasNote);
+    const weight = bar => musician.booth ? bar.length : 1;
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const bars = [];
+        let last = previous && previous.length ? previous[previous.length - 1] : null;
+        for (let i = 0; i < count; i++) {
+            const fresh = table.filter(bar => !bsmashSameBar(bar, last));
+            const from = fresh.length ? fresh : table;
+            const total = from.reduce((a, bar) => a + weight(bar), 0);
+            let pick = Math.random() * total, bar = from[from.length - 1];
+            for (const candidate of from) { pick -= weight(candidate); if (pick < 0) { bar = candidate; break; } }
+            bars.push(bar);
+            last = bar;
+        }
+        if (bars.some(bsmashHasNote)) return bars;
     }
-    return bars;
+    return [table.find(bsmashHasNote)];
 }
 
 // One bar as the specs renderRstompStaff draws: { value, isRest, slots, tied },
@@ -726,7 +782,7 @@ function bsmashRenderReading() {
     const bars = bsmash.specs;
     if (!bars || !bars.length) return;
     const width = Math.max(240, reading.clientWidth || 340);
-    const perLine = bars.length === 4 && width < 560 ? 2 : bars.length;
+    const perLine = Math.min(bars.length, width < 560 ? 2 : 4);
     const perBar = Math.min(300, Math.floor((width - 16) / perLine));
     for (let first = 0; first < bars.length; first += perLine) {
         const lineBars = bars.slice(first, first + perLine);
@@ -1005,7 +1061,7 @@ function bsmashHeader() {
     stars.hidden = jam || bsmash.step === 3;
     label.hidden = jam;
     if (!jam) {
-        label.textContent = KR.t('beat.step.' + bsmash.step);
+        label.textContent = KR.t(bsmash.musician.booth ? 'beat.step.booth' : 'beat.step.' + bsmash.step);
         bsmashStarsShown(bsmash.streak);
         bsmashRenderPictureChoice();
     }
@@ -1606,7 +1662,7 @@ function startBeatMusician(id, keepBand, step) {
     const pads = bsmash && bsmash.pads;
     const frame = bsmash && bsmash.frame;
     bsmashStopTimers();
-    const playing = step || record.step;
+    const playing = musician.booth ? 3 : (step || record.step);
     bsmash = {
         mode: 'steps', musician: musician, step: playing,
         streak: bsmashOnRecord(record, playing) ? record.streak : 0,
@@ -1614,6 +1670,7 @@ function startBeatMusician(id, keepBand, step) {
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.remove('jam');
+    bsmashEl('beat-screen-studio').classList.toggle('booth', !!musician.booth);
     bsmashEl('beat-jam-next').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashEl('beat-jam-coming').hidden = true;
@@ -1678,13 +1735,15 @@ function bsmashNewRoll() {
 // The big take waits for the student: read it, then Record. A new roll
 // whenever they like (§3).
 function bsmashBigReady(fresh) {
+    const booth = !!bsmash.musician.booth;
     bsmash.phase = 'ready';
     bsmashEl('beat-actions').hidden = false;
+    bsmashEl('beat-practice').hidden = !booth;
     bsmashBandLevel(BSMASH_BAND_QUIET);
     // The part picker is one good take away: fetch its three loops now, so
     // tapping a picture plays at once instead of waiting for a download.
-    BSMASH_STYLES.forEach(style => bsmashLoadLoop(bsmashLoopId(bsmash.musician.id, style)));
-    if (fresh) bsmashEvent('beat.big.ready');
+    if (!booth) BSMASH_STYLES.forEach(style => bsmashLoadLoop(bsmashLoopId(bsmash.musician.id, style)));
+    if (fresh) bsmashEvent(booth ? 'beat.booth.ready' : 'beat.big.ready');
 }
 
 function recordBeatTake() {
@@ -1693,6 +1752,15 @@ function recordBeatTake() {
     bsmashRenderReading();
     bsmashShow('notation');
     bsmashScheduleTake('notation');
+}
+
+// The booth: a practice take. Played and marked exactly like the real one,
+// and it never counts (§10: "They get to learn it first").
+function practiceBeatTake() {
+    if (!bsmash || bsmash.phase !== 'ready' || !bsmash.musician.booth) return;
+    recordBeatTake();
+    bsmash.take.practice = true;
+    bsmashEl('beat-rec').classList.add('practice');
 }
 
 function rerollBeatTake() {
@@ -1722,6 +1790,7 @@ function bsmashScheduleTake(go) {
         extra: 0,
         comebackBars: new Set(),
         mustHit: new Set(),
+        presses: [],
         cameBack: false,
         lostBar: false,
         done: false,
@@ -1753,6 +1822,7 @@ function bsmashPress(p) {
     const t = p.time;
     // Taps in the count-in, or after the last note, are free.
     if (t < take.start - take.win || t > take.end + take.win) return;
+    take.presses.push(p);     // what the student played, for listening back
     let best = null;
     take.notes.forEach(note => {
         if (note.hit || note.missed || Math.abs(t - note.t) > take.win) return;
@@ -1852,6 +1922,7 @@ function bsmashVerdict() {
         const score = hits / Math.max(1, take.notes.length + take.extra);
         const passed = score >= BSMASH_PASS_MARK[bsmashAge()] && !take.lostBar;
         bsmash.lastScore = score;
+        if (take.practice) return bsmashBoothPracticed(passed);
         return passed ? bsmashBigPassed(take) : bsmashTakeTwo(true);
     }
     if (!clean) return bsmashTakeTwo(false);
@@ -1945,6 +2016,7 @@ function bsmashBigPassed(take) {
     bsmashEl('beat-reading').classList.add('clean');
     bsmashBandLevel(BSMASH_BAND_FULL);
     bsmashStarSound();
+    if (bsmash.musician.booth) return bsmashBoothPassed(take);
     const id = bsmash.musician.id;
     const record = bsmashMusicianRecord(id);
     bsmashUpdateMusician(id, { clean: record.clean + 1 });
@@ -1954,6 +2026,90 @@ function bsmashBigPassed(take) {
         return bsmashLater(() => openBeatBand(), 2500);
     }
     bsmashLater(() => bsmashOpenPicker(take.cameBack), 900);
+}
+
+/* =========================================
+   YOUR TURN IN THE BOOTH (§10) AND THE LEARNER'S PERMIT (§15)
+   =========================================
+   Practice as often as you like: marked, never counted. Record when ready:
+   notation only, over the full band, the pass mark and the comeback rule.
+   Then LISTEN BACK: the student's own taps, in their own sound, played over
+   the band from the same bar of the song. Rob: "listen back and hear how
+   they've played with the band". Then the Permit. */
+function bsmashBoothPracticed(passed) {
+    bsmashEl('beat-rec').classList.remove('practice');
+    bsmashEvent(passed ? 'beat.booth.practice.good' : 'beat.booth.practice.again');
+    bsmashLater(() => bsmashBigReady(false), 1600);
+}
+
+function bsmashBoothPassed(take) {
+    const firstTime = !bsmashLoad().permit;
+    const record = bsmashMusicianRecord('booth');
+    bsmashUpdateMusician('booth', { clean: record.clean + 1, won: true });
+    if (firstTime) {
+        const progress = bsmashLoad();
+        progress.permit = { at: Date.now(), bars: take.bars, score: Math.round((bsmash.lastScore || 0) * 100) };
+        bsmashSave(progress);
+    }
+    bsmashEvent('beat.booth.passed');
+    bsmashLater(() => bsmashListenBack(take, firstTime), 1800);
+}
+
+// The take, played back over the band from the same place in the song, so
+// every chord falls where it fell when it was played.
+function bsmashListenBack(take, thenPermit) {
+    if (!bsmashBand) return bsmashShowPermit();
+    bsmash.phase = 'playback';
+    bsmashBandLevel(BSMASH_BAND_FULL);
+    const takeBar = Math.round((take.start - bsmashBand.start) / BSMASH_BAR);
+    let bar = Math.ceil((bsmashNow() + 0.6 - bsmashBand.start) / BSMASH_BAR);
+    while (((bar - takeBar) % 4 + 4) % 4) bar++;
+    const start = bsmashBand.start + bar * BSMASH_BAR;
+    const kind = bsmashSoundKind();
+    bsmashCancel('playback');
+    take.presses.forEach(p => {
+        const at = start + (p.time - take.start);
+        const held = p.up !== null ? Math.max(0.08, p.up - p.time) : 0.15;
+        bsmashAt(at, t => {
+            try { BeatSmashBand.pad(raudioCtx, bsmashPadBus, t, kind, bsmashChordAt(t)).release(t + held); }
+            catch (e) { /* a dud sound must not stop the playback */ }
+        }, 'playback');
+    });
+    bsmash.playback = { start: start, end: start + take.bars * BSMASH_BAR, notes: take.presses.length };
+    bsmashEvent('beat.booth.listen');
+    const wait = (start + take.bars * BSMASH_BAR - bsmashNow()) * 1000 + 900;
+    bsmashLater(() => thenPermit ? bsmashShowPermit() : openBeatBand(), wait);
+}
+
+// The Learner's Permit: L plates, presented by Tango, with their band on it.
+function bsmashShowPermit() {
+    const progress = bsmashLoad();
+    if (!progress.permit) return showBeatPathway();
+    switchScreenState('beat', 'beat-screen-permit');
+    const card = bsmashEl('beat-permit-card');
+    card.innerHTML = '';
+    const plate = bsmashMake('div', 'bsmash-plate', card);
+    plate.textContent = KR.t('beat.permit.plate');
+    const title = bsmashMake('h2', 'bsmash-permit-title', card);
+    title.textContent = KR.t('beat.permit.title');
+    const player = bsmashPlayer();
+    const who = bsmashMake('div', 'bsmash-permit-name', card);
+    who.textContent = player ? player.name : '';
+    const band = bsmashMake('div', 'bsmash-permit-band', card);
+    ['drums', 'bass', 'keys'].forEach(id => {
+        const record = progress.musicians[id];
+        if (!record.won) return;
+        const row = bsmashMake('div', 'bsmash-permit-part style-' + record.part, band); // text-ok: class names
+        row.textContent = KR.t('beat.permit.part', { part: KR.t('beat.channel.' + id), style: KR.t('beat.style.' + record.part) });
+    });
+    const when = bsmashMake('div', 'bsmash-permit-date', card);
+    when.textContent = new Date(progress.permit.at).toLocaleDateString();
+    bsmashEvent('beat.permit.awarded');
+}
+
+function showBeatPermit() {
+    bsmashStopAll();
+    bsmashShowPermit();
 }
 
 /* =========================================
@@ -2247,7 +2403,7 @@ function renderBeatPathway() {
             label.textContent = KR.t('beat.musician.' + musician.id);
             if (record.won) {
                 const won = bsmashMake('small', null, node);
-                won.textContent = KR.t('beat.style.' + record.part);
+                won.textContent = KR.t(musician.booth ? 'beat.permit.short' : 'beat.style.' + record.part);
             }
             node.onclick = () => selectBeatMusician(musician.id);
             bsmashSelected = bsmashSelected || musician.id;
@@ -2257,8 +2413,10 @@ function renderBeatPathway() {
     selectBeatMusician(bsmashSelected);
     bsmashRenderStats();
     const won = id => progress.musicians[id].won;
-    const say = won('bass') ? 'beat.soon.keys' : won('drums') ? 'beat.pathway.riff' : 'beat.pathway.say';
-    KR.say(say, { box: bsmashEl('beat-pathway-guide'), silent: true, speaker: won('drums') ? 'riff' : 'tango' });
+    const say = won('booth') ? 'beat.pathway.permit' : won('keys') ? 'beat.pathway.booth'
+        : won('bass') ? 'beat.pathway.keys' : won('drums') ? 'beat.pathway.riff' : 'beat.pathway.say';
+    const riff = won('drums') && !won('keys');
+    KR.say(say, { box: bsmashEl('beat-pathway-guide'), silent: true, speaker: riff ? 'riff' : 'tango' });
     bsmashRenderPathwaySettings();
 }
 
@@ -2268,9 +2426,10 @@ function selectBeatMusician(id) {
         node.classList.toggle('recommended', BSMASH_MUSICIANS[i].id === id));
     const progress = bsmashLoad();
     const record = progress.musicians[id];
+    const booth = BSMASH_MUSICIANS.find(m => m.id === id).booth;
     if (!progress.jamDone) bsmashSelectedStep = 'jam';
     else if (record.won) bsmashSelectedStep = 'band';
-    else bsmashSelectedStep = record.step;
+    else bsmashSelectedStep = booth ? 'booth' : record.step;
     bsmashRenderSteps();
 }
 
@@ -2283,6 +2442,10 @@ let bsmashSelectedStep = null;
 function bsmashStepChoices(id) {
     const progress = bsmashLoad();
     const record = progress.musicians[id];
+    // The booth has one step; once passed, the Permit can be seen again.
+    if (BSMASH_MUSICIANS.find(m => m.id === id).booth) {
+        return ['jam', 'booth'].concat(progress.permit ? ['permit', 'band'] : []);
+    }
     const reached = KR.openAll() || record.won ? 3 : record.step;
     const choices = ['jam'];
     for (let step = 1; step <= reached; step++) choices.push(step);
@@ -2302,7 +2465,8 @@ function bsmashRenderSteps() {
     });
     const start = bsmashEl('beat-pathway-start');
     start.disabled = false;
-    start.textContent = KR.t(bsmashSelectedStep === 'band' ? 'beat.playBand' : 'beat.start');
+    start.textContent = KR.t(bsmashSelectedStep === 'band' ? 'beat.playBand'
+        : bsmashSelectedStep === 'permit' ? 'beat.permit.show' : 'beat.start');
 }
 
 function startSelectedBeat() {
@@ -2311,6 +2475,8 @@ function startSelectedBeat() {
     bsmashAudio();
     if (bsmashSelectedStep === 'band') return openBeatBand();
     if (bsmashSelectedStep === 'jam') return startBeatJam();
+    if (bsmashSelectedStep === 'permit') return showBeatPermit();
+    if (bsmashSelectedStep === 'booth') return startBeatMusician(id, false, 3);
     startBeatMusician(id, false, bsmashSelectedStep);
 }
 
@@ -2354,6 +2520,10 @@ function bsmashRenderPathwaySettings() {
         row('beat.settings.sound.' + musician.id, musician.sounds.map(v => ({ value: v, text: 'beat.sound.' + v })),
             progress.settings.sound[musician.id], v => save(s => { s.sound[musician.id] = v; }));
     });
+    if (bsmashUnlocked(BSMASH_MUSICIANS.findIndex(m => m.booth), progress)) {
+        row('beat.settings.booth', BSMASH_BOOTH_BARS.map(v => ({ value: v, text: 'beat.booth.bars.' + v })),
+            progress.settings.boothBars, v => save(s => { s.boothBars = v; }));
+    }
     row('beat.settings.pads', ['auto', 'four', 'one'].map(v => ({ value: v, text: 'beat.padMode.' + v })),
         progress.settings.padMode, v => save(s => { s.padMode = v; }));
     // The warm-up jam's song: the band's own loops, or one of Rob's songs.
