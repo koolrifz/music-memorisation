@@ -231,7 +231,7 @@ KR.lang('en-US', {
     'beat.won.keys.1':       'Oh, that gives me an idea for the keys!',
     'beat.locked.keys.1':    "{style} keys, locked in. That's the full band!",
     // The booth and the Permit: Tango presents it. Placeholders for Rob.
-    'beat.booth.ready':      "Your turn in the booth! Everything you've learned. Three takes in a row and the L plates are yours. Practise as much as you like, then hit Record.",
+    'beat.booth.ready':      'Your turn in the booth! Three takes in a row for your L plates. Practise first if you like.',
     'beat.booth.passed.1':   'One in the can! Two more in a row.',
     'beat.booth.passed.2':   'Two in the can! One more for your L plates!',
     'beat.booth.practice.good': 'Nailed the practice! Record it when you are ready.',
