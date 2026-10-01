@@ -1620,6 +1620,15 @@ musician / a ten-track "first record" before the booth / both) and the
 questions for outside reviewers are in `docs/beat-smash-workshop-pacing.md`.
 **Don't change the progression until Rob rules on it.**
 
+**Playtest 1 (Rob, 2026-10-01)** is written up in
+`docs/beat-smash-playtest-1.md`: what he saw, the diagnosis checked against
+the code, and the proposed changes, marked clear fix / question / Rob's call.
+The biggest finding: Riff's *"Hold those long notes right through"* is his line
+for **every** failed take (`beat.take.again.riff`), so takes that failed for
+another reason (an early press landing in a rest, most likely) blamed the
+holding. Verdicts must name the real reason. Rob also ruled the **Counting**
+picture out of Beat Smash (*"We don't know what brackets are"*).
+
 **Not built yet:** sharing the Permit card as an image (open item 5's
 canvas snapshot would serve both); "my bit";
 Tango noticing "You didn't need the blocks!"; re-offering calibration when the
