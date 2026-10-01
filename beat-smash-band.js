@@ -301,36 +301,49 @@
   const at = (t0, bar, step) => t0 + bar * BAR + step * STEP;
   const nextChord = (bar) => SONG[(bar + 1) % BARS];
 
+  // The loops' kit balance (playtest 1, §5.1). On a phone speaker the drum
+  // loops came through as the kick and little else: Rob, choosing Tango's
+  // part, "All we're getting is a kick drum." So in the loops the kick sits
+  // back and the upper kit (hats, ride, rim, clap, shaker, clave, snare)
+  // comes forward, until each style is told apart by what sits on top. The
+  // student's own pad kick and the fill are untouched.
+  const LOOP_KICK = 0.6, LOOP_UPPER = 2;
+  const kit = {};
+  Object.keys(drum).forEach((name) => {
+    const scale = name === 'kick' ? LOOP_KICK : name === 'conga' ? 1 : LOOP_UPPER;
+    kit[name] = (ctx, out, t, v, ...rest) => drum[name](ctx, out, t, v * scale, ...rest);
+  });
+
   const PARTS = {
     drums: {
       // Latin: bossa kick, son clave (3-2), shaker, conga tumbao
       spicy(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
-          [[0, 1], [6, 0.55], [8, 0.9], [14, 0.55]].forEach(([s, v]) => drum.kick(ctx, out, at(t0, b, s), v));
-          (b % 2 === 0 ? [0, 6, 12] : [4, 8]).forEach((s) => drum.clave(ctx, out, at(t0, b, s), 1));
-          for (let s = 0; s < 16; s += 2) drum.shaker(ctx, out, at(t0, b, s), s % 4 ? 1 : 0.6);
-          drum.conga(ctx, out, at(t0, b, 4), 0.5, 330);
-          drum.conga(ctx, out, at(t0, b, 12), 0.9, 196);
-          drum.conga(ctx, out, at(t0, b, 14), 0.9, 262);
+          [[0, 1], [6, 0.55], [8, 0.9], [14, 0.55]].forEach(([s, v]) => kit.kick(ctx, out, at(t0, b, s), v));
+          (b % 2 === 0 ? [0, 6, 12] : [4, 8]).forEach((s) => kit.clave(ctx, out, at(t0, b, s), 1));
+          for (let s = 0; s < 16; s += 2) kit.shaker(ctx, out, at(t0, b, s), s % 4 ? 1 : 0.6);
+          kit.conga(ctx, out, at(t0, b, 4), 0.5, 330);
+          kit.conga(ctx, out, at(t0, b, 12), 0.9, 196);
+          kit.conga(ctx, out, at(t0, b, 14), 0.9, 262);
         }
       },
       // Jazz, played straight: ride cymbal, soft kick, cross-stick on 2 and 4
       smooth(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
-          [[0, 0.7], [8, 0.5], [11, 0.35]].forEach(([s, v]) => drum.kick(ctx, out, at(t0, b, s), v));
-          [4, 12].forEach((s) => drum.rim(ctx, out, at(t0, b, s), 0.9));
-          for (let s = 0; s < 16; s += 2) drum.ride(ctx, out, at(t0, b, s), s % 4 ? 0.65 : 1);
-          [4, 12].forEach((s) => drum.hat(ctx, out, at(t0, b, s), 0.35, false));
+          [[0, 0.7], [8, 0.5], [11, 0.35]].forEach(([s, v]) => kit.kick(ctx, out, at(t0, b, s), v));
+          [4, 12].forEach((s) => kit.rim(ctx, out, at(t0, b, s), 0.9));
+          for (let s = 0; s < 16; s += 2) kit.ride(ctx, out, at(t0, b, s), s % 4 ? 0.65 : 1);
+          [4, 12].forEach((s) => kit.hat(ctx, out, at(t0, b, s), 0.35, false));
         }
       },
       // Dance: four on the floor, claps on 2 and 4, open hats on the "ands"
       hop(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
-          [0, 4, 8, 12].forEach((s) => drum.kick(ctx, out, at(t0, b, s), 1));
-          [4, 12].forEach((s) => drum.clap(ctx, out, at(t0, b, s), 0.9));
-          [2, 6, 10, 14].forEach((s) => drum.hat(ctx, out, at(t0, b, s), 0.8, true));
-          for (let s = 1; s < 16; s += 2) drum.hat(ctx, out, at(t0, b, s), 0.35, false);
-          if (b === BARS - 1) [13, 14, 15].forEach((s) => drum.clap(ctx, out, at(t0, b, s), 0.5));
+          [0, 4, 8, 12].forEach((s) => kit.kick(ctx, out, at(t0, b, s), 1));
+          [4, 12].forEach((s) => kit.clap(ctx, out, at(t0, b, s), 0.9));
+          [2, 6, 10, 14].forEach((s) => kit.hat(ctx, out, at(t0, b, s), 0.8, true));
+          for (let s = 1; s < 16; s += 2) kit.hat(ctx, out, at(t0, b, s), 0.35, false);
+          if (b === BARS - 1) [13, 14, 15].forEach((s) => kit.clap(ctx, out, at(t0, b, s), 0.5));
         }
       },
     },
@@ -394,9 +407,9 @@
     warmup: {
       tango(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
-          [0, 8].forEach((s) => drum.kick(ctx, out, at(t0, b, s), 1));
-          [4, 12].forEach((s) => drum.snare(ctx, out, at(t0, b, s), 0.7));
-          for (let s = 0; s < 16; s += 2) drum.hat(ctx, out, at(t0, b, s), s % 4 ? 0.5 : 0.8, false);
+          [0, 8].forEach((s) => kit.kick(ctx, out, at(t0, b, s), 1));
+          [4, 12].forEach((s) => kit.snare(ctx, out, at(t0, b, s), 0.7));
+          for (let s = 0; s < 16; s += 2) kit.hat(ctx, out, at(t0, b, s), s % 4 ? 0.5 : 0.8, false);
         }
       },
     },

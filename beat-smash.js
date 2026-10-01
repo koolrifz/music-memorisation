@@ -145,6 +145,11 @@ const BSMASH_WINDOW_MS = { '6-8': 220, '9-10': 195, '11+': 170 };   // how far f
 const BSMASH_WINDOW_START_EXTRA_MS = 40;   // generous at first (§14)...
 const BSMASH_WINDOW_TIGHTEN_MS = 5;        // ...and this much tighter per clean take, down to the age's window
 const BSMASH_PASS_MARK = { '6-8': 0.80, '9-10': 0.85, '11+': 0.90 };  // the big take (§6)
+// A press outside the window but within this much of a beat of a note still
+// to be played is that note, EARLY or LATE, not a tap in the rest beside it
+// (playtest 1, §4.1). The report said a third of a beat; the window is
+// already about a third (195 ms at 9-10), so a third would change nothing.
+const BSMASH_NEAR_BEAT = 0.5;
 const BSMASH_JAM_GOAL = 24;                // on-beat taps that fill the meter: about 15 seconds at 100 bpm
 const BSMASH_JAM_WINDOW_MS = 150;          // the first minute can't fail; this decides when a pad lights and the meter fills
 const BSMASH_JAM_DEMO_EVERY_BARS = 4;      // Tango shows the way again if the taps don't settle
@@ -814,12 +819,21 @@ function bsmashRenderReading() {
    In the meantime, yes, put it all under a helping hand." So by default the
    picture MIXES: each new roll draws in a different style from the last, so
    no one picture becomes the way to play. "Need a hand?" opens the choice,
-   and a student who picks one style keeps it until they pick "Mix it up". */
-const BSMASH_PICTURES = ['blocks', 'counting', 'machine'];
+   and a student who picks one style keeps it until they pick "Mix it up".
+   No counting picture: Rob, after playtest 1, "We don't know what brackets
+   are." Counting arrives where it is taught, in Rhythm Stomp Lab. A player
+   who had picked it is back on "Mix it up". */
+const BSMASH_PICTURES = ['blocks', 'machine'];
+
+// The saved choice: one of the pictures, or 'mix'.
+function bsmashPictureSetting() {
+    const chosen = bsmashLoad().settings.pictureHelp;
+    return BSMASH_PICTURES.indexOf(chosen) !== -1 ? chosen : 'mix';
+}
 
 function bsmashPictureKind() {
-    const chosen = bsmashLoad().settings.pictureHelp;
-    if (BSMASH_PICTURES.indexOf(chosen) !== -1) return chosen;
+    const chosen = bsmashPictureSetting();
+    if (chosen !== 'mix') return chosen;
     return (bsmash && bsmash.mixPicture) || 'blocks';
 }
 
@@ -829,8 +843,8 @@ function bsmashMixPicture() {
     bsmash.mixPicture = others[Math.floor(Math.random() * others.length)];
 }
 
-// The picture of one bar, in the style above (§12): blocks, counting, or a
-// drum machine. Width shows length; solid or hollow shows sound or silence;
+// The picture of one bar, in the style above (§12): blocks or a drum
+// machine. Width shows length; solid or hollow shows sound or silence;
 // colour only repeats the length.
 function bsmashDrawPicture(barIndex) {
     const entry = bsmash.layout[barIndex];
@@ -858,21 +872,10 @@ function bsmashDrawPicture(barIndex) {
             // reach from the square's edge to the slot's edge.
             const edge = spec.slots === 1 ? side : (k === 0 || k === spec.slots - 1 ? (slotWidth + side) / 2 : slotWidth);
             cell.style.width = edge + 'px';
-            if (kind === 'counting') cell.textContent = bsmashCountLabel(spec, k);
             if (kind === 'machine') cell.classList.add(spec.isRest ? 'off' : (k === 0 ? 'on' : 'held'));
         }
         entry.blocks[index] = block;
     });
-}
-
-// The counting, as the Rhythm pillar writes it: the onset digit outside the
-// bracket, held and silent beats inside - 1 (2) 3 4.
-function bsmashCountLabel(spec, k) {
-    const n = String(spec.slot + k + 1);
-    const last = k === spec.slots - 1;
-    if (!spec.isRest && k === 0) return n;
-    const open = spec.isRest ? k === 0 : k === 1;
-    return (open ? '(' : '') + n + (last ? ')' : '');
 }
 
 // 'picture' or 'notation'. A morph is the same swap, slowed down (§4).
@@ -900,11 +903,12 @@ function bsmashPictureCursor(takeBeat) {
 
 function bsmashMarkUnder(barIndex, slot, slots) {
     const entry = bsmash.layout[barIndex];
-    if (!entry) return;
+    if (!entry) return null;
     const x = entry.layout.pulseX;
     const mark = bsmashMake('div', 'bsmash-miss', entry.under);
     mark.style.left = (x(slot) + 1) + 'px';
     mark.style.width = Math.max(10, x(slot + slots) - x(slot) - 4) + 'px';
+    return mark;
 }
 
 /* ---------- The dice (§4) ----------
@@ -1104,7 +1108,7 @@ function bsmashRenderPictureChoice() {
         const chip = bsmashMake('button', 'bsmash-chip', row);
         chip.type = 'button';
         chip.textContent = KR.t('beat.picture.' + kind);
-        chip.classList.toggle('on', (progress.settings.pictureHelp || 'mix') === kind);
+        chip.classList.toggle('on', bsmashPictureSetting() === kind);
         chip.onclick = () => chooseBeatPicture(kind);
     });
 }
@@ -1715,6 +1719,8 @@ function bsmashNewRoll() {
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
     bsmashMixPicture();
     bsmash.take = null;
+    bsmash.takeNo = 1;
+    bsmashEl('beat-take-stats').hidden = true;
     bsmash.phase = 'roll';
     bsmash.pads.setCount(bsmashPadCount());
     bsmashHeader();
@@ -1787,7 +1793,7 @@ function bsmashScheduleTake(go) {
         win: bsmashWindow(),
         notes: [],
         rests: [],
-        extra: 0,
+        strays: [],
         comebackBars: new Set(),
         mustHit: new Set(),
         presses: [],
@@ -1820,8 +1826,9 @@ function bsmashPress(p) {
     const take = bsmash.take;
     if (!take || take.done) return;
     const t = p.time;
-    // Taps in the count-in, or after the last note, are free.
-    if (t < take.start - take.win || t > take.end + take.win) return;
+    // Taps in the count-in, or after the last note, are free; but a press
+    // within half a beat of the first note is that note, early.
+    if (t < take.start - Math.max(take.win, BSMASH_NEAR_BEAT * BSMASH_BEAT) || t > take.end + take.win) return;
     take.presses.push(p);     // what the student played, for listening back
     let best = null;
     take.notes.forEach(note => {
@@ -1831,6 +1838,7 @@ function bsmashPress(p) {
     if (best) {
         best.hit = true;
         best.press = p;
+        best.offset = t - best.t;
         p.note = best;
         // On the four beat pads the pad IS the beat. Rob, 2026-10-01: "If you
         // press button number one at what should be beat number three, then
@@ -1850,16 +1858,30 @@ function bsmashPress(p) {
         }
         return;
     }
-    // Not a note: a tap in a rest, or a stray - too early, too late, or one
-    // tap too many. Honest: it still sounded. Not clean.
-    const rest = take.rests.find(r => t >= r.t && t < r.end);
-    if (rest) {
-        rest.tapped = true;
-        const block = bsmash.layout[rest.bar] && bsmash.layout[rest.bar].blocks[rest.index];
+    // Not a note. Honest: it still sounded, and the take isn't clean. Near
+    // a note still to be played, it is that note, early or late: a press a
+    // little before beat 3 is beat 3 played early, not a tap in beat 2's
+    // rest (playtest 1, §4.1). Otherwise a tap in a rest, or one too many.
+    const stray = { press: p, t: t, note: bsmashNearNote(take, t), rest: null };
+    if (stray.note) {
+        if (!stray.note.near) stray.note.near = stray;
+    } else {
+        stray.rest = take.rests.find(r => t >= r.t && t < r.end) || null;
+        const block = stray.rest && bsmash.layout[stray.rest.bar] && bsmash.layout[stray.rest.bar].blocks[stray.rest.index];
         if (block) { block.classList.remove('shake'); void block.offsetWidth; block.classList.add('shake'); }
     }
-    take.extra++;
+    take.strays.push(stray);
     bsmashSlip(Math.floor((t - take.start) / BSMASH_BAR));
+}
+
+// The nearest note not yet played within half a beat of a press, or null.
+function bsmashNearNote(take, t) {
+    let near = null;
+    take.notes.forEach(note => {
+        if (note.hit || Math.abs(t - note.t) >= BSMASH_NEAR_BEAT * BSMASH_BEAT) return;
+        if (!near || Math.abs(t - note.t) < Math.abs(t - near.t)) near = note;
+    });
+    return near;
 }
 
 // A long note must be held to the middle of its last beat (§6). Lenient on
@@ -1914,28 +1936,26 @@ function bsmashTakeFrame() {
 }
 
 /* ---------- The verdict, in studio words (§4) ----------
-   Never milliseconds, never "failed". Clean: the bar glows. Not clean: the
-   notes that went wrong are marked under the staff. */
+   Never milliseconds, never "failed". Clean: the bar glows. Not clean: what
+   went wrong is marked under the staff, and the verdict NAMES THE REASON
+   (playtest 1, §4.1). Riff's "Hold those long notes right through" used to
+   be his line for every failed take, so a take lost to an early press
+   blamed the holding. */
 function bsmashVerdict() {
     const take = bsmash.take;
     bsmash.phase = 'verdict';
-    const wrong = take.notes.filter(n => !n.hit || n.short || n.wrongPad);
-    const restTaps = take.rests.filter(r => r.tapped);
-    wrong.concat(restTaps).forEach(item => {
-        bsmashMarkUnder(item.bar, item.spec.slot, item.spec.slots);
-        const block = bsmash.layout[item.bar] && bsmash.layout[item.bar].blocks[item.index];
-        if (block) block.classList.add('missed');
-    });
-    const clean = !wrong.length && !restTaps.length && !take.extra;
+    const issues = bsmashTakeIssues(take);
+    issues.forEach((issue, i) => bsmashMarkIssue(issue, i === 0));
+    bsmashTakeStats(take);
     if (bsmash.scaffold === 'big') {
-        const hits = take.notes.length - wrong.length;
-        const score = hits / Math.max(1, take.notes.length + take.extra);
+        const hits = take.notes.filter(n => n.hit && !n.short && !n.wrongPad).length;
+        const score = hits / Math.max(1, take.notes.length + take.strays.length);
         const passed = score >= BSMASH_PASS_MARK[bsmashAge()] && !take.lostBar;
         bsmash.lastScore = score;
         if (take.practice) return bsmashBoothPracticed(passed);
-        return passed ? bsmashBigPassed(take) : bsmashTakeTwo(true);
+        return passed ? bsmashBigPassed(take) : bsmashTakeTwo(true, issues);
     }
-    if (!clean) return bsmashTakeTwo(false);
+    if (issues.length) return bsmashTakeTwo(false, issues);
     bsmashEl('beat-reading').classList.add('clean');
     bsmashBandLevel(BSMASH_BAND_FULL);
     // The first star's picture go: now the reveal, then the same bar from
@@ -1949,10 +1969,60 @@ function bsmashVerdict() {
     bsmashStarLands();
 }
 
-function bsmashTakeTwo(big) {
-    // When the trouble was the pads, the verdict says so: follow the beats.
-    const pads = bsmash.take && bsmash.take.notes.some(n => n.wrongPad);
-    bsmashEvent(pads ? 'beat.take.wrongPad' : big ? 'beat.big.again' : 'beat.take.again');
+/* Everything that went wrong in a take, in the order it happened. Each is
+   one reason:
+     wrongPad  played in time, on another beat's pad
+     short     a long note let go too soon
+     early     a note played before its window (within half a beat)
+     late      a note played after its window (within half a beat)
+     missed    a note not played at all
+     rest      a tap in a rest
+     extra     one tap too many (a second press for a note already played) */
+function bsmashTakeIssues(take) {
+    const issues = [];
+    const at = (t, reason, item, place) => issues.push({ t: t, reason: reason, item: item, place: place || item });
+    take.notes.forEach(note => {
+        if (note.wrongPad) at(note.t, 'wrongPad', note);
+        if (note.short) at(note.press.up, 'short', note);
+        if (note.hit) return;
+        if (note.near) at(note.near.t, note.near.t < note.t ? 'early' : 'late', note);
+        else at(note.t, 'missed', note);
+    });
+    take.strays.forEach(stray => {
+        if (stray.note && stray.note.near === stray && !stray.note.hit) return;   // the note's own early or late
+        if (stray.rest) return at(stray.t, 'rest', stray.rest);
+        at(stray.t, 'extra', stray.note, stray.note || bsmashBeatAt(take, stray.t));
+    });
+    return issues.sort((a, b) => a.t - b.t);
+}
+
+// The beat a press landed nearest, as a place to mark: { bar, slot, slots }.
+function bsmashBeatAt(take, t) {
+    const beats = Math.max(0, Math.min(take.bars * 4 - 1, Math.round((t - take.start) / BSMASH_BEAT)));
+    return { bar: Math.floor(beats / 4), spec: { slot: beats % 4, slots: 1 } };
+}
+
+// The picture marks it: a bar under the staff, and the block outlined. The
+// one the verdict names is marked more strongly, early or late said in a word.
+function bsmashMarkIssue(issue, named) {
+    const place = issue.place;
+    const mark = bsmashMarkUnder(place.bar, place.spec.slot, place.spec.slots);
+    const block = place.index !== undefined && bsmash.layout[place.bar] && bsmash.layout[place.bar].blocks[place.index];
+    if (block) block.classList.add('missed');
+    if (!named || !mark) return;
+    mark.classList.add('named');
+    if (block) block.classList.add('named');
+    if (issue.reason === 'early' || issue.reason === 'late') {
+        mark.setAttribute('data-why', KR.t('beat.light.' + issue.reason));
+    }
+}
+
+// A failed take: say why, and which take is next. "If it's take three, you
+// gotta say take three" (playtest 1, §4.2).
+function bsmashTakeTwo(big, issues) {
+    const reason = issues && issues.length ? issues[0].reason : 'missed';
+    bsmash.takeNo = (bsmash.takeNo || 1) + 1;
+    bsmashEvent('beat.take.why.' + reason, { take: bsmashTakeWords(big) });
     if (big) return bsmashLater(() => bsmashBigReady(false), 1600);
     // A miss empties the row of stars (§6). On the first star the stars were
     // already empty, so the same go simply runs again; after that it is
@@ -1973,6 +2043,46 @@ function bsmashTakeTwo(big) {
     }, 1800);
 }
 
+// "Take three!", in words up to ten, then in figures.
+function bsmashTakeWords(big) {
+    const n = bsmash.takeNo;
+    const number = KR.lookup('beat.number.' + n, KR.current) !== null ? KR.t('beat.number.' + n) : String(n);
+    return KR.t(big ? 'beat.take.number.big' : 'beat.take.number', { n: number });
+}
+
+/* The teacher's view (the teacher code on): each note of the last take in
+   milliseconds, so the thresholds can be tuned from real play rather than
+   guessed (playtest 1, §4.1). A child never sees it. */
+function bsmashTakeStats(take) {
+    const box = bsmashEl('beat-take-stats');
+    if (!box) return;
+    box.hidden = !KR.openAll();
+    if (box.hidden) return;
+    const ms = seconds => (seconds >= 0 ? '+' : '−') + Math.round(Math.abs(seconds) * 1000); // text-ok: a sign
+    const place = (bar, slot) => (bar + 1) + '.' + (slot + 1);
+    const lines = [KR.t('beat.stats.window', { win: Math.round(take.win * 1000) })];
+    take.notes.forEach(note => {
+        const vars = { at: place(note.bar, note.spec.slot) };
+        if (note.hit) {
+            vars.ms = ms(note.offset);
+            if (note.press.up !== null && note.spec.slots > 1) {
+                vars.held = ms(note.press.up - (note.t + note.spec.slots * BSMASH_BEAT));
+                lines.push(KR.t(note.short ? 'beat.stats.short' : 'beat.stats.held', vars));
+            } else lines.push(KR.t(note.wrongPad ? 'beat.stats.wrongPad' : 'beat.stats.hit', vars));
+        } else if (note.near) {
+            vars.ms = ms(note.near.t - note.t);
+            lines.push(KR.t('beat.stats.near', vars));
+        } else lines.push(KR.t('beat.stats.missed', vars));
+    });
+    take.strays.forEach(stray => {
+        if (stray.note && stray.note.near === stray && !stray.note.hit) return;
+        const beat = bsmashBeatAt(take, stray.t);
+        const vars = { at: place(beat.bar, beat.spec.slot), ms: ms(stray.t - (take.start + (beat.bar * 4 + beat.spec.slot) * BSMASH_BEAT)) };
+        lines.push(KR.t(stray.rest ? 'beat.stats.rest' : 'beat.stats.extra', vars));
+    });
+    box.textContent = lines.join(' · ');
+}
+
 function bsmashReveal() {
     bsmash.phase = 'reveal';
     const progress = bsmashLoad();
@@ -1980,6 +2090,7 @@ function bsmashReveal() {
     progress.seenMorph = true;
     bsmashSave(progress);
     bsmashEvent('beat.reveal');
+    bsmash.takeNo = 1;     // reading it from the music is a fresh go
     bsmashShow('notation', seconds);
     bsmashLater(() => {
         bsmashEl('beat-reading').classList.remove('clean');
@@ -2143,6 +2254,7 @@ function bsmashOpenPicker(cameBack) {
     cards.hidden = true;
     bsmashEl('beat-picker-keep').hidden = true;
     bsmashEl('beat-picker-done').hidden = true;
+    bsmashEl('beat-picker-next').hidden = true;
     bsmashEl('beat-picker-desk').classList.add('dim');
     bsmashEvent('beat.part.won.' + musician.id);
     if (cameBack) bsmashLater(() => bsmashEvent('beat.take.comeback'), 2400);
@@ -2217,8 +2329,38 @@ function bsmashKeepPart(quietly) {
     bsmashEvent('beat.part.locked.' + id, { style: KR.t('beat.style.' + style) });
     bsmashLater(() => {
         bsmashEl('beat-picker-done').hidden = false;
-        bsmashEvent('beat.playback');
+        bsmashShowNext();
+        bsmashPlayback();
     }, 3000);
+}
+
+// The band playing back. With only the drums it is not yet "how much you've
+// built" (playtest 1, §3.2): it is where the band starts.
+function bsmashPlayback() {
+    const progress = bsmashLoad();
+    const won = ['drums', 'bass', 'keys'].filter(id => progress.musicians[id].won).length;
+    bsmashEvent(won === 1 ? 'beat.playback.first' : 'beat.playback');
+}
+
+// Who is next to be won: the first musician not won yet, or the booth until
+// the Permit is earned. Null once level one is done.
+function bsmashNextMusician() {
+    const progress = bsmashLoad();
+    return BSMASH_MUSICIANS.find(m => m.built && (m.booth ? !progress.permit : !progress.musicians[m.id].won)) || null;
+}
+
+// Lead straight on (playtest 1, §3.2): "Next: Riff · Bass", not only back to
+// the menu. The band keeps playing into the next musician's takes.
+function bsmashShowNext() {
+    const next = bsmashNextMusician();
+    const button = bsmashEl('beat-picker-next');
+    button.hidden = !next;
+    if (next) button.textContent = KR.t('beat.button.next', { who: KR.t('beat.musician.' + next.id) });
+}
+
+function startNextBeatMusician() {
+    const next = bsmashNextMusician();
+    if (next) startBeatMusician(next.id, true);
 }
 
 function keepBeatPart() {
@@ -2256,13 +2398,14 @@ function openBeatBand() {
     });
     bsmashEl('beat-picker-keep').hidden = true;
     bsmashEl('beat-picker-done').hidden = false;
+    bsmashShowNext();
     bsmashAudio();
     Object.keys(parts).forEach(id => {
         if (bsmashBand && bsmashBand.parts[id] !== parts[id]) bsmashBandSetPart(id, parts[id]);
     });
     bsmashBandStart(parts);
     bsmashBandLevel(BSMASH_BAND_FULL);
-    bsmashEvent('beat.playback');
+    bsmashPlayback();
 }
 
 /* =========================================
@@ -2545,7 +2688,7 @@ function bsmashRenderPathwaySettings() {
         progress.settings.jamSong || 'c', v => save(s => { s.jamSong = v; }));
     if (progress.firstStar) {
         row('beat.settings.picture', ['mix'].concat(BSMASH_PICTURES).map(v => ({ value: v, text: 'beat.picture.' + v })),
-            progress.settings.pictureHelp || 'mix', v => save(s => { s.pictureHelp = v; }));
+            bsmashPictureSetting(), v => save(s => { s.pictureHelp = v; }));
     }
 }
 

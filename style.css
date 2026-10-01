@@ -1116,7 +1116,6 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-block.pic-blocks .bsmash-cell + .bsmash-cell { border-left: 2px solid rgba(255,255,255,0.3); }
 .bsmash-block.pic-blocks.rest .bsmash-cell + .bsmash-cell { border-left-color: var(--c); border-left-style: dashed; }
 .bsmash-block.pic-blocks.rest { background: transparent; border: 3px solid var(--c); }
-.bsmash-block.pic-counting { color: var(--c); font-weight: 900; font-size: 20px; }
 .bsmash-block.pic-machine { background: #222c36; border-radius: 10px; }
 .bsmash-cell { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
 .pic-machine .bsmash-cell::after { content: ''; width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--c); box-sizing: border-box; }
@@ -1125,12 +1124,16 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-block.lit { box-shadow: 0 0 0 3px var(--accent-gold), 0 0 14px var(--accent-gold); }
 /* A note fills beat by beat while it is held: a half note let go early is half filled. */
 .bsmash-block.pic-blocks:not(.rest) .bsmash-cell.filled { background: var(--accent-gold); }
-.bsmash-block.pic-counting:not(.rest) .bsmash-cell.filled { color: var(--accent-gold); text-shadow: 0 0 8px rgba(255,200,0,0.7); }
 .pic-machine:not(.rest) .bsmash-cell.filled::after { border-color: var(--accent-gold); background: var(--accent-gold); opacity: 1; box-shadow: 0 0 8px var(--accent-gold); }
 .bsmash-block.missed { box-shadow: 0 0 0 3px #ff4b4b; }
 .bsmash-block.shake { animation: bsmash-shake 0.3s; }
 @keyframes bsmash-shake { 25% { margin-left: -5px; } 75% { margin-left: 5px; } }
 .bsmash-miss { position: absolute; top: 3px; height: 5px; border-radius: 3px; background: #ff4b4b; }
+.bsmash-miss.named { height: 7px; top: 2px; animation: bsmash-named 0.9s ease-in-out 3; }
+.bsmash-miss[data-why]::after { content: attr(data-why); position: absolute; top: 9px; left: 50%; transform: translateX(-50%); color: #ff4b4b; font-size: 11px; font-weight: 900; line-height: 1; white-space: nowrap; }
+.bsmash-block.named { box-shadow: 0 0 0 4px #ff4b4b, 0 0 14px rgba(255,75,75,0.6); }
+@keyframes bsmash-named { 50% { opacity: 0.35; } }
+.bsmash-take-stats { margin: 4px 0 0; font-size: 11px; font-weight: 600; }
 
 .bsmash-actions { display: flex; gap: 10px; width: 100%; max-width: 420px; margin: 10px auto 0; }
 .bsmash-actions[hidden] { display: none; }
@@ -1232,6 +1235,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #beat-picker-keep { max-width: 480px; min-height: 56px; }
 #beat-picker-keep:disabled { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; opacity: 0.6; }
 #beat-picker-done { max-width: 480px; }
+#beat-picker-next { max-width: 480px; min-height: 56px; margin-bottom: 10px; }
 
 /* Short screens: the pads come down so the reading line and the pads both fit. */
 @media (max-height: 700px) {
