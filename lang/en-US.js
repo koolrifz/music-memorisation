@@ -268,9 +268,12 @@ KR.lang('en-US', {
     'code.placeholder':      'Teacher code',
     'code.enter':            'Enter',
     'code.reset':            'Everything is back to zero on this device. Starting again…',
-    'code.open':             'Every level in every game is open on this device. Type the code again to turn it off.',
     'code.closed':           'Turned off. Levels open as they are won again; anything already played stays open.',
     'code.unknown':          "That's not a code I know.",
+    'code.button.reset':     'Reset',
+    'code.button.open':      'Open',
+    'code.reset.confirm':    'Reset everything on this device? Every player and all progress in every game goes back to zero.',
+    'code.open':             'Every level in every game is open on this device. Press Open again to turn it off.',
 
     /* ---------- Dashboard: the Value Smash card ---------- */
     'home.value.icon':       '♩',

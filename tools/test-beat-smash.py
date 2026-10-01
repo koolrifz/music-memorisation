@@ -1268,6 +1268,23 @@ def test_teacher_codes(page):
     page.wait_for_timeout(600)
     check('...so Beat Smash starts from the warm-up again', screen(page) == 'beat-screen-studio'
           and page.evaluate("bsmash && bsmash.mode") == 'jam')
+    # The same two things as buttons (Rob: "I can't remember the code").
+    page.evaluate("bsmashStopAll(); launchGame('view-dashboard'); toggleCredits(true)")
+    page.wait_for_timeout(300)
+    page.click('.kr-code-buttons .kr-code-btn >> nth=1')
+    check('The Open button opens every level', page.evaluate('KR.openAll()'), page.inner_text('#kr-code-result'))
+    page.click('.kr-code-buttons .kr-code-btn >> nth=1')
+    check('...and pressed again, closes them', not page.evaluate('KR.openAll()'))
+    page.evaluate("localStorage.setItem('koolRiffsBeatDelay', '0.05')")
+    page.once('dialog', lambda d: d.dismiss())
+    page.click('.kr-code-buttons .kr-code-btn >> nth=0')
+    page.wait_for_timeout(300)
+    check('The Reset button asks first: "no" keeps everything', page.evaluate("localStorage.getItem('koolRiffsBeatDelay')") == '0.05')
+    page.once('dialog', lambda d: d.accept())
+    page.click('.kr-code-buttons .kr-code-btn >> nth=0')
+    page.wait_for_timeout(1800)
+    left = page.evaluate("Object.keys(localStorage).filter(k => k.indexOf('koolRiffs') === 0)")
+    check('...and "yes" takes everything back to zero', left == [], left)
 
 
 def test_rest_of_app(page):

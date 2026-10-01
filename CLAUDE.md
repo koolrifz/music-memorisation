@@ -1148,8 +1148,10 @@ Each game keeps its own localStorage key (`koolRiffsG1Progress`, `koolRiffsG2Pro
 ## TEACHER CODES: reset everything, or open everything
 Rob: *"I should have two codes: one to reset all of my levels of all the games
 back to zero… and one that just allows me to jump into any level I want."*
-Typed into the box on the **About Kool Riffs** screen; `teacher-codes.js`
-holds the codes (`KR_CODES`, change them there) and acts on this device only.
+Typed into the box on the **About Kool Riffs** screen, or pressed: the same
+screen has **Reset** and **Open** buttons (Rob: *"I can't remember the
+code"*); Reset asks first. `teacher-codes.js` holds the codes (`KR_CODES`,
+change them there) and acts on this device only.
 - **RESET** removes every `koolRiffs*` key: players, progress, settings, the
   tap delay. The first time into everything again.
 - **OPEN** sets `koolRiffsOpenAll`. Every game's progress getter passes its
