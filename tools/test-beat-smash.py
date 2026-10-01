@@ -905,7 +905,7 @@ def test_booth(page):
     check('Listen back: every tap they played, booked over the band, from the same place in the song',
           back['booked'] == len(take['notes']) and round((back['start'] - back['band']) / 2.4) % 4 == round((take['start'] - back['band']) / 2.4) % 4
           and 'Listen back' in guide(page), [back, guide(page)])
-    page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-permit'", timeout=20000)
+    page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-permit'", timeout=40000)   # eight bars of listening back
     card = page.inner_text('#beat-permit-card')
     check('The Learner\'s Permit: L plates, their name, their band',
           'L' in card and 'Sam' in card and 'Drums: Spicy' in card and 'Bass: Smooth' in card and 'Keys: Hop' in card, card)
