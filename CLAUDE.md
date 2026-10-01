@@ -1393,7 +1393,7 @@ commit.
 - **The brief's "near-miss" hook** ("1 beat over", "0.3 s off your best") is
   listed for phase 1 in the brief but not in the build guide; not built.
 
-## BEAT SMASH — Phase 1 built, on main
+## BEAT SMASH — Phase 1 and Riff on bass built, on main
 First on the dashboard (Rob: *"moved straight up to the very top of the menu"*).
 The first rhythm game, and the step before Stomp Lab that Garnet asked for.
 The spec is the private brief, `kool-riffs-docs/docs/beat-smash-design-brief.md`
@@ -1541,7 +1541,37 @@ Smash's players list. Beat Smash adds an **age** to a player.
 - **Ages 6–8 / 9–10 / 11+**: windows 220 / 195 / 170 ms, pass marks 80 / 85 /
   90%. All the tunable numbers are the constants at the top of the file.
 
-**Not built yet:** anything of Riff's; the booth and the Permit; "my bit";
+### Riff on bass (Phase 2, first half) — built 2026-10-01
+Rob: *"Riff is coming to do the bass… I'll be guided by you."* The second
+musician, won the same three steps as Tango, through the same engine. What is
+his own:
+
+- **The dice** (`BSMASH_MUSICIANS`, `id: 'bass'`): half notes and half rests
+  join the quarters, and the syncopation `q h q` (§5). The pool gives the
+  brief's **36** legal bars. His one-bar step is a ladder like Tango's,
+  climbed by clean takes: `h h` (the bass's own halves, and the re-strike on
+  beat 3) · a half and a half rest · halves among quarters · the syncopation ·
+  all 36. Steps 2 and 3 roll from all 36.
+- **Holding is the skill.** His pads play electric or acoustic bass (a
+  "Bass sound" row on the pathway, once he is reached), on the bar's root, and
+  **sustain while held**. A half note let go before the middle of its second
+  beat (the start of it, on touch) is short and the take isn't clean; this
+  rule was always in `bsmashRelease()`, his steps are the first to use it. In
+  the picture go a long note **fills beat by beat while it is held**
+  (`bsmashTakeFrame()`), so one let go early is left half filled (§4.1).
+- **He coaches his own steps.** `bsmashEvent()` plays `'<event>.riff'` when
+  Riff's steps are on and that event has lines of his; everything else stays
+  Tango's (she still counts in: she is the drummer). His intro the first time
+  in: *"A half note lasts two beats: press, and HOLD it right through."* His
+  lines are `beat.riff.*`, placeholders for Rob.
+- **The band under his takes is the band won so far** (`bsmashBandSoFar()`):
+  the student's drums part, never the bass being earned.
+- **His picker** is Tango's, with his title, his words (*"That gives me a
+  great idea!"*, brief §8) and the three bass loops; Keep lights the bass
+  channel. The pathway then says the keys are coming.
+
+**Not built yet:** Riff on keys (whole notes; the same shape, one more
+musician entry); the booth and the Permit; "my bit";
 Tango noticing "You didn't need the blocks!"; re-offering calibration when the
 audio output changes (there is a **Re-time my taps** button instead); art
 (the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
@@ -1705,7 +1735,7 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (179 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (196 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
@@ -1715,7 +1745,8 @@ the beat light (green, early left, late right, way off, the glow) and Tango's
 rushing / dragging coaching, "Follow me" counted in time until order is
 restored (and the encouragement when they stop), "Need a hand?" and the mixed
 picture,
-the square blocks, all
+Riff on bass (his ladder, his voice, a half note let go early and held through,
+the band won so far, his picker and part), the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,

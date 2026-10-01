@@ -69,5 +69,28 @@ KR.dialogue = {
         { on: 'beat.picker.heard.hop',    speaker: 'tango', text: 'beat.heard.hop.1' },
         { on: 'beat.part.locked.drums', speaker: 'tango', text: 'beat.locked.drums.1' },
         { on: 'beat.playback',         speaker: 'tango', text: 'beat.line.playback' },
+
+        /* Riff coaches his own steps (beat-smash.js bsmashEvent): an event
+           with '.riff' on the end is his version of Tango's. */
+        { on: 'beat.musician.intro.bass',   speaker: 'riff', text: 'beat.riff.intro.bass' },
+        { on: 'beat.part.won.bass',         speaker: 'riff', text: 'beat.won.bass.1' },
+        { on: 'beat.part.locked.bass',      speaker: 'riff', text: 'beat.locked.bass.1' },
+        { on: 'beat.picker.open.riff',      speaker: 'riff', text: 'beat.riff.picker.1' },
+        { on: 'beat.picker.open.riff',      speaker: 'riff', text: 'beat.riff.picker.2' },
+        { on: 'beat.picker.heard.spicy.riff',  speaker: 'riff', text: 'beat.riff.heard.spicy' },
+        { on: 'beat.picker.heard.smooth.riff', speaker: 'riff', text: 'beat.riff.heard.smooth' },
+        { on: 'beat.picker.heard.hop.riff',    speaker: 'riff', text: 'beat.riff.heard.hop' },
+        { on: 'beat.take.clean.riff',       speaker: 'riff', text: 'beat.riff.clean.1' },
+        { on: 'beat.take.clean.riff',       speaker: 'riff', text: 'beat.riff.clean.2' },
+        { on: 'beat.take.again.riff',       speaker: 'riff', text: 'beat.riff.again' },
+        { on: 'beat.reveal.riff',           speaker: 'riff', text: 'beat.riff.reveal' },
+        { on: 'beat.retake.clean.riff',     speaker: 'riff', text: 'beat.riff.retakeClean' },
+        { on: 'beat.step.cleared.1.riff',   speaker: 'riff', text: 'beat.riff.step.1' },
+        { on: 'beat.step.cleared.2.riff',   speaker: 'riff', text: 'beat.riff.step.2' },
+        { on: 'beat.big.ready.riff',        speaker: 'riff', text: 'beat.riff.bigReady' },
+        { on: 'beat.big.again.riff',        speaker: 'riff', text: 'beat.riff.bigAgain' },
+        { on: 'beat.take.findOne.riff',     speaker: 'riff', text: 'beat.riff.findOne' },
+        { on: 'beat.take.comeback.riff',    speaker: 'riff', text: 'beat.riff.comeback' },
+        { on: 'beat.playback.riff',         speaker: 'riff', text: 'beat.riff.playback' },
     ],
 };

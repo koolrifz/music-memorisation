@@ -84,7 +84,24 @@ const BSMASH_MUSICIANS = [
             3: ['all'],
         },
     },
-    { id: 'bass', coach: 'riff', built: false },    // Phase 2
+    /* Riff on bass (§2, §5): half notes and half rests join the quarters,
+       and the syncopation quarter · half · quarter. "The groove." His own
+       one-bar ladder, climbed by clean takes like Tango's: the half note
+       on 1 and 3 (the bass's own halves, and the re-strike on beat 3) ·
+       a half and a half rest · halves among quarters · the syncopation ·
+       all 36 legal bars. */
+    {
+        id: 'bass', coach: 'riff', built: true,
+        pool: ['quarter-note', 'quarter-rest', 'half-note', 'half-rest'],
+        sounds: ['bass-electric', 'bass-acoustic'],
+        steps: {
+            1: [['h h'], ['h hr', 'hr h'], // text-ok: bars, not words
+                ['h q q', 'q q h', 'h q qr', 'q qr h', 'hr q q', 'q q hr'], // text-ok: bars, not words
+                ['q h q', 'qr h q', 'q h qr'], 'all'], // text-ok: bars, not words
+            2: ['all'],
+            3: ['all'],
+        },
+    },
     { id: 'keys', coach: 'riff', built: false },    // Phase 2
     { id: 'booth', coach: 'tango', built: false },  // Phase 3
 ];
@@ -244,7 +261,7 @@ function bsmashBlankProgress() {
         firstStar: false,
         seenMorph: false,
         musicians: {},
-        settings: { padMode: 'auto', pictureHelp: 'mix', sound: { drums: 'kick' }, jamSong: 'c' },
+        settings: { padMode: 'auto', pictureHelp: 'mix', sound: { drums: 'kick', bass: 'bass-electric' }, jamSong: 'c' },
     };
 }
 
@@ -262,7 +279,7 @@ function bsmashLoad() {
     const blank = bsmashBlankProgress();
     const progress = Object.assign(blank, saved ? JSON.parse(JSON.stringify(saved)) : {});
     progress.settings = Object.assign(bsmashBlankProgress().settings, progress.settings);
-    progress.settings.sound = Object.assign({ drums: 'kick' }, progress.settings.sound);
+    progress.settings.sound = Object.assign({ drums: 'kick', bass: 'bass-electric' }, progress.settings.sound);
     progress.musicians = progress.musicians || {};
     BSMASH_MUSICIANS.forEach(m => {
         progress.musicians[m.id] = Object.assign(bsmashBlankMusician(), progress.musicians[m.id]);
@@ -947,8 +964,13 @@ function bsmashOpenStudio() {
 // guide box of the screen in front of the student (KR.say finds the visible
 // one) and spoken. The code says WHAT HAPPENED; the content decides who
 // says what.
+// Riff coaches his own steps: an event with lines of its own for the coach
+// ('beat.take.clean.riff') is his; anything else is Tango's, as before.
 function bsmashEvent(name, vars) {
-    KR.event(name, vars);
+    const coach = bsmash && bsmash.mode === 'steps' && bsmash.musician && bsmash.musician.coach;
+    const own = coach && coach !== 'tango' && name + '.' + coach;
+    const lines = (KR.dialogue && KR.dialogue.lines) || [];
+    KR.event(own && lines.some(line => line.on === own) ? own : name, vars);
 }
 
 function bsmashPadCount() {
@@ -961,9 +983,9 @@ function bsmashPadCount() {
 
 function bsmashSoundKind() {
     const settings = bsmashLoad().settings;
-    const id = bsmash && bsmash.musician ? bsmash.musician.id : 'drums';
-    const kind = settings.sound[id];
-    return BeatSmashBand.PAD_SOUNDS.indexOf(kind) !== -1 ? kind : 'kick';
+    const musician = (bsmash && bsmash.mode === 'steps' && bsmash.musician) || BSMASH_MUSICIANS[0];
+    const kind = settings.sound[musician.id];
+    return musician.sounds.indexOf(kind) !== -1 ? kind : musician.sounds[0];
 }
 
 function bsmashStarsShown(count) {
@@ -1552,7 +1574,10 @@ function bsmashJamMorph() {
     bsmash.bars = [bsmashParseBar('q q q q')]; // text-ok: a bar, not words
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
     bsmashRenderReading();
-    bsmash.layout[0].blocks.forEach(block => block.classList.add('lit'));
+    bsmash.layout[0].blocks.forEach(block => {
+        block.classList.add('lit');
+        [...block.children].forEach(cell => cell.classList.add('filled'));
+    });
     bsmashShow('picture');
     bsmash.pads.elements.forEach((pad, i) => bsmash.pads.flash(i, 'hit', 900));
     bsmashLater(() => bsmashShow('notation', 2), 700);
@@ -1593,9 +1618,22 @@ function startBeatMusician(id, keepBand, step) {
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-light').hidden = true;
-    bsmashBandStart({ drums: record.won ? record.part : 'warmup' });
+    bsmashBandStart(bsmashBandSoFar(id));
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();
+    if (record.plays === 1) bsmashEvent('beat.musician.intro.' + id);
+}
+
+// The band under a musician's takes: every part won so far, and Tango's
+// warm-up until the drums are won. Not the musician being won: that part
+// is still to be earned.
+function bsmashBandSoFar(playing) {
+    const progress = bsmashLoad();
+    const parts = { drums: progress.musicians.drums.won ? progress.musicians.drums.part : 'warmup' };
+    ['bass', 'keys'].forEach(id => {
+        if (id !== playing && progress.musicians[id].won) parts[id] = progress.musicians[id].part;
+    });
+    return parts;
 }
 
 // Is this step the one the student is working on? Only then do its stars
@@ -1726,7 +1764,10 @@ function bsmashPress(p) {
         p.note = best;
         if (take.mustHit.has(best)) take.cameBack = true;
         const block = bsmash.layout[best.bar] && bsmash.layout[best.bar].blocks[best.index];
-        if (block && take.go === 'picture') block.classList.add('lit');
+        if (block && take.go === 'picture') {
+            block.classList.add('lit');
+            block.children[0].classList.add('filled');
+        }
         return;
     }
     // Not a note: a tap in a rest, or a stray - too early, too late, or one
@@ -1770,6 +1811,14 @@ function bsmashSlip(bar) {
 function bsmashTakeFrame() {
     const take = bsmash.take;
     const judged = bsmashNow() - bsmash.delay;
+    // A long note fills beat by beat while it is held, so a note let go too
+    // early is left only partly filled (§4.1). Picture goes only.
+    if (take.go === 'picture') take.notes.forEach(note => {
+        if (!note.hit || note.press.up !== null || note.spec.slots < 2) return;
+        const block = bsmash.layout[note.bar] && bsmash.layout[note.bar].blocks[note.index];
+        const beats = Math.min(note.spec.slots, Math.floor((judged - note.t) / BSMASH_BEAT) + 1);
+        if (block) for (let k = 0; k < beats; k++) block.children[k].classList.add('filled');
+    });
     take.notes.forEach(note => {
         if (note.hit || note.missed || judged <= note.t + take.win) return;
         note.missed = true;
@@ -2207,8 +2256,9 @@ function renderBeatPathway() {
     });
     selectBeatMusician(bsmashSelected);
     bsmashRenderStats();
-    const drumsWon = progress.musicians.drums.won;
-    KR.say(drumsWon ? 'beat.soon.riff' : 'beat.pathway.say', { box: bsmashEl('beat-pathway-guide'), silent: true });
+    const won = id => progress.musicians[id].won;
+    const say = won('bass') ? 'beat.soon.keys' : won('drums') ? 'beat.pathway.riff' : 'beat.pathway.say';
+    KR.say(say, { box: bsmashEl('beat-pathway-guide'), silent: true, speaker: won('drums') ? 'riff' : 'tango' });
     bsmashRenderPathwaySettings();
 }
 
@@ -2298,8 +2348,12 @@ function bsmashRenderPathwaySettings() {
         });
     };
     const save = fn => { const p = bsmashLoad(); fn(p.settings); bsmashSave(p); };
-    row('beat.settings.sound', ['kick', 'snare'].map(v => ({ value: v, text: 'beat.sound.' + v })),
-        progress.settings.sound.drums, v => save(s => { s.sound.drums = v; }));
+    // One sound row for each musician the student has reached.
+    BSMASH_MUSICIANS.forEach((musician, index) => {
+        if (!musician.sounds || !bsmashUnlocked(index, progress)) return;
+        row('beat.settings.sound.' + musician.id, musician.sounds.map(v => ({ value: v, text: 'beat.sound.' + v })),
+            progress.settings.sound[musician.id], v => save(s => { s.sound[musician.id] = v; }));
+    });
     row('beat.settings.pads', ['auto', 'four', 'one'].map(v => ({ value: v, text: 'beat.padMode.' + v })),
         progress.settings.padMode, v => save(s => { s.padMode = v; }));
     // The warm-up jam's song: the band's own loops, or one of Rob's songs.

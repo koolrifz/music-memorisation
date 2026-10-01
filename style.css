@@ -1123,7 +1123,10 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .pic-machine .bsmash-cell.on::after { background: var(--c); box-shadow: 0 0 8px var(--c); }
 .pic-machine .bsmash-cell.held::after { background: var(--c); opacity: 0.45; }
 .bsmash-block.lit { box-shadow: 0 0 0 3px var(--accent-gold), 0 0 14px var(--accent-gold); }
-.bsmash-block.pic-blocks.lit:not(.rest) { background-color: var(--accent-gold); background-image: none; }
+/* A note fills beat by beat while it is held: a half note let go early is half filled. */
+.bsmash-block.pic-blocks:not(.rest) .bsmash-cell.filled { background: var(--accent-gold); }
+.bsmash-block.pic-counting:not(.rest) .bsmash-cell.filled { color: var(--accent-gold); text-shadow: 0 0 8px rgba(255,200,0,0.7); }
+.pic-machine:not(.rest) .bsmash-cell.filled::after { border-color: var(--accent-gold); background: var(--accent-gold); opacity: 1; box-shadow: 0 0 8px var(--accent-gold); }
 .bsmash-block.missed { box-shadow: 0 0 0 3px #ff4b4b; }
 .bsmash-block.shake { animation: bsmash-shake 0.3s; }
 @keyframes bsmash-shake { 25% { margin-left: -5px; } 75% { margin-left: 5px; } }
