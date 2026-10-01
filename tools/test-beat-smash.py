@@ -652,7 +652,7 @@ def test_picker(page):
     play_take(page)
     page.wait_for_timeout(600)
     check('...its stars fill as usual, and nothing already won is touched',
-          state(page)['streak'] == 1 and record(page)['won'] and record(page)['step'] == 3, (state(page), record(page)))
+          state(page)['streak'] == 1 and record(page)['won'] and record(page)['step'] == 5, (state(page), record(page)))
     page.click('#view-beat .btn-back')
     page.wait_for_timeout(400)
     page.click('#beat-player-chip')
