@@ -289,7 +289,7 @@ function bsmashBlankProgress() {
         firstStar: false,
         seenMorph: false,
         musicians: {},
-        settings: { padMode: 'auto', pictureHelp: 'mix', sound: {}, jamSong: 'c', boothBars: BSMASH_BOOTH_BARS[0] },
+        settings: { padMode: 'four', pictureHelp: 'mix', sound: {}, jamSong: 'c', boothBars: BSMASH_BOOTH_BARS[0] },
     };
 }
 
@@ -1029,12 +1029,12 @@ function bsmashEvent(name, vars) {
     KR.event(own && lines.some(line => line.on === own) ? own : name, vars);
 }
 
+// Four beat pads by default, every step (Rob, 2026-10-01: "the 1 2 3 4 is
+// probably more what we are trying to drum in at this point in time"). The
+// one big pad stays as a setting. The pad pressed must be the beat's.
 function bsmashPadCount() {
     if (!bsmash || bsmash.mode === 'jam') return 4;
-    const mode = bsmashLoad().settings.padMode;
-    if (mode === 'four') return 4;
-    if (mode === 'one') return 1;
-    return bsmash.step === 1 ? 4 : 1;
+    return bsmashLoad().settings.padMode === 'one' ? 1 : 4;
 }
 
 function bsmashSoundKind() {
@@ -1832,6 +1832,16 @@ function bsmashPress(p) {
         best.hit = true;
         best.press = p;
         p.note = best;
+        // On the four beat pads the pad IS the beat. Rob, 2026-10-01: "If you
+        // press button number one at what should be beat number three, then
+        // we need to call an alert to tell them to follow along the beats.
+        // Get on the beat." It sounded, in time, but it isn't clean: the
+        // right pad lights to show where that beat lives.
+        if (bsmash.pads.count === 4 && p.pad !== best.spec.slot) {
+            best.wrongPad = true;
+            bsmash.pads.flash(best.spec.slot, 'demo', 500);
+            if (!take.saidWrongPad) { take.saidWrongPad = true; bsmashEvent('beat.take.wrongPad'); }
+        }
         if (take.mustHit.has(best)) take.cameBack = true;
         const block = bsmash.layout[best.bar] && bsmash.layout[best.bar].blocks[best.index];
         if (block && take.go === 'picture') {
@@ -1909,7 +1919,7 @@ function bsmashTakeFrame() {
 function bsmashVerdict() {
     const take = bsmash.take;
     bsmash.phase = 'verdict';
-    const wrong = take.notes.filter(n => !n.hit || n.short);
+    const wrong = take.notes.filter(n => !n.hit || n.short || n.wrongPad);
     const restTaps = take.rests.filter(r => r.tapped);
     wrong.concat(restTaps).forEach(item => {
         bsmashMarkUnder(item.bar, item.spec.slot, item.spec.slots);
@@ -1940,7 +1950,9 @@ function bsmashVerdict() {
 }
 
 function bsmashTakeTwo(big) {
-    bsmashEvent(big ? 'beat.big.again' : 'beat.take.again');
+    // When the trouble was the pads, the verdict says so: follow the beats.
+    const pads = bsmash.take && bsmash.take.notes.some(n => n.wrongPad);
+    bsmashEvent(pads ? 'beat.take.wrongPad' : big ? 'beat.big.again' : 'beat.take.again');
     if (big) return bsmashLater(() => bsmashBigReady(false), 1600);
     // A miss empties the row of stars (§6). On the first star the stars were
     // already empty, so the same go simply runs again; after that it is
@@ -2524,8 +2536,8 @@ function bsmashRenderPathwaySettings() {
         row('beat.settings.booth', BSMASH_BOOTH_BARS.map(v => ({ value: v, text: 'beat.booth.bars.' + v })),
             progress.settings.boothBars, v => save(s => { s.boothBars = v; }));
     }
-    row('beat.settings.pads', ['auto', 'four', 'one'].map(v => ({ value: v, text: 'beat.padMode.' + v })),
-        progress.settings.padMode, v => save(s => { s.padMode = v; }));
+    row('beat.settings.pads', ['four', 'one'].map(v => ({ value: v, text: 'beat.padMode.' + v })),
+        progress.settings.padMode === 'one' ? 'one' : 'four', v => save(s => { s.padMode = v; }));
     // The warm-up jam's song: the band's own loops, or one of Rob's songs.
     const songs = (window.KR && KR.songs) || {};
     row('beat.settings.song', [{ value: 'c', text: 'song.c' }].concat(

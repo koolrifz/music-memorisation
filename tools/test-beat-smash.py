@@ -162,7 +162,7 @@ def wait_take_done(page, timeout=15):
     page.wait_for_function('!bsmash || !bsmash.take || bsmash.take.done', timeout=timeout * 1000)
 
 
-def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=()):
+def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=()):
     """Play the take that is coming: every note on time, except the note
     indexes in `skip`; with rest_tap, one tap in the first rest too. A long
     note is held for its length, except the note indexes in `let_go`, which
@@ -180,7 +180,11 @@ def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=()):
     presses.sort()
     for t, i in presses:
         beat = int(round((t - take['start']) / 0.6)) % 4
-        press_at(page, offset, t + take['delay'], index=beat if pads == 4 else 0, key=use_key, hold=hold(i))
+        key = str(beat + 1) if use_key == 'beats' else use_key
+        pad = beat if pads == 4 else 0
+        if i >= 0 and i in wrong_pad:
+            pad = (pad + 2) % 4
+        press_at(page, offset, t + take['delay'], index=pad, key=key, hold=hold(i))
     wait_take_done(page)
     return take
 
@@ -494,10 +498,10 @@ def test_two_bar_step(page):
     page.wait_for_function("bsmash && bsmash.step === 2", timeout=15000)
     wait_for_take(page)
     check('The two-bar step reads two bars', page.evaluate('bsmash.specs.length') == 2)
-    check('...on one big pad (the default)', page.locator('#beat-pads .krpad').count() == 1)
-    # Played on the keyboard: Space is the big pad.
-    ok = play_until(page, "bsmashMusicianRecord('drums').step === 3", limit=10, use_key=' ')
-    check('Three clean two-bar takes, played on the Space bar, open the big take', ok, record(page))
+    check('...on the four beat pads (the default, every step)', page.locator('#beat-pads .krpad').count() == 4)
+    # Played on the keyboard: keys 1 2 3 4 are the four beat pads.
+    ok = play_until(page, "bsmashMusicianRecord('drums').step === 3", limit=10, use_key='beats')
+    check('Three clean two-bar takes, played on the keys 1 2 3 4, open the big take', ok, record(page))
 
 
 def test_big_take(page):
@@ -591,6 +595,35 @@ def test_picker(page):
     page.wait_for_timeout(400)
     check('...and starts Beat Smash from the pathway, with nothing of the last player\'s',
           screen(page) == 'beat-screen-pathway' and not record(page)['won'] and page.evaluate('bsmashPlayer().age') == '9-10')
+
+
+def test_wrong_pad(page):
+    """On the four beat pads the pad is the beat: pad 1 on beat 3 isn't
+    clean, Tango says to follow the beats round, and the right pad lights."""
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
+                "musicians:{drums:{step:1,streak:1,clean:4,won:false,part:null,plays:3}}}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.click('#beat-pathway-start')
+    take = wait_for_take(page)
+    page.evaluate("window.flashed = []; const f = bsmash.pads.flash; bsmash.pads.flash = (i, k, ms) => { flashed.push([i, k]); return f(i, k, ms); }; 0")
+    play_take(page, wrong_pad=(0,))
+    page.wait_for_timeout(300)
+    first = page.evaluate("bsmash.take.notes[0].spec.slot")
+    check('A note on the wrong pad, in time, is not clean', page.evaluate("bsmash.take.notes[0].wrongPad === true")
+          and state(page)['streak'] == 0, state(page))
+    check('...Tango says to follow the beats round', 'Follow the beats' in guide(page) or 'Each pad is a beat' in guide(page), guide(page))
+    check('...and the pad for that beat lights up', [first, 'demo'] in page.evaluate('flashed'), page.evaluate('flashed'))
+    page.evaluate("const p = bsmashLoad(); p.settings.padMode = 'one'; bsmashSave(p)")
+    page.click('#view-beat .btn-back')
+    page.wait_for_timeout(300)
+    page.click('#beat-pathway-start')
+    wait_for_take(page)
+    check('The one big pad is still there as a setting', page.locator('#beat-pads .krpad').count() == 1)
+    play_take(page, use_key=' ')
+    page.wait_for_timeout(300)
+    check('...and the Space bar plays it, any beat', page.evaluate("bsmash.take.notes.every(n => n.hit && !n.wrongPad)"))
 
 
 def test_riff_bass(page):
@@ -814,7 +847,7 @@ def test_booth_layout(browser):
 
 
 def test_layout(browser):
-    """The big take (four bars, Record, one big pad) and the one-bar step
+    """The big take (four bars, Record, four beat pads) and the one-bar step
     (four beat pads) on a phone, a small phone and a Chromebook."""
     for size in ({'width': 390, 'height': 844}, {'width': 360, 'height': 640}, {'width': 1366, 'height': 657}):
         for step in (3, 1):
@@ -1192,6 +1225,7 @@ def main():
         test_big_take(page)
         test_picker(page)
         test_picker_leave(page)
+        test_wrong_pad(page)
         test_riff_bass(page)
         test_riff_keys(page)
         test_booth(page)

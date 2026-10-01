@@ -119,7 +119,7 @@ beat test".
 | **Takes are studio takes**: *"That's a take!"*, *"Take two!"* A miss empties the row of stars, but never takes a musician already won | The studio framing turns a test into a session | `bsmashVerdict`, `bsmashTakeTwo` |
 | **"Find one!"**: after a slip in the big take, the next beat 1 gets stronger in light, click and mark | Losing a note is allowed; losing the bar isn't. Getting back in is a skill in itself | `bsmashSlip` |
 | **Every step reached can be replayed** | Rob: *"I'm locked out of being able to replay the previous level."* Replaying is practice and never moves progress backwards | `bsmashStepChoices`, `bsmashOnRecord` |
-| **The pads**: four beat pads on the one-bar step, then one big pad (a setting can keep either). Keys `1`–`4` and `Space` on a keyboard | Four pads show where the beat is. One pad leaves the notation to carry everything | `beat-pads.js`, `bsmashPadCount` |
+| **The pads**: four beat pads on every step, and **the pad is the beat**: a note played in time on the wrong pad isn't clean, the right pad lights, and the coach says to follow the beats round. One big pad is a setting. Keys `1`–`4`, or `Space` for the big pad | Rob: *"the 1 2 3 4 is what we are trying to drum in at this point."* The student's finger walks the bar | `beat-pads.js`, `bsmashPadCount`, `bsmashPress` |
 
 ### 3.3 The three musicians
 
@@ -173,7 +173,7 @@ judgement is made on the **audio clock**, never page time.
 
 ## 4. How it was checked
 
-`python tools/test-beat-smash.py` runs **223 checks** in a real browser. It
+`python tools/test-beat-smash.py` runs **228 checks** in a real browser. It
 **plays the game on the real pads, with the mouse and the Space bar, in time
 with the audio clock**. Among them:
 

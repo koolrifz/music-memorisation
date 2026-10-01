@@ -1529,9 +1529,16 @@ Smash's players list. Beat Smash adds an **age** to a player.
 **Calls made where the brief left room (Rob to confirm):**
 - **One die per bar**, its face the bar's four dots (§4). §4.1 says "four
   dice" for one bar; the two sentences disagree.
-- **On four beat pads, any pad counts.** The pads show where the beat is; a
-  child who reads the rhythm right and taps the wrong pad isn't failed. This
-  follows the same reasoning as dropping the accent pad.
+- **On the four beat pads, the pad IS the beat** (Rob, 2026-10-01,
+  **reversing** an earlier call that any pad counted): *"If you press button
+  number one at what should be beat number three, then we need to call an
+  alert to tell them to follow along the beats. Get on the beat."* A note
+  played in time on the wrong pad sounds, but isn't clean (`wrongPad`), the
+  right pad lights, and the verdict says to follow the beats round instead of
+  "Take two!". **Four pads are now the default on every step** (*"the 1 2 3 4
+  is probably more what we are trying to drum in at this point in time"*);
+  the one big pad is a setting. Keys `1 2 3 4` play the four pads, Space the
+  one pad.
 - **A miss on the first star just repeats that go** (the stars were already
   empty), so the child still sees the bar in notation. From the second star
   a miss empties the row and the bar is retaken as practice (§4).
@@ -1604,6 +1611,14 @@ Rob: *"Let's move on with Riff and the keys… build out this first section."*
 - **Not built, ruled:** the L plates opening Value Smash (§15). It is one
   guarded line at the top of entering Value Smash, as Stomp Lab's gate is, but
   it closes a game Rob is still testing, so it waits for his word.
+
+**OPEN, being workshopped: the pace of level one.** Rob, after playing it
+through: *"we are getting to the end goal way too quick… ideally I would like
+them to do at least 10 different four-bar phrases"* before an eight-bar final,
+with a Consistency meter to fill. Three options (three takes in the can per
+musician / a ten-track "first record" before the booth / both) and the
+questions for outside reviewers are in `docs/beat-smash-workshop-pacing.md`.
+**Don't change the progression until Rob rules on it.**
 
 **Not built yet:** sharing the Permit card as an image (open item 5's
 canvas snapshot would serve both); "my bit";
@@ -1770,7 +1785,7 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (223 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (228 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
@@ -1784,7 +1799,8 @@ Riff on bass (his ladder, his voice, a half note let go early and held through,
 the band won so far, his picker and part), Riff on keys (whole notes held
 four beats, the full band), the booth (practice that never counts, 8 and 4
 bars, listening back from the same bar of the song, the Permit card, the pad on
-screen for eight bars at 360×640), the square blocks, all
+screen for eight bars at 360×640), the wrong pad (not clean, the line, the right pad lit; one big pad and Space
+as the setting), the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both
 ways, the picker, replaying a step, the teacher codes, and layout at 390×844,
