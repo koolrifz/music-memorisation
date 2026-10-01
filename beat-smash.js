@@ -155,6 +155,27 @@ const BSMASH_LIVE_SCALE = 0.47;
 const BSMASH_SAG_OPEN_HZ = 18000;          // the band at full power...
 const BSMASH_SAG_LOW_HZ = 450;             // ...and sunk, when the beat is lost
 const BSMASH_SAG_AFTER = 2;                // taps off the beat in a row before the band starts to sag
+/* THE BEAT LIGHT, in the empty middle of the jam. Rob: "I don't think their
+   tap has the logic in it that says I'm making the music go. I think the
+   first thing is: can I light this up green, because that makes the music
+   go." One round light. Each tap fills it: right on the beat, it fills
+   green, dead centre; a bit early, the fill lands yellow to the LEFT of
+   centre (time runs left to right, as in the music); a bit late, to the
+   right; way off, red at the edge. How far the fill misses the centre is how
+   far the tap missed the beat. The longer the green is held, the brighter
+   it glows. Yellow still counts for the meter; red is a tap off the beat.
+   Measured against the student's OWN steady beat, as the meter is: a phone's
+   sound delay and a steady lean can't be told apart, but a tap early or late
+   against the beat they have been keeping can, and so can rushing. */
+const BSMASH_LIGHT_GREEN_MS = { '6-8': 90, '9-10': 75, '11+': 60 };  // how close counts as green
+const BSMASH_LIGHT_IDLE_MS = 900;          // no tap for this long and the light goes dark
+// Tango coaches the time. Rob: "She should be saying you're a little bit too
+// fast, slow down, or speed up, you're dragging." Rushing or dragging is the
+// gap between taps, averaged over four: a beat this much short or long.
+const BSMASH_TEMPO_SLACK = 0.06;
+const BSMASH_COACH_EVERY_BARS = 2;         // Tango coaches no more often than this
+const BSMASH_GREEN_PRAISE_AT = 8;          // greens in a row before Tango says so...
+const BSMASH_GREEN_PRAISE_EVERY = 24;      // ...and again after this many more
 const BSMASH_JAM_IDLE_BARS = 2;            // bars without a tap before the band stops and the menu appears
 const BSMASH_BEAT_TESTS_KEPT = 20;         // beat tests remembered per player
 const BSMASH_DELAY_MAX = 0.45;             // seconds; a measured delay beyond this is thrown out
@@ -1072,7 +1093,8 @@ function startBeatJam() {
                layerList: bsmashJamLayers(), missesInRow: 0, sag: 0,
                taps: 0, lastTap: 0, stopped: false,
                song: bsmashJamSong(), variations: null, variation: 0,
-               rounds: 0, cycleTaps: {} },
+               rounds: 0, cycleTaps: {},
+               greenRun: 0, praiseAt: BSMASH_GREEN_PRAISE_AT, sawGreen: false, lastCoach: -Infinity, lastTapRaw: null, gaps: [] },
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.add('jam');
@@ -1082,6 +1104,8 @@ function startBeatJam() {
     bsmashEl('beat-jam-next').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashEl('beat-jam-coming').hidden = true;
+    bsmashEl('beat-light').hidden = false;
+    bsmashEl('beat-light').dataset.state = 'idle';
     bsmashDiceHide();
     bsmashBandStart({ drums: 'warmup' });
     bsmash.jam.variations = bsmashJamVariations();
@@ -1245,6 +1269,9 @@ function bsmashJamPress(p) {
     // On the beat means steady against the student's OWN lean: the device's
     // delay and a habit of playing a touch early are not the student's fault.
     const onBeat = Math.abs(offset - estimate) <= BSMASH_JAM_WINDOW_MS / 1000 && beat !== jam.lastHitBeat;
+    const state = bsmashJamLight(offset - estimate, onBeat);
+    // Tango coaches first: "you're rushing" says more than "find the beat".
+    const coached = bsmashJamCoach(p.raw, offset - estimate, state);
     if (onBeat) {
         jam.inARow++;
         jam.missesInRow = 0;
@@ -1261,12 +1288,73 @@ function bsmashJamPress(p) {
         jam.meter = Math.max(0, jam.meter - 1);
         // Losing the beat: the band sinks with it (bsmashBandSag).
         if (jam.missesInRow >= BSMASH_SAG_AFTER) {
-            if (jam.sag === 0) bsmashEvent('beat.jam.lost');
+            // Not on top of something she has only just said.
+            const quiet = bsmashNow() - jam.lastCoach >= BSMASH_COACH_EVERY_BARS * BSMASH_BAR;
+            if (jam.sag === 0 && !coached && quiet) { bsmashEvent('beat.jam.lost'); jam.lastCoach = bsmashNow(); }
             jam.sag = Math.min(1, (jam.missesInRow - BSMASH_SAG_AFTER + 1) / 3);
             bsmashBandSag(jam.sag, 1.2);
         }
     }
     bsmashJamMeter();
+}
+
+// The beat light for one tap. d: seconds from the student's own beat, minus
+// early. Returns the state: 'on', 'early', 'late', 'way-early', 'way-late'.
+function bsmashJamLight(d, onBeat) {
+    const jam = bsmash.jam;
+    const green = BSMASH_LIGHT_GREEN_MS[bsmashAge()] / 1000;
+    const window = BSMASH_JAM_WINDOW_MS / 1000;
+    let state, miss = 0;
+    if (onBeat && Math.abs(d) <= green) state = 'on';
+    else {
+        state = (onBeat ? '' : 'way-') + (d < 0 ? 'early' : 'late');
+        // How far off centre the fill lands, as a share of the light's width:
+        // a third at the edge of green, nearly all the way out at the edge of
+        // the window and beyond.
+        const past = Math.min(1, Math.max(0, (Math.abs(d) - green) / (window - green)));
+        miss = Math.sign(d || 1) * (0.32 + 0.52 * past);
+    }
+    jam.greenRun = state === 'on' ? jam.greenRun + 1 : 0;
+    const light = bsmashEl('beat-light');
+    light.dataset.state = state;
+    light.style.setProperty('--miss', (miss * 100).toFixed(1) + '%');
+    light.style.setProperty('--run', Math.min(1, jam.greenRun / BSMASH_GREEN_PRAISE_AT).toFixed(2));
+    light.classList.remove('hit');
+    void light.offsetWidth;
+    light.classList.add('hit');
+    const taps = jam.taps;
+    bsmashLater(() => { if (bsmash && bsmash.jam === jam && jam.taps === taps) light.dataset.state = 'idle'; },
+        BSMASH_LIGHT_IDLE_MS);
+    return state;
+}
+
+// Tango coaches the time: what the light means, the first time it goes
+// green; rushing and dragging; and a word when the green has been held.
+// Returns true if she said something.
+function bsmashJamCoach(raw, d, state) {
+    const jam = bsmash.jam;
+    const gap = jam.lastTapRaw === null ? null : raw - jam.lastTapRaw;
+    jam.lastTapRaw = raw;
+    // Only gaps of about one beat say anything about the tempo; a pause or a
+    // double tap starts the count again.
+    if (gap !== null && gap > BSMASH_BEAT * 0.6 && gap < BSMASH_BEAT * 1.5) jam.gaps = jam.gaps.concat([gap]).slice(-4);
+    else jam.gaps = [];
+    const now = bsmashNow();
+    const say = (event) => { jam.lastCoach = now; jam.gaps = []; bsmashEvent(event); return true; };
+    if (state !== 'on') jam.praiseAt = BSMASH_GREEN_PRAISE_AT;
+    if (state === 'on' && !jam.sawGreen) { jam.sawGreen = true; return say('beat.jam.green'); }
+    if (now - jam.lastCoach < BSMASH_COACH_EVERY_BARS * BSMASH_BAR) return false;
+    if (jam.gaps.length === 4) {
+        const mean = jam.gaps.reduce((a, b) => a + b, 0) / 4;
+        // The tempo AND this tap agree, so a wobble isn't called a rush.
+        if (mean < BSMASH_BEAT * (1 - BSMASH_TEMPO_SLACK) && d < 0 && state !== 'on') return say('beat.jam.rushing');
+        if (mean > BSMASH_BEAT * (1 + BSMASH_TEMPO_SLACK) && d > 0 && state !== 'on') return say('beat.jam.dragging');
+    }
+    if (jam.greenRun >= jam.praiseAt) {
+        jam.praiseAt = jam.greenRun + BSMASH_GREEN_PRAISE_EVERY;
+        return say('beat.jam.locked');
+    }
+    return false;
 }
 
 // Nobody tapping for two bars: the band powers down and stops, and the way
@@ -1374,6 +1462,7 @@ function bsmashJamMorph() {
     ['bass', 'keys'].forEach(bsmashBandRemovePart);
     if (bsmashBand.parts.drums !== 'warmup') bsmashBandSetPart('drums', 'warmup');
     bsmashEl('beat-jam-coming').hidden = true;
+    bsmashEl('beat-light').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashBandLevel(BSMASH_JAM_BAND);
     bsmash.bars = [bsmashParseBar('q q q q')]; // text-ok: a bar, not words
@@ -1419,6 +1508,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmashEl('beat-jam-next').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashEl('beat-jam-coming').hidden = true;
+    bsmashEl('beat-light').hidden = true;
     bsmashBandStart({ drums: record.won ? record.part : 'warmup' });
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();

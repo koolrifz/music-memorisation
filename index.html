@@ -748,6 +748,13 @@
         <div class="bsmash-desk" id="beat-desk"></div>
         <div class="bsmash-dice" id="beat-dice" hidden></div>
         <div class="bsmash-reading" id="beat-reading"></div>
+        <!-- The first minute: the beat light. Green, dead centre, is right on
+             the beat; yellow left is early, yellow right is late. -->
+        <div class="bsmash-light" id="beat-light" data-state="idle" hidden>
+            <span class="bsmash-light-word" data-text="beat.light.early"></span>
+            <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div></div>
+            <span class="bsmash-light-word" data-text="beat.light.late"></span>
+        </div>
         <div class="bsmash-actions" id="beat-actions" hidden>
             <button class="btn btn-start bsmash-record" onclick="recordBeatTake()" data-text="beat.button.record"></button>
             <button class="btn btn-secondary" onclick="rerollBeatTake()" data-text="beat.button.reroll"></button>

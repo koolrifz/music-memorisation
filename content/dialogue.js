@@ -27,7 +27,16 @@ KR.dialogue = {
            Tango coaches the drums. Where an event has several lines they
            take turns. */
         { on: 'beat.jam.start',        speaker: 'tango', text: 'beat.line.copy' },
+        { on: 'beat.jam.green',        speaker: 'tango', text: 'beat.line.green' },
+        { on: 'beat.jam.rushing',      speaker: 'tango', text: 'beat.line.rushing.1' },
+        { on: 'beat.jam.rushing',      speaker: 'tango', text: 'beat.line.rushing.2' },
+        { on: 'beat.jam.dragging',     speaker: 'tango', text: 'beat.line.dragging.1' },
+        { on: 'beat.jam.dragging',     speaker: 'tango', text: 'beat.line.dragging.2' },
+        { on: 'beat.jam.locked',       speaker: 'tango', text: 'beat.line.locked.1' },
+        { on: 'beat.jam.locked',       speaker: 'tango', text: 'beat.line.locked.2' },
+        { on: 'beat.jam.locked',       speaker: 'tango', text: 'beat.line.locked.3' },
         { on: 'beat.jam.again',        speaker: 'tango', text: 'beat.line.watch' },
+        { on: 'beat.jam.again',        speaker: 'tango', text: 'beat.line.pulse' },
         { on: 'beat.jam.layer.bass',   speaker: 'tango', text: 'beat.line.layer.bass' },
         { on: 'beat.jam.layer.keys',   speaker: 'tango', text: 'beat.line.layer.keys' },
         { on: 'beat.jam.full',         speaker: 'tango', text: 'beat.line.full' },
