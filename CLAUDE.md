@@ -1437,8 +1437,20 @@ Smash's players list. Beat Smash adds an **age** to a player.
   full (`BSMASH_JAM_GOAL`, 24 taps, about 15 s) **"Show me what I played"**
   appears. The jam carries on until it is pressed; then the band steps back to
   Tango alone and the pads become four quarter notes. Notation arrives when the
-  experience is ready to move on. Tango demos again every four bars if the
-  taps don't settle.
+  experience is ready to move on.
+- **"Follow me, 1 2 3 4"** (Rob, 2026-10-01: *"Tango doesn't say boom boom
+  boom boom. Tango says follow me, 1 2 3 4. And continues counting until order
+  has been restored or they give up."*). When the beat is lost (the sag
+  starts) or the taps haven't settled after four bars, Tango counts from the
+  next bar, **in time**: her counting voice (`raudioSyllable`, the pitched
+  placeholder, one scale degree per beat as in Stomp Lab) booked a beat ahead
+  on the audio clock, the number in the middle of the beat light, the beat's
+  pad flashing. Three taps on the beat in a row (`BSMASH_FOLLOW_RESTORED`, the
+  rule of three) end it, and she congratulates them ("Order restored"). If
+  they fall apart and stop, the stop line is hers: *"Everyone struggles at the
+  beginning. The important thing is to keep trying. Come back when you're
+  ready and give it another go."* The old "boom boom" re-demo and "Find the
+  beat!" lines are gone; the first bar's "Copy me!" demo stays.
 - **The jam is also the delay calibration and the BEAT TEST.** Every tap is a
   tap to a known beat. The delay (median, then the mean of taps within 80 ms of
   it) is stored per device (`koolRiffsBeatDelay`). The beat test is stored per
@@ -1487,6 +1499,14 @@ Smash's players list. Beat Smash adds an **age** to a player.
   half note is two squares joined, a whole note four, so width still shows
   length; the cells inside split exactly at the beats. The square's side is
   the slot width less a gap, at most 52 px (`BSMASH_BLOCK_MAX`).
+- **The picture is help, under "Need a hand?"** (Rob, 2026-10-01: *"If we
+  are pushing them to notation on the second playing and only reading on the
+  third, then does it matter how they see the first playing? We can mix up
+  the visual displaying… put it all under a helping hand."*). By default it
+  **mixes**: each new roll draws in a different style from the last
+  (`bsmashMixPicture()`), so no one picture becomes the way to play. One
+  button opens Mix it up / Blocks / Counting / Drum machine; a style picked
+  is kept (`settings.pictureHelp`) until "Mix it up" is picked again.
 - **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
   same bar from notation), `star2` (picture until two beats before beat 1),
   `star3` (notation only), `retake`, `big`. The picture is laid out on the
@@ -1685,14 +1705,16 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (168 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (179 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),
 the beat light (green, early left, late right, way off, the glow) and Tango's
-rushing / dragging coaching,
+rushing / dragging coaching, "Follow me" counted in time until order is
+restored (and the encouragement when they stop), "Need a hand?" and the mixed
+picture,
 the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both

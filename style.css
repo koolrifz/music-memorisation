@@ -1137,6 +1137,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-picture-choice { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .bsmash-picture-choice[hidden] { display: none; }
 .bsmash-picture-choice .bsmash-chip { min-height: 56px; }
+.bsmash-picture-choice .bsmash-help { flex-basis: 100%; max-width: 240px; }
 
 /* The first minute's meter: it fills as the beat is held. */
 .bsmash-jam-meter { display: none; width: 100%; max-width: 480px; height: 14px; margin: 12px auto 0; border-radius: 999px; background: #1b2530; border: 2px solid #2c3a49; overflow: hidden; }
@@ -1156,6 +1157,8 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-light[data-state="way-early"] .bsmash-light-fill, .bsmash-light[data-state="way-late"] .bsmash-light-fill { background: #ff4b4b; opacity: 1; }
 .bsmash-light[data-state="early"] .bsmash-light-word:first-child, .bsmash-light[data-state="late"] .bsmash-light-word:last-child { color: #ffc800; }
 .bsmash-light[data-state="way-early"] .bsmash-light-word:first-child, .bsmash-light[data-state="way-late"] .bsmash-light-word:last-child { color: #ff4b4b; }
+.bsmash-light-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 900; color: #ffc800; text-shadow: 0 2px 0 #10171f, 0 0 12px rgba(16,23,31,0.9); pointer-events: none; }
+.bsmash-light.counting .bsmash-light-ring { border-color: #ffc800; }
 .bsmash-light.hit .bsmash-light-ring { animation: bsmash-light-hit 0.22s ease-out; }
 @keyframes bsmash-light-hit { from { transform: scale(1.08); } to { transform: none; } }
 @media (max-height: 700px) { .bsmash-light-ring { width: 96px; height: 96px; } }

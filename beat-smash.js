@@ -176,6 +176,15 @@ const BSMASH_TEMPO_SLACK = 0.06;
 const BSMASH_COACH_EVERY_BARS = 2;         // Tango coaches no more often than this
 const BSMASH_GREEN_PRAISE_AT = 8;          // greens in a row before Tango says so...
 const BSMASH_GREEN_PRAISE_EVERY = 24;      // ...and again after this many more
+/* FOLLOW ME. Rob, 2026-10-01: "When you're entering and you're missing the
+   beat, Tango doesn't say boom boom boom boom. Tango says follow me, 1 2 3 4.
+   And continues counting until order has been restored or they give up. She
+   congratulates them on order restored... If they fall apart and quit, let
+   her know everyone struggles at the beginning. The important thing is to
+   keep trying." The count is in time: her counting voice (the app's pitched
+   placeholder, one degree of the scale per beat, Rob's rule) on every beat,
+   the number in the beat light, the pad for the beat flashing. */
+const BSMASH_FOLLOW_RESTORED = 3;          // taps on the beat in a row that end the counting: the rule of three
 const BSMASH_JAM_IDLE_BARS = 2;            // bars without a tap before the band stops and the menu appears
 const BSMASH_BEAT_TESTS_KEPT = 20;         // beat tests remembered per player
 const BSMASH_DELAY_MAX = 0.45;             // seconds; a measured delay beyond this is thrown out
@@ -235,7 +244,7 @@ function bsmashBlankProgress() {
         firstStar: false,
         seenMorph: false,
         musicians: {},
-        settings: { padMode: 'auto', picture: 'blocks', sound: { drums: 'kick' }, jamSong: 'c' },
+        settings: { padMode: 'auto', pictureHelp: 'mix', sound: { drums: 'kick' }, jamSong: 'c' },
     };
 }
 
@@ -726,12 +735,33 @@ function bsmashRenderReading() {
     }
 }
 
-// The picture of one bar, in the student's chosen style (§12): blocks,
-// counting, or a drum machine. Width shows length; solid or hollow shows
-// sound or silence; colour only repeats the length.
+/* WHICH PICTURE. Rob, 2026-10-01: "If we are pushing them to notation on
+   the second playing and only reading on the third, then does it matter how
+   they see the first playing? We can actually mix up the visual displaying.
+   In the meantime, yes, put it all under a helping hand." So by default the
+   picture MIXES: each new roll draws in a different style from the last, so
+   no one picture becomes the way to play. "Need a hand?" opens the choice,
+   and a student who picks one style keeps it until they pick "Mix it up". */
+const BSMASH_PICTURES = ['blocks', 'counting', 'machine'];
+
+function bsmashPictureKind() {
+    const chosen = bsmashLoad().settings.pictureHelp;
+    if (BSMASH_PICTURES.indexOf(chosen) !== -1) return chosen;
+    return (bsmash && bsmash.mixPicture) || 'blocks';
+}
+
+// A different style from the last roll's, for "Mix it up".
+function bsmashMixPicture() {
+    const others = BSMASH_PICTURES.filter(kind => kind !== bsmash.mixPicture);
+    bsmash.mixPicture = others[Math.floor(Math.random() * others.length)];
+}
+
+// The picture of one bar, in the style above (§12): blocks, counting, or a
+// drum machine. Width shows length; solid or hollow shows sound or silence;
+// colour only repeats the length.
 function bsmashDrawPicture(barIndex) {
     const entry = bsmash.layout[barIndex];
-    const kind = bsmashLoad().settings.picture;
+    const kind = bsmashPictureKind();
     const x = entry.layout.pulseX;
     entry.blocks = [];
     entry.specs.forEach((spec, index) => {
@@ -978,24 +1008,32 @@ function bsmashRenderDesk(id) {
 
 // The picture is the student's choice, after their first star, and can be
 // switched at any time (§12).
+// "Need a hand?": one button, which opens the picture styles. Help, not a
+// way of playing (the outside reviews, 2026-10-01, and Rob).
 function bsmashRenderPictureChoice() {
     const row = bsmashEl('beat-picture-choice');
     const progress = bsmashLoad();
     // Never on the big take: it is read from notation only.
     row.hidden = !progress.firstStar || !bsmash || bsmash.mode !== 'steps' || bsmash.step === 3;
     row.innerHTML = '';
-    ['blocks', 'counting', 'machine'].forEach(kind => {
+    const hand = bsmashMake('button', 'bsmash-chip bsmash-help', row); // text-ok: class names
+    hand.type = 'button';
+    hand.textContent = KR.t('beat.help.button');
+    hand.classList.toggle('on', !!(bsmash && bsmash.helpOpen));
+    hand.onclick = () => { bsmash.helpOpen = !bsmash.helpOpen; bsmashRenderPictureChoice(); };
+    if (!bsmash || !bsmash.helpOpen) return;
+    ['mix'].concat(BSMASH_PICTURES).forEach(kind => {
         const chip = bsmashMake('button', 'bsmash-chip', row);
         chip.type = 'button';
         chip.textContent = KR.t('beat.picture.' + kind);
-        chip.classList.toggle('on', progress.settings.picture === kind);
+        chip.classList.toggle('on', (progress.settings.pictureHelp || 'mix') === kind);
         chip.onclick = () => chooseBeatPicture(kind);
     });
 }
 
 function chooseBeatPicture(kind) {
     const progress = bsmashLoad();
-    progress.settings.picture = kind;
+    progress.settings.pictureHelp = kind;
     bsmashSave(progress);
     bsmashRenderPictureChoice();
     if (bsmash && bsmash.layout) {
@@ -1094,7 +1132,7 @@ function startBeatJam() {
                taps: 0, lastTap: 0, stopped: false,
                song: bsmashJamSong(), variations: null, variation: 0,
                rounds: 0, cycleTaps: {},
-               greenRun: 0, praiseAt: BSMASH_GREEN_PRAISE_AT, sawGreen: false, lastCoach: -Infinity, lastTapRaw: null, gaps: [] },
+               follow: null, greenRun: 0, praiseAt: BSMASH_GREEN_PRAISE_AT, sawGreen: false, lastCoach: -Infinity, lastTapRaw: null, gaps: [] },
     };
     bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.add('jam');
@@ -1225,13 +1263,45 @@ function bsmashJamBeat(beat, bar, inBar) {
     // The student has stopped playing: so does the band.
     if (jam.taps && bsmashNow() - jam.lastTap > BSMASH_JAM_IDLE_BARS * BSMASH_BAR) return bsmashJamStop();
     if (inBar === 0 && ((bar % 4) + 4) % 4 === 3) bsmashJamRound(bar);
-    if (jam.demoBars.has(bar)) bsmash.pads.flash(inBar, 'demo', 320);
+    const following = jam.follow && beat >= jam.follow.fromBeat;
+    if (jam.demoBars.has(bar) || following) bsmash.pads.flash(inBar, 'demo', 320);
     else bsmash.pads.glow(inBar, inBar === 0 ? 'beat-one' : 'beat');
-    // If the taps haven't settled, Tango shows the way again.
-    if (!jam.full && inBar === 0 && bar - jam.lastDemoBar >= BSMASH_JAM_DEMO_EVERY_BARS && jam.inARow < 2) {
-        bsmashJamDemo(bar + 1);
-        bsmashEvent('beat.jam.again');
+    bsmashJamCount(following ? inBar + 1 : null);
+    // Tango's count is booked a beat ahead, so it lands ON the beat.
+    if (jam.follow && beat + 1 >= jam.follow.fromBeat) {
+        const next = beat + 1, n = ((next % 4) + 4) % 4;
+        bsmashAt(bsmashBand.start + next * BSMASH_BEAT, t => raudioSyllable(t, String(n + 1), n === 0, n), 'jam');
     }
+    // If the taps haven't settled, Tango counts them in.
+    if (!jam.full && !jam.follow && inBar === 0 && bar - jam.lastDemoBar >= BSMASH_JAM_DEMO_EVERY_BARS && jam.inARow < 2) {
+        jam.lastDemoBar = bar;
+        bsmashJamFollow(bar + 1, true);
+    }
+}
+
+// Tango starts counting from the top of bar `bar`: "Follow me! 1, 2, 3, 4."
+function bsmashJamFollow(bar, say) {
+    const jam = bsmash.jam;
+    if (jam.follow) return;
+    jam.follow = { fromBeat: bar * 4 };
+    if (say) bsmashEvent('beat.jam.follow');
+}
+
+// Order restored: the counting stops and Tango says so.
+function bsmashJamRestored() {
+    const jam = bsmash.jam;
+    jam.follow = null;
+    bsmashCancel('jam');
+    bsmashJamCount(null);
+    jam.lastCoach = bsmashNow();
+    bsmashEvent('beat.jam.restored');
+}
+
+// The number Tango is counting, in the middle of the beat light.
+function bsmashJamCount(n) {
+    const light = bsmashEl('beat-light');
+    light.classList.toggle('counting', n !== null);
+    light.querySelector('.bsmash-light-count').textContent = n === null ? '' : String(n);
 }
 
 function bsmashMedian(list) {
@@ -1282,6 +1352,7 @@ function bsmashJamPress(p) {
         bsmash.pads.flash(p.pad, 'hit', 420);
         // Back on the beat: the band gets its power back, a step at a time.
         if (jam.sag > 0) { jam.sag = Math.max(0, jam.sag - 0.4); bsmashBandSag(jam.sag, 0.8); }
+        if (jam.follow && jam.inARow >= BSMASH_FOLLOW_RESTORED) bsmashJamRestored();
     } else {
         jam.inARow = 0;
         jam.missesInRow++;
@@ -1290,7 +1361,12 @@ function bsmashJamPress(p) {
         if (jam.missesInRow >= BSMASH_SAG_AFTER) {
             // Not on top of something she has only just said.
             const quiet = bsmashNow() - jam.lastCoach >= BSMASH_COACH_EVERY_BARS * BSMASH_BAR;
-            if (jam.sag === 0 && !coached && quiet) { bsmashEvent('beat.jam.lost'); jam.lastCoach = bsmashNow(); }
+            if (jam.sag === 0) {
+                // Lost: Tango counts them back in, from the next bar.
+                const bar = Math.floor((bsmashNow() - bsmashBand.start) / BSMASH_BAR) + 1;
+                bsmashJamFollow(bar, !coached && quiet);
+                if (!coached && quiet) jam.lastCoach = bsmashNow();
+            }
             jam.sag = Math.min(1, (jam.missesInRow - BSMASH_SAG_AFTER + 1) / 3);
             bsmashBandSag(jam.sag, 1.2);
         }
@@ -1342,8 +1418,8 @@ function bsmashJamCoach(raw, d, state) {
     const now = bsmashNow();
     const say = (event) => { jam.lastCoach = now; jam.gaps = []; bsmashEvent(event); return true; };
     if (state !== 'on') jam.praiseAt = BSMASH_GREEN_PRAISE_AT;
-    if (state === 'on' && !jam.sawGreen) { jam.sawGreen = true; return say('beat.jam.green'); }
     if (now - jam.lastCoach < BSMASH_COACH_EVERY_BARS * BSMASH_BAR) return false;
+    if (state === 'on' && !jam.sawGreen) { jam.sawGreen = true; return say('beat.jam.green'); }
     if (jam.gaps.length === 4) {
         const mean = jam.gaps.reduce((a, b) => a + b, 0) / 4;
         // The tempo AND this tap agree, so a wobble isn't called a rush.
@@ -1364,11 +1440,16 @@ function bsmashJamCoach(raw, d, state) {
 // a tap brings it straight back, in time.
 function bsmashJamStop() {
     const jam = bsmash.jam;
+    // Stopped while it was falling apart: everyone struggles at first.
+    const struggling = !!jam.follow || jam.sag > 0;
     jam.stopped = true;
+    jam.follow = null;
+    bsmashCancel('jam');
+    bsmashJamCount(null);
     bsmashBandSag(1, 1.5);
     bsmashBandLevel(0.0001, 2.4);
     bsmashEl('beat-jam-nav').hidden = false;
-    bsmashEvent('beat.jam.stopped');
+    bsmashEvent(struggling ? 'beat.jam.struggled' : 'beat.jam.stopped');
 }
 
 function bsmashJamResume() {
@@ -1457,6 +1538,9 @@ function bsmashJamMorph() {
     bsmash.delay = bsmashMeasureDelay(jam.offsets);
     bsmashSaveDelay(bsmash.delay);
     bsmashRecordBeatTest(bsmashBeatTestResult(jam.offsets));
+    jam.follow = null;
+    bsmashCancel('jam');
+    bsmashJamCount(null);
     // The band steps back to Tango alone: the rest of it is still to be won.
     bsmashBand.pending = null;
     ['bass', 'keys'].forEach(bsmashBandRemovePart);
@@ -1534,6 +1618,7 @@ function bsmashNewRoll() {
     bsmash.scaffold = bsmash.step === 3 ? 'big' : ['star1', 'star2', 'star3'][bsmash.streak];
     bsmash.bars = bsmashRoll(bsmash.musician, bsmash.step, record.clean, bsmash.bars);
     bsmash.specs = bsmash.bars.map(bsmashSpecs);
+    bsmashMixPicture();
     bsmash.take = null;
     bsmash.phase = 'roll';
     bsmash.pads.setCount(bsmashPadCount());
@@ -2223,8 +2308,8 @@ function bsmashRenderPathwaySettings() {
         Object.keys(songs).map(id => ({ value: id, text: songs[id].name }))),
         progress.settings.jamSong || 'c', v => save(s => { s.jamSong = v; }));
     if (progress.firstStar) {
-        row('beat.settings.picture', ['blocks', 'counting', 'machine'].map(v => ({ value: v, text: 'beat.picture.' + v })),
-            progress.settings.picture, v => save(s => { s.picture = v; }));
+        row('beat.settings.picture', ['mix'].concat(BSMASH_PICTURES).map(v => ({ value: v, text: 'beat.picture.' + v })),
+            progress.settings.pictureHelp || 'mix', v => save(s => { s.pictureHelp = v; }));
     }
 }
 
