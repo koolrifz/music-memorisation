@@ -748,6 +748,8 @@
         <div class="bsmash-desk" id="beat-desk"></div>
         <div class="bsmash-dice" id="beat-dice" hidden></div>
         <div class="bsmash-reading" id="beat-reading"></div>
+        <!-- The count-in: 1 2 3 4 in red, in the empty space above the pads. -->
+        <div class="bsmash-countin" id="beat-countin" hidden><span></span></div>
         <!-- The teacher's view (the teacher code on): the last take, note by note, in ms. -->
         <p class="bsmash-stats bsmash-take-stats" id="beat-take-stats" hidden></p>
         <!-- The first minute: the beat light. Green, dead centre, is right on
@@ -762,7 +764,6 @@
             <button class="btn btn-secondary" onclick="rerollBeatTake()" data-text="beat.button.reroll"></button>
             <button class="btn btn-secondary" id="beat-practice" hidden onclick="practiceBeatTake()" data-text="beat.button.practice"></button>
         </div>
-        <div class="bsmash-picture-choice" id="beat-picture-choice" hidden></div>
         <!-- The first minute: the meter fills as the beat is held. -->
         <div class="bsmash-jam-meter" id="beat-jam-meter"><div class="bsmash-jam-fill" id="beat-jam-fill"></div></div>
         <!-- Once the groove is going: one dot for each time round with the
