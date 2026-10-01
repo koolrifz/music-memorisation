@@ -150,6 +150,7 @@ def wait_for_take(page, timeout=20):
         take = page.evaluate("bsmash && bsmash.take && !bsmash.take.done && { start: bsmash.take.start,"
                              " end: bsmash.take.end, notes: bsmash.take.notes.map(n => n.t),"
                              " noteBars: bsmash.take.notes.map(n => n.bar),"
+                             " slots: bsmash.take.notes.map(n => n.spec.slots),"
                              " rests: bsmash.take.rests.map(r => [r.t, r.end]), delay: bsmash.delay }")
         if take:
             return take
@@ -161,22 +162,25 @@ def wait_take_done(page, timeout=15):
     page.wait_for_function('!bsmash || !bsmash.take || bsmash.take.done', timeout=timeout * 1000)
 
 
-def play_take(page, skip=(), rest_tap=False, use_key=None):
+def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=()):
     """Play the take that is coming: every note on time, except the note
-    indexes in `skip`; with rest_tap, one tap in the first rest too."""
+    indexes in `skip`; with rest_tap, one tap in the first rest too. A long
+    note is held for its length, except the note indexes in `let_go`, which
+    are let go at once."""
     take = wait_for_take(page)
     if not take:
         return None
     offset = clock_offset(page)
     pads = page.locator('#beat-pads .krpad').count()
     presses = [(t, i) for i, t in enumerate(take['notes']) if i not in skip]
+    hold = lambda i: 0.08 if i < 0 or i in let_go or take['slots'][i] < 2 else (take['slots'][i] - 0.25) * 0.6
     if rest_tap and take['rests']:
         r0, r1 = take['rests'][0]
         presses.append(((r0 + r1) / 2, -1))
     presses.sort()
     for t, i in presses:
         beat = int(round((t - take['start']) / 0.6)) % 4
-        press_at(page, offset, t + take['delay'], index=beat if pads == 4 else 0, key=use_key)
+        press_at(page, offset, t + take['delay'], index=beat if pads == 4 else 0, key=use_key, hold=hold(i))
     wait_take_done(page)
     return take
 
@@ -553,8 +557,10 @@ def test_picker(page):
     page.wait_for_timeout(500)
     check('Back on the pathway, Tango shows as won', page.evaluate(
         "document.querySelector('#beat-pathway-track .pathway-node').classList.contains('cleared')"))
-    check('Riff is next, and not built yet', page.evaluate(
+    check('Riff is next, and open now Tango is won', not page.evaluate(
         "document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').disabled"))
+    page.click('#beat-pathway-track .pathway-node:nth-child(1)')
+    page.wait_for_timeout(200)
     check('Leaving the studio stops the band', page.evaluate('bsmashBand === null'))
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
     check('Every step reached can be played again, the warm-up too', chips == ['Warm-up', 'One bar', 'Two bars', 'The big take', 'My band'], chips)
@@ -585,6 +591,75 @@ def test_picker(page):
     page.wait_for_timeout(400)
     check('...and starts Beat Smash from the pathway, with nothing of the last player\'s',
           screen(page) == 'beat-screen-pathway' and not record(page)['won'] and page.evaluate('bsmashPlayer().age') == '9-10')
+
+
+def test_riff_bass(page):
+    """Phase 2: Riff on bass. Half notes, held; his own voice; his part."""
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
+                "musicians:{drums:{step:3,streak:0,clean:12,won:true,part:'spicy',plays:4}}}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    check('With the drums won, Riff is open on the pathway, and says hello',
+          not page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').disabled")
+          and 'Riff here' in guide(page, 'beat-pathway-guide'), guide(page, 'beat-pathway-guide'))
+    sounds = page.evaluate("[...document.querySelectorAll('#beat-settings .bsmash-setting')].map(r => r.textContent)")
+    check('...and the bass sound can be chosen: electric or acoustic', any('Bass sound' in r and 'Acoustic' in r for r in sounds), sounds)
+    page.click('#beat-pathway-start')
+    page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.bars", timeout=8000)
+    check('Riff\'s one-bar step, opening on half notes on 1 and 3',
+          page.evaluate("bsmash.musician.id") == 'bass' and page.evaluate("bsmash.bars[0].join(' ')") == 'half-note half-note')
+    check('...Riff introduces himself: press, and HOLD', 'HOLD' in guide(page), guide(page))
+    check('...over the drums the student won, and no bass yet', page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy'},
+          page.evaluate("Object.assign({}, bsmashBand.parts)"))
+    check('...and the pads play the bass', page.evaluate("bsmashSoundKind()") == 'bass-electric')
+    take = wait_for_take(page)
+    cells = page.evaluate("bsmash.layout[0].blocks.map(b => b.children.length)")
+    check('A half note is two squares joined', cells == [2, 2], cells)
+    # Let go of the first half note at once: it sounds short, and isn't clean.
+    play_take(page, let_go=(0,))
+    page.wait_for_timeout(200)
+    filled = page.evaluate("bsmash.layout[0].blocks.map(b => [...b.children].map(c => c.classList.contains('filled')))")
+    check('Let go too early: the block is only half filled', filled[0] == [True, False] and filled[1] == [True, True], filled)
+    check('...and it\'s take two, in Riff\'s words', page.evaluate("bsmash.take.notes[0].short")
+          and 'Hold those long notes' in guide(page), guide(page))
+    play_take(page)
+    page.wait_for_timeout(300)
+    check('Held right through: a clean take, and Riff\'s reveal', state(page)['phase'] == 'reveal' and 'read it' in guide(page), guide(page))
+    play_take(page)
+    page.wait_for_timeout(600)
+    check('...then from the notation, held: the first star', state(page)['streak'] == 1, state(page))
+    # The big take, and the part.
+    page.evaluate("bsmashUpdateMusician('bass', { step: 3, streak: 0 }); startBeatMusician('bass', false, 3)")
+    page.wait_for_function("bsmash.phase === 'ready'", timeout=15000)
+    halves = page.evaluate("bsmash.bars.some(bar => bar.indexOf('half-note') !== -1 || bar.indexOf('half-rest') !== -1)")
+    bars = page.evaluate("bsmash.bars.map(b => b.join(' '))")
+    page.click('#beat-actions .bsmash-record')
+    play_take(page)
+    page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-picker'", timeout=6000)
+    check('The big take lands: Riff says "That gives me a great idea!"',
+          'great idea' in guide(page, 'beat-picker-guide'), [guide(page, 'beat-picker-guide'), bars, halves])
+    page.wait_for_selector('#beat-picker-cards .bsmash-style-card', timeout=8000)
+    check('Riff\'s picker: his title, three bass lines', page.inner_text('#beat-picker-title') == "Riff's bass"
+          and page.locator('#beat-picker-cards .bsmash-style-card').count() == 3, page.inner_text('#beat-picker-title'))
+    page.click('#beat-picker-cards .bsmash-style-card:nth-child(2)')
+    page.wait_for_timeout(300)
+    parts = page.evaluate("Object.assign({}, bsmashBand.parts)")
+    check('Tapping one plays that bass line with the drums already won', parts == {'drums': 'spicy', 'bass': 'smooth'}, parts)
+    check('...in Riff\'s words', 'Smooth' in guide(page, 'beat-picker-guide'), guide(page, 'beat-picker-guide'))
+    page.click('#beat-picker-keep')
+    page.wait_for_timeout(300)
+    rec = record(page, 'bass')
+    check('Keep: Smooth bass locked in, and the bass channel lights',
+          rec['won'] and rec['part'] == 'smooth' and 'bass, locked in' in guide(page, 'beat-picker-guide')
+          and page.evaluate("document.querySelectorAll('#beat-picker-desk .bsmash-channel.lit').length") == 2, rec)
+    page.wait_for_selector('#beat-picker-done', state='visible', timeout=6000)
+    page.click('#beat-picker-done')
+    page.wait_for_timeout(500)
+    check('Back on the pathway: Riff won, the keys still to come',
+          page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').classList.contains('cleared')")
+          and page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(3)').disabled")
+          and 'keys' in guide(page, 'beat-pathway-guide'), guide(page, 'beat-pathway-guide'))
 
 
 def test_picker_leave(page):
@@ -985,6 +1060,7 @@ def main():
         test_big_take(page)
         test_picker(page)
         test_picker_leave(page)
+        test_riff_bass(page)
         test_beat_light(page)
         test_follow_me(page)
         test_songs(page)
