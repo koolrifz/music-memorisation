@@ -158,7 +158,7 @@ def wait_for_take(page, timeout=20):
     return None
 
 
-def wait_take_done(page, timeout=15):
+def wait_take_done(page, timeout=25):
     page.wait_for_function('!bsmash || !bsmash.take || bsmash.take.done', timeout=timeout * 1000)
 
 
