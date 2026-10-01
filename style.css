@@ -1143,6 +1143,22 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #beat-screen-studio.jam .bsmash-jam-meter { display: block; margin-top: auto; }
 #beat-screen-studio.jam .krpads { margin: 12px auto auto; }
 .bsmash-jam-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff9600, #ffc800); box-shadow: 0 0 12px rgba(255,200,0,0.8); transition: width 0.25s ease-out; }
+/* The beat light (the jam): the fill lands where the tap landed. */
+.bsmash-light { display: flex; align-items: center; justify-content: center; gap: 14px; margin: auto; padding: 8px 0; --miss: 0%; --run: 0; }
+.bsmash-light[hidden] { display: none; }
+#beat-screen-studio.jam .bsmash-light:not([hidden]) ~ .bsmash-jam-meter { margin-top: 0; }
+.bsmash-light-word { width: 48px; font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #3d4d5e; text-align: center; transition: color 0.15s; }
+.bsmash-light-ring { position: relative; width: 120px; height: 120px; border-radius: 50%; overflow: hidden; background: #141c25; border: 4px solid #2c3a49; transition: border-color 0.15s, box-shadow 0.3s; }
+.bsmash-light-fill { position: absolute; inset: 0; border-radius: 50%; opacity: 0; transform: translateX(var(--miss)); transition: opacity 0.35s ease-out; }
+.bsmash-light[data-state="on"] .bsmash-light-fill { background: radial-gradient(circle at 50% 40%, #8ef04a, #58cc02 70%); opacity: 1; }
+.bsmash-light[data-state="on"] .bsmash-light-ring { border-color: #8ef04a; box-shadow: 0 0 calc(8px + 40px * var(--run)) calc(2px * var(--run)) rgba(88,204,2, calc(0.45 + 0.5 * var(--run))); }
+.bsmash-light[data-state="early"] .bsmash-light-fill, .bsmash-light[data-state="late"] .bsmash-light-fill { background: #ffc800; opacity: 1; }
+.bsmash-light[data-state="way-early"] .bsmash-light-fill, .bsmash-light[data-state="way-late"] .bsmash-light-fill { background: #ff4b4b; opacity: 1; }
+.bsmash-light[data-state="early"] .bsmash-light-word:first-child, .bsmash-light[data-state="late"] .bsmash-light-word:last-child { color: #ffc800; }
+.bsmash-light[data-state="way-early"] .bsmash-light-word:first-child, .bsmash-light[data-state="way-late"] .bsmash-light-word:last-child { color: #ff4b4b; }
+.bsmash-light.hit .bsmash-light-ring { animation: bsmash-light-hit 0.22s ease-out; }
+@keyframes bsmash-light-hit { from { transform: scale(1.08); } to { transform: none; } }
+@media (max-height: 700px) { .bsmash-light-ring { width: 96px; height: 96px; } }
 .bsmash-jam-coming { display: flex; justify-content: center; gap: 10px; margin: 8px auto 0; }
 .bsmash-jam-coming[hidden] { display: none; }
 .bsmash-jam-coming span { width: 12px; height: 12px; border-radius: 50%; background: #1b2530; border: 2px solid #2c3a49; transition: background 0.3s, box-shadow 0.3s; }

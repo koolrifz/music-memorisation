@@ -1612,6 +1612,36 @@ repeated to fill four bars.
   its ♭5 or ♯5/♭13 (the diminished and alt chords), else the perfect fifth
   anyway. The old "nearest voicing note" gave D for an F13 voiced without C.
 
+### The beat light and Tango's time coaching (the jam)
+Rob, 2026-10-01: *"I don't think that their tap has the logic in it that says
+I'm making the music go. I think the first thing is can I light this up green
+because that makes the music go."*
+
+- **One round light in the empty middle of the jam** (`#beat-light`,
+  `bsmashJamLight()`). Each tap fills it: **green, dead centre** = on the
+  beat (within `BSMASH_LIGHT_GREEN_MS`: 90 / 75 / 60 ms by age); **yellow,
+  landing left of centre** = a bit early, **right** = a bit late (time runs
+  left to right, as in the music); **red at the edge** = off the beat. How far
+  the fill misses the centre is how far the tap missed. Rob asked for "that
+  same icon" to show early and late, so it is one icon, not three lights.
+- **Holding it green** makes it glow brighter (`--run`, eight greens to full).
+  Yellow still fills the meter; red is a miss and two in a row sag the band.
+  So "keep it green, keep the music going" is literally true.
+- **It is measured against the student's own steady beat**, as the meter is.
+  A phone's sound delay and a student's steady lean can't be told apart, so
+  the light can't say "you always play 40 ms early"; it can say early or late
+  against the beat they have been keeping, and it catches rushing.
+- **Tango coaches the time** (`bsmashJamCoach()`): what green means the first
+  time it lights; **rushing / dragging** when the average gap between four
+  taps is 6% short or long (`BSMASH_TEMPO_SLACK`) *and* the tap agrees, so a
+  wobble isn't called a rush; and a word once eight greens are held. Never
+  more than once every two bars, and coaching outranks "Find the beat!".
+  Rob's own words are the lines (`beat.line.rushing.*`, `.dragging.*`,
+  `.locked.*`, `.pulse`), placeholders for him to rewrite.
+- The light goes when the notes appear ("Show me what I played"). It is
+  **not** used in the reading steps: nothing decorative sits near the
+  notation, and the reading takes have their own marks.
+
 ### The jam keeps moving: variations every four times round
 Rob: *"We play a four-bar loop four times; on the fifth time that sets up a
 variation of the band. And it keeps pumping away for another four bars until
@@ -1655,12 +1685,14 @@ coming up next."*
 - **"Playing as" in every game.** The players list is shared already; the
   other games don't use it yet.
 
-**Tests.** `python tools/test-beat-smash.py` (156 checks): the engraving sweep,
+**Tests.** `python tools/test-beat-smash.py` (168 checks): the engraving sweep,
 the jam (the meter, the band building, a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),
+the beat light (green, early left, late right, way off, the glow) and Tango's
+rushing / dragging coaching,
 the square blocks, all
 three steps **played on the real pads with the mouse and the Space bar in time
 with the audio clock**, a missed take, a rest tap, the comeback rule both

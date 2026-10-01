@@ -309,6 +309,68 @@ def test_first_minute(page):
     check('Then the first roll: Tango\'s one-bar step', state(page)['step'] == 1 and state(page)['scaffold'] == 'star1')
 
 
+def test_beat_light(page):
+    """The beat light in the middle of the jam: green on the beat, yellow to
+    the left when early and to the right when late, red when off; and Tango
+    coaching the time."""
+    fresh(page)
+    page.click('.game-card.red')
+    page.wait_for_timeout(800)
+    check('The beat light sits in the empty middle of the jam, dark until a tap',
+          page.is_visible('#beat-light') and page.evaluate("document.getElementById('beat-light').dataset.state") == 'idle')
+    light = "(() => { const l = document.getElementById('beat-light'); return [l.dataset.state, l.style.getPropertyValue('--miss')]; })()"
+    start = page.evaluate('bsmashBand.start')
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    for k in range(4):
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+    on = page.evaluate(light)
+    check('Right on the beat: it fills green, dead centre', on[0] == 'on' and on[1] == '0.0%', on)
+    check('...and Tango says what green means', 'Green means' in guide(page), guide(page))
+    beat += 4
+    press_at(page, None, start + beat * 0.6 + 0.04 - 0.115, index=0)
+    early = page.evaluate(light)
+    press_at(page, None, start + (beat + 1) * 0.6 + 0.04 + 0.115, index=1)
+    late = page.evaluate(light)
+    press_at(page, None, start + (beat + 2) * 0.6 + 0.04 + 0.2, index=2)
+    off = page.evaluate(light)
+    check('A bit early: yellow, and the fill lands LEFT of centre', early[0] == 'early' and early[1].startswith('-'), early)
+    check('A bit late: yellow, to the right', late[0] == 'late' and not late[1].startswith('-') and late[1] != '0.0%', late)
+    check('Way off: red at the edge, further out than a bit late',
+          off[0] == 'way-late' and float(off[1][:-1]) > float(late[1][:-1]), off)
+    page.wait_for_timeout(1000)
+    check('No tap for a moment and the light goes dark', page.evaluate(light)[0] == 'idle')
+    # Hold it green: the glow grows, and Tango says so.
+    beat += 4
+    for k in range(9):
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+    run = page.evaluate("[bsmash.jam.greenRun, document.getElementById('beat-light').style.getPropertyValue('--run')]")
+    check('Holding it green: the glow grows with every green in a row', run[0] >= 8 and run[1] == '1.00', run)
+    said = guide(page)
+    check('...and Tango notices', any(w in said for w in ('Right in time', 'pulse', 'All green')), said)
+    # Rushing: taps a little quicker than the band.
+    page.evaluate('bsmash.jam.lastCoach = -Infinity')
+    beat += 10
+    t = start + beat * 0.6 + 0.04
+    for k in range(6):
+        press_at(page, None, t + k * 0.55, index=k % 4)
+    said = guide(page)
+    check('Faster than the band: Tango says slow down', 'too fast' in said or 'rushing' in said, said)
+    # Dragging: a little slower.
+    page.evaluate('bsmash.jam.lastCoach = -Infinity')
+    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 3
+    for k in range(4):
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+    page.evaluate('bsmash.jam.lastCoach = -Infinity')
+    t = start + (beat + 4) * 0.6 + 0.04
+    for k in range(6):
+        press_at(page, None, t + k * 0.65, index=k % 4)
+    said = guide(page)
+    check('Slower than the band: Tango says speed up', 'dragging' in said or 'behind the band' in said, said)
+    page.evaluate('bsmashJamMorph()')
+    page.wait_for_timeout(300)
+    check('Once the notes appear, the light is gone', page.is_hidden('#beat-light'))
+
+
 def test_one_bar_step(page):
     # The first star: the picture go, the reveal, then the notation go.
     take = play_take(page)
@@ -861,6 +923,7 @@ def main():
         page = new_page(browser)
         test_engraving(page)
         test_first_minute(page)
+        test_beat_light(page)
         test_one_bar_step(page)
         test_two_bar_step(page)
         test_big_take(page)
