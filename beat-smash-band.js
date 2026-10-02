@@ -9,8 +9,9 @@
      - three instruments (drums, bass, keys) x three styles
        (Spicy = Latin, Smooth = jazz, Hop = electronic dance),
        written so that any drum part fits any bass part fits any keys part;
-     - the pad sounds the student chooses from: kick or snare, electric or
-       acoustic bass, suitcase Rhodes or organ.
+     - the pad sounds: a cowbell for the drums (playtest 2: no choice), and
+       for the teacher to try, kick, snare, electric or acoustic bass,
+       suitcase Rhodes or organ.
 
    Pure Web Audio, no page needed: the same code plays live in the loop lab
    and renders the placeholder files in an OfflineAudioContext
@@ -129,6 +130,25 @@
         o.connect(bp); o.start(t); o.stop(t + 0.6);
       });
       tone(ctx, out, t, 'sine', 3150, 3150, 0, 0.35, 0.03 * v);   // the bell
+    },
+    // The student's own sound on the drums (Rob, playtest 2): "It should just
+    // be a cowbell, a sound that isn't already there… so that the drum is very
+    // clear, you're not getting lost with another kick drum." Two square waves
+    // a little under a fifth apart, the classic drum-machine bell, cut high so
+    // it rings over the band on a phone speaker.
+    cowbell(ctx, out, t, v) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.8;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 450;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.55 * v, t + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.18 * v, t + 0.06);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      hp.connect(bp); bp.connect(g); g.connect(out);
+      [562, 845].forEach((f) => {
+        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f;
+        o.connect(hp); o.start(t); o.stop(t + 0.42);
+      });
     },
     crash(ctx, out, t, v) {
       noiseBurst(ctx, out, t, 1.0, 'highpass', 5200, 0.5, 0.3 * v, 0.004);
@@ -299,7 +319,6 @@
   // Every pattern is in semiquaver steps (0–15) within a bar; the parts only
   // ever use straight eighths and sixteenths, so every style fits every other.
   const at = (t0, bar, step) => t0 + bar * BAR + step * STEP;
-  const nextChord = (bar) => SONG[(bar + 1) % BARS];
 
   // The loops' kit balance (playtest 1, §5.1). On a phone speaker the drum
   // loops came through as the kick and little else: Rob, choosing Tango's
@@ -356,13 +375,13 @@
             .forEach(([s, len, m]) => note(bassVoice.acoustic, ctx, out, at(t0, b, s), m, len * STEP * 0.95, 1));
         }
       },
-      // Smooth jazz: electric bass, chord tones and a chromatic step into
-      // the next bar's root
+      // Smooth jazz: electric bass, chord tones of the bar it is in. (It used
+      // to step chromatically into the next root on the "and" of 4, which is
+      // part of what Rob heard as the chords moving early.)
       smooth(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
           const r = SONG[b].bass;
-          const approach = nextChord(b).bass - 1;
-          [[0, 3, r], [3, 3, r + 12], [6, 4, r + 7], [10, 2, r + 9], [12, 2, r + 7], [14, 2, approach]]
+          [[0, 3, r], [3, 3, r + 12], [6, 4, r + 7], [10, 2, r + 9], [12, 2, r + 7], [14, 2, r + 4]]
             .forEach(([s, len, m]) => note(bassVoice.electric, ctx, out, at(t0, b, s), m, len * STEP * 0.9, 1));
         }
       },
@@ -376,22 +395,25 @@
       },
     },
     keys: {
-      // Latin montuno feel on a bright Rhodes, anticipating the next chord
+      // Latin montuno feel on a bright Rhodes. Every chord changes ON THE
+      // BARLINE: Rob, playtest 2, heard the old anticipation (the next chord
+      // on the "and" of 4) as the loop "moving at funny times" - "one bar on
+      // the one, one bar on the four, one on the one, one on the five."
       spicy(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
           const c = SONG[b].plain;
-          [[2, 1], [6, 2], [10, 1], [12, 2]].forEach(([s, len]) =>
+          [[2, 1], [6, 2], [10, 1], [12, 2], [14, 2]].forEach(([s, len]) =>
             note(keysVoice.rhodes, ctx, out, at(t0, b, s), c, len * STEP * 0.9, 0.9));
-          note(keysVoice.rhodes, ctx, out, at(t0, b, 14), nextChord(b).plain, 2 * STEP * 0.9, 0.9);
         }
       },
-      // Smooth jazz: suitcase Rhodes, extended chords, laid out long
+      // Smooth jazz: suitcase Rhodes, extended chords, laid out long, the
+      // chord changing on the barline
       smooth(ctx, out, t0) {
         for (let b = 0; b < BARS; b++) {
           const c = SONG[b].jazz;
           note(keysVoice.rhodes, ctx, out, at(t0, b, 0), c, 6 * STEP, 0.85);
           note(keysVoice.rhodes, ctx, out, at(t0, b, 6), c, 7 * STEP, 0.7);
-          note(keysVoice.rhodes, ctx, out, at(t0, b, 14), nextChord(b).jazz, 2 * STEP, 0.75);
+          note(keysVoice.rhodes, ctx, out, at(t0, b, 14), c, 2 * STEP, 0.75);
         }
       },
       // Dance: off-beat plucks over a pumping pad
@@ -735,6 +757,7 @@
   function pad(ctx, dest, t, kind, chord) {
     const c = CHORD_BY_NAME[chord || 'I'];
     switch (kind) {
+      case 'cowbell': drum.cowbell(ctx, dest, t, 1); return { release() {} };
       case 'kick': drum.kick(ctx, dest, t, 1); return { release() {} };
       case 'snare': drum.snare(ctx, dest, t, 1); return { release() {} };
       case 'bass-electric': return bassVoice.electric(ctx, dest, t, c.bass + 12, 1);

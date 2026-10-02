@@ -55,15 +55,12 @@ The parts this would reuse are already in the game:
 
 ## Questions for Rob
 
-1. **The order of the songs.** Which progressions, and in what order? The
-   six in `content/songs.js` are:
-   - C 6-dim;
-   - C 6-dim with the tritone ending;
-   - both of those in A♭;
-   - B♭ rhythm changes;
-   - D minor two-five.
-
-   Playtest 1 §5.3 also listed jam progressions to add.
+1. **The order of the songs.** Which progressions, and in what order? Since
+   playtest 2 the jam menu is Roman numerals, all in C (`KR.jamSongs` in
+   `content/songs.js`): I IV I V, I IV V I, IV I V I, ii V I, ii V I vi,
+   I vi ii V and III7 VI7 ii V. They could be the song order as they stand,
+   or be given names and keys first. Rob's six earlier songs (C and A♭ 6-dim,
+   B♭ rhythm changes, D minor two-five) are kept off the menu.
 2. **What goes up a tier?** Each of these can go up with each new song:
    - the tempo;
    - the rhythms;

@@ -1289,3 +1289,16 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-transport.recording .bsmash-transport-btn.record { animation: bsmash-rec-blink 1.2s steps(2) infinite; }
 .bsmash-transport-btn.keep { background: var(--accent-green); box-shadow: 0 5px 0 #3a8a00; }
 @keyframes bsmash-rec-blink { 50% { opacity: 0.55; } }
+
+/* ---------- Beat Smash: the loop guide, Pause, the play line ---------- */
+.bsmash-loop { display: flex; gap: 4px; }
+.bsmash-loop[hidden] { display: none; }
+.bsmash-loop i { display: block; width: 12px; height: 12px; border-radius: 3px; background: #2c3a49; transition: background 0.1s; }
+.bsmash-loop i.now { background: var(--accent-gold); }
+.bsmash-loop i.count { box-shadow: inset 0 0 0 2px #ff4b4b; }
+.bsmash-loop i.count.now { background: #ff4b4b; }
+.bsmash-transport-btn.pause { background: #b7791f; box-shadow: 0 5px 0 #7a4f10; }
+.bsmash-transport.paused .bsmash-transport-btn.pause { background: var(--accent-green); box-shadow: 0 5px 0 #3a8a00; }
+.bsmash-playline { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: rgba(88,204,2,0.55); border-radius: 2px; z-index: 0; pointer-events: none; }
+.bsmash-playline[hidden] { display: none; }
+.bsmash-paper .bsmash-staff { position: relative; z-index: 1; }
