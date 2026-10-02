@@ -76,7 +76,10 @@ const BSMASH_MUSICIANS = [
     {
         id: 'drums', coach: 'tango', built: true,
         pool: ['quarter-note', 'quarter-rest'],
-        sounds: ['cowbell'],      // Rob: "We don't have a choice. It should just be a cowbell." 
+        // Rob: "Get rid of the cowbell... it's actually a pitch... back to
+        // the kick, if we can make that kick nice and juicy." The clave is
+        // the teacher's to try (the sound rows are teacher-only).
+        sounds: ['kick', 'clave'],
         steps: {
             1: [['q q q q'], ['q qr q qr'], ['qr q qr q'], // text-ok: bars, not words
                 ['qr q q q', 'q qr q q', 'q q qr q', 'q q q qr'], 'all'], // text-ok: bars, not words
@@ -477,9 +480,10 @@ function bsmashPartLoopId(instrument, style) {
 
 // A part played live, note by note, so it can join part-way through a cycle:
 // one of Rob's songs ('song:'), a won part over the band's chosen song
-// ('band:'), the chord guide ('guide:'), or the metronome ('click').
+// ('band:'), the chord guide ('guide:'), a song's audition tune ('phrase:'),
+// or the metronome ('click').
 function bsmashIsSongPart(style) {
-    return typeof style === 'string' && (/^(song|band|guide):/.test(style) || style === 'click');
+    return typeof style === 'string' && (/^(song|band|guide|phrase):/.test(style) || style === 'click');
 }
 
 function bsmashBandStop() {
@@ -629,7 +633,7 @@ function bsmashChordAt(t) {
 }
 
 /* ---------- The sound under the thumb (§7) ----------
-   A cowbell for Tango's part (Rob's call, playtest 2). It plays at once, on
+   A juicy kick for Tango's part (the cowbell was a pitch). It plays at once, on
    every press, in or out of time - honest, and rewarding on its own.
    Bass and keys (Phase 2) sustain while the pad is held. */
 function bsmashPadSound(press, kind) {
@@ -1399,7 +1403,7 @@ function bsmashJamDemo(bar) {
     jam.lastDemoBar = bar;
     for (let i = 0; i < 4; i++) {
         const when = bsmashBand.start + bar * BSMASH_BAR + i * BSMASH_BEAT;
-        bsmashAt(when, t => BeatSmashBand.pad(raudioCtx, bsmashPadBus, t, 'cowbell'), 'jam');
+        bsmashAt(when, t => BeatSmashBand.pad(raudioCtx, bsmashPadBus, t, bsmashSoundKind()), 'jam');
     }
 }
 
@@ -1871,6 +1875,16 @@ function auditionBeatSong(id) {
     bsmashAudio();
     bsmash.audition = id;
     bsmashBandSetPart('guide', 'guide:' + id);
+    // Rob's audition for the song, where he has written one: his four-bar
+    // phrase, and a simple drum part and bass line under it.
+    const audition = bsmashAuditionOf(id);
+    const extras = { phrase: audition.phrase ? 'phrase:' + id : null,
+                     drums: audition.drums || null,
+                     bass: audition.bass ? 'song:' + id + ':' + audition.bass : null };
+    Object.keys(extras).forEach(part => {
+        if (extras[part]) { if (bsmashBand.parts[part] !== extras[part]) bsmashBandSetPart(part, extras[part]); }
+        else bsmashBandRemovePart(part);
+    });
     bsmashBandLevel(BSMASH_BAND_FULL);
     document.querySelectorAll('#beat-song-cards .bsmash-song-card').forEach(card =>
         card.classList.toggle('on', card.dataset.song === id));
@@ -1878,6 +1892,11 @@ function auditionBeatSong(id) {
     const add = bsmashEl('beat-song-add');
     add.hidden = false;
     add.textContent = KR.t('beat.songs.add', { song: bsmashSongName(id) });
+}
+
+function bsmashAuditionOf(id) {
+    try { return BeatSmashBand.song(id).audition || {}; }
+    catch (e) { return {}; }
 }
 
 function addAuditionedBeatSong() {
@@ -2021,8 +2040,10 @@ function startBeatMusician(id, keepBand, step) {
     bsmashEl('beat-jam-nav').hidden = true;
     bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-light').hidden = true;
-    bsmashBandStart(bsmashBandSoFar(id));
-    bsmashBandRemovePart('click');          // the song chooser's metronome
+    const soFar = bsmashBandSoFar(id);
+    bsmashBandStart(soFar);
+    // Anything else playing (the song chooser's click and audition) stops.
+    if (bsmashBand) Object.keys(bsmashBand.parts).filter(part => !(part in soFar)).forEach(bsmashBandRemovePart);
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();
     if (record.plays === 1) bsmashEvent('beat.musician.intro.' + id);

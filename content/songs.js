@@ -64,6 +64,18 @@
    drummer: the band only has their beat to go on.
    A song with no jam list gets the band's own (BSMASH_JAM_SONG_VARIATIONS
    in beat-smash.js).
+
+   audition: WHAT A STUDENT HEARS WHEN THEY TAP THE SONG, to choose it. Rob,
+   2026-10-02: "a basic, interesting enough, four bar phrase, so that they
+   can see potential in rhythm with it... maybe a little drum and bass part,
+   but keep it really simple." Always under it: the song's chords in plain
+   piano, and a click. All three of these are optional:
+     phrase  the four-bar tune: note values (as for comp) with the pitch after
+             a colon, e.g. 'h:E5 q:G5 q:A5'. A rest is just the value, 'qr'.
+             '|' between bars is only for reading. It must fill four bars.
+     drums   a drum part under it: 'spicy', 'smooth' or 'hop'
+     bass    a bass style from the list above: 'whole', 'halves', 'pump',
+             'walk' or 'tumbao'
    ========================================= */
 window.KR = window.KR || {};
 
@@ -145,6 +157,12 @@ window.KR.songs = {
         ],
         comp: { whole: 'w', pumps: KR_COMP_PUMPS },
         bass: { whole: 'whole', groove: 'pump' },
+        // AN EXAMPLE, Claude's, to show the shape: Rob will write his own.
+        audition: {
+            phrase: 'q:E5 q:G5 h:A5 | q.:A5 8:G5 h:F5 | q:E5 q:G5 q:C6 q:G5 | h.:D5 qr',
+            drums: 'smooth',
+            bass: 'halves',
+        },
     },
     'c-1-4-5-1': {
         name: 'song.c-1-4-5-1',

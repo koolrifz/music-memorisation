@@ -350,12 +350,13 @@ def test_first_minute(page):
     page.wait_for_function("bsmash && bsmash.mode === 'songs'", timeout=10000)
     check('Then the songs to choose from, over a little click', screen(page) == 'beat-screen-song'
           and page.evaluate('JSON.stringify(bsmashBand.parts)') == '{"click":"click"}', page.evaluate('JSON.stringify(bsmashBand.parts)'))
-    page.click('.bsmash-song-card[data-song="c-1-6-2-5"]')
+    page.click('.bsmash-song-card[data-song="c-1-4-1-5"]')
     page.click('#beat-song-add')
     page.wait_for_function("bsmash && bsmash.mode === 'steps'", timeout=10000)
-    check('Then the first roll: Tango\'s one-bar step, over the song chosen',
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('Then the first roll: Tango\'s one-bar step, over the song chosen, and the audition\'s click, tune and bass gone',
           state(page)['step'] == 1 and state(page)['scaffold'] == 'star1'
-          and page.evaluate('bsmashBand.parts.guide') == 'guide:c-1-6-2-5' and 'click' not in page.evaluate('Object.keys(bsmashBand.parts)'))
+          and parts == {'drums': 'warmup', 'guide': 'guide:c-1-4-1-5'}, parts)
 
 
 def test_warmup_story(page):
@@ -1359,6 +1360,18 @@ def test_song_choice(page):
           page.evaluate('bsmashBand.parts.guide') == 'guide:c-2-5-1' and page.is_visible('#beat-song-add')
           and 'moonwalk' in page.inner_text('#beat-song-add').lower(), page.evaluate('JSON.stringify(bsmashBand.parts)'))
     check('...and nothing is chosen by a tap', page.evaluate('bsmashLoad().song') is None)
+    page.click('.bsmash-song-card[data-song="c-1-4-1-5"]')
+    page.wait_for_timeout(200)
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('A song with an audition (Sunrise) plays its four-bar tune, a drum part and a bass line over the chords',
+          parts == {'click': 'click', 'guide': 'guide:c-1-4-1-5', 'phrase': 'phrase:c-1-4-1-5', 'drums': 'smooth',
+                    'bass': 'song:c-1-4-1-5:halves'}, parts)
+    page.click('.bsmash-song-card[data-song="c-2-5-1"]')
+    page.wait_for_timeout(200)
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('...and a song without one takes them away again', parts == {'click': 'click', 'guide': 'guide:c-2-5-1'}, parts)
+    check('Tango says the songs are the shape of things to come, to finish off', 'shape of things to come' in guide(page, 'beat-song-guide'),
+          guide(page, 'beat-song-guide'))
     # Hold Night Owl, slide it up into the box.
     lit = drag_into(page, '.bsmash-song-card[data-song="c-2-5-1-6"]', '#beat-song-drop')
     check('Hold a song and the Add box appears; slide it up and drop it in: that is the song',
@@ -1421,7 +1434,7 @@ def test_song_choice(page):
 
 def test_playtest_two(page):
     """Rob's second playtest: takes start where the band's four-bar loop
-    says, the squares come down at four bars, the cowbell, a press just
+    says, the squares come down at four bars, the kick, a press just
     before the barline plays the next chord, and the studio's Pause and its
     green playback line."""
     fresh(page, "localStorage.setItem('koolRiffsOpenAll','1');")
@@ -1449,8 +1462,8 @@ def test_playtest_two(page):
     check('The loop guide shows where the band is in its four bars, and which bar counts in',
           guide_cells['shown'] and 'now' in guide_cells['cells'][now_cell]
           and (guide_cells['bar'] > guide_cells['count'] or 'count' in guide_cells['cells'][guide_cells['count'] % 4]), guide_cells)
-    check('Tango\'s part is the cowbell, and there is no choosing it', page.evaluate('bsmashSoundKind()') == 'cowbell'
-          and page.evaluate("BSMASH_MUSICIANS[0].sounds.join()") == 'cowbell')
+    check('Tango\'s part is a kick, not a pitch (Rob: the cowbell was out of key); the clave is the teacher\'s other choice',
+          page.evaluate('bsmashSoundKind()') == 'kick' and page.evaluate("BSMASH_MUSICIANS[0].sounds.join()") == 'kick,clave')
     chords = page.evaluate("""[bsmashChordAt(bsmashBand.start + 4 * BSMASH_BAR - 0.1), bsmashChordAt(bsmashBand.start + 4 * BSMASH_BAR - 0.3),
                                bsmashChordAt(bsmashBand.start + 1 * BSMASH_BAR - 0.05)].map(c => c.bass)""")
     check('A press a fraction before the barline plays the next bar\'s chord (C), earlier its own (G); F for bar 2',
