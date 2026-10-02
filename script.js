@@ -599,7 +599,9 @@ function renderG1Pathway() {
         const node = document.createElement('button');
         node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
         node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? stage.phase === null ? '★' : stage.phase + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${stage.label}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        // Locked stages show their name too, dimmed (CLAUDE.md "Pathway screen
+        // pattern"): the student can see what is still to come.
+        node.innerHTML = `<span class="pathway-node-icon">${stage.phase === null ? '★' : stage.phase + 1}</span><span class="pathway-node-label">${stage.label}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
         if (isUnlocked) node.onclick = () => selectG1Stage(stage.id);
         track.appendChild(node);
     });
@@ -1379,7 +1381,7 @@ function renderG2Pathway() {
         const node = document.createElement('button');
         node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
         node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? stage.phase + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${stage.label}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        node.innerHTML = `<span class="pathway-node-icon">${stage.phase + 1}</span><span class="pathway-node-label">${stage.label}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
         if (isUnlocked) node.onclick = () => selectG2Stage(stage.id);
         track.appendChild(node);
     });
@@ -1811,7 +1813,7 @@ function renderG3Pathway() {
         const node = document.createElement('button');
         node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
         node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${stage.label}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        node.innerHTML = `<span class="pathway-node-icon">${index + 1}</span><span class="pathway-node-label">${stage.label}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
         if (isUnlocked) node.onclick = () => selectG3Stage(stage.id);
         track.appendChild(node);
     });
