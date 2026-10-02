@@ -1225,6 +1225,9 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-style-card.heard { border-color: var(--s); }
 .bsmash-style-card.on { border-color: var(--s); box-shadow: 0 0 18px var(--s); transform: scale(1.05); }
 .bsmash-style-card.chosen { border-color: var(--s); box-shadow: 0 0 22px var(--s); }
+.bsmash-style-card { touch-action: none; user-select: none; -webkit-user-select: none; }
+.bsmash-style-card.lifted { position: relative; z-index: 5; box-shadow: 0 12px 28px rgba(0,0,0,0.6), 0 0 18px var(--s); }
+.bsmash-style-card > * { pointer-events: none; }
 .bsmash-style-card:disabled:not(.chosen) { opacity: 0.3; }
 .bsmash-style-icon { font-size: 40px; line-height: 1; }
 .bsmash-style-art { width: 72px; height: 72px; object-fit: contain; }

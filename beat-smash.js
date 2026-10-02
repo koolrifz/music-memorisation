@@ -1827,11 +1827,11 @@ function bsmashBandPart(instrument, style, song) {
 
 function showBeatSongs() {
     bsmashStopAll();
-    bsmash = { mode: 'songs', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay(), song: null, audition: null, drag: null };
+    bsmash = { mode: 'songs', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay(), song: null, audition: null };
     switchScreenState('beat', 'beat-screen-song');
     bsmashAudio();
     bsmashRenderSongs();
-    bsmashEl('beat-song-drop').hidden = true;
+    bsmashResetDrop('beat-song-drop');
     bsmashEl('beat-song-add').hidden = true;
     // The little metronome runs from the start; a song joins it in time.
     bsmashBandStart({ click: 'click' });
@@ -1856,11 +1856,13 @@ function bsmashRenderSongs() {
         bsmashMake('span', 'bsmash-song-name', card).textContent = bsmashSongName(id);
         // The chords, for the teacher only: the children are just listening.
         if (KR.openAll()) bsmashMake('small', 'bsmash-song-chords', card).textContent = KR.t('song.' + id + '.chords');
-        bsmashSongCardDrag(card, id);
-        card.onclick = () => {
-            if (bsmash && bsmash.drag && bsmash.drag.dropped) return;
-            auditionBeatSong(id);
-        };
+        bsmashDragToAdd(card, {
+            drop: 'beat-song-drop',
+            active: () => !!(bsmash && bsmash.mode === 'songs' && !bsmash.adding),
+            lift: () => auditionBeatSong(id),         // what goes in the box is what was heard
+            add: () => addBeatSong(id),
+        });
+        card.onclick = () => { if (!bsmashJustDropped(card)) auditionBeatSong(id); };
     });
 }
 
@@ -1882,60 +1884,75 @@ function addAuditionedBeatSong() {
     if (bsmash && bsmash.audition) addBeatSong(bsmash.audition);
 }
 
-/* Hold, then slide up into the Add box. A quick tap is a tap (it plays the
-   song); a finger that moves before the hold is up is not a hold. The card
-   follows the finger, and the box lights when it is over it. */
-function bsmashSongCardDrag(card, id) {
+/* HOLD, THEN SLIDE UP INTO THE ADD BOX: the song chooser and the part
+   picker both add this way. A quick tap is a tap (it plays the card); a
+   finger that moves before the hold is up is not a hold. Once lifted the
+   card follows the finger, the box appears above (its space was kept, so
+   nothing moves under the finger) and lights when the card is over it.
+   opts: drop (the box's id), active() (may a card be lifted now?), lift()
+   (it was lifted: play it), add() (it was dropped in the box). */
+let bsmashDrag = null;
+
+function bsmashDragToAdd(card, opts) {
+    const drop = () => bsmashEl(opts.drop);
     card.addEventListener('pointerdown', e => {
-        if (!bsmash || bsmash.mode !== 'songs' || (e.button !== undefined && e.button !== 0)) return;
-        const drag = bsmash.drag = { id: id, card: card, x: e.clientX, y: e.clientY, lifted: false, dropped: false, over: false, pointer: e.pointerId };
-        drag.timer = setTimeout(() => bsmashLiftSongCard(drag), BSMASH_HOLD_MS);
+        if (!opts.active() || (e.button !== undefined && e.button !== 0)) return;
+        const drag = bsmashDrag = { card: card, x: e.clientX, y: e.clientY, lifted: false, dropped: false, pointer: e.pointerId };
+        drag.timer = setTimeout(() => {
+            if (bsmashDrag !== drag || !opts.active()) return;
+            drag.lifted = true;
+            card.classList.add('lifted');
+            try { card.setPointerCapture(drag.pointer); } catch (err) {}
+            drop().hidden = false;
+            opts.lift();
+        }, BSMASH_HOLD_MS);
     });
     card.addEventListener('pointermove', e => {
-        const drag = bsmash && bsmash.drag;
+        const drag = bsmashDrag;
         if (!drag || drag.card !== card) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.lifted) {
-            if (Math.hypot(dx, dy) > BSMASH_HOLD_SLOP) { clearTimeout(drag.timer); bsmash.drag = null; }
+            if (Math.hypot(dx, dy) > BSMASH_HOLD_SLOP) { clearTimeout(drag.timer); bsmashDrag = null; }
             return;
         }
         e.preventDefault();
         card.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.08)';
-        drag.over = bsmashOverDrop(e.clientX, e.clientY);
-        bsmashEl('beat-song-drop').classList.toggle('over', drag.over);
+        drop().classList.toggle('over', bsmashOverBox(drop(), e.clientX, e.clientY));
     });
     const end = e => {
-        const drag = bsmash && bsmash.drag;
+        const drag = bsmashDrag;
         if (!drag || drag.card !== card) return;
         clearTimeout(drag.timer);
-        if (!drag.lifted) { bsmash.drag = null; return; }
-        const over = e.type === 'pointerup' && bsmashOverDrop(e.clientX, e.clientY);
+        if (!drag.lifted) { bsmashDrag = null; return; }
+        const over = e.type === 'pointerup' && bsmashOverBox(drop(), e.clientX, e.clientY);
         drag.dropped = true;                       // the click that follows is not a tap
         card.classList.remove('lifted');
         card.style.transform = '';
-        bsmashEl('beat-song-drop').classList.remove('over');
+        drop().classList.remove('over');
         try { card.releasePointerCapture(drag.pointer); } catch (err) {}
-        setTimeout(() => { if (bsmash && bsmash.drag === drag) bsmash.drag = null; }, 0);
-        if (over) addBeatSong(drag.id);
-        else bsmashEl('beat-song-drop').hidden = true;
+        setTimeout(() => { if (bsmashDrag === drag) bsmashDrag = null; }, 0);
+        if (over) opts.add();
+        else drop().hidden = true;
     };
     card.addEventListener('pointerup', end);
     card.addEventListener('pointercancel', end);
 }
 
-function bsmashLiftSongCard(drag) {
-    if (!bsmash || bsmash.drag !== drag) return;
-    drag.lifted = true;
-    drag.card.classList.add('lifted');
-    try { drag.card.setPointerCapture(drag.pointer); } catch (e) {}
-    bsmashEl('beat-song-drop').hidden = false;
-    // Holding a song plays it too, so what goes in the box is what was heard.
-    auditionBeatSong(drag.id);
+// Was this card just dropped (so its click is not a tap)?
+function bsmashJustDropped(card) {
+    return !!(bsmashDrag && bsmashDrag.card === card && bsmashDrag.dropped);
 }
 
-function bsmashOverDrop(x, y) {
-    const box = bsmashEl('beat-song-drop').getBoundingClientRect();
-    return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+function bsmashResetDrop(id) {
+    const drop = bsmashEl(id);
+    drop.hidden = true;
+    drop.classList.remove('added', 'over');
+    drop.querySelector('.bsmash-song-drop-label').textContent = KR.t('beat.songs.drop');
+}
+
+function bsmashOverBox(box, x, y) {
+    const r = box.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
 // The song goes in. Choosing a different song once a band has been begun
@@ -2797,6 +2814,7 @@ function bsmashOpenPicker(cameBack) {
     bsmashEl('beat-picker-keep').hidden = true;
     bsmashEl('beat-picker-done').hidden = true;
     bsmashEl('beat-picker-next').hidden = true;
+    bsmashResetDrop('beat-picker-drop');
     bsmashEl('beat-picker-desk').classList.add('dim');
     bsmashEvent('beat.part.won.' + musician.id);
     if (cameBack) bsmashLater(() => bsmashEvent('beat.take.comeback'), 2400);
@@ -2809,9 +2827,16 @@ function bsmashOpenPicker(cameBack) {
             bsmashStylePicture(card, musician.id, style);
             const name = bsmashMake('span', 'bsmash-style-name', card);
             name.textContent = KR.t('beat.style.' + style);
-            card.onclick = () => auditionBeatPart(style);
+            bsmashDragToAdd(card, {
+                drop: 'beat-picker-drop',
+                active: () => !!(bsmash && bsmash.picker && !bsmash.picker.locked),
+                lift: () => auditionBeatPart(style),
+                add: () => { auditionBeatPart(style); bsmashKeepPart(false); },
+            });
+            card.onclick = () => { if (!bsmashJustDropped(card)) auditionBeatPart(style); };
         });
         cards.hidden = false;
+        bsmashEl('beat-picker-drop').classList.remove('added');
         const keep = bsmashEl('beat-picker-keep');
         keep.hidden = false;
         keep.disabled = true;
@@ -2878,6 +2903,11 @@ function bsmashKeepPart(quietly) {
         card.disabled = true;
     });
     bsmashEl('beat-picker-keep').hidden = true;
+    // The part in the box: added to the band.
+    const drop = bsmashEl('beat-picker-drop');
+    drop.hidden = false;
+    drop.classList.add('added');
+    drop.querySelector('.bsmash-song-drop-label').textContent = KR.t('beat.style.' + style + '.icon') + ' ' + KR.t('beat.style.' + style);
     bsmashEvent('beat.part.locked.' + id, { style: KR.t('beat.style.' + style) });
     bsmashLater(() => {
         bsmashEl('beat-picker-done').hidden = false;
@@ -2958,6 +2988,7 @@ function openBeatBand() {
     });
     bsmashEl('beat-picker-keep').hidden = true;
     bsmashEl('beat-picker-done').hidden = false;
+    bsmashResetDrop('beat-picker-drop');
     bsmashShowNext();
     bsmashAudio();
     Object.keys(parts).forEach(id => {
