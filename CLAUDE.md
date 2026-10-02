@@ -1789,7 +1789,10 @@ their 32 bar is over that same chord progression."*
   follows the finger; the Add box appears above (its space is kept while
   hidden, so nothing moves under a finger); dropped in it, that is the song.
   An **Add <song>** button does the same for a keyboard or a child who would
-  rather press. Then straight into the band's next musician.
+  rather press. Then straight into the band's next musician. **The part
+  picker adds the same way** (*"they're going to be able to add them as they
+  win their parts"*): hold a part, slide it into its box, and it is in the
+  band; Keep still works. One helper, `bsmashDragToAdd()`, does both.
 - **Once chosen, that is the song** (*"They don't get to change. They can
   start another one if they like."*). Choosing another asks first; yes starts
   a **new band from the beginning** (`progress.musicians` reset) and the old
@@ -2004,7 +2007,10 @@ and won back, a groove of their own; a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over a jam song and the Roman-numeral
 menu), playtest 2 (takes on the four-bar loop, the loop guide, notation from
 four bars, the cowbell, anticipation, Pause and Resume in the studio, the
-green playback line, Open going to the pathway), his songs (voicings,
+green playback line, Open going to the pathway), the song (the five
+squares, auditioning, holding a song and sliding it into the Add box, the band
+and the pads over its chords, a new song a new band with the old one kept, a
+part added by the same drag), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),
