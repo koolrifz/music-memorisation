@@ -9,6 +9,22 @@
 This is how it could work, with the four questions it needs answered before
 any of it is built.
 
+## Built since (2026-10-02)
+
+Rob's answers to questions 1 and 3 below, in part:
+
+- **The student chooses the song** after the warm-up, from seven
+  progressions with placeholder names (Sunrise, Lemonade, Skate Park,
+  Moonwalk, Night Owl, Bubblegum, Rollercoaster). A tap auditions it; holding
+  it and sliding it up into the Add box chooses it.
+- **The whole band is built over it**: every take from one bar to the
+  studio's 32, and every part won.
+- **Another song is a new band**, built from the beginning. The old band is
+  kept, and the Permit stays.
+
+Still open: the order songs unlock in, what goes up a tier, and whether a
+second song skips any steps.
+
 ## What is already built
 
 The parts this would reuse are already in the game:

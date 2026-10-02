@@ -327,8 +327,15 @@ def test_first_minute(page):
     test = page.evaluate('bsmashLoad().beatTests[0]')
     check('The jam is a beat test: taps, lean, steadiness and % on the beat are kept',
           test and test['taps'] >= 20 and test['onBeat'] >= 80 and -60 <= test['leanMs'] < 200 and test['steadyMs'] < 80, test)
+    page.wait_for_function("bsmash && bsmash.mode === 'songs'", timeout=10000)
+    check('Then the songs to choose from, over a little click', screen(page) == 'beat-screen-song'
+          and page.evaluate('JSON.stringify(bsmashBand.parts)') == '{"click":"click"}', page.evaluate('JSON.stringify(bsmashBand.parts)'))
+    page.click('.bsmash-song-card[data-song="c-1-6-2-5"]')
+    page.click('#beat-song-add')
     page.wait_for_function("bsmash && bsmash.mode === 'steps'", timeout=10000)
-    check('Then the first roll: Tango\'s one-bar step', state(page)['step'] == 1 and state(page)['scaffold'] == 'star1')
+    check('Then the first roll: Tango\'s one-bar step, over the song chosen',
+          state(page)['step'] == 1 and state(page)['scaffold'] == 'star1'
+          and page.evaluate('bsmashBand.parts.guide') == 'guide:c-1-6-2-5' and 'click' not in page.evaluate('Object.keys(bsmashBand.parts)'))
 
 
 def test_warmup_story(page):
@@ -678,8 +685,8 @@ def test_picker(page):
         "document.querySelector('#beat-pathway-track [data-id=drums]').classList.contains('cleared')"))
     check('Riff is next, and open now Tango is won', not page.evaluate(
         "document.querySelector('#beat-pathway-track [data-id=bass]').disabled"))
-    check('Four squares: the warm-up, then Tango, Riff on bass, Riff on keys', page.evaluate(
-        "[...document.querySelectorAll('#beat-pathway-track .pathway-node')].map(n => n.dataset.id).join()") == 'jam,drums,bass,keys')
+    check('Five squares: the warm-up, the song, then Tango, Riff on bass, Riff on keys', page.evaluate(
+        "[...document.querySelectorAll('#beat-pathway-track .pathway-node')].map(n => n.dataset.id).join()") == 'jam,song,drums,bass,keys')
     page.click('#beat-pathway-track [data-id=drums]')
     page.wait_for_timeout(200)
     check('Leaving the studio stops the band', page.evaluate('bsmashBand === null'))
@@ -832,7 +839,8 @@ def test_riff_bass(page):
     check('Riff\'s one-bar step, opening on half notes on 1 and 3',
           page.evaluate("bsmash.musician.id") == 'bass' and page.evaluate("bsmash.bars[0].join(' ')") == 'half-note half-note')
     check('...Riff introduces himself: press, and HOLD', 'HOLD' in guide(page), guide(page))
-    check('...over the drums the student won, and no bass yet', page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy'},
+    check('...over the drums the student won and the song\'s chords, and no bass yet',
+          page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy', 'guide': 'guide:c-1-4-1-5'},
           page.evaluate("Object.assign({}, bsmashBand.parts)"))
     check('...and the pads play the bass', page.evaluate("bsmashSoundKind()") == 'bass-electric')
     take = wait_for_take(page)
@@ -871,7 +879,8 @@ def test_riff_bass(page):
     page.click('#beat-picker-cards .bsmash-style-card:nth-child(2)')
     page.wait_for_timeout(300)
     parts = page.evaluate("Object.assign({}, bsmashBand.parts)")
-    check('Tapping one plays that bass line with the drums already won', parts == {'drums': 'spicy', 'bass': 'smooth'}, parts)
+    check('Tapping one plays that bass line with the drums already won, over the song',
+          parts == {'drums': 'spicy', 'bass': 'band:c-1-4-1-5:smooth', 'guide': 'guide:c-1-4-1-5'}, parts)
     check('...in Riff\'s words', 'Smooth' in guide(page, 'beat-picker-guide'), guide(page, 'beat-picker-guide'))
     page.click('#beat-picker-keep')
     page.wait_for_timeout(300)
@@ -905,7 +914,7 @@ def test_riff_keys(page):
           page.evaluate("bsmash.musician.id") == 'keys' and page.evaluate("bsmash.bars[0].join(' ')") == 'whole-note')
     check('...his intro: let it ring for all four beats', 'all four beats' in guide(page), guide(page))
     check('...over the drums and bass already won, on the Rhodes',
-          page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy', 'bass': 'smooth'}
+          page.evaluate("Object.assign({}, bsmashBand.parts)") == {'drums': 'spicy', 'bass': 'band:c-1-4-1-5:smooth', 'guide': 'guide:c-1-4-1-5'}
           and page.evaluate("bsmashSoundKind()") == 'rhodes', page.evaluate("Object.assign({}, bsmashBand.parts)"))
     wait_for_take(page)
     check('A whole note is four squares joined', page.evaluate("bsmash.layout[0].blocks[0].children.length") == 4)
@@ -949,8 +958,8 @@ def test_riff_keys(page):
     page.click('#beat-pathway-track [data-id=keys]')
     page.wait_for_timeout(200)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('Back on the pathway: the warm-up and three musicians, no booth, and the Permit can be seen again',
-          page.locator('#beat-pathway-track .pathway-node').count() == 4 and 'My Permit' in chips, chips)
+    check('Back on the pathway: the warm-up, the song and three musicians, no booth, and the Permit can be seen again',
+          page.locator('#beat-pathway-track .pathway-node').count() == 5 and 'My Permit' in chips, chips)
 
 
 def test_picker_leave(page):
@@ -1306,6 +1315,87 @@ def test_jam_variations(page):
           loops[1] < 0.001 and 0.2 < loops[0] < 0.9, loops)
 
 
+def test_song_choice(page):
+    """Rob, 2026-10-02: after the warm-up the student auditions the songs
+    (plain piano chords over a click), holds one and slides it up into the
+    Add box, and the whole band is built over it. A new song is a new band."""
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(500)
+    nodes = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .pathway-node')].map(n => n.dataset.id + (n.disabled ? '-' : '+')).join()")
+    check('The pathway: warm-up, the song, then the musicians, locked until a song is chosen',
+          nodes == 'jam+,song+,drums-,bass-,keys-' and page.evaluate('bsmashSelected') == 'song', nodes)
+    page.click('#beat-pathway-start')
+    page.wait_for_timeout(500)
+    names = page.evaluate("[...document.querySelectorAll('#beat-song-cards .bsmash-song-card')].map(c => c.textContent)")
+    check('Seven songs to choose from, by name, and a click running', len(names) == 7 and 'Sunrise' in names[0]
+          and page.evaluate('JSON.stringify(bsmashBand.parts)') == '{"click":"click"}', names)
+    page.click('.bsmash-song-card[data-song="c-2-5-1"]')
+    page.wait_for_timeout(200)
+    check('A tap plays that song in plain piano chords, and offers to add it',
+          page.evaluate('bsmashBand.parts.guide') == 'guide:c-2-5-1' and page.is_visible('#beat-song-add')
+          and 'moonwalk' in page.inner_text('#beat-song-add').lower(), page.evaluate('JSON.stringify(bsmashBand.parts)'))
+    check('...and nothing is chosen by a tap', page.evaluate('bsmashLoad().song') is None)
+    # Hold Night Owl, slide it up into the box.
+    card = page.locator('.bsmash-song-card[data-song="c-2-5-1-6"]').bounding_box()
+    x, y = card['x'] + card['width'] / 2, card['y'] + card['height'] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.wait_for_timeout(400)
+    shown = page.is_visible('#beat-song-drop')
+    box = page.locator('#beat-song-drop').bounding_box()
+    tx, ty = box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
+    for k in range(1, 9):
+        page.mouse.move(x + (tx - x) * k / 8, y + (ty - y) * k / 8)
+        page.wait_for_timeout(15)
+    over = page.evaluate("document.getElementById('beat-song-drop').classList.contains('over')")
+    page.mouse.up()
+    page.wait_for_timeout(300)
+    check('Hold a song and the Add box appears; slide it up and drop it in: that is the song',
+          shown and over and page.evaluate('bsmashLoad().song') == 'c-2-5-1-6' and 'Night Owl' in guide(page, 'beat-song-guide'),
+          [shown, over, page.evaluate('bsmashLoad().song')])
+    page.wait_for_function("bsmash && bsmash.mode === 'steps'", timeout=8000)
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('...and straight into Tango\'s steps, over the song\'s chords', parts == {'drums': 'warmup', 'guide': 'guide:c-2-5-1-6'}, parts)
+    chords = page.evaluate("[0, 1, 2, 3].map(b => bsmashChordAt(bsmashBand.start + b * BSMASH_BAR + 0.3).bass)")
+    check('The pads play the song\'s chord for each bar: Dm7, G7, Cmaj9, Am7', chords == [38, 43, 36, 45], chords)
+    # A band won over the song: its parts follow the song's chords.
+    page.evaluate("""const p = bsmashLoad();
+        p.musicians.drums = { step: 5, streak: 0, clean: 9, won: true, part: 'hop', plays: 3 };
+        p.musicians.bass = { step: 5, streak: 0, clean: 9, won: true, part: 'spicy', plays: 3 };
+        bsmashSave(p); startBeatMusician('keys', false, 1);""")
+    page.wait_for_timeout(400)
+    parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
+    check('The band won so far plays over the song: the bass follows its chords, the guide piano holds them',
+          parts == {'drums': 'hop', 'bass': 'band:c-2-5-1-6:spicy', 'guide': 'guide:c-2-5-1-6'}, parts)
+    # The song can't be swapped quietly: another song is a new band.
+    page.evaluate('showBeatPathway()')
+    check('The song square shows the song chosen', 'Night Owl' in page.inner_text('#beat-pathway-track [data-id=song]'))
+    say_no = lambda d: d.dismiss()
+    page.on('dialog', say_no)
+    page.evaluate('showBeatSongs()')
+    page.wait_for_timeout(300)
+    check('Back at the songs: ours is marked, and Tango says another starts a new band',
+          page.evaluate("document.querySelector('.bsmash-song-card.ours').dataset.song") == 'c-2-5-1-6'
+          and 'new band' in guide(page, 'beat-song-guide'), guide(page, 'beat-song-guide'))
+    page.click('.bsmash-song-card[data-song="c-1-4-5-1"]')
+    page.click('#beat-song-add')
+    page.wait_for_timeout(300)
+    check('...say no, and nothing changes', page.evaluate('bsmashLoad().song') == 'c-2-5-1-6'
+          and page.evaluate('bsmashLoad().musicians.bass.won'))
+    page.remove_listener('dialog', say_no)
+    page.on('dialog', lambda d: d.accept())
+    page.click('#beat-song-add')
+    page.wait_for_timeout(300)
+    after = page.evaluate("""(() => { const p = bsmashLoad(); return { song: p.song, kept: (p.songs || []).map(s => s.song + ':' + s.musicians.bass.part),
+        won: ['drums', 'bass', 'keys'].filter(id => p.musicians[id].won).length }; })()""")
+    check('...say yes: a new song, a new band from the beginning, and the old band kept',
+          after == {'song': 'c-1-4-5-1', 'kept': ['c-2-5-1-6:spicy'], 'won': 0}, after)
+    page.evaluate('showBeatPathway()')
+    page.wait_for_timeout(200)
+
+
 def test_playtest_two(page):
     """Rob's second playtest: takes start where the band's four-bar loop
     says, the squares come down at four bars, the cowbell, a press just
@@ -1518,6 +1608,7 @@ def main():
         test_songs(page)
         test_song_jam(page)
         test_jam_variations(page)
+        test_song_choice(page)
         test_playtest_two(page)
         test_teacher_codes(page)
         test_rest_of_app(page)

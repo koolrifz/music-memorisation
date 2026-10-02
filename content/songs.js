@@ -105,6 +105,21 @@ window.KR.jamSongs = [
     'c-3-6-2-5',
 ];
 
+/* THE SONGS TO BUILD A BAND ON, in order. Rob, 2026-10-02: after the
+   warm-up the student auditions these and picks one, and every take of the
+   band (one bar to the studio's 32) is played over it. The names are fun
+   placeholders (lang/en-US.js, 'song.<id>'), for children who are only
+   listening: "Sunrise, anything." */
+window.KR.bandSongs = [
+    'c-1-4-1-5',
+    'c-1-4-5-1',
+    'c-4-1-5-1',
+    'c-2-5-1',
+    'c-2-5-1-6',
+    'c-1-6-2-5',
+    'c-3-6-2-5',
+];
+
 window.KR.songs = {
 
     /* ---------- The Roman-numeral jam songs (Rob, playtest 2) ----------
@@ -118,6 +133,19 @@ window.KR.songs = {
          E7      E G# B D                A7     E G A C#
        "Five, five, one" in the recording is taken to be two-five-one (ii V
        I), the commonest of them all. Rob to confirm. */
+    // The C loops' own progression, I IV I V, written out so a band can be
+    // built on it like any other song.
+    'c-1-4-1-5': {
+        name: 'song.c-1-4-1-5',
+        bars: [
+            { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },
+            { chord: 'Fmaj7', bass: 'F2', keys: ['F4', 'A4', 'C5', 'E5'] },
+            { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },
+            { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'pump' },
+    },
     'c-1-4-5-1': {
         name: 'song.c-1-4-5-1',
         bars: [

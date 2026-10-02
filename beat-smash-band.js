@@ -289,6 +289,34 @@
       }));
       return { release() {} };
     },
+    // Piano, for the chord guide: a bright strike that rings down, two
+    // slightly detuned partials and an octave, no tremolo. Plain on purpose:
+    // it is there to say which chord, not to be a part.
+    piano(ctx, out, t, midis, v) {
+      const parts = [];
+      midis.forEach((m) => {
+        const f = hz(m);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.12 * v, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.045 * v, t + 0.5);
+        g.gain.setTargetAtTime(0.012 * v, t + 0.5, 1.6);
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(Math.min(9000, f * 9), t);
+        lp.frequency.exponentialRampToValueAtTime(Math.min(4000, f * 3), t + 0.8);
+        lp.connect(g); g.connect(out);
+        const oscs = [[1, 'triangle', -3, 1], [1, 'triangle', 3, 0.8], [2, 'sine', 0, 0.35]].map(([mult, type, detune, amp]) => {
+          const o = ctx.createOscillator(); o.type = type; o.frequency.value = f * mult; o.detune.value = detune;
+          const a = ctx.createGain(); a.gain.value = amp;
+          o.connect(a); a.connect(lp); o.start(t);
+          return o;
+        });
+        parts.push({ g, oscs });
+      });
+      return { release(r) {
+        parts.forEach((p) => { p.g.gain.cancelScheduledValues(r); p.g.gain.setTargetAtTime(0.0001, r, 0.12); p.oscs.forEach((o) => o.stop(r + 0.8)); });
+      } };
+    },
     // Dance-music pad: soft saws, slow attack, ducked on every beat
     // (the "pumping" of a sidechained pad).
     pad(ctx, out, t, midis, v, dur) {
@@ -310,7 +338,13 @@
     },
   };
 
+  // A part booked part-way through its cycle plays nothing before this time
+  // (set by schedulePart for the length of one call): it joins in time,
+  // from its next note, instead of firing every note it missed at once.
+  let skipBefore = 0;
+
   function note(voice, ctx, out, t, pitch, dur, v) {
+    if (t < skipBefore - 1e-6) return;
     const h = voice(ctx, out, t, pitch, v);
     h.release(t + dur);
   }
@@ -368,9 +402,9 @@
     },
     bass: {
       // Bossa: upright bass, root and fifth with the push on "2 and"
-      spicy(ctx, out, t0) {
+      spicy(ctx, out, t0, song = SONG) {
         for (let b = 0; b < BARS; b++) {
-          const r = SONG[b].bass;
+          const r = song[b].bass;
           [[0, 6, r], [6, 2, r + 7], [8, 6, r + 7], [14, 2, r + 12]]
             .forEach(([s, len, m]) => note(bassVoice.acoustic, ctx, out, at(t0, b, s), m, len * STEP * 0.95, 1));
         }
@@ -378,17 +412,17 @@
       // Smooth jazz: electric bass, chord tones of the bar it is in. (It used
       // to step chromatically into the next root on the "and" of 4, which is
       // part of what Rob heard as the chords moving early.)
-      smooth(ctx, out, t0) {
+      smooth(ctx, out, t0, song = SONG) {
         for (let b = 0; b < BARS; b++) {
-          const r = SONG[b].bass;
+          const r = song[b].bass;
           [[0, 3, r], [3, 3, r + 12], [6, 4, r + 7], [10, 2, r + 9], [12, 2, r + 7], [14, 2, r + 4]]
             .forEach(([s, len, m]) => note(bassVoice.electric, ctx, out, at(t0, b, s), m, len * STEP * 0.9, 1));
         }
       },
       // Dance: synth bass pumping on the off-beats, an octave pop at the end
-      hop(ctx, out, t0) {
+      hop(ctx, out, t0, song = SONG) {
         for (let b = 0; b < BARS; b++) {
-          const r = SONG[b].bass;
+          const r = song[b].bass;
           [[2, r], [6, r], [10, r], [14, r + 12]]
             .forEach(([s, m]) => note(bassVoice.synth, ctx, out, at(t0, b, s), m, 1.6 * STEP, 1));
         }
@@ -399,29 +433,29 @@
       // BARLINE: Rob, playtest 2, heard the old anticipation (the next chord
       // on the "and" of 4) as the loop "moving at funny times" - "one bar on
       // the one, one bar on the four, one on the one, one on the five."
-      spicy(ctx, out, t0) {
+      spicy(ctx, out, t0, song = SONG) {
         for (let b = 0; b < BARS; b++) {
-          const c = SONG[b].plain;
+          const c = song[b].plain;
           [[2, 1], [6, 2], [10, 1], [12, 2], [14, 2]].forEach(([s, len]) =>
             note(keysVoice.rhodes, ctx, out, at(t0, b, s), c, len * STEP * 0.9, 0.9));
         }
       },
       // Smooth jazz: suitcase Rhodes, extended chords, laid out long, the
       // chord changing on the barline
-      smooth(ctx, out, t0) {
+      smooth(ctx, out, t0, song = SONG) {
         for (let b = 0; b < BARS; b++) {
-          const c = SONG[b].jazz;
+          const c = song[b].jazz;
           note(keysVoice.rhodes, ctx, out, at(t0, b, 0), c, 6 * STEP, 0.85);
           note(keysVoice.rhodes, ctx, out, at(t0, b, 6), c, 7 * STEP, 0.7);
           note(keysVoice.rhodes, ctx, out, at(t0, b, 14), c, 2 * STEP, 0.75);
         }
       },
       // Dance: off-beat plucks over a pumping pad
-      hop(ctx, out, t0) {
+      hop(ctx, out, t0, song = SONG) {
         for (let b = 0; b < BARS; b++) {
-          const c = SONG[b].high;
+          const c = song[b].high;
           [2, 6, 10, 14].forEach((s) => note(keysVoice.pluck, ctx, out, at(t0, b, s), c, STEP, 1));
-          keysVoice.pad(ctx, out, at(t0, b, 0), SONG[b].plain, 1, BAR);
+          if (at(t0, b, 0) >= skipBefore - 1e-6) keysVoice.pad(ctx, out, at(t0, b, 0), song[b].plain, 1, BAR);
         }
       },
     },
@@ -440,11 +474,16 @@
   // Mix levels. LEVEL balances the instruments; TRIM evens out a style that
   // sits quieter or louder than its neighbours. The render script reports
   // each loop's level so these can be checked by number as well as by ear.
-  const LEVEL = { drums: 0.85, bass: 0.5, keys: 1.7, warmup: 0.85 };
+  const LEVEL = { drums: 0.85, bass: 0.5, keys: 1.7, warmup: 0.85, guide: 1.5, click: 0.6 };
   const TRIM = { 'drums-smooth': 1.7, 'keys-hop': 2.2 };
   // Rob's songs: a walking or half-note bass sustains under every keys hit,
   // so it sits a little lower than a loop's bass to leave the mix headroom.
   const SONG_TRIM = { bass: 0.8 };
+  // A band part over a chosen song: the voicings sit higher than the loops',
+  // and the busiest song (III7 VI7 ii V, hop) peaked at 0.97 untrimmed; this
+  // brings every song and style back to the loops' headroom (measured: 0.87
+  // at worst, against the C loops' 0.85).
+  const BAND_TRIM = 0.85;
 
   // ---------- Rob's songs (content/songs.js) ----------
   // A song part is named 'song:<song id>:<comp name>', e.g.
@@ -722,15 +761,73 @@
     });
   }
 
-  // from (optional): an audio time before which nothing is played. Only
-  // Rob's songs can use it; the fixed loops always start at their top.
+  // ---------- the band over a chosen song ----------
+  // Beat Smash's band follows the song the student chose (Rob, 2026-10-02:
+  // "all of their 1, 2, 4 and 8 bars are backed by the chord progression").
+  // The won parts keep their style (spicy, smooth, hop) but take each bar's
+  // chord from the song: the root for the bass, the song's own voicing for
+  // the keys. 'band:<song>:<style>' names such a part.
+  const bandCache = {};
+  function bandChords(songId) {
+    if (bandCache[songId]) return bandCache[songId];
+    const song = findSong(songId);
+    const chords = song.bars.map((bar) => {
+      const root = 36 + (((bar.bass - 36) % 12) + 12) % 12;      // C2 to B2, where the loops' bass sits
+      const low = bar.keys.map((m) => m - 12);
+      return { bass: root, plain: low, jazz: low, high: bar.keys.slice() };
+    });
+    bandCache[songId] = chords;
+    return chords;
+  }
+
+  // The chord guide: the song in plain piano chords, a whole note a chord,
+  // the root in the left hand. It is what the song chooser auditions, and
+  // what backs every take until the keys are won.
+  function guidePart(ctx, out, songId, t0) {
+    findSong(songId).changes.forEach((c) => {
+      const left = 48 + (((c.bass - 48) % 12) + 12) % 12;          // C3 to B3
+      note(keysVoice.piano, ctx, out, t0 + c.start * BEAT, [left].concat(c.keys), c.beats * BEAT * 0.97, 1);
+    });
+  }
+
+  // A little metronome: one click a beat, beat 1 higher.
+  function clickPart(ctx, out, t0) {
+    for (let beat = 0; beat < BARS * 4; beat++) {
+      const t = t0 + beat * BEAT;
+      if (t < skipBefore - 1e-6) continue;
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.value = beat % 4 ? 1046 : 1568;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(beat % 4 ? 0.22 : 0.3, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.06);
+    }
+  }
+
+  // from (optional): an audio time before which nothing is played, so a
+  // part can join part-way through its cycle, in time.
   function schedulePart(ctx, dest, instrument, style, t0, from) {
     const g = ctx.createGain();
     const song = /^song:([^:]+):(.+)$/.exec(style);
-    g.gain.value = LEVEL[instrument] * (song ? (SONG_TRIM[instrument] || 1) : (TRIM[instrument + '-' + style] || 1));
+    const band = /^band:([^:]+):(.+)$/.exec(style);
+    const guide = /^guide:(.+)$/.exec(style);
+    g.gain.value = song ? LEVEL[instrument] * (SONG_TRIM[instrument] || 1)
+      : band ? LEVEL[instrument] * (TRIM[instrument + '-' + band[2]] || 1) * BAND_TRIM
+      : guide ? LEVEL.guide
+      : style === 'click' ? LEVEL.click
+      : LEVEL[instrument] * (TRIM[instrument + '-' + style] || 1);
     g.connect(dest);
-    if (song) songPart(ctx, g, instrument, song[1], song[2], t0, from);
-    else PARTS[instrument][style](ctx, g, t0);
+    skipBefore = from || 0;
+    try {
+      if (song) songPart(ctx, g, instrument, song[1], song[2], t0, from);
+      else if (band) PARTS[instrument][band[2]](ctx, g, t0, bandChords(band[1]));
+      else if (guide) guidePart(ctx, g, guide[1], t0);
+      else if (style === 'click') clickPart(ctx, g, t0);
+      else PARTS[instrument][style](ctx, g, t0);
+    } finally {
+      skipBefore = 0;
+    }
     return g;
   }
 
@@ -752,10 +849,11 @@
 
   // ---------- the student's pad ----------
   // kind: 'kick' | 'snare' | 'bass-electric' | 'bass-acoustic' | 'rhodes' | 'organ'
-  // chord: 'I' | 'IV' | 'V' (the bar being played)
+  // chord: 'I' | 'IV' | 'V' (a bar of the C loops), or a chord of a chosen
+  // song from chordOf() - { bass, plain }
   // Returns { release(t) }: drums ignore it; bass and keys sustain until it.
   function pad(ctx, dest, t, kind, chord) {
-    const c = CHORD_BY_NAME[chord || 'I'];
+    const c = chord && typeof chord === 'object' ? chord : CHORD_BY_NAME[chord || 'I'];
     switch (kind) {
       case 'cowbell': drum.cowbell(ctx, dest, t, 1); return { release() {} };
       case 'kick': drum.kick(ctx, dest, t, 1); return { release() {} };
@@ -783,5 +881,6 @@
     BASS_STYLES,
     bassLine: (songId, name) => bassLine(findSong(songId), bassStyle(findSong(songId), name)),
     song: findSong,
+    chordOf: (songId, bar) => bandChords(songId)[((bar % BARS) + BARS) % BARS],
   };
 })(typeof window !== 'undefined' ? window : globalThis);
