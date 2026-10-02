@@ -1597,10 +1597,18 @@ Smash's players list. Beat Smash adds an **age** to a player.
   is probably more what we are trying to drum in at this point in time"*);
   the one big pad is a setting. Keys `1 2 3 4` play the four pads, Space the
   one pad.
-- **Tango's part is a cowbell, with no choice** (Rob, playtest 2). Kick and
-  snare are gone. **The sound rows (and the studio length) are the teacher's
-  only** (`KR.openAll()`): *"the user doesn't need these settings"*. Pads and
-  the jam song stay for everyone.
+- **Tango's part is a juicy kick** (`drum.padKick`). It was a cowbell
+  (playtest 2), **reversed by Rob after playing it**: *"Get rid of the
+  cowbell. It just doesn't work. It's actually a pitch, so it's easily out of
+  key or out of tune... a clave sound, or back to the kick, if we can make
+  that kick nice and juicy."* A drum with no note in it: a body falling 130 to
+  48 Hz, and, since a phone speaker plays almost nothing below 150 Hz, a knock
+  and a soft saturation that put the punch where a phone can play it.
+  Measured: 0.67 peak alone, 0.91 over the busiest band, and 1.4× the
+  cowbell's energy above 150 Hz. The **clave** is the teacher's other choice.
+  **The sound rows (and the studio length) are the teacher's only**
+  (`KR.openAll()`): *"the user doesn't need these settings"*. Pads and the jam
+  song stay for everyone.
 - **A miss on the first star just repeats that go** (the stars were already
   empty), so the child still sees the bar in notation. From the second star
   a miss empties the row and the bar is retaken as practice (§4).
@@ -1782,7 +1790,20 @@ their 32 bar is over that same chord progression."*
   little names... they're just going to listen to it"*). The Roman numerals
   show on the cards only with the teacher's Open code. A **tap auditions**:
   plain piano chords, a whole note each, the root in the left hand
-  (`guide:<song>`), over a little click (`click`). No rhythm.
+  (`guide:<song>`), over a little click (`click`).
+- **Each song's audition is Rob's to write** (*"a basic, interesting enough,
+  four bar phrase, so that they can see potential in rhythm with it... maybe a
+  little drum and bass part, but keep it really simple"*): `audition` in
+  `content/songs.js`, a four-bar `phrase` in note values with pitches
+  (`'q:E5 q:G5 h:A5 | ...'`, played on a soft lead, `phrase:<song>`), and
+  optional `drums` and `bass`. Sunrise carries an example of Claude's to show
+  the shape. Measured with all of it playing: 0.87. Nothing of the audition
+  carries into the steps: `startBeatMusician` drops every part that isn't the
+  band so far.
+- **The framing** (Rob: *"we will tell the student that this is just the
+  shape of things to come... we've got to finish these songs off. Help us
+  finish these off so you can get into the studio"*): Tango says so on the
+  song screen, and again when the song goes in the box.
 - **Hold and slide up to add** (Rob, after Balatro: *"you click on it and hold
   it down, and then a box above appears, and it says add, so you just slide it
   up to the box and drop it in"*). A card held `BSMASH_HOLD_MS` lifts and
@@ -2007,8 +2028,9 @@ and won back, a groove of their own; a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over a jam song and the Roman-numeral
 menu), playtest 2 (takes on the four-bar loop, the loop guide, notation from
 four bars, the cowbell, anticipation, Pause and Resume in the studio, the
-green playback line, Open going to the pathway), the song (the five
-squares, auditioning, holding a song and sliding it into the Add box, the band
+green playback line, Open going to the pathway, the kick), the song (the five
+squares, auditioning, Rob's audition tune with its drums and bass, holding a
+song and sliding it into the Add box, the band
 and the pads over its chords, a new song a new band with the old one kept, a
 part added by the same drag), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,

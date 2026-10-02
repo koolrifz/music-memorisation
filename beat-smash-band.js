@@ -9,9 +9,9 @@
      - three instruments (drums, bass, keys) x three styles
        (Spicy = Latin, Smooth = jazz, Hop = electronic dance),
        written so that any drum part fits any bass part fits any keys part;
-     - the pad sounds: a cowbell for the drums (playtest 2: no choice), and
-       for the teacher to try, kick, snare, electric or acoustic bass,
-       suitcase Rhodes or organ.
+     - the pad sounds: a juicy kick for the drums (the cowbell was a pitch,
+       and so often out of key), and for the teacher to try, a clave, snare,
+       electric or acoustic bass, suitcase Rhodes or organ.
 
    Pure Web Audio, no page needed: the same code plays live in the loop lab
    and renders the placeholder files in an OfflineAudioContext
@@ -86,6 +86,14 @@
     o.start(t); o.stop(t + dur + 0.02);
   }
 
+  // A soft-clipping curve (tanh): adds the overtones that make a low drum
+  // audible on a small speaker, without hard distortion.
+  const SATURATE = (() => {
+    const n = 1024, curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; curve[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
+    return curve;
+  })();
+
   // ---------- drums ----------
   const drum = {
     kick(ctx, out, t, v) {
@@ -131,24 +139,37 @@
       });
       tone(ctx, out, t, 'sine', 3150, 3150, 0, 0.35, 0.03 * v);   // the bell
     },
-    // The student's own sound on the drums (Rob, playtest 2): "It should just
-    // be a cowbell, a sound that isn't already there… so that the drum is very
-    // clear, you're not getting lost with another kick drum." Two square waves
-    // a little under a fifth apart, the classic drum-machine bell, cut high so
-    // it rings over the band on a phone speaker.
-    cowbell(ctx, out, t, v) {
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.8;
-      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 450;
+    // The student's own sound on the drums. Rob first asked for a cowbell
+    // (playtest 2), then, having played it: "Get rid of the cowbell. It just
+    // doesn't work. It's actually a pitch, so it's easily out of key... a
+    // clave sound, or back to the kick, if we can make that kick nice and
+    // juicy." A drum without a note in it: a body that drops from 130 to
+    // 48 Hz for headphones, and, because a phone speaker plays almost nothing
+    // below 150 Hz, a knock and a soft saturation that put the punch where a
+    // phone can play it. Big enough to be heard as the student's own over the
+    // band's kick.
+    padKick(ctx, out, t, v) {
+      const shape = ctx.createWaveShaper();
+      shape.curve = SATURATE;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.55 * v, t + 0.003);
-      g.gain.exponentialRampToValueAtTime(0.18 * v, t + 0.06);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
-      hp.connect(bp); bp.connect(g); g.connect(out);
-      [562, 845].forEach((f) => {
-        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f;
-        o.connect(hp); o.start(t); o.stop(t + 0.42);
-      });
+      g.gain.exponentialRampToValueAtTime(0.22 * v, t + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      shape.connect(g); g.connect(out);
+      const body = ctx.createOscillator(); body.type = 'sine';
+      body.frequency.setValueAtTime(130, t);
+      body.frequency.exponentialRampToValueAtTime(48, t + 0.16);
+      const drive = ctx.createGain(); drive.gain.value = 1.8;
+      body.connect(drive); drive.connect(shape);
+      body.start(t); body.stop(t + 0.55);
+      tone(ctx, out, t, 'triangle', 420, 140, 0.03, 0.06, 0.22 * v);            // the knock
+      noiseBurst(ctx, out, t, 0.014, 'bandpass', 3200, 0.8, 0.18 * v);           // the beater
+    },
+    // The clave, for the teacher to try: short and high, over in 70 ms.
+    padClave(ctx, out, t, v) {
+      tone(ctx, out, t, 'sine', 2500, 2400, 0.02, 0.07, 0.55 * v);
+      noiseBurst(ctx, out, t, 0.008, 'highpass', 4000, 0.7, 0.12 * v);
     },
     crash(ctx, out, t, v) {
       noiseBurst(ctx, out, t, 1.0, 'highpass', 5200, 0.5, 0.3 * v, 0.004);
@@ -317,6 +338,27 @@
         parts.forEach((p) => { p.g.gain.cancelScheduledValues(r); p.g.gain.setTargetAtTime(0.0001, r, 0.12); p.oscs.forEach((o) => o.stop(r + 0.8)); });
       } };
     },
+    // The tune in an audition: a soft, singing lead (a triangle with its
+    // octave, a gentle swell, a slow vibrato that arrives late).
+    lead(ctx, out, t, midi, v) {
+      const f = hz(midi);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.11 * v, t + 0.025);
+      g.gain.exponentialRampToValueAtTime(0.08 * v, t + 0.3);
+      g.connect(out);
+      const a = ctx.createOscillator(); a.type = 'triangle'; a.frequency.value = f;
+      const b = ctx.createOscillator(); b.type = 'sine'; b.frequency.value = f * 2;
+      const bG = ctx.createGain(); bG.gain.value = 0.25;
+      const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
+      const depth = ctx.createGain();
+      depth.gain.setValueAtTime(0, t);
+      depth.gain.linearRampToValueAtTime(7, t + 0.45);          // cents, arriving late
+      vib.connect(depth); depth.connect(a.detune); depth.connect(b.detune);
+      a.connect(g); b.connect(bG); bG.connect(g);
+      [a, b, vib].forEach((o) => o.start(t));
+      return { release(r) { g.gain.cancelScheduledValues(r); g.gain.setTargetAtTime(0.0001, r, 0.05); [a, b, vib].forEach((o) => o.stop(r + 0.3)); } };
+    },
     // Dance-music pad: soft saws, slow attack, ducked on every beat
     // (the "pumping" of a sidechained pad).
     pad(ctx, out, t, midis, v, dur) {
@@ -474,7 +516,7 @@
   // Mix levels. LEVEL balances the instruments; TRIM evens out a style that
   // sits quieter or louder than its neighbours. The render script reports
   // each loop's level so these can be checked by number as well as by ear.
-  const LEVEL = { drums: 0.85, bass: 0.5, keys: 1.7, warmup: 0.85, guide: 1.5, click: 0.6 };
+  const LEVEL = { drums: 0.85, bass: 0.5, keys: 1.7, warmup: 0.85, guide: 1.5, click: 0.6, phrase: 1.6 };
   const TRIM = { 'drums-smooth': 1.7, 'keys-hop': 2.2 };
   // Rob's songs: a walking or half-note bass sustains under every keys hit,
   // so it sits a little lower than a loop's bass to leave the mix headroom.
@@ -561,6 +603,40 @@
     return hits;
   }
 
+  // ---------- the audition: Rob's four-bar phrase ----------
+  // A song's `audition` (content/songs.js) says what plays when a student
+  // taps it: `phrase`, a four-bar tune in note values with a pitch after a
+  // colon ('h:E5 q:G5 q:A5 | w:C6'; '|' is only for reading, 'qr' a rest),
+  // and optionally `drums` (a loop style) and `bass` (a bass style).
+  function phraseHits(text, shift, id) {
+    let beat = 0;
+    const hits = [];
+    String(text).trim().split(/\s+/).filter((token) => token !== '|').forEach((token) => {
+      const m = /^(w|h|q|8|16)(\.)?(r)?(?::(.+))?$/.exec(token);
+      if (!m || (!m[3] && !m[4])) throw new Error('Not a note of ' + id + "'s phrase: " + token);
+      const beats = VALUE_BEATS[m[1]] * (m[2] ? 1.5 : 1);
+      if (!m[3]) hits.push({ start: beat, beats, midi: noteMidi(m[4]) + shift });
+      beat += beats;
+    });
+    if (Math.abs(beat - BARS * 4) > 1e-9) throw new Error(id + "'s phrase is " + beat + ' beats, not ' + BARS * 4);
+    return hits;
+  }
+
+  function auditionOf(audition, shift, id) {
+    if (!audition) return null;
+    return {
+      phrase: audition.phrase ? phraseHits(audition.phrase, shift, id) : null,
+      drums: audition.drums || null,
+      bass: audition.bass || null,
+    };
+  }
+
+  function phrasePart(ctx, out, songId, t0) {
+    const audition = findSong(songId).audition;
+    (audition && audition.phrase || []).forEach((h) =>
+      note(keysVoice.lead, ctx, out, t0 + h.start * BEAT, h.midi, h.beats * BEAT * 0.94, 1));
+  }
+
   // A song as the band plays it: every note a MIDI number, and its chords
   // laid out as `changes` over the four bars: [{ start, beats, chord, bass,
   // keys }], start and beats in beats from the top of the loop.
@@ -610,6 +686,7 @@
       comp: song.comp || base.comp,
       bass: song.bass || base.bass,
       drums: song.drums || base.drums,
+      audition: auditionOf(song.audition || base.audition, shift, id),
       jam: song.jam || base.jam,
       bars, changes,
     };
@@ -812,9 +889,11 @@
     const song = /^song:([^:]+):(.+)$/.exec(style);
     const band = /^band:([^:]+):(.+)$/.exec(style);
     const guide = /^guide:(.+)$/.exec(style);
+    const phrase = /^phrase:(.+)$/.exec(style);
     g.gain.value = song ? LEVEL[instrument] * (SONG_TRIM[instrument] || 1)
       : band ? LEVEL[instrument] * (TRIM[instrument + '-' + band[2]] || 1) * BAND_TRIM
       : guide ? LEVEL.guide
+      : phrase ? LEVEL.phrase
       : style === 'click' ? LEVEL.click
       : LEVEL[instrument] * (TRIM[instrument + '-' + style] || 1);
     g.connect(dest);
@@ -823,6 +902,7 @@
       if (song) songPart(ctx, g, instrument, song[1], song[2], t0, from);
       else if (band) PARTS[instrument][band[2]](ctx, g, t0, bandChords(band[1]));
       else if (guide) guidePart(ctx, g, guide[1], t0);
+      else if (phrase) phrasePart(ctx, g, phrase[1], t0);
       else if (style === 'click') clickPart(ctx, g, t0);
       else PARTS[instrument][style](ctx, g, t0);
     } finally {
@@ -848,15 +928,15 @@
   }
 
   // ---------- the student's pad ----------
-  // kind: 'kick' | 'snare' | 'bass-electric' | 'bass-acoustic' | 'rhodes' | 'organ'
+  // kind: 'kick' | 'clave' | 'snare' | 'bass-electric' | 'bass-acoustic' | 'rhodes' | 'organ'
   // chord: 'I' | 'IV' | 'V' (a bar of the C loops), or a chord of a chosen
   // song from chordOf() - { bass, plain }
   // Returns { release(t) }: drums ignore it; bass and keys sustain until it.
   function pad(ctx, dest, t, kind, chord) {
     const c = chord && typeof chord === 'object' ? chord : CHORD_BY_NAME[chord || 'I'];
     switch (kind) {
-      case 'cowbell': drum.cowbell(ctx, dest, t, 1); return { release() {} };
-      case 'kick': drum.kick(ctx, dest, t, 1); return { release() {} };
+      case 'kick': drum.padKick(ctx, dest, t, 1); return { release() {} };
+      case 'clave': drum.padClave(ctx, dest, t, 1); return { release() {} };
       case 'snare': drum.snare(ctx, dest, t, 1); return { release() {} };
       case 'bass-electric': return bassVoice.electric(ctx, dest, t, c.bass + 12, 1);
       case 'bass-acoustic': return bassVoice.acoustic(ctx, dest, t, c.bass + 12, 1);
@@ -871,7 +951,7 @@
     SONG_NAMES: ['I', 'IV', 'I', 'V'],
     INSTRUMENTS: ['drums', 'bass', 'keys'],
     STYLES: ['spicy', 'smooth', 'hop'],
-    PAD_SOUNDS: ['kick', 'snare', 'bass-electric', 'bass-acoustic', 'rhodes', 'organ'],
+    PAD_SOUNDS: ['kick', 'clave', 'snare', 'bass-electric', 'bass-acoustic', 'rhodes', 'organ'],
     schedulePart,
     fill,
     pad,
