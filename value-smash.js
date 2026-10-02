@@ -199,7 +199,8 @@ function addValuePlayer() {
 
 /* ---------- The pathway ----------
    Follows the app's pathway pattern (CLAUDE.md "Pathway screen pattern"):
-   locked = icon only; unlocked = icon + name; cleared = icon + name + stars.
+   every floor shows its number and name, a locked one dimmed;
+   cleared = number + name + stars.
    Start appears only once a floor is selected. */
 function vsmashFloorName(floorId) {
     return KR.t('value.floor.' + floorId + '.name');
@@ -250,13 +251,13 @@ function renderValuePathway() {
 
         const icon = document.createElement('span');
         icon.className = 'pathway-node-icon';
-        icon.textContent = isUnlocked ? String(index + 1) : KR.t('value.floor.lockedIcon');
+        icon.textContent = String(index + 1);
         node.appendChild(icon);
+        const label = document.createElement('span');
+        label.className = 'pathway-node-label';
+        label.textContent = vsmashFloorName(floor.id);
+        node.appendChild(label);
         if (isUnlocked) {
-            const label = document.createElement('span');
-            label.className = 'pathway-node-label';
-            label.textContent = vsmashFloorName(floor.id);
-            node.appendChild(label);
             if (record && record.cleared) {
                 const stars = document.createElement('small');
                 stars.className = 'vsmash-stars';

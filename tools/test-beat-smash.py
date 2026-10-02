@@ -1473,6 +1473,27 @@ def test_rest_of_app(page):
     })()""")
     check('Several lines on one event take turns; a single line is always that line',
           turns == ['beat.line.clean.1', 'beat.line.clean.2', 'beat.line.clean.1', 'beat.line.copy', 'beat.line.copy'], turns)
+    # Every game shows a locked stage's name, dimmed and not pressable
+    # (CLAUDE.md "Pathway screen pattern").
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true}}}));"
+                "localStorage.setItem('koolRiffsRhythmLabProgress', JSON.stringify({unlockedStages:['1'], totalPlays:1}));")
+    named = page.evaluate("""(() => {
+        const out = {};
+        const look = (name, enter, track) => { enter(); const nodes = [...document.querySelectorAll(track + ' .pathway-node.locked')];
+            out[name] = nodes.length > 0 && nodes.every(n => n.disabled && n.querySelector('.pathway-node-label')
+                && n.querySelector('.pathway-node-label').textContent.trim() && !n.querySelector('small')); };
+        look('staff', () => launchGame('view-game1'), '#g1-pathway-track');
+        look('note', () => launchGame('view-game2'), '#g2-pathway-track');
+        look('real', () => launchGame('view-game3'), '#g3-pathway-track');
+        look('rhythm', () => launchGame('view-rhythm'), '#rhythm-pathway-track');
+        look('lab', () => enterRhythmLab(), '#rstomp-pathway-track');
+        look('value', () => enterValueSmash(), '#value-pathway-track');
+        look('beat', () => enterBeatSmash(), '#beat-pathway-track');
+        return out;
+    })()""")
+    check('Every game shows a locked stage\'s name, dimmed, unpressable, with no score',
+          all(named.values()) and len(named) == 7, named)
 
 
 def main():

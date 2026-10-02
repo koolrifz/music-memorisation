@@ -181,7 +181,7 @@ function renderRhythmPathway() {
         const node = document.createElement('button');
         node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${level.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
         node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${isUnlocked ? index + 1 : '•'}</span>${isUnlocked ? `<span class="pathway-node-label">${level.shortLabel}</span>${record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}` : ''}`;
+        node.innerHTML = `<span class="pathway-node-icon">${index + 1}</span><span class="pathway-node-label">${level.shortLabel}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
         if (isUnlocked) node.onclick = () => selectRhythmLevel(level.id);
         track.appendChild(node);
     });

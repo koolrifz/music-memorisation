@@ -2908,10 +2908,11 @@ function renderBeatPathway() {
         if (record.won) node.classList.add('cleared');
         node.disabled = !open;
         const icon = bsmashMake('span', 'pathway-node-icon', node);
-        icon.textContent = open ? KR.t('beat.musician.' + musician.id + '.icon') : KR.t('beat.lockedIcon');
+        icon.textContent = KR.t('beat.musician.' + musician.id + '.icon');
+        // Locked musicians show who they are too, dimmed: the band still to win.
+        const label = bsmashMake('span', 'pathway-node-label', node);
+        label.textContent = KR.t('beat.musician.' + musician.id);
         if (open) {
-            const label = bsmashMake('span', 'pathway-node-label', node);
-            label.textContent = KR.t('beat.musician.' + musician.id);
             if (record.won) {
                 const won = bsmashMake('small', null, node);
                 won.textContent = KR.t('beat.style.' + record.part);
