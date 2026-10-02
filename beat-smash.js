@@ -176,7 +176,7 @@ const BSMASH_JAM_BUILD = [
 ];
 const BSMASH_JAM_HELD_TAPS = 3;            // taps on the beat in a bar that hold it
 const BSMASH_JAM_DROPPED_TAPS = 1;         // this many or fewer and the bar is let go
-const BSMASH_AND_WINDOW = 0.2;             // beats either side of the "and": a tap there is a groove of their own
+const BSMASH_AND_WINDOW = 0.12;            // beats either side of the "and" (72 ms): a tap there is a groove of their own
 const BSMASH_JAM_STYLES = { drums: 'warmup', bass: 'smooth', keys: 'smooth' };
 const BSMASH_JAM_SONG_STYLES = { drums: 'warmup', bass: 'song:{song}:whole', keys: 'song:{song}:whole' };
 const BSMASH_JAM_SONG_FULL = { keys: 'song:{song}:pumps', bass: 'song:{song}:groove' };

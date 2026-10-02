@@ -440,7 +440,7 @@ def test_follow_me(page):
     start = page.evaluate('bsmashBand.start')
     beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
     for k in range(3):
-        press_at(page, None, start + (beat + k) * 0.6 + 0.3, index=k)
+        press_at(page, None, start + (beat + k) * 0.6 - 0.24, index=k)
     check('Missing the beat: Tango says "Follow me! 1, 2, 3, 4!"',
           'Follow me' in guide(page) and page.evaluate('bsmash.jam.follow !== null'), guide(page))
     page.wait_for_timeout(3200)

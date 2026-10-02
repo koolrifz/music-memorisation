@@ -1453,7 +1453,7 @@ Smash's players list. Beat Smash adds an **age** to a player.
   four quarter notes.
 - **A groove of their own** (Rob: *"That's a cool groove, but that's not what
   we need for this song"*). Three taps on the "and" within two bars
-  (`BSMASH_AND_WINDOW`, a fifth of a beat either side) say so, and outrank
+  (`BSMASH_AND_WINDOW`, 0.12 of a beat either side) say so, and outrank
   "Follow me!" (her count still starts, in time). Measured from the device's
   delay, the fixed reference: the running estimate follows a steady run of
   off-beat taps and would never see them.
