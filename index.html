@@ -738,6 +738,8 @@
     <div id="beat-screen-studio" class="screen">
         <div class="bsmash-top">
             <span class="bsmash-rec" id="beat-rec" data-text="beat.rec"></span>
+            <!-- The band's four-bar loop: the bar playing now, and where the count-in comes. -->
+            <span class="bsmash-loop" id="beat-loop" hidden><i></i><i></i><i></i><i></i></span>
             <span class="bsmash-step-label" id="beat-step-label"></span>
             <span class="bsmash-stars" id="beat-stars"></span>
         </div>
@@ -769,6 +771,7 @@
         </div>
         <div class="bsmash-transport" id="beat-transport" hidden>
             <button class="bsmash-transport-btn record" id="beat-transport-record" onclick="recordBeatTake()" data-text="beat.transport.record"></button>
+            <button class="bsmash-transport-btn pause" id="beat-transport-pause" hidden onclick="pauseBeatTake()" data-text="beat.transport.pause"></button>
             <button class="bsmash-transport-btn" id="beat-transport-play" onclick="playBeatTake()" data-text="beat.transport.play"></button>
             <button class="bsmash-transport-btn" id="beat-transport-stop" onclick="stopBeatTake()" data-text="beat.transport.stop"></button>
             <button class="bsmash-transport-btn keep" id="beat-transport-keep" hidden onclick="keepBeatTake()" data-text="beat.transport.keep"></button>

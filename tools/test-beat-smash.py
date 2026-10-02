@@ -280,6 +280,8 @@ def test_first_minute(page):
         "document.getElementById('beat-stars').hidden && document.getElementById('beat-step-label').hidden"))
     check('Beat Smash is first on the dashboard', page.evaluate(
         "document.querySelector('#view-dashboard .game-card').classList.contains('red')"))
+    check('The band needs a pulse: nobody is playing until the student does',
+          page.evaluate('Object.keys(bsmashBand.parts).length') == 0)
     # Off-beat taps: they sound, nothing lights, nothing fails.
     offset = clock_offset(page)
     start = page.evaluate('bsmashBand.start')
@@ -287,27 +289,31 @@ def test_first_minute(page):
     beat = int((now - start) / 0.6) + 2
     for k in range(3):
         press_at(page, offset, start + (beat + k) * 0.6 + 0.3, index=k)
-    check('Off-beat taps don\'t fill the meter', page.evaluate('bsmash.jam.meter') == 0, page.evaluate('bsmash.jam.meter'))
-    # Back on the beat: a wobbly start doesn't stop the meter filling, and
-    # four taps are no longer enough - the jam is the student's to keep.
-    beat += 4
+    check('Off-beat taps don\'t fill the meter', page.evaluate('bsmashJamProgress()') == 0, page.evaluate('bsmashJamProgress()'))
+    # The build, shortened for the test: a bar held each for the drums, two
+    # each for the bass and the keys, two for the full groove.
+    page.evaluate('[1, 2, 2, 2].forEach((bars, i) => { BSMASH_JAM_BUILD[i].bars = bars; })')
+    # Back on the beat, from the top of a bar: a wobbly start doesn't stop the
+    # meter filling, and a bar held brings the drums in.
+    bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
     for k in range(8):
-        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        press_at(page, None, start + bar * 2.4 + k * 0.6 + 0.04, index=k % 4)
     page.wait_for_timeout(200)
-    check('Back on the beat after a wobbly start: the meter fills, the pads stay pads',
-          page.evaluate('bsmash.jam.meter') >= 3 and not page.evaluate('bsmash.jam.morphed')
-          and page.is_hidden('#beat-jam-next'), page.evaluate('bsmash.jam.meter'))
-    # Hold the beat, with a steady 40 ms of "device delay", until the meter is full.
-    beat += 4
-    for k in range(40):
-        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+    check('Back on the beat after a wobbly start: a bar held brings the drums in, the pads stay pads',
+          'drums' in page.evaluate('Object.keys(bsmashBand.parts)') and page.evaluate('bsmashJamProgress()') > 0
+          and not page.evaluate('bsmash.jam.morphed') and page.is_hidden('#beat-jam-next'),
+          page.evaluate('Object.keys(bsmashBand.parts)'))
+    # Hold the beat, with a steady 40 ms of "device delay", until the groove is full.
+    bar += 2
+    for k in range(48):
+        press_at(page, None, start + bar * 2.4 + k * 0.6 + 0.04, index=k % 4)
         if page.evaluate('bsmash.jam.full'):
             break
     page.wait_for_timeout(300)
     parts = page.evaluate('Object.keys(bsmashBand.parts).sort()')
     check('Holding the beat builds the band: the bass and keys join in', parts == ['bass', 'drums', 'keys'], parts)
-    check('About 15 seconds of steady beat fills the meter, and "Show me what I played" appears',
-          page.evaluate('bsmash.jam.full') and page.is_visible('#beat-jam-next'), page.evaluate('bsmash.jam.meter'))
+    check('The groove is full, and "Show me what I played" appears',
+          page.evaluate('bsmash.jam.full') and page.is_visible('#beat-jam-next'), page.evaluate('bsmashJamProgress()'))
     page.wait_for_timeout(1500)
     check('...and the jam carries on until they press it', not page.evaluate('bsmash.jam.morphed'))
     page.click('#beat-jam-next')
@@ -323,6 +329,42 @@ def test_first_minute(page):
           test and test['taps'] >= 20 and test['onBeat'] >= 80 and -60 <= test['leanMs'] < 200 and test['steadyMs'] < 80, test)
     page.wait_for_function("bsmash && bsmash.mode === 'steps'", timeout=10000)
     check('Then the first roll: Tango\'s one-bar step', state(page)['step'] == 1 and state(page)['scaffold'] == 'star1')
+
+
+def test_warmup_story(page):
+    """Rob, playtest 2: the band needs a pulse, and keeping it is the
+    student's job. Each player joins after bars held; back off and the last
+    one leaves, to be won back. A rhythm of their own is a cool groove, but
+    not what this song needs."""
+    fresh(page)
+    page.click('.game-card.red')
+    page.wait_for_timeout(3000)
+    check('The story: the band needs a pulse', 'pulse' in guide(page), guide(page))
+    page.evaluate('BSMASH_JAM_BUILD.forEach(step => { step.bars = 1; })')
+    start = page.evaluate('bsmashBand.start')
+    bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
+    for k in range(8):
+        press_at(page, None, start + bar * 2.4 + k * 0.6 + 0.04, index=k % 4)
+    # One tap in the next bar: that bar will be let go.
+    press_at(page, None, start + (bar + 2) * 2.4 + 0.04, index=0)
+    page.wait_for_timeout(250)
+    check('Two bars held: the drums, then the bass', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['bass', 'drums'],
+          page.evaluate('Object.keys(bsmashBand.parts)'))
+    check('...and the desk lights the channels playing', page.evaluate(
+        "[...document.querySelectorAll('#beat-desk .lit')].length") == 2)
+    for k in range(4):
+        press_at(page, None, start + (bar + 3) * 2.4 + k * 0.6 + 0.04, index=k)
+        if k == 0:
+            page.wait_for_timeout(150)
+            parts = page.evaluate('Object.keys(bsmashBand.parts)')
+            check('Back off, and the last to join leaves: the bass', parts == ['drums'] and 'bass' in guide(page), [parts, guide(page)])
+    sleep_until(start + (bar + 4) * 2.4 + 0.25 + clock_offset(page))
+    check('...and a bar held wins it back', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['bass', 'drums'])
+    # A rhythm of their own: every tap on the "and".
+    page.evaluate('bsmash.jam.lastCoach = -Infinity')
+    for k in range(4):
+        press_at(page, None, start + (bar + 5) * 2.4 + k * 0.6 + 0.3, index=k)
+    check('Taps on the "and": a cool groove, but not what this song needs', 'cool groove' in guide(page), guide(page))
 
 
 def test_beat_light(page):
@@ -398,7 +440,7 @@ def test_follow_me(page):
     start = page.evaluate('bsmashBand.start')
     beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
     for k in range(3):
-        press_at(page, None, start + (beat + k) * 0.6 + 0.3, index=k)
+        press_at(page, None, start + (beat + k) * 0.6 - 0.24, index=k)
     check('Missing the beat: Tango says "Follow me! 1, 2, 3, 4!"',
           'Follow me' in guide(page) and page.evaluate('bsmash.jam.follow !== null'), guide(page))
     page.wait_for_timeout(3200)
@@ -521,8 +563,8 @@ def test_long_steps(page):
     wait_for_take(page)
     play_take(page, skip=(0,))
     page.wait_for_timeout(300)
-    check('...one note lost, back in by the next beat 1: that passes, by the pass mark',
-          page.evaluate("bsmash.take.cameBack && !bsmash.take.lostBar") and state(page)['phase'] == 'reveal', state(page)['phase'])
+    check('...one note lost, back in by the next beat 1: that passes, by the pass mark, and the first star lands',
+          page.evaluate("bsmash.take.cameBack && !bsmash.take.lostBar") and state(page)['streak'] == 1, state(page))
     ok = play_until(page, "bsmashMusicianRecord('drums').step === 4", limit=8)
     check('Four bars, three in a row: on to eight bars', ok, record(page))
 
@@ -633,16 +675,18 @@ def test_picker(page):
     page.click('#beat-picker-done')
     page.wait_for_timeout(500)
     check('Back on the pathway, Tango shows as won', page.evaluate(
-        "document.querySelector('#beat-pathway-track .pathway-node').classList.contains('cleared')"))
+        "document.querySelector('#beat-pathway-track [data-id=drums]').classList.contains('cleared')"))
     check('Riff is next, and open now Tango is won', not page.evaluate(
-        "document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').disabled"))
-    page.click('#beat-pathway-track .pathway-node:nth-child(1)')
+        "document.querySelector('#beat-pathway-track [data-id=bass]').disabled"))
+    check('Four squares: the warm-up, then Tango, Riff on bass, Riff on keys', page.evaluate(
+        "[...document.querySelectorAll('#beat-pathway-track .pathway-node')].map(n => n.dataset.id).join()") == 'jam,drums,bass,keys')
+    page.click('#beat-pathway-track [data-id=drums]')
     page.wait_for_timeout(200)
     check('Leaving the studio stops the band', page.evaluate('bsmashBand === null'))
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('Every step reached can be played again, the warm-up too',
-          chips == ['Warm-up', 'One bar', 'Two bars', 'Four bars', 'Eight bars', 'The studio', 'My band'], chips)
-    page.click('#beat-steps .bsmash-chip:nth-child(2)')
+    check('Every step reached can be played again',
+          chips == ['One bar', 'Two bars', 'Four bars', 'Eight bars', 'The studio', 'My band'], chips)
+    page.click('#beat-steps .bsmash-chip:nth-child(1)')
     page.click('#beat-pathway-start')
     page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.take", timeout=10000)
     check('...One bar again, from an empty row of stars, with Tango still won',
@@ -778,10 +822,11 @@ def test_riff_bass(page):
     page.click('.game-card.red')
     page.wait_for_timeout(400)
     check('With the drums won, Riff is open on the pathway, and says hello',
-          not page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').disabled")
+          not page.evaluate("document.querySelector('#beat-pathway-track [data-id=bass]').disabled")
           and 'Riff here' in guide(page, 'beat-pathway-guide'), guide(page, 'beat-pathway-guide'))
     sounds = page.evaluate("[...document.querySelectorAll('#beat-settings .bsmash-setting')].map(r => r.textContent)")
-    check('...and the bass sound can be chosen: electric or acoustic', any('Bass sound' in r and 'Acoustic' in r for r in sounds), sounds)
+    check('...and the sounds are not the student\'s to choose (Rob, playtest 2): no Drum or Bass sound row',
+          not any('sound' in r.lower() for r in sounds), sounds)
     page.click('#beat-pathway-start')
     page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.bars", timeout=8000)
     check('Riff\'s one-bar step, opening on half notes on 1 and 3',
@@ -841,8 +886,8 @@ def test_riff_bass(page):
     page.click('#beat-picker-done')
     page.wait_for_timeout(500)
     check('Back on the pathway: Riff won on bass, and the keys open next',
-          page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(2)').classList.contains('cleared')")
-          and not page.evaluate("document.querySelector('#beat-pathway-track .pathway-node:nth-child(3)').disabled")
+          page.evaluate("document.querySelector('#beat-pathway-track [data-id=bass]').classList.contains('cleared')")
+          and not page.evaluate("document.querySelector('#beat-pathway-track [data-id=keys]').disabled")
           and 'keys' in guide(page, 'beat-pathway-guide'), guide(page, 'beat-pathway-guide'))
 
 
@@ -901,11 +946,11 @@ def test_riff_keys(page):
     check('...presented by Tango', 'Learner\'s Permit' in guide(page, 'beat-permit-guide'), guide(page, 'beat-permit-guide'))
     page.click('#beat-screen-permit .btn-secondary')
     page.wait_for_timeout(400)
-    page.click('#beat-pathway-track .pathway-node:nth-child(3)')
+    page.click('#beat-pathway-track [data-id=keys]')
     page.wait_for_timeout(200)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('Back on the pathway: three musicians, no booth, and the Permit can be seen again',
-          page.locator('#beat-pathway-track .pathway-node').count() == 3 and 'My Permit' in chips, chips)
+    check('Back on the pathway: the warm-up and three musicians, no booth, and the Permit can be seen again',
+          page.locator('#beat-pathway-track .pathway-node').count() == 4 and 'My Permit' in chips, chips)
 
 
 def test_picker_leave(page):
@@ -1113,41 +1158,48 @@ def test_song_jam(page):
     """The warm-up jam over one of Rob's songs: whole notes, then his pump;
     the band sags when the beat is lost and stops when the student stops."""
     fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
-                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,settings:{jamSong:'ab-6dim'},"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,settings:{jamSong:'c-2-5-1-6'},"
                 "musicians:{drums:{step:1,streak:0,clean:0,won:false,part:null,plays:1}}}}}));")
     page.click('.game-card.red')
     page.wait_for_timeout(400)
     songs = page.evaluate("[...document.querySelectorAll('#beat-settings .bsmash-setting')].map(r => r.textContent)")
-    check('The pathway offers a jam song', any('Jam song' in r and 'A♭' in r for r in songs), songs)
-    page.click('#beat-steps .bsmash-chip:nth-child(1)')
+    check('The pathway offers a jam song', any('Jam song' in r and 'ii V I vi' in r for r in songs), songs)
+    menu = page.evaluate("[...document.querySelectorAll('#beat-settings .bsmash-setting')].filter(r => r.textContent.includes('Jam song'))"
+                         ".map(r => [...r.querySelectorAll('.bsmash-chip')].map(c => c.textContent))[0]")
+    check('The jam songs are Roman numerals: the C loops first, Rob\'s six off the menu',
+          menu[0] == 'C: I IV I V' and len(menu) == 7 and not any('♭' in m or '6' in m for m in menu), menu)
+    page.click('#beat-pathway-track [data-id=jam]')
     page.click('#beat-pathway-start')
     page.wait_for_timeout(600)
+    page.evaluate('[1, 1, 1, 2].forEach((bars, i) => { BSMASH_JAM_BUILD[i].bars = bars; })')
     offset = clock_offset(page)
     start = page.evaluate('bsmashBand.start')
-    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
+    beat = bar * 4
     parts = {}
     for k in range(40):
         press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
-        meter = page.evaluate('bsmash.jam.meter')
-        if meter in (10, 18):
-            parts[meter] = page.evaluate('Object.assign({}, bsmashBand.parts)')
+        now = page.evaluate('Object.assign({}, bsmashBand.parts)')
+        for instrument in ('bass', 'keys'):
+            if instrument in now and instrument not in parts:
+                parts[instrument] = now[instrument]
         if page.evaluate('bsmash.jam.full'):
             break
     beat += k + 1
-    check('Over Rob\'s song the bass joins in whole notes', parts.get(10, {}).get('bass') == 'song:ab-6dim:whole', parts)
-    check('...then the keys, his voicings in whole notes', parts.get(18, {}).get('keys') == 'song:ab-6dim:whole', parts)
+    check('Over the jam song the bass joins in whole notes', parts.get('bass') == 'song:c-2-5-1-6:whole', parts)
+    check('...then the keys, the song\'s voicings in whole notes', parts.get('keys') == 'song:c-2-5-1-6:whole', parts)
     full = page.evaluate('Object.assign({}, bsmashBand.parts)')
     check('...and a full meter brings his pumps on the keys and the song\'s groove on the bass',
-          full.get('keys') == 'song:ab-6dim:pumps' and full.get('bass') == 'song:ab-6dim:groove', full)
+          full.get('keys') == 'song:c-2-5-1-6:pumps' and full.get('bass') == 'song:c-2-5-1-6:groove', full)
     # Lose the beat: taps half a beat out.
     for k in range(4):
-        press_at(page, offset, start + (beat + k) * 0.6 + 0.34, index=k % 4)
+        press_at(page, None, start + (beat + k) * 0.6 + 0.34, index=k % 4)
     page.wait_for_timeout(600)
     sag = page.evaluate('[bsmash.jam.sag, bsmashSagFilter.frequency.value]')
     check('Losing the beat: the band sinks (muffled and quieter), cleanly, not in steps', sag[0] > 0.3 and sag[1] < 8000, sag)
     beat += 4
     for k in range(5):
-        press_at(page, offset, start + (beat + k) * 0.6 + 0.04, index=k % 4)
+        press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
     page.wait_for_timeout(900)
     back = page.evaluate('[bsmash.jam.sag, bsmashSagFilter.frequency.value]')
     check('...and pushing the beat back brings its power back', back[0] == 0 and back[1] > sag[1] * 4, back)
@@ -1182,9 +1234,10 @@ def test_jam_variations(page):
                 "musicians:{drums:{step:1,streak:0,clean:0,won:false,part:null,plays:1}}}}}));")
     page.click('.game-card.red')
     page.wait_for_timeout(400)
-    page.click('#beat-steps .bsmash-chip:nth-child(1)')
+    page.click('#beat-pathway-track [data-id=jam]')
     page.click('#beat-pathway-start')
     page.wait_for_timeout(600)
+    page.evaluate('[1, 1, 1, 2].forEach((bars, i) => { BSMASH_JAM_BUILD[i].bars = bars; })')
     lines = page.evaluate("bsmash.jam.variations")
     check('The song\'s own directions become the variations: drums, bass, keys, or out',
           lines[0] == {'parts': {'drums': 'smooth'}, 'say': None}
@@ -1253,6 +1306,88 @@ def test_jam_variations(page):
           loops[1] < 0.001 and 0.2 < loops[0] < 0.9, loops)
 
 
+def test_playtest_two(page):
+    """Rob's second playtest: takes start where the band's four-bar loop
+    says, the squares come down at four bars, the cowbell, a press just
+    before the barline plays the next chord, and the studio's Pause and its
+    green playback line."""
+    fresh(page, "localStorage.setItem('koolRiffsOpenAll','1');")
+    page.click('.game-card.red')
+    page.wait_for_timeout(500)
+    check('With everything open, Beat Smash opens on the pathway, not the warm-up', screen(page) == 'beat-screen-pathway', screen(page))
+    starts = {}
+    for step in (1, 2, 3, 4):
+        page.evaluate("startBeatMusician('drums', false, %d)" % step)
+        page.wait_for_function("bsmash && bsmash.take && !bsmash.take.done", timeout=20000)
+        starts[step] = page.evaluate("({ start: bsmash.take.startBar, count: bsmash.take.countInBar, go: bsmash.take.go,"
+                                     " showing: bsmash.showing, scaffold: bsmash.scaffold })")
+    check('Four and eight bars start at the top of the band\'s loop, counted in on its bar 4; two bars on bar 1 or 3',
+          starts[3]['start'] % 4 == 0 and starts[4]['start'] % 4 == 0 and starts[3]['count'] % 4 == 3
+          and starts[2]['start'] % 2 == 0, starts)
+    check('From four bars the squares come down: the first star is read from the notation',
+          starts[3]['scaffold'] == 'star1' and starts[3]['go'] == 'notation' and starts[3]['showing'] == 'notation'
+          and starts[1]['go'] == 'picture', starts)
+    page.wait_for_function("bsmash.take && bsmashNow() > bsmashBand.start + 0.05", timeout=5000)
+    page.wait_for_timeout(700)
+    guide_cells = page.evaluate("""(() => { const bar = Math.floor((bsmashNow() - bsmashBand.start) / BSMASH_BAR);
+        return { bar: bar, count: bsmash.take.countInBar, shown: !document.getElementById('beat-loop').hidden,
+                 cells: [...document.querySelectorAll('#beat-loop i')].map(i => i.className.trim()) }; })()""")
+    now_cell = guide_cells['bar'] % 4
+    check('The loop guide shows where the band is in its four bars, and which bar counts in',
+          guide_cells['shown'] and 'now' in guide_cells['cells'][now_cell]
+          and (guide_cells['bar'] > guide_cells['count'] or 'count' in guide_cells['cells'][guide_cells['count'] % 4]), guide_cells)
+    check('Tango\'s part is the cowbell, and there is no choosing it', page.evaluate('bsmashSoundKind()') == 'cowbell'
+          and page.evaluate("BSMASH_MUSICIANS[0].sounds.join()") == 'cowbell')
+    chords = page.evaluate("""[bsmashChordAt(bsmashBand.start + 4 * BSMASH_BAR - 0.1), bsmashChordAt(bsmashBand.start + 4 * BSMASH_BAR - 0.3),
+                               bsmashChordAt(bsmashBand.start + 1 * BSMASH_BAR - 0.05)]""")
+    check('A press a fraction before the barline plays the next bar\'s chord; earlier, its own',
+          chords == ['I', 'V', 'IV'], chords)
+
+    # The studio, eight bars: Pause, Resume, then listen back with the line.
+    page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p); startBeatMusician('drums', false, 5)")
+    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=20000)
+    page.click('#beat-transport-record')
+    take = wait_for_take(page)
+    offset = clock_offset(page)
+    early = [t for t in take['notes'] if t < take['start'] + 2 * 2.4]
+    for t in early:
+        press_at(page, offset, t + take['delay'], index=int(round((t - take['start']) / 0.6)) % 4)
+    page.wait_for_timeout(100)
+    shown = page.evaluate("['record', 'pause', 'play', 'keep'].map(id => !document.getElementById('beat-transport-' + id).hidden)")
+    check('Recording: Pause is there; Record, Listen and Keep are not', shown == [False, True, False, False], shown)
+    page.click('#beat-transport-pause')
+    page.wait_for_timeout(300)
+    paused = page.evaluate("""({ phase: bsmash.phase, bar: bsmash.take.pauseBar, loop: Math.round((bsmash.take.start - bsmashBand.start) / BSMASH_BAR) % 4,
+                                 label: document.getElementById('beat-transport-pause').textContent })""")
+    check('Pause: "right where I\'m at", and the button becomes Resume', paused['phase'] == 'paused' and 'Resume' in paused['label']
+          and 'Paused' in guide(page), [paused, guide(page)])
+    page.wait_for_timeout(1500)
+    page.click('#beat-transport-pause')
+    page.wait_for_timeout(200)
+    resumed = page.evaluate("""({ phase: bsmash.phase, from: bsmash.take.from, playFrom: bsmash.take.playFrom, start: bsmash.take.start,
+        loop: Math.round((bsmash.take.start - bsmashBand.start) / BSMASH_BAR) % 4,
+        notes: bsmash.take.notes.filter(n => n.t >= bsmash.take.playFrom - 0.01).map(n => n.t), delay: bsmash.delay })""")
+    check('Resume: from the top of the paused bar, still in its place in the loop',
+          resumed['from'] == paused['bar'] * 4 and resumed['loop'] == paused['loop'] and resumed['phase'] in ('wait', 'go'), [paused, resumed])
+    offset = clock_offset(page)
+    for t in resumed['notes']:
+        press_at(page, offset, t + resumed['delay'], index=int(round((t - resumed['start']) / 0.6)) % 4)
+    wait_take_done(page, 30)
+    page.wait_for_timeout(400)
+    score = page.inner_text('#beat-control .bsmash-control-score')
+    check('...and the take, paused and picked up again, is marked as one', score.startswith('100%'), score)
+    page.click('#beat-transport-play')
+    page.wait_for_timeout(300)
+    first = page.evaluate("(() => { const l = [...document.querySelectorAll('#beat-reading .bsmash-playline')].find(l => !l.hidden); return l ? parseFloat(l.style.left) : null; })()")
+    page.wait_for_function("bsmash.playback && bsmashHeardNow() > bsmash.playback.start + 1.5", timeout=15000)
+    later = page.evaluate("(() => { const l = [...document.querySelectorAll('#beat-reading .bsmash-playline')].find(l => !l.hidden); return l ? parseFloat(l.style.left) : null; })()")
+    check('Listen back: a green line waits at the start of the music, then moves through it with the sound',
+          first is not None and later is not None and later > first + 20, [first, later])
+    page.click('#beat-transport-stop')
+    page.wait_for_timeout(200)
+    check('...and Stop puts it away', page.evaluate("[...document.querySelectorAll('#beat-reading .bsmash-playline')].every(l => l.hidden)"))
+
+
 def code(page, text):
     page.evaluate("launchGame('view-dashboard'); toggleCredits(true)")
     page.fill('#kr-code-input', text)
@@ -1286,7 +1421,9 @@ def test_teacher_codes(page):
     page.click('.game-card.red')
     page.wait_for_timeout(400)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
-    check('...Beat Smash: every step open', chips == ['Warm-up', 'One bar', 'Two bars', 'Four bars', 'Eight bars', 'The studio'], chips)
+    check('...Beat Smash: every step open', chips == ['One bar', 'Two bars', 'Four bars', 'Eight bars', 'The studio'], chips)
+    closed = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .pathway-node')].filter(n => n.disabled).length")
+    check('...and every musician', closed == 0, closed)
     stats = page.inner_text('#beat-stats')
     check('...and the teacher sees the last beat test', '92% on the beat' in stats and '35 ms early' in stats, stats)
     said = code(page, 'KOOLOPEN')
@@ -1356,9 +1493,11 @@ def main():
         test_riff_keys(page)
         test_beat_light(page)
         test_follow_me(page)
+        test_warmup_story(page)
         test_songs(page)
         test_song_jam(page)
         test_jam_variations(page)
+        test_playtest_two(page)
         test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()

@@ -4,8 +4,9 @@
    Rob writes these. Each song is a loop of four bars at 100 bpm (a song of
    one or two bars is played round until the four are full), played live by
    the synthesised band (beat-smash-band.js): Tango's warm-up drums, a bass
-   and a suitcase Rhodes. Beat Smash's warm-up jam can use any song here
-   (the "Jam song" setting), and tools/beat-smash-band/lab.html plays them.
+   and a suitcase Rhodes. Beat Smash's warm-up jam plays the songs listed in
+   KR.jamSongs below (the "Jam song" setting), and
+   tools/beat-smash-band/lab.html plays every one.
 
    FOR EACH BAR, one chord:
      chord  the chord's name, for reading only - nothing plays from it
@@ -88,7 +89,104 @@ const KR_COMP_PUMPS = [
     'q q q. q. q h',
 ];
 
+/* THE JAM SONG MENU, in order. Rob, playtest 2 (2026-10-02): "Keep the first
+   jam song... get rid of [the others]. And bring back chord progressions...
+   So we'll just keep those Roman numerals, those jam songs. And then later we
+   can give them names." 'c' is the band's own I IV I V loops; the rest are
+   songs below. Rob's six from 2026-09-30 are off the menu but kept: the loop
+   lab still plays them, and any of them can go back on by adding its id here. */
+window.KR.jamSongs = [
+    'c',
+    'c-1-4-5-1',
+    'c-4-1-5-1',
+    'c-2-5-1',
+    'c-2-5-1-6',
+    'c-1-6-2-5',
+    'c-3-6-2-5',
+];
+
 window.KR.songs = {
+
+    /* ---------- The Roman-numeral jam songs (Rob, playtest 2) ----------
+       All in C, one chord a bar, every chord changing ON the barline. Rob
+       gave the numerals only; THE VOICINGS ARE CLAUDE'S, in his own manner
+       (four notes in the Rhodes' middle, each voice moving by a step or
+       holding), for him to replace:
+         C6      G A C E  (his)          Fmaj7  F A C E
+         G7      F G B D                 Dm7    F A C D  (his)
+         Cmaj9   E G B D                 Am7    E G A C
+         E7      E G# B D                A7     E G A C#
+       "Five, five, one" in the recording is taken to be two-five-one (ii V
+       I), the commonest of them all. Rob to confirm. */
+    'c-1-4-5-1': {
+        name: 'song.c-1-4-5-1',
+        bars: [
+            { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },
+            { chord: 'Fmaj7', bass: 'F2', keys: ['F4', 'A4', 'C5', 'E5'] },
+            { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
+            { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'pump' },
+    },
+    'c-4-1-5-1': {
+        name: 'song.c-4-1-5-1',
+        bars: [
+            { chord: 'Fmaj7', bass: 'F2', keys: ['F4', 'A4', 'C5', 'E5'] },
+            { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },
+            { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
+            { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'halves' },
+    },
+    'c-2-5-1': {
+        name: 'song.c-2-5-1',
+        bars: [
+            { chord: 'Dm7',   bass: 'D3', keys: ['F4', 'A4', 'C5', 'D5'] },
+            { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
+            { chord: 'Cmaj9', bass: 'C3', keys: ['E4', 'G4', 'B4', 'D5'] },
+            { chord: 'C6',    bass: 'C3', keys: ['E4', 'G4', 'A4', 'C5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'walk' },
+    },
+    'c-2-5-1-6': {
+        name: 'song.c-2-5-1-6',
+        bars: [
+            { chord: 'Dm7',   bass: 'D3', keys: ['F4', 'A4', 'C5', 'D5'] },
+            { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
+            { chord: 'Cmaj9', bass: 'C3', keys: ['E4', 'G4', 'B4', 'D5'] },
+            { chord: 'Am7',   bass: 'A2', keys: ['E4', 'G4', 'A4', 'C5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'walk' },
+    },
+    'c-1-6-2-5': {
+        name: 'song.c-1-6-2-5',
+        bars: [
+            { chord: 'Cmaj9', bass: 'C3', keys: ['E4', 'G4', 'B4', 'D5'] },
+            { chord: 'Am7',   bass: 'A2', keys: ['E4', 'G4', 'A4', 'C5'] },
+            { chord: 'Dm7',   bass: 'D3', keys: ['F4', 'A4', 'C5', 'D5'] },
+            { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'walk' },
+    },
+    // Rob: "three, six dominant, two minor, five dominant" - III7 VI7 ii7 V7.
+    'c-3-6-2-5': {
+        name: 'song.c-3-6-2-5',
+        bars: [
+            { chord: 'E7',  bass: 'E3', keys: ['E4', 'G#4', 'B4', 'D5'] },
+            { chord: 'A7',  bass: 'A2', keys: ['E4', 'G4',  'A4', 'C#5'] },
+            { chord: 'Dm7', bass: 'D3', keys: ['F4', 'A4',  'C5', 'D5'] },
+            { chord: 'G7',  bass: 'G2', keys: ['F4', 'G4',  'B4', 'D5'] },
+        ],
+        comp: { whole: 'w', pumps: KR_COMP_PUMPS },
+        bass: { whole: 'whole', groove: 'walk' },
+    },
+
+    /* ---------- Rob's songs of 2026-09-30 (off the jam menu, kept) ---------- */
 
     /* Rob, 2026-09-30, in C: I6 - biii dim7 - ii7 - V7(b9), one bar each.
        Right hand C6 in second inversion (G A C E); the outside voices move

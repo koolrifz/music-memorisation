@@ -1430,17 +1430,33 @@ Smash's players list. Beat Smash adds an **age** to a player.
   master, because `rstompAudioStop()` fades that master and the groove
   would dip whenever anything else stopped.
 - **The first minute is a jam, and it is the student's for as long as they
-  like.** Warm-up groove, four big pads, Tango demos a bar, "Copy me!". It
-  can't fail. **This was reversed once, on Rob's call after playing it:** the
-  first version turned the pads into notes after four on-beat taps, and he
-  said *"I think I've been robbed of the fun of maintaining that beat."* Now a
-  meter fills with each tap on the beat (and slips back one for a tap off it),
-  the **band builds with it** (bass at a third, keys at two thirds:
-  `BSMASH_JAM_LAYERS`, a taste of the band still to be won), and when it is
-  full (`BSMASH_JAM_GOAL`, 24 taps, about 15 s) **"Show me what I played"**
-  appears. The jam carries on until it is pressed; then the band steps back to
-  Tango alone and the pads become four quarter notes. Notation arrives when the
-  experience is ready to move on.
+  like.** Four big pads, Tango demos a bar on the cowbell, "Copy me!". It
+  can't fail. **Reversed twice, both times on Rob's call after playing it.**
+  The first version turned the pads into notes after four on-beat taps (*"I
+  think I've been robbed of the fun of maintaining that beat"*); the second
+  filled a meter in 24 taps with the band building under it.
+- **THE BAND NEEDS A PULSE: the warm-up is a story** (playtest 2, 2026-10-02:
+  *"A little story that the band needs a pulse. Your job is to keep the
+  pulse… If at any time you back off and stop playing, then you lose the
+  instrument. You got to win it back."*). It starts with **nobody playing**
+  but the student (`bsmashBandStart({})`), and Tango tells the story if no tap
+  comes. The band joins a player at a time, each after so many bars **held**
+  (`BSMASH_JAM_BUILD`: drums after 2, bass after 4, keys after 4, then 8 for
+  the full groove, about a minute as played). A bar is held with
+  `BSMASH_JAM_HELD_TAPS` (3) taps on the beat; a bar with
+  `BSMASH_JAM_DROPPED_TAPS` (1) or fewer **loses the last player to join**,
+  who has to be won back (`bsmashJamBar`, `bsmashJamJoin`, `bsmashJamLose`).
+  The meter is the bars held through the build, and the desk lights who is
+  playing. Once the groove is full nothing more is lost (the variations take
+  over), **"Show me what I played"** appears, and the jam carries on until it
+  is pressed; then the band steps back to Tango alone and the pads become
+  four quarter notes.
+- **A groove of their own** (Rob: *"That's a cool groove, but that's not what
+  we need for this song"*). Three taps on the "and" within two bars
+  (`BSMASH_AND_WINDOW`, 0.12 of a beat either side) say so, and outrank
+  "Follow me!" (her count still starts, in time). Measured from the device's
+  delay, the fixed reference: the running estimate follows a steady run of
+  off-beat taps and would never see them.
 - **"Follow me, 1 2 3 4"** (Rob, 2026-10-01: *"Tango doesn't say boom boom
   boom boom. Tango says follow me, 1 2 3 4. And continues counting until order
   has been restored or they give up."*). When the beat is lost (the sag
@@ -1487,8 +1503,8 @@ Smash's players list. Beat Smash adds an **age** to a player.
   **Not a real slow-down, and why:** the band's clock is what every beat,
   every tap and every take is measured against, so bending its tempo means
   re-timing the loops live. Parked; the sag is the clean version of the idea.
-- **The jam can be played over one of Rob's songs** (the "Jam song" setting;
-  see "ROB'S SONGS" below). Then the bass joins in whole notes, the keys in
+- **The jam can be played over a jam song** (the "Jam song" setting; see
+  "ROB'S SONGS" below). Then the bass joins in whole notes, the keys in
   whole notes, and a full meter switches both to his pumps, a different pump
   rhythm each time round: the longer the beat is held, the groovier it gets.
 - **A tap's time comes from the event, not the handler.** `bsmashEventTime()`
@@ -1526,6 +1542,10 @@ Smash's players list. Beat Smash adds an **age** to a player.
   same bar from notation), `star2` (picture until two beats before beat 1),
   `star3` (notation only), `retake`, and `studio` for the 32 bars. The picture is laid out on the
   notation's own slot grid, so the morph is a change of look, not of place.
+  **The squares come down at four bars** (Rob, playtest 2, on the eight-bar
+  step: *"There should be notation."*): only steps 1–2
+  (`BSMASH_PICTURE_STEPS`) start from the squares. From four bars every take
+  is read from the notation; the stars still count three in a row.
 - **Grading** is against the audio clock, the delay taken off each press.
   A press takes the nearest unplayed note in the window. One that misses the
   window but lands **within half a beat of a note still to be played is that
@@ -1551,9 +1571,13 @@ Smash's players list. Beat Smash adds an **age** to a player.
   is "back in by the next beat 1". The studio needs the pass mark alone.
   The window starts 40 ms wide of the age's and tightens 5 ms per clean take.
 
+- **The pathway is four squares** (Rob, playtest 2): **Warm-up** first, then
+  Tango · Drums, Riff · Bass, Riff · Keys. The warm-up square opens once the
+  jam has been played; with the teacher's Open code every square is open and
+  Beat Smash opens on the pathway rather than in the jam.
 - **Every step reached can be played again** (Rob: *"I'm locked out of being
-  able to replay the previous level"*). The pathway shows a chip per step:
-  Warm-up, One bar, Two bars, Four bars, Eight bars, The studio, and My band
+  able to replay the previous level"*). Each musician shows a chip per step:
+  One bar, Two bars, Four bars, Eight bars, The studio, and My band
   once won (and My Permit once the band is complete). Going back
   is practice: the stars fill as usual but the saved row (`streak`) belongs to
   the step the student is working on (`bsmashOnRecord()`), and clearing an
@@ -1572,6 +1596,10 @@ Smash's players list. Beat Smash adds an **age** to a player.
   is probably more what we are trying to drum in at this point in time"*);
   the one big pad is a setting. Keys `1 2 3 4` play the four pads, Space the
   one pad.
+- **Tango's part is a cowbell, with no choice** (Rob, playtest 2). Kick and
+  snare are gone. **The sound rows (and the studio length) are the teacher's
+  only** (`KR.openAll()`): *"the user doesn't need these settings"*. Pads and
+  the jam song stay for everyone.
 - **A miss on the first star just repeats that go** (the stars were already
   empty), so the child still sees the bar in notation. From the second star
   a miss empties the row and the bar is retaken as practice (§4).
@@ -1594,7 +1622,7 @@ his own:
   beat 3) · a half and a half rest · halves among quarters · the syncopation ·
   all 36. Steps 2 and 3 roll from all 36.
 - **Holding is the skill.** His pads play electric or acoustic bass (a
-  "Bass sound" row on the pathway, once he is reached), on the bar's root, and
+  "Bass sound" row on the pathway for the teacher), on the bar's root, and
   **sustain while held**. A half note let go before the middle of its second
   beat (the start of it, on touch) is short and the take isn't clean; this
   rule was always in `bsmashRelease()`, his steps are the first to use it. In
@@ -1679,6 +1707,29 @@ have to press record. I think it should just come the normal way."*
   bar number. After the take every line opens, scrolled to the first slip.
 - So a student now reads at least **12 phrases of four bars and more, and a
   32-bar take, per musician** before choosing that musician's part.
+- **The steps are spots to FIX UP** (Rob, playtest 2: Riff and Tango ask you
+  to fix a few spots, then you play the whole part). Only the words: the
+  intros and the step lines say "spot", the studio says "the whole part". The
+  bars are rolled, as before; Rob: random is fine.
+- **Takes sit on the band's four-bar loop** (Rob, playtest 2: *"four-bar
+  phrases are so important"*). `bsmashTakeStartBar()`: four and eight bars
+  start at the top of the loop, counted in on its bar 4; two bars start on
+  bar 1 or 3; one bar anywhere. The waiting is bars of the groove, so it is
+  never dead time. `#beat-loop` (`bsmashLoopGuide`) shows the four bars of
+  the loop in the header: the one sounding, and the one that counts in.
+- **A press just before the barline plays the next chord**
+  (`BSMASH_ANTICIPATE_BEATS`, the last quarter of a beat): the anticipation
+  Rob asked for, the same rule the band's keys follow.
+- **Pause, in the studio** (Rob: *"I just want to pause, right where I'm
+  at"*). `pauseBeatTake()`: everything from the top of the bar being played is
+  forgotten and the band plays on; **Resume** (`resumeBeatTake()`) picks up
+  from the top of that bar, counted in by the bar before, **in the same place
+  in the loop**, and the take is marked as one. Record, Listen and Keep hide
+  while recording or paused.
+- **A green line follows the listen-back** (`.bsmash-playline`,
+  `bsmashFollowPlayback`): it rides the notation's own slot grid, so it lands
+  on the notes. Listen-back starts from the take's place in the loop, so it
+  can wait up to a loop; the line waits at the start of the music meanwhile.
 - **Next, proposed and NOT built:** Rob's own parts to choose from (cáscara,
   tumbao, montunos…), and building a song with its form:
   `docs/beat-smash-parts-proposal.md`. Song by song, each a tier up:
@@ -1777,7 +1828,21 @@ repeated to fill four bars.
   under everything: the loudest song and style now peaks at 0.89.
 - **Hear them in `tools/beat-smash-band/lab.html`**: pick the song, a keys
   rhythm (each pump rhythm on its own, too) and a bass style.
-- **Six songs:** `c-6dim`, `c-6dim-tritone` (the last chord ♭II7(♭5)), both
+- **THE JAM SONG MENU is Roman numerals** (Rob, playtest 2: *"get rid of
+  [the others] and bring back chord progressions… we'll just keep those
+  Roman numerals, those jam songs. And then later we can give them names."*).
+  `KR.jamSongs` in `content/songs.js` is the menu, in order: the C loops
+  (I IV I V), then I IV V I, IV I V I, ii V I, ii V I vi, I vi ii V,
+  III7 VI7 ii V, all in C, one chord a bar. **Every voicing is Claude's**,
+  for Rob to replace. *"Five, five, one"* in the recording was taken to be
+  ii V I. His six songs below are off the menu but kept; adding an id to the
+  list puts one back.
+- **The C loops change chord ON the barline.** Rob: *"It moves at funny
+  times; it really needs to be one bar on the one, one bar on the four."* The
+  Spicy and Smooth keys used to play the next chord on the "and" of 4, and
+  the Smooth bass stepped into the next root there. Both stay in their own
+  bar now, and the loop files were re-rendered.
+- **Six songs of Rob's:** `c-6dim`, `c-6dim-tritone` (the last chord ♭II7(♭5)), both
   in A flat, `bb-rhythm-changes` (Rob's `||: Bb6 G- | C-7 F7 :||`) and
   `d-minor-two-five` (`Dm6 | Em7b5 A7alt`). **Open for Rob:** the ♭II7(♭5)
   voicing and every voicing in the last two are Claude's, since he gave
@@ -1882,8 +1947,12 @@ three screen sizes,
 the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,
 "Next" after Keep straight into the next musician,
-the jam (the meter, the band building, a wobbly start, the beat test, the
-sag, the stop and its menu, a jam over Rob's song), his songs (voicings,
+the jam (the band needs a pulse: the band joining bar by bar, a player lost
+and won back, a groove of their own; a wobbly start, the beat test, the
+sag, the stop and its menu, a jam over a jam song and the Roman-numeral
+menu), playtest 2 (takes on the four-bar loop, the loop guide, notation from
+four bars, the cowbell, anticipation, Pause and Resume in the studio, the
+green playback line, Open going to the pathway), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),

@@ -27,8 +27,7 @@
 
   The format for writing music as data is already there. Parts would extend
   it.
-- **The studio take is 32 bars.** That is one time through a standard song
-  form: AABA, four sections of eight bars.
+- **The studio take is 32 bars**, once through.
 
 ## The proposal
 
@@ -74,13 +73,10 @@
    band so far, then keeps one. **Variations** can be a second line on a
    part that the jam brings in each time round, as the jam's variations do
    now.
-4. **Building a song** (later, once the parts exist). The student would:
-   1. choose a **progression** (Rob's songs);
-   2. choose a **form** (for example AABA, which is 32 bars);
-   3. lay down the drums, then the bass, then the keys.
-
-   The 32-bar studio take would then be the student's own song, once
-   through.
+4. **Building a song** (later, once the parts exist). The student would
+   choose a **progression** (the jam songs), then lay down the drums, then
+   the bass, then the keys. Choosing a **form** is left out for now: Rob,
+   playtest 2, *"Do not show AABA options yet."*
 
 ## Questions for Rob
 
@@ -91,9 +87,6 @@
 2. **The notation above.** Is it how you would like to write them? Anything
    you would write differently, such as accents or ghost notes on the
    drums?
-3. **The form.** Should the 32-bar take be the song's form, with the
-   sections labelled A, A, B, A on the music? Or is form a later step, once
-   students choose their own progressions?
-4. **Sounds.** Should a part name its own sound (piano vs Rhodes vs organ,
+3. **Sounds.** Should a part name its own sound (piano vs Rhodes vs organ,
    congas vs kit)? Or does the student choose the sound separately, as the
    "Bass sound" setting does now?
