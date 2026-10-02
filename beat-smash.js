@@ -468,15 +468,18 @@ function bsmashBandStart(parts) {
     if (!bsmashTicker) bsmashTicker = setInterval(bsmashTick, 25);
 }
 
-// A part is 'warmup', a style ('spicy'...), or one of Rob's songs,
-// 'song:<song>:<comp>' (content/songs.js), which is always played live.
+// A part is 'warmup', a style ('spicy'...), or one played live (see
+// bsmashIsSongPart), which has no loop file.
 function bsmashPartLoopId(instrument, style) {
     if (bsmashIsSongPart(style)) return null;
     return style === 'warmup' ? 'beat.loop.warmup' : bsmashLoopId(instrument, style);
 }
 
+// A part played live, note by note, so it can join part-way through a cycle:
+// one of Rob's songs ('song:'), a won part over the band's chosen song
+// ('band:'), the chord guide ('guide:'), or the metronome ('click').
 function bsmashIsSongPart(style) {
-    return typeof style === 'string' && style.indexOf('song:') === 0;
+    return typeof style === 'string' && (/^(song|band|guide):/.test(style) || style === 'click');
 }
 
 function bsmashBandStop() {
@@ -620,6 +623,8 @@ const BSMASH_ANTICIPATE_BEATS = 0.25;      // the last quarter of a beat before 
 function bsmashChordAt(t) {
     if (!bsmashBand) return 'I';
     const bar = Math.floor((t + BSMASH_ANTICIPATE_BEATS * BSMASH_BEAT - bsmashBand.start) / BSMASH_BAR + 1e-6);
+    // Building a band: the chord of the song the student chose.
+    if (bsmash && bsmash.song) return BeatSmashBand.chordOf(bsmash.song, bar);
     return BSMASH_SONG.chords[((bar % BSMASH_SONG.bars) + BSMASH_SONG.bars) % BSMASH_SONG.bars];
 }
 
@@ -1769,8 +1774,223 @@ function bsmashJamMorph() {
     bsmashSave(progress);
     bsmashLater(() => {
         if (progress.musicians.drums.won) showBeatPathway();
+        else if (!bsmashSongOf(bsmashLoad())) showBeatSongs();
         else startBeatMusician('drums', true);
     }, bsmash.delay > BSMASH_DELAY_BLUETOOTH ? 8000 : 4500);
+}
+
+/* =========================================
+   THE SONG: CHOSEN ONCE, AND THE BAND IS BUILT ON IT
+   =========================================
+   Rob, 2026-10-02: "We should be able to audition each chord progression
+   and select the progression they want to develop into a rhythm section.
+   That means all of their 1, 2, 4 and 8 bars are backed by the chord
+   progression... And their 32 bar is over that same chord progression."
+   After the warm-up the student auditions the songs (KR.bandSongs in
+   content/songs.js): plain piano chords over a click, no rhythm. A tap
+   plays one. To choose it they HOLD it and slide it up into the Add box
+   that appears above (Rob, after Balatro: "you click on it and hold it
+   down, and then a box above appears, and it says add, so you just slide it
+   up to the box and drop it in"). Once chosen, that is the song: "They
+   don't get to change. They can start another one if they like." A new song
+   is a new band, built from the beginning; the old band is kept in
+   progress.songs, and the Learner's Permit, earned once, stays. */
+const BSMASH_DEFAULT_SONG = 'c-1-4-1-5';   // the C loops' own I IV I V
+const BSMASH_HOLD_MS = 220;                // how long a card is held before it lifts
+const BSMASH_HOLD_SLOP = 12;               // px a finger may move and still be a tap
+
+function bsmashBandSongs() {
+    const songs = (window.KR && KR.songs) || {};
+    return ((window.KR && KR.bandSongs) || []).filter(id => songs[id]);
+}
+
+// The song this band is built on, or null if none has been chosen. A band
+// begun before songs could be chosen was built on the C loops, I IV I V, and
+// keeps it; with the teacher's Open code that is the song until one is chosen.
+function bsmashSongOf(progress) {
+    if (progress.song) return progress.song;
+    const begun = BSMASH_MUSICIANS.some(m => progress.musicians[m.id].won || progress.musicians[m.id].plays > 0);
+    return begun || KR.openAll() ? BSMASH_DEFAULT_SONG : null;
+}
+
+function bsmashSong() {
+    return bsmashSongOf(bsmashLoad());
+}
+
+// A won part's style ('spicy'...) as the band plays it: over the chosen
+// song, live, for the bass and keys. Drums have no chords.
+function bsmashBandPart(instrument, style, song) {
+    if (song === undefined) song = bsmashSong();
+    if (!song || instrument === 'drums' || style === 'warmup') return style;
+    return 'band:' + song + ':' + style;
+}
+
+function showBeatSongs() {
+    bsmashStopAll();
+    bsmash = { mode: 'songs', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay(), song: null, audition: null };
+    switchScreenState('beat', 'beat-screen-song');
+    bsmashAudio();
+    bsmashRenderSongs();
+    bsmashResetDrop('beat-song-drop');
+    bsmashEl('beat-song-add').hidden = true;
+    // The little metronome runs from the start; a song joins it in time.
+    bsmashBandStart({ click: 'click' });
+    bsmashBandLevel(BSMASH_BAND_FULL);
+    bsmashEvent(bsmashLoad().song ? 'beat.songs.ours' : 'beat.songs.open', { song: bsmashSongName(bsmashLoad().song) });
+}
+
+function bsmashSongName(id) {
+    return id ? KR.t('song.' + id) : '';
+}
+
+function bsmashRenderSongs() {
+    const box = bsmashEl('beat-song-cards');
+    box.innerHTML = '';
+    const ours = bsmashLoad().song;
+    bsmashBandSongs().forEach(id => {
+        const card = bsmashMake('button', 'bsmash-song-card', box); // text-ok: class names
+        card.type = 'button';
+        card.dataset.song = id;
+        card.classList.toggle('ours', id === ours);
+        bsmashMake('span', 'bsmash-song-icon', card).textContent = KR.t('song.' + id + '.icon');
+        bsmashMake('span', 'bsmash-song-name', card).textContent = bsmashSongName(id);
+        // The chords, for the teacher only: the children are just listening.
+        if (KR.openAll()) bsmashMake('small', 'bsmash-song-chords', card).textContent = KR.t('song.' + id + '.chords');
+        bsmashDragToAdd(card, {
+            drop: 'beat-song-drop',
+            active: () => !!(bsmash && bsmash.mode === 'songs' && !bsmash.adding),
+            lift: () => auditionBeatSong(id),         // what goes in the box is what was heard
+            add: () => addBeatSong(id),
+        });
+        card.onclick = () => { if (!bsmashJustDropped(card)) auditionBeatSong(id); };
+    });
+}
+
+function auditionBeatSong(id) {
+    if (!bsmash || bsmash.mode !== 'songs') return;
+    bsmashAudio();
+    bsmash.audition = id;
+    bsmashBandSetPart('guide', 'guide:' + id);
+    bsmashBandLevel(BSMASH_BAND_FULL);
+    document.querySelectorAll('#beat-song-cards .bsmash-song-card').forEach(card =>
+        card.classList.toggle('on', card.dataset.song === id));
+    // For a keyboard, or a child who would rather press: an Add button too.
+    const add = bsmashEl('beat-song-add');
+    add.hidden = false;
+    add.textContent = KR.t('beat.songs.add', { song: bsmashSongName(id) });
+}
+
+function addAuditionedBeatSong() {
+    if (bsmash && bsmash.audition) addBeatSong(bsmash.audition);
+}
+
+/* HOLD, THEN SLIDE UP INTO THE ADD BOX: the song chooser and the part
+   picker both add this way. A quick tap is a tap (it plays the card); a
+   finger that moves before the hold is up is not a hold. Once lifted the
+   card follows the finger, the box appears above (its space was kept, so
+   nothing moves under the finger) and lights when the card is over it.
+   opts: drop (the box's id), active() (may a card be lifted now?), lift()
+   (it was lifted: play it), add() (it was dropped in the box). */
+let bsmashDrag = null;
+
+function bsmashDragToAdd(card, opts) {
+    const drop = () => bsmashEl(opts.drop);
+    card.addEventListener('pointerdown', e => {
+        if (!opts.active() || (e.button !== undefined && e.button !== 0)) return;
+        const drag = bsmashDrag = { card: card, x: e.clientX, y: e.clientY, lifted: false, dropped: false, pointer: e.pointerId };
+        drag.timer = setTimeout(() => {
+            if (bsmashDrag !== drag || !opts.active()) return;
+            drag.lifted = true;
+            card.classList.add('lifted');
+            try { card.setPointerCapture(drag.pointer); } catch (err) {}
+            drop().hidden = false;
+            opts.lift();
+        }, BSMASH_HOLD_MS);
+    });
+    card.addEventListener('pointermove', e => {
+        const drag = bsmashDrag;
+        if (!drag || drag.card !== card) return;
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (!drag.lifted) {
+            if (Math.hypot(dx, dy) > BSMASH_HOLD_SLOP) { clearTimeout(drag.timer); bsmashDrag = null; }
+            return;
+        }
+        e.preventDefault();
+        card.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.08)';
+        drop().classList.toggle('over', bsmashOverBox(drop(), e.clientX, e.clientY));
+    });
+    const end = e => {
+        const drag = bsmashDrag;
+        if (!drag || drag.card !== card) return;
+        clearTimeout(drag.timer);
+        if (!drag.lifted) { bsmashDrag = null; return; }
+        const over = e.type === 'pointerup' && bsmashOverBox(drop(), e.clientX, e.clientY);
+        drag.dropped = true;                       // the click that follows is not a tap
+        card.classList.remove('lifted');
+        card.style.transform = '';
+        drop().classList.remove('over');
+        try { card.releasePointerCapture(drag.pointer); } catch (err) {}
+        setTimeout(() => { if (bsmashDrag === drag) bsmashDrag = null; }, 0);
+        if (over) opts.add();
+        else drop().hidden = true;
+    };
+    card.addEventListener('pointerup', end);
+    card.addEventListener('pointercancel', end);
+}
+
+// Was this card just dropped (so its click is not a tap)?
+function bsmashJustDropped(card) {
+    return !!(bsmashDrag && bsmashDrag.card === card && bsmashDrag.dropped);
+}
+
+function bsmashResetDrop(id) {
+    const drop = bsmashEl(id);
+    drop.hidden = true;
+    drop.classList.remove('added', 'over');
+    drop.querySelector('.bsmash-song-drop-label').textContent = KR.t('beat.songs.drop');
+}
+
+function bsmashOverBox(box, x, y) {
+    const r = box.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+// The song goes in. Choosing a different song once a band has been begun
+// is a new band, so it asks first; the old band is kept.
+function addBeatSong(id) {
+    if (!bsmash || bsmash.mode !== 'songs' || bsmash.adding) return;
+    const progress = bsmashLoad();
+    const current = bsmashSongOf(progress);
+    const begun = BSMASH_MUSICIANS.some(m => progress.musicians[m.id].won || progress.musicians[m.id].plays > 0);
+    if (current && current !== id && begun && !window.confirm(KR.t('beat.songs.newConfirm', { song: bsmashSongName(current) }))) {
+        bsmashEl('beat-song-drop').hidden = true;
+        return;
+    }
+    if (current !== id && begun) {
+        progress.songs = (progress.songs || []).concat([{ song: current, musicians: progress.musicians, at: Date.now() }]);
+        progress.musicians = {};
+    }
+    progress.song = id;
+    progress.songAt = progress.songAt || Date.now();
+    bsmashSave(progress);
+    bsmash.adding = true;
+    const drop = bsmashEl('beat-song-drop');
+    drop.hidden = false;
+    drop.classList.add('added');
+    drop.querySelector('.bsmash-song-drop-label').textContent = KR.t('song.' + id + '.icon') + ' ' + bsmashSongName(id);
+    bsmashBandSetPart('guide', 'guide:' + id);
+    bsmashEl('beat-song-add').hidden = true;
+    document.querySelectorAll('#beat-song-cards .bsmash-song-card').forEach(card => {
+        card.classList.toggle('ours', card.dataset.song === id);
+        card.disabled = true;
+    });
+    bsmashEvent('beat.songs.added', { song: bsmashSongName(id) });
+    // Straight on to the band: the next musician to win, over this song.
+    bsmashLater(() => {
+        const next = bsmashNextMusician();
+        if (next) startBeatMusician(next.id, true);
+        else showBeatPathway();
+    }, 2600);
 }
 
 /* =========================================
@@ -1782,6 +2002,8 @@ function bsmashJamMorph() {
 function startBeatMusician(id, keepBand, step) {
     const musician = BSMASH_MUSICIANS.find(m => m.id === id);
     if (!musician || !musician.built) return;
+    // A band is built on a song: no song chosen yet, choose one first.
+    if (!bsmashSong()) return showBeatSongs();
     const record = bsmashUpdateMusician(id, { plays: bsmashMusicianRecord(id).plays + 1 });
     if (!keepBand) bsmashStopAll();
     const pads = bsmash && bsmash.pads;
@@ -1789,7 +2011,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmashStopTimers();
     const playing = step || record.step;
     bsmash = {
-        mode: 'steps', musician: musician, step: playing,
+        mode: 'steps', musician: musician, step: playing, song: bsmashSong(),
         streak: bsmashOnRecord(record, playing) ? record.streak : 0,
         delay: bsmashDelay(), lastBeat: null, pads: pads, frame: frame, take: null, bars: null,
     };
@@ -1800,6 +2022,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-light').hidden = true;
     bsmashBandStart(bsmashBandSoFar(id));
+    bsmashBandRemovePart('click');          // the song chooser's metronome
     bsmashBandLevel(BSMASH_BAND_QUIET);
     bsmashNewRoll();
     if (record.plays === 1) bsmashEvent('beat.musician.intro.' + id);
@@ -1810,10 +2033,15 @@ function startBeatMusician(id, keepBand, step) {
 // is still to be earned.
 function bsmashBandSoFar(playing) {
     const progress = bsmashLoad();
+    const song = bsmashSongOf(progress);
     const parts = { drums: progress.musicians.drums.won ? progress.musicians.drums.part : 'warmup' };
     ['bass', 'keys'].forEach(id => {
-        if (id !== playing && progress.musicians[id].won) parts[id] = progress.musicians[id].part;
+        if (id !== playing && progress.musicians[id].won) parts[id] = bsmashBandPart(id, progress.musicians[id].part, song);
     });
+    // The song itself, as plain piano chords, whenever the keys aren't in
+    // the band (not won yet, or the student is playing them): every take is
+    // played over the chord progression the student chose.
+    if (song && (!progress.musicians.keys.won || playing === 'keys')) parts.guide = 'guide:' + song;
     return parts;
 }
 
@@ -2586,6 +2814,7 @@ function bsmashOpenPicker(cameBack) {
     bsmashEl('beat-picker-keep').hidden = true;
     bsmashEl('beat-picker-done').hidden = true;
     bsmashEl('beat-picker-next').hidden = true;
+    bsmashResetDrop('beat-picker-drop');
     bsmashEl('beat-picker-desk').classList.add('dim');
     bsmashEvent('beat.part.won.' + musician.id);
     if (cameBack) bsmashLater(() => bsmashEvent('beat.take.comeback'), 2400);
@@ -2598,9 +2827,16 @@ function bsmashOpenPicker(cameBack) {
             bsmashStylePicture(card, musician.id, style);
             const name = bsmashMake('span', 'bsmash-style-name', card);
             name.textContent = KR.t('beat.style.' + style);
-            card.onclick = () => auditionBeatPart(style);
+            bsmashDragToAdd(card, {
+                drop: 'beat-picker-drop',
+                active: () => !!(bsmash && bsmash.picker && !bsmash.picker.locked),
+                lift: () => auditionBeatPart(style),
+                add: () => { auditionBeatPart(style); bsmashKeepPart(false); },
+            });
+            card.onclick = () => { if (!bsmashJustDropped(card)) auditionBeatPart(style); };
         });
         cards.hidden = false;
+        bsmashEl('beat-picker-drop').classList.remove('added');
         const keep = bsmashEl('beat-picker-keep');
         keep.hidden = false;
         keep.disabled = true;
@@ -2626,7 +2862,7 @@ function auditionBeatPart(style) {
     if (!bsmash || !bsmash.picker || bsmash.picker.locked) return;
     const picker = bsmash.picker;
     bsmashAudio();
-    bsmashBandSetPart(bsmash.musician.id, style);
+    bsmashBandSetPart(bsmash.musician.id, bsmashBandPart(bsmash.musician.id, style));
     bsmashBandLevel(BSMASH_BAND_FULL);
     picker.choice = style;
     if (picker.heard.indexOf(style) === -1) picker.heard.push(style);
@@ -2656,7 +2892,9 @@ function bsmashKeepPart(quietly) {
         bsmashSave(progress);
     }
     if (quietly) return;
-    bsmashBandSetPart(id, style);
+    bsmashBandSetPart(id, bsmashBandPart(id, style));
+    // The keys won: they play the chords now, so the guide piano steps out.
+    if (id === 'keys') bsmashBandRemovePart('guide');
     bsmashBandLevel(BSMASH_BAND_FULL);
     bsmashRenderDesk('beat-picker-desk');
     bsmashEl('beat-picker-desk').classList.remove('dim');
@@ -2665,6 +2903,11 @@ function bsmashKeepPart(quietly) {
         card.disabled = true;
     });
     bsmashEl('beat-picker-keep').hidden = true;
+    // The part in the box: added to the band.
+    const drop = bsmashEl('beat-picker-drop');
+    drop.hidden = false;
+    drop.classList.add('added');
+    drop.querySelector('.bsmash-song-drop-label').textContent = KR.t('beat.style.' + style + '.icon') + ' ' + KR.t('beat.style.' + style);
     bsmashEvent('beat.part.locked.' + id, { style: KR.t('beat.style.' + style) });
     bsmashLater(() => {
         bsmashEl('beat-picker-done').hidden = false;
@@ -2713,14 +2956,17 @@ function keepBeatPart() {
 /* ---------- Playback: the band, loud (§8, step 5) ---------- */
 function openBeatBand() {
     const progress = bsmashLoad();
+    const song = bsmashSongOf(progress);
     const parts = {};
     ['drums', 'bass', 'keys'].forEach(id => {
-        if (progress.musicians[id].won) parts[id] = progress.musicians[id].part;
+        if (progress.musicians[id].won) parts[id] = bsmashBandPart(id, progress.musicians[id].part, song);
     });
     if (!Object.keys(parts).length) return;
+    if (song && !progress.musicians.keys.won) parts.guide = 'guide:' + song;
     const keepBand = !!bsmashBand;
     if (!keepBand) bsmashStopAll();
     if (!bsmash) bsmash = { mode: 'band', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay() };
+    bsmash.song = song;
     bsmashStopTimers();
     bsmash.picker = { heard: [], choice: null, locked: true };
     switchScreenState('beat', 'beat-screen-picker');
@@ -2730,17 +2976,19 @@ function openBeatBand() {
     const cards = bsmashEl('beat-picker-cards');
     cards.innerHTML = '';
     cards.hidden = false;
-    Object.keys(parts).forEach(id => {
+    ['drums', 'bass', 'keys'].filter(id => progress.musicians[id].won).forEach(id => {
+        const part = progress.musicians[id].part;
         const card = bsmashMake('button', 'bsmash-style-card', cards);
         card.type = 'button';
-        card.classList.add('chosen', 'style-' + parts[id]);
+        card.classList.add('chosen', 'style-' + part);
         card.disabled = true;
-        bsmashStylePicture(card, id, parts[id]);
+        bsmashStylePicture(card, id, part);
         const name = bsmashMake('span', 'bsmash-style-name', card);
         name.textContent = KR.t('beat.channel.' + id);
     });
     bsmashEl('beat-picker-keep').hidden = true;
     bsmashEl('beat-picker-done').hidden = false;
+    bsmashResetDrop('beat-picker-drop');
     bsmashShowNext();
     bsmashAudio();
     Object.keys(parts).forEach(id => {
@@ -2878,7 +3126,7 @@ function bsmashUnlocked(index, progress) {
     const musician = BSMASH_MUSICIANS[index];
     if (!musician.built) return false;
     if (KR.openAll()) return true;          // the teacher's Open code
-    if (index === 0) return !!progress.jamDone;
+    if (index === 0) return !!progress.jamDone && !!bsmashSongOf(progress);
     return !!progress.musicians[BSMASH_MUSICIANS[index - 1].id].won;
 }
 
@@ -2899,6 +3147,20 @@ function renderBeatPathway() {
     bsmashMake('span', 'pathway-node-label', warm).textContent = KR.t('beat.step.jam');
     warm.onclick = () => selectBeatMusician('jam');
     bsmashSelected = 'jam';
+    // The song, second: chosen after the warm-up, and the band is built on it.
+    const song = bsmashSongOf(progress);
+    const songOpen = !!progress.jamDone || KR.openAll();
+    const songNode = bsmashMake('button', 'pathway-node', track);
+    songNode.dataset.id = 'song';
+    songNode.classList.add(songOpen ? 'unlocked' : 'locked');
+    if (song) songNode.classList.add('cleared');
+    songNode.disabled = !songOpen;
+    bsmashMake('span', 'pathway-node-icon', songNode).textContent = song ? KR.t('song.' + song + '.icon') : KR.t('beat.song.icon');
+    bsmashMake('span', 'pathway-node-label', songNode).textContent = song ? bsmashSongName(song) : KR.t('beat.song.node');
+    if (songOpen) {
+        songNode.onclick = () => selectBeatMusician('song');
+        if (!song) bsmashSelected = 'song';
+    }
     BSMASH_MUSICIANS.forEach((musician, index) => {
         const open = bsmashUnlocked(index, progress);
         const record = progress.musicians[musician.id];
@@ -2937,6 +3199,7 @@ function selectBeatMusician(id) {
         node.classList.toggle('recommended', node.dataset.id === id));
     const progress = bsmashLoad();
     if (id === 'jam') bsmashSelectedStep = 'jam';
+    else if (id === 'song') bsmashSelectedStep = 'song';
     else {
         const record = progress.musicians[id];
         bsmashSelectedStep = record.won ? 'band' : record.step;
@@ -2952,6 +3215,7 @@ let bsmashSelectedStep = null;
 
 function bsmashStepChoices(id) {
     if (id === 'jam') return ['jam'];
+    if (id === 'song') return ['song'];
     const progress = bsmashLoad();
     const record = progress.musicians[id];
     const reached = KR.openAll() || record.won ? BSMASH_STUDIO_STEP : record.step;
@@ -2969,14 +3233,15 @@ function bsmashRenderSteps() {
     bsmashStepChoices(bsmashSelected).forEach(step => {
         const chip = bsmashMake('button', 'bsmash-chip bsmash-step-chip', row); // text-ok
         chip.type = 'button';
-        chip.textContent = KR.t('beat.step.' + step);
+        chip.textContent = step === 'song' && bsmashSong() ? KR.t('beat.step.ourSong') : KR.t('beat.step.' + step);
         chip.classList.toggle('on', step === bsmashSelectedStep);
         chip.onclick = () => { bsmashSelectedStep = step; bsmashRenderSteps(); };
     });
     const start = bsmashEl('beat-pathway-start');
     start.disabled = false;
     start.textContent = KR.t(bsmashSelectedStep === 'band' ? 'beat.playBand'
-        : bsmashSelectedStep === 'permit' ? 'beat.permit.show' : 'beat.start');
+        : bsmashSelectedStep === 'permit' ? 'beat.permit.show'
+        : bsmashSelectedStep === 'song' ? 'beat.songs.button' : 'beat.start');
 }
 
 function startSelectedBeat() {
@@ -2985,6 +3250,7 @@ function startSelectedBeat() {
     bsmashAudio();
     if (bsmashSelectedStep === 'band') return openBeatBand();
     if (bsmashSelectedStep === 'jam') return startBeatJam();
+    if (bsmashSelectedStep === 'song') return showBeatSongs();
     if (bsmashSelectedStep === 'permit') return showBeatPermit();
     startBeatMusician(id, false, bsmashSelectedStep);
 }

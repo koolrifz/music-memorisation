@@ -1571,9 +1571,10 @@ Smash's players list. Beat Smash adds an **age** to a player.
   is "back in by the next beat 1". The studio needs the pass mark alone.
   The window starts 40 ms wide of the age's and tightens 5 ms per clean take.
 
-- **The pathway is four squares** (Rob, playtest 2): **Warm-up** first, then
-  Tango · Drums, Riff · Bass, Riff · Keys. The warm-up square opens once the
-  jam has been played; with the teacher's Open code every square is open and
+- **The pathway is five squares**: **Warm-up** first (Rob, playtest 2), then
+  the **Song** (see "THE SONG" below), then Tango · Drums, Riff · Bass, Riff ·
+  Keys. The song square opens once the jam has been played, and the musicians
+  once a song is chosen; with the teacher's Open code every square is open and
   Beat Smash opens on the pathway rather than in the jam.
 - **Every step reached can be played again** (Rob: *"I'm locked out of being
   able to replay the previous level"*). Each musician shows a chip per step:
@@ -1765,6 +1766,60 @@ audio output changes (there is a **Re-time my taps** button instead); art
 (the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
 exist); swapping a part later (open in the brief).
 
+### THE SONG: chosen after the warm-up, and the band is built on it
+Rob, 2026-10-02: *"We should be able to audition each chord progression and
+select the progression they want to develop into a rhythm section. That means
+all of their 1, 2, 4 and 8 bars are backed by the chord progression... And
+their 32 bar is over that same chord progression."*
+
+- **The order:** the warm-up (unchanged: *"We control that first minute and
+  hook them in"*), then **the song**, then Tango, Riff on bass, Riff on keys.
+  The pathway is five squares; the musicians wait for a song.
+- **The song chooser** (`#beat-screen-song`, `showBeatSongs()`): the songs in
+  `KR.bandSongs` (`content/songs.js`), each a card with a fun placeholder name
+  and icon (`song.<id>`, `song.<id>.icon` in `lang/en-US.js`: Sunrise, Lemonade,
+  Skate Park, Moonwalk, Night Owl, Bubblegum, Rollercoaster; Rob: *"just short
+  little names... they're just going to listen to it"*). The Roman numerals
+  show on the cards only with the teacher's Open code. A **tap auditions**:
+  plain piano chords, a whole note each, the root in the left hand
+  (`guide:<song>`), over a little click (`click`). No rhythm.
+- **Hold and slide up to add** (Rob, after Balatro: *"you click on it and hold
+  it down, and then a box above appears, and it says add, so you just slide it
+  up to the box and drop it in"*). A card held `BSMASH_HOLD_MS` lifts and
+  follows the finger; the Add box appears above (its space is kept while
+  hidden, so nothing moves under a finger); dropped in it, that is the song.
+  An **Add <song>** button does the same for a keyboard or a child who would
+  rather press. Then straight into the band's next musician. **The part
+  picker adds the same way** (*"they're going to be able to add them as they
+  win their parts"*): hold a part, slide it into its box, and it is in the
+  band; Keep still works. One helper, `bsmashDragToAdd()`, does both.
+- **Once chosen, that is the song** (*"They don't get to change. They can
+  start another one if they like."*). Choosing another asks first; yes starts
+  a **new band from the beginning** (`progress.musicians` reset) and the old
+  one is kept in `progress.songs`. The Learner's Permit, earned once, stays.
+  A band begun before songs existed keeps I IV I V (`BSMASH_DEFAULT_SONG`),
+  which is what it was built on.
+- **The band follows the song.** Bass and keys parts are played live over it:
+  `'band:<song>:<style>'` (`beat-smash-band.js`), the same spicy / smooth /
+  hop patterns taking each bar's root and the song's voicing
+  (`bandChords()`). Drums are still the loop files: no chords. Until the keys
+  are won (or while the student plays them) the **guide piano** holds the
+  chords under every take, so the 1, 2, 4 and 8 bars and the studio's 32 are
+  all over the song. The student's own bass and keys pads play the song's
+  chord for the bar (`BeatSmashBand.chordOf`, anticipation included).
+- **Levels, measured:** every song with every drum, bass and keys style peaks
+  at 0.87 at worst (the C loops: 0.85), after `BAND_TRIM` (0.85) on the live
+  band parts; the guide under drums and bass, 0.79; the audition, 0.65.
+- **The warm-up's own jam-song setting is unchanged** (Rob: the first minute
+  stays as it is). It now shows the same fun names.
+- **Nothing is locked once a band is complete**: the warm-up, the song, and
+  every musician's steps, studio, My band and Permit can all be played again
+  (checked, after Rob felt *"locked out"*).
+- **Next, from Rob:** he will write the voicings, the arrangement and the
+  parts himself (*"I am a composer, so I might as well put myself to good
+  use"*); the bass and keys styles are reused across songs until then. The
+  song's form (AABA and the like) is still not shown.
+
 ### The beat test — what the numbers could do (proposal, not built)
 Rob asked for a "handicap": *"They tap that beat for 15 seconds. If they're 95%
 or 100% you know where they are. If they're sitting at 65% we have to make sure
@@ -1952,7 +2007,10 @@ and won back, a groove of their own; a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over a jam song and the Roman-numeral
 menu), playtest 2 (takes on the four-bar loop, the loop guide, notation from
 four bars, the cowbell, anticipation, Pause and Resume in the studio, the
-green playback line, Open going to the pathway), his songs (voicings,
+green playback line, Open going to the pathway), the song (the five
+squares, auditioning, holding a song and sliding it into the Add box, the band
+and the pads over its chords, a new song a new band with the old one kept, a
+part added by the same drag), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),

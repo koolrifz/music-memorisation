@@ -797,11 +797,30 @@
             <div class="kr-guide-text"></div>
         </div>
         <h2 class="bsmash-picker-title" id="beat-picker-title"></h2>
+        <div class="bsmash-song-drop" id="beat-picker-drop" hidden>
+            <span class="bsmash-song-drop-label" data-text="beat.songs.drop"></span>
+        </div>
         <div class="bsmash-style-cards" id="beat-picker-cards" hidden></div>
         <button class="btn btn-start" id="beat-picker-keep" hidden disabled onclick="keepBeatPart()" data-text="beat.button.keep"></button>
         <div class="bsmash-desk" id="beat-picker-desk"></div>
         <button class="btn btn-start" id="beat-picker-next" hidden onclick="startNextBeatMusician()"></button>
         <button class="btn btn-secondary" id="beat-picker-done" hidden onclick="showBeatPathway()" data-text="beat.button.studio"></button>
+    </div>
+
+    <!-- The song the band is built on: auditioned, then held and slid up into
+         the Add box (beat-smash.js, "THE SONG"). -->
+    <div id="beat-screen-song" class="screen">
+        <div class="kr-guide" id="beat-song-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <h2 class="bsmash-picker-title" data-text="beat.songs.title"></h2>
+        <div class="bsmash-song-drop" id="beat-song-drop" hidden>
+            <span class="bsmash-song-drop-label" data-text="beat.songs.drop"></span>
+        </div>
+        <div class="bsmash-song-cards" id="beat-song-cards"></div>
+        <button class="btn btn-start" id="beat-song-add" hidden onclick="addAuditionedBeatSong()"></button>
+        <button class="btn btn-secondary" onclick="showBeatPathway()" data-text="beat.jam.menu"></button>
     </div>
 
     <!-- The Learner's Permit (brief §10, §15): the booth passed. -->

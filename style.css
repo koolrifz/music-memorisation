@@ -1041,7 +1041,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #view-beat .btn-back { min-height: 56px; padding: 0 18px; font-size: 16px; }
 #view-beat .pathway-card { margin-top: 64px; }
 #view-beat .btn-secondary { min-height: 56px; }
-#beat-pathway-track { grid-template-columns: repeat(4, 1fr); }
+#beat-pathway-track { grid-template-columns: repeat(5, 1fr); }   /* warm-up, song, and the three musicians */
 #beat-pathway-guide .kr-guide-text, #beat-player-guide .kr-guide-text { font-size: 14px; }
 #beat-pathway-guide { margin-top: 12px; }
 
@@ -1225,6 +1225,9 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-style-card.heard { border-color: var(--s); }
 .bsmash-style-card.on { border-color: var(--s); box-shadow: 0 0 18px var(--s); transform: scale(1.05); }
 .bsmash-style-card.chosen { border-color: var(--s); box-shadow: 0 0 22px var(--s); }
+.bsmash-style-card { touch-action: none; user-select: none; -webkit-user-select: none; }
+.bsmash-style-card.lifted { position: relative; z-index: 5; box-shadow: 0 12px 28px rgba(0,0,0,0.6), 0 0 18px var(--s); }
+.bsmash-style-card > * { pointer-events: none; }
 .bsmash-style-card:disabled:not(.chosen) { opacity: 0.3; }
 .bsmash-style-icon { font-size: 40px; line-height: 1; }
 .bsmash-style-art { width: 72px; height: 72px; object-fit: contain; }
@@ -1232,6 +1235,26 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #beat-picker-keep:disabled { background: #3c526d; box-shadow: 0 6px 0 #2a3b4f; opacity: 0.6; }
 #beat-picker-done { max-width: 480px; }
 #beat-picker-next { max-width: 480px; min-height: 56px; margin-bottom: 10px; }
+
+/* ---------- The song chooser (Rob, 2026-10-02) ----------
+   Tap a card to hear it; hold it and slide it up into the Add box. The box
+   keeps its place while hidden, so nothing moves under a finger when it
+   appears. */
+#beat-screen-song { padding: 72px 10px 16px; background: radial-gradient(ellipse at 50% 0%, #22303f 0%, #10171f 70%); gap: 10px; }
+.bsmash-song-drop { width: 100%; max-width: 480px; min-height: 72px; border: 3px dashed var(--accent-gold); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: var(--accent-gold); font-weight: 900; font-size: 20px; background: rgba(255,200,0,0.06); transition: background 0.15s, transform 0.15s; }
+.bsmash-song-drop[hidden] { display: flex; visibility: hidden; }
+.bsmash-song-drop.over { background: rgba(255,200,0,0.25); transform: scale(1.04); }
+.bsmash-song-drop.added { border-style: solid; background: rgba(88,204,2,0.18); border-color: var(--accent-green); color: white; }
+.bsmash-song-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 480px; }
+.bsmash-song-card { min-height: 92px; border-radius: 16px; border: 3px solid #3f556c; background: #1b2530; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: grab; font-weight: 900; font-size: 15px; touch-action: none; user-select: none; -webkit-user-select: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.bsmash-song-card.on { border-color: var(--accent-gold); box-shadow: 0 0 16px rgba(255,200,0,0.6); }
+.bsmash-song-card.ours { border-color: var(--accent-green); box-shadow: 0 0 16px rgba(88,204,2,0.5); }
+.bsmash-song-card.lifted { position: relative; z-index: 5; cursor: grabbing; box-shadow: 0 12px 28px rgba(0,0,0,0.6), 0 0 18px rgba(255,200,0,0.7); }
+.bsmash-song-card:disabled:not(.ours) { opacity: 0.3; }
+.bsmash-song-icon { font-size: 34px; line-height: 1; pointer-events: none; }
+.bsmash-song-name, .bsmash-song-chords { pointer-events: none; }
+.bsmash-song-chords { font-size: 10px; color: var(--text-muted); font-weight: 700; }
+#beat-song-add { max-width: 480px; min-height: 56px; }
 
 /* Short screens: the pads come down so the reading line and the pads both fit. */
 @media (max-height: 700px) {
