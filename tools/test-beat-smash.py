@@ -563,8 +563,8 @@ def test_long_steps(page):
     wait_for_take(page)
     play_take(page, skip=(0,))
     page.wait_for_timeout(300)
-    check('...one note lost, back in by the next beat 1: that passes, by the pass mark',
-          page.evaluate("bsmash.take.cameBack && !bsmash.take.lostBar") and state(page)['phase'] == 'reveal', state(page)['phase'])
+    check('...one note lost, back in by the next beat 1: that passes, by the pass mark, and the first star lands',
+          page.evaluate("bsmash.take.cameBack && !bsmash.take.lostBar") and state(page)['streak'] == 1, state(page))
     ok = play_until(page, "bsmashMusicianRecord('drums').step === 4", limit=8)
     check('Four bars, three in a row: on to eight bars', ok, record(page))
 
