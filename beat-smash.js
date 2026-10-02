@@ -1417,7 +1417,8 @@ function bsmashJamBeat(beat, bar, inBar) {
     // If the taps haven't settled, Tango counts them in.
     if (!jam.full && !jam.follow && inBar === 0 && bar - jam.lastDemoBar >= BSMASH_JAM_DEMO_EVERY_BARS && jam.inARow < 2) {
         jam.lastDemoBar = bar;
-        bsmashJamFollow(bar + 1, true);
+        // Her count always starts; her words wait if she has only just spoken.
+        bsmashJamFollow(bar + 1, bsmashNow() - jam.lastCoach >= BSMASH_COACH_EVERY_BARS * BSMASH_BAR);
     }
 }
 
@@ -1465,8 +1466,9 @@ function bsmashJamLose() {
     const instrument = BSMASH_JAM_BUILD[jam.level].instrument;
     bsmashBandRemovePart(instrument);
     bsmashRenderDesk('beat-desk');
-    // Not on top of something she has only just said.
-    if (bsmashNow() - jam.lastCoach >= BSMASH_BAR) { jam.lastCoach = bsmashNow(); bsmashEvent('beat.jam.lost.' + instrument); }
+    // Always said: losing a player IS the story, and outranks any coaching.
+    jam.lastCoach = bsmashNow();
+    bsmashEvent('beat.jam.lost.' + instrument);
 }
 
 // Tango starts counting from the top of bar `bar`: "Follow me! 1, 2, 3, 4."
