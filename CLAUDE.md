@@ -1271,6 +1271,12 @@ yet.** Every new game is designed so that it slots into it.
   3/4) and compound time (the 8 on the bottom) are taught separately**, simple
   first. The 2/4 against 6/8-in-two comparison comes when 6/8 speeds up (Stomp
   Lab's Stage E).
+- **The big game that holds it all is not designed yet.** Rob, 2026-10-03:
+  once it is, *"everything like the learner's permit will be named according
+  to the overall game environment and not something just specific to
+  itself."* His brainstorm (gold records on a wall, the charts: *"How many
+  gold albums can you get?"*) is in `ideas/gold-records.md`. Don't name a new
+  award until the metaphor is chosen.
 - **The note tree is the help menu**, and the student builds it themselves. Once
   a time signature is on screen, the tree labels each note with its beats in
   that signature.
@@ -1790,12 +1796,11 @@ kick and the fill are untouched), which brings it 9–10 dB closer in every
 style and lifts what a phone speaker plays (above 300 Hz) by about 4.5 dB.
 The loop files were re-rendered with `render.js`.
 
-**Not built yet:** sharing the Permit card as an image (open item 5's
-canvas snapshot would serve both); "my bit";
+**Not built yet:** "my bit";
 Tango noticing "You didn't need the blocks!"; re-offering calibration when the
 audio output changes (there is a **Re-time my taps** button instead); art
 (the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
-exist); swapping a part later (open in the brief).
+exist). Sharing and swapping a part are built: see "MY BAND" below.
 
 ### THE SONG: chosen after the warm-up, and the band is built on it
 Rob, 2026-10-02: *"We should be able to audition each chord progression and
@@ -1863,6 +1868,57 @@ their 32 bar is over that same chord progression."*
   parts himself (*"I am a composer, so I might as well put myself to good
   use"*); the bass and keys styles are reused across songs until then. The
   song's form (AABA and the like) is still not shown.
+
+### MY BAND: the song they built, theirs to play with
+Rob, 2026-10-03, after finishing his first band: *"Once you've earned a song,
+you should be able to go and play with it."* And on sharing: *"It's my fun…
+the way people put jibbitz on their Crocs. They're not going to share it, but
+what they will do is send it off to their teacher, along with statistics. And
+we can wrap that into a nice report."*
+
+- **Their own playing is in the band.** A studio take at the pass mark is
+  saved as `passedTake` (each press as `[beat in the take, beats held]`, its
+  pad sound and score: `bsmashTakeData()`); **Keep it** makes it the
+  musician's `take`. Until this, My band played only the style loops and the
+  32 bars the student recorded were thrown away. A press's beat is fixed when
+  it is pressed (`p.beat`), because a pause and resume moves `take.start`; the
+  listen-back uses it too, which fixed a paused take playing back shifted.
+- **Re-record to beat your score.** A won musician's studio is still open;
+  Tango names the score to beat (`beat.studio.retake`), and Keep puts the new
+  take straight into the band.
+- **The mixer** (`#beat-screen-band`, `bsmashRenderMixer()`): per musician,
+  **ME** (their take, on or off) and one of the musician's parts, or Off.
+  Saved per player as `progress.mix`; a toy, nothing earned or lost. Every
+  part Rob writes for a musician appears as a chip, so more parts mean more to
+  play with. With nothing on the keys, the guide piano holds the chords.
+- **Me plays on the band's clock** (`bsmashMeStart`, `bsmashBookMe`, booked
+  each cycle by `bsmashTick`): the take loops four bars to a cycle, so every
+  chord falls where it fell in the studio (a studio take always starts at the
+  top of the loop), and a press just before a barline plays the next chord.
+- **The numbers for the teacher** (Rob: *"gather their statistics over the one
+  bar, the two bar, the four bar, the eight bar, and the 32 bar"*). Every take
+  of every step, practice included, adds to that step's row in
+  `record.stats[step]` (`bsmashRecordStats()`): takes and passes, notes right,
+  every reason a note went wrong, ms off the beat and the lean, best score.
+  **My report** (`#beat-screen-report`) shows them by musician and step, with
+  the nickname, the song and the last beat test. One function
+  (`bsmashReport()`) feeds the screen, the picture and the message, so they
+  can't disagree.
+- **The recording** (`bsmashRenderBand()`): the band as mixed and every kept
+  take, rendered in an `OfflineAudioContext` with the game's own synth, as a
+  mono WAV (32 kHz, about 5 MB for 32 bars), with the report as a PNG with the
+  L plate (`bsmashReportImage()`). **Two taps, on purpose**: rendering takes a
+  moment and a share must come straight from a tap, so **Make my recording**
+  becomes **Send to my teacher** when it is ready. The phone's share sheet
+  sends it; with none, the files are saved to the device. Changing the mix
+  makes it again.
+- **Nicknames, not names** (Rob: *"don't worry about their names, because
+  we're not really asking their names… their own nickname. I don't want to
+  know who they are anyway."*). The player prompt asks for a nickname; the
+  report says "Nickname:".
+- **The big idea this points at** (gold records on a wall, the charts, every
+  award renamed to fit one metaphor for the whole app) is written up in
+  `ideas/gold-records.md`. Not built; not named yet.
 
 ### The beat test — what the numbers could do (proposal, not built)
 Rob asked for a "handicap": *"They tap that beat for 15 seconds. If they're 95%
@@ -2055,7 +2111,10 @@ green playback line, Open going to the pathway, the kick), the song (the five
 squares, auditioning, Rob's audition tune with its drums and bass, holding a
 song and sliding it into the Add box, the band
 and the pads over its chords, a new song a new band with the old one kept, a
-part added by the same drag), picking up after a break (the pathway's stars,
+part added by the same drag), My band (the mixer, ME, a take looping on the
+band's clock, the mix kept, the report, the recording as a WAV and a picture,
+a re-record kept into the band, a real studio take kept and every step
+counted), picking up after a break (the pathway's stars,
 Carry on and welcome back; the same studio bars after a reload; a passed
 take kept to choose; a guest's warm-up and song kept and adopted), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,

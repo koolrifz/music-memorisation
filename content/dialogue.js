@@ -127,6 +127,10 @@ KR.dialogue = {
         // The studio: Tango runs the control room, whoever's part it is.
         { on: 'beat.studio.ready',          speaker: 'tango', text: 'beat.studio.ready' },
         { on: 'beat.studio.passed',         speaker: 'tango', text: 'beat.studio.passed' },
+        { on: 'beat.studio.retake',         speaker: 'tango', text: 'beat.studio.retake' },
+        { on: 'beat.share.ready',           speaker: 'tango', text: 'beat.line.share.ready' },
+        { on: 'beat.share.saved',           speaker: 'tango', text: 'beat.line.share.saved' },
+        { on: 'beat.share.failed',          speaker: 'tango', text: 'beat.line.share.failed' },
         { on: 'beat.studio.again',          speaker: 'tango', text: 'beat.studio.again' },
         { on: 'beat.studio.stopped',        speaker: 'tango', text: 'beat.studio.stopped' },
         { on: 'beat.studio.paused',         speaker: 'tango', text: 'beat.studio.paused' },
