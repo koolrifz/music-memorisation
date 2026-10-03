@@ -23,6 +23,7 @@ Also run tools/check-text.py - this file tests behaviour, that one words.
 import functools
 import http.server
 import os
+import json
 import sys
 import threading
 import time
@@ -690,6 +691,14 @@ def test_picker(page):
     page.wait_for_timeout(300)
     rec = record(page)
     check('Keep: Spicy drums locked in', rec['won'] and rec['part'] == 'spicy', rec)
+    kept = rec.get('take') or {}
+    check('...and the studio take is kept for My band: every press, its sound, its score',
+          kept.get('bars') == 8 and len(kept.get('presses', [])) >= 20 and kept.get('kind') == 'kick'
+          and kept.get('score', 0) >= 85 and not rec.get('passedTake'), {k: kept.get(k) for k in ('bars', 'kind', 'score')})
+    stats = rec.get('stats') or {}
+    check('Every step\'s takes are counted for the report: one bar to the studio',
+          all(str(n) in stats and stats[str(n)]['takes'] >= 1 for n in range(1, 6))
+          and stats['5']['passed'] >= 1 and stats['1']['passed'] >= 3, {n: stats.get(n, {}).get('takes') for n in stats})
     check('...Tango says so', 'Spicy drums, locked in' in guide(page, 'beat-picker-guide'), guide(page, 'beat-picker-guide'))
     check('...and the drums channel lights on the desk',
           page.evaluate("document.querySelector('#beat-picker-desk .bsmash-channel').classList.contains('lit')"))
@@ -1522,6 +1531,102 @@ def code(page, text):
     return page.inner_text('#kr-code-result')
 
 
+def test_my_band(page):
+    """Rob, 2026-10-03: the band they won is theirs to play with (the mixer),
+    with their own studio takes in it ("Me"), a report of every step for the
+    teacher, and the band as an audio file to send them."""
+    def take(bars, every, kind):
+        return {'at': 1, 'score': 91, 'bars': bars, 'kind': kind, 'presses': [[b * 1.0, 0.8] for b in range(0, bars * 4, every)]}
+    stats = {'takes': 5, 'passed': 3, 'notes': 20, 'right': 18, 'hits': 19, 'offMs': 900, 'leanMs': -300, 'best': 100,
+             'early': 1, 'late': 0, 'missed': 1, 'rest': 0, 'extra': 0, 'short': 0, 'wrongPad': 0}
+    progress = {'jamDone': True, 'firstStar': True, 'song': 'c-1-4-1-5', 'permit': {'at': 1, 'bars': 32},
+                'beatTests': [{'at': 1, 'taps': 26, 'leanMs': -35, 'steadyMs': 42, 'onBeat': 92, 'delayMs': 0}],
+                'musicians': {
+                    'drums': {'step': 5, 'streak': 0, 'clean': 20, 'won': True, 'part': 'spicy', 'plays': 5,
+                              'take': take(32, 1, 'kick'), 'stats': {'1': stats, '5': dict(stats, takes=2, passed=1, best=91)}},
+                    'bass': {'step': 5, 'streak': 0, 'clean': 20, 'won': True, 'part': 'smooth', 'plays': 5, 'take': take(32, 2, 'bass-electric')},
+                    'keys': {'step': 5, 'streak': 0, 'clean': 20, 'won': True, 'part': 'hop', 'plays': 5}}}
+    fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Zed',age:'9-10'}],current:'p1'}));"
+                "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:%s}}));" % json.dumps(progress))
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.click('#beat-pathway-track [data-id=drums]')
+    page.click('#beat-pathway-start')          # My band, the won musician's default
+    page.wait_for_timeout(800)
+    mixer = page.evaluate("Object.fromEntries([...document.querySelectorAll('.bsmash-mixer-row')].map(r => [r.dataset.id,"
+                          " [...r.querySelectorAll('.bsmash-chip')].map(c => c.textContent + (c.classList.contains('on') ? '*' : '') + (c.disabled ? '-' : ''))]))")
+    check('My band: a mixer row per musician, the part they won lit, and ME lit where there is a kept take',
+          screen(page) == 'beat-screen-band' and mixer.get('drums') == ['ME*', 'Spicy*', 'Smooth', 'Hop', 'Off']
+          and mixer.get('bass')[:3] == ['ME*', 'Spicy', 'Smooth*'] and mixer.get('keys')[0] == 'ME-', mixer)
+    band = page.evaluate("({ parts: bsmashBand.parts, me: Object.keys(bsmashBand.me || {}).sort(),"
+                         " booked: bsmashQueue.filter(e => e.tag === 'me:drums').length })")
+    check('...the band plays every part won, with their own takes booked on top, in time',
+          band['parts'].get('drums') == 'spicy' and band['parts'].get('bass') == 'band:c-1-4-1-5:smooth'
+          and band['me'] == ['bass', 'drums'] and band['booked'] > 0, band)
+    hits = page.evaluate("bsmashMeHits({ bars: 32, kind: 'kick', presses: [[0, 1], [15.9, 0.2], [16, 1], [127.95, 0.1]] }, 1)"
+                         ".map(h => [h.beat, h.bar])")
+    check('...a take loops four bars to a cycle, and a press just before a barline plays the next chord',
+          [round(h[0], 2) for h in hits] == [0.0] and hits[0][1] == 0, hits)
+    page.click('.bsmash-mixer-row[data-id=bass] .bsmash-chip.me')
+    page.click('.bsmash-mixer-row[data-id=keys] .bsmash-chip:last-child')
+    page.click('.bsmash-mixer-row[data-id=drums] .bsmash-chip:nth-child(3)')
+    page.wait_for_timeout(300)
+    band = page.evaluate("({ parts: bsmashBand.parts, me: Object.keys(bsmashBand.me || {}).sort(), mix: bsmashLoad().mix })")
+    check('Swap a part, turn ME off, turn a channel off: the band changes in time, and with nothing on the keys the piano holds the chords',
+          band['parts'].get('drums') == 'smooth' and 'keys' not in band['parts'] and band['parts'].get('guide') == 'guide:c-1-4-1-5'
+          and band['me'] == ['drums'] and band['mix']['keys']['style'] == 'off', band)
+    page.reload()
+    page.wait_for_timeout(400)
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.evaluate("openBeatBand()")
+    page.wait_for_timeout(400)
+    check('...and the mix is still theirs next time', page.evaluate("bsmashBand.parts.drums") == 'smooth'
+          and page.evaluate("Object.keys(bsmashBand.me || {}).join()") == 'drums')
+    page.click('#beat-screen-band .btn-secondary >> nth=0')
+    page.wait_for_timeout(300)
+    report = page.inner_text('#beat-report')
+    check('My report: nickname, song, beat test, and each musician\'s steps for the teacher',
+          screen(page) == 'beat-screen-report' and 'Nickname: Zed' in report and 'Song: Sunrise' in report
+          and 'Beat test: 92%' in report and 'One bar: 5 takes, 3 passed' in report and '90% of notes right' in report
+          and 'a little early (16 ms)' in report and 'The studio: 2 takes, 1 passed' in report
+          and 'Take in the band: 91% (32 bars)' in report, report)
+    page.click('#beat-report-band')
+    page.wait_for_timeout(300)
+    check('Make my recording, then send it: two taps, because a share must come straight from a tap',
+          page.text_content('#beat-band-share') == 'Make my recording')
+    page.click('#beat-band-share')
+    page.wait_for_function("bsmashShared", timeout=60000)
+    made = page.evaluate("""(async () => {
+        const f = bsmashShared.files, buf = await f[0].arrayBuffer(), v = new DataView(buf);
+        let peak = 0; const n = (buf.byteLength - 44) / 2;
+        for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(v.getInt16(44 + i * 2, true)));
+        return { names: f.map(x => x.name), types: f.map(x => x.type), seconds: n / v.getUint32(24, true), peak: peak / 32768,
+                 button: document.getElementById('beat-band-share').textContent, text: bsmashShared.text }; })()""")
+    check('...the recording is the band and their takes, 32 bars as a WAV, with the report as a picture and as the message',
+          made['types'] == ['audio/wav', 'image/png'] and made['names'][0].endswith('.wav') and 76 < made['seconds'] < 82
+          and 0.85 < made['peak'] < 0.95 and made['button'] == 'Send to my teacher' and 'Nickname: Zed' in made['text']
+          and 'teacher' in guide(page, 'beat-band-guide'), made)
+    page.click('.bsmash-mixer-row[data-id=bass] .bsmash-chip.me')
+    page.wait_for_timeout(200)
+    check('...change the mix and it is made again', page.text_content('#beat-band-share') == 'Make my recording'
+          and page.evaluate('bsmashShared') is None)
+    # Re-record: back into the studio, beat the take in the band, keep it.
+    page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p); startBeatMusician('drums', false, 5)")
+    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=8000)
+    check('Re-record: Tango names the score to beat', 'Can you beat it' in guide(page) and '91%' in guide(page), guide(page))
+    check('...and only the band plays under it: the takes in My band stop', page.evaluate("!bsmashBand.me")
+          and page.evaluate("bsmashQueue.filter(e => /^me:/.test(e.tag)).length") == 0)
+    record_take(page)
+    page.wait_for_function("bsmash.phase === 'verdict'", timeout=8000)
+    page.click('#beat-transport-keep')
+    page.wait_for_timeout(500)
+    rec = record(page)
+    check('...Keep it: the new take is the one in the band, and My band plays it',
+          screen(page) == 'beat-screen-band' and rec['take']['bars'] == 8 and rec['take']['at'] > 1
+          and page.evaluate("bsmashBand.me && bsmashBand.me.drums && bsmashBand.me.drums.bars") == 8, rec['take'].get('bars'))
+
+
 def test_resume(page):
     """Rob, 2026-10-03: "I should be able to close the game and the game
     remembers how far I'm through." Mum calls, the tab closes, and the next
@@ -1724,6 +1829,7 @@ def main():
         test_song_choice(page)
         test_playtest_two(page)
         test_resume(page)
+        test_my_band(page)
         test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()

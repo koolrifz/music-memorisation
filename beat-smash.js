@@ -608,6 +608,7 @@ function bsmashTick() {
         }
         Object.keys(bsmashBand.parts).forEach(instrument =>
             bsmashPlayCycle(instrument, bsmashBand.parts[instrument], when));
+        bsmashBookMe(when, now);
         bsmashBand.next += BSMASH_LOOP;
     }
     while (bsmashQueue.length && bsmashQueue[0].when < now + 0.1) {
@@ -1092,7 +1093,7 @@ function bsmashStopAll() {
 
 document.addEventListener('visibilitychange', () => {
     const view = bsmashEl('view-beat');
-    if (document.hidden && bsmash && view && view.classList.contains('active')) showBeatPathway();
+    if (document.hidden && !bsmashSharing && bsmash && view && view.classList.contains('active')) showBeatPathway();
 });
 
 function bsmashOpenStudio() {
@@ -2052,6 +2053,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmashEl('beat-light').hidden = true;
     const soFar = bsmashBandSoFar(id);
     bsmashBandStart(soFar);
+    bsmashMeStart(null);     // My band's own takes stop: this is a take of its own
     // Anything else playing (the song chooser's click and audition) stops.
     if (bsmashBand) Object.keys(bsmashBand.parts).filter(part => !(part in soFar)).forEach(bsmashBandRemovePart);
     bsmashBandLevel(BSMASH_BAND_QUIET);
@@ -2171,7 +2173,11 @@ function bsmashStudioReady(fresh) {
     // a picture plays at once instead of waiting for a download.
     BSMASH_STYLES.forEach(style => bsmashLoadLoop(bsmashLoopId(bsmash.musician.id, style)));
     bsmashTransport();
-    if (fresh) bsmashEvent('beat.studio.ready', { bars: bsmash.specs.length });
+    if (!fresh) return;
+    // Back to re-record: the take in the band is the one to beat.
+    const kept = bsmashMusicianRecord(bsmash.musician.id).take;
+    if (kept) return bsmashEvent('beat.studio.retake', { score: kept.score });
+    bsmashEvent('beat.studio.ready', { bars: bsmash.specs.length });
 }
 
 // Which buttons are live depends on what is happening.
@@ -2308,7 +2314,11 @@ function keepBeatTake() {
     if (!take || !take.passed || bsmash.phase !== 'verdict') return;
     bsmashEl('beat-transport').hidden = true;
     bsmashControlRoom(null);
-    if (bsmashMusicianRecord(bsmash.musician.id).won) return openBeatBand();
+    // Re-recorded: the new take goes straight into the band.
+    if (bsmashMusicianRecord(bsmash.musician.id).won) {
+        bsmashKeepTake(bsmash.musician.id);
+        return openBeatBand();
+    }
     bsmashOpenPicker(take.cameBack);
 }
 
@@ -2325,6 +2335,28 @@ function bsmashControlRoom(take) {
     box.querySelector('.bsmash-control-score').textContent = KR.t('beat.control.score', { score: score, mark: mark });
 }
 
+/* ---------- A kept take ----------
+   What the student played in the studio, small enough to keep for ever: each
+   press as [beat in the take, beats held], and the pad sound it was played
+   on. My band plays it back over the band, and it goes into the audio file
+   they send their teacher. Rob: "You get to re-record your 32 bars." */
+function bsmashTakeData(take, score) {
+    const round = x => Math.round(x * 1000) / 1000;
+    return {
+        at: Date.now(), score: Math.round(score * 100), bars: take.bars, kind: bsmashSoundKind(),
+        presses: take.presses.map(p => [round(p.beat),
+            round(p.up !== null && p.up !== undefined ? Math.max(0.1, (p.up - p.time) / BSMASH_BEAT) : 0.25)]),
+    };
+}
+
+// Keep it: the passed take becomes the musician's take in My band.
+function bsmashKeepTake(id) {
+    const record = bsmashMusicianRecord(id);
+    if (!record.passedTake) return;
+    const changes = { take: record.passedTake, passedTake: null };
+    bsmashUpdateMusician(id, changes);
+}
+
 function bsmashStudioVerdict(take, score) {
     take.score = score;
     take.passed = score >= BSMASH_PASS_MARK[bsmashAge()];
@@ -2337,7 +2369,10 @@ function bsmashStudioVerdict(take, score) {
         const record = bsmashMusicianRecord(bsmash.musician.id);
         // studioPassed: the part is theirs to choose, even if the tab is
         // closed before Keep it is pressed.
-        bsmashUpdateMusician(bsmash.musician.id, { clean: record.clean + 1, studioPassed: !record.won });
+        // passedTake: what they played, kept for My band once they keep it.
+        bsmashUpdateMusician(bsmash.musician.id, {
+            clean: record.clean + 1, studioPassed: !record.won, passedTake: bsmashTakeData(take, score),
+        });
     }
     bsmashControlRoom(take);
     const vars = { score: Math.round(score * 100), mark: Math.round(BSMASH_PASS_MARK[bsmashAge()] * 100) };
@@ -2443,7 +2478,10 @@ function bsmashPress(p) {
     // Taps in the count-in, or after the last note, are free; but a press
     // within half a beat of the first note is that note, early.
     if (t < take.playFrom - Math.max(take.win, BSMASH_NEAR_BEAT * BSMASH_BEAT) || t > take.end + take.win) return;
-    take.presses.push(p);     // what the student played, for listening back
+    // What the student played, for listening back and keeping. Its beat in
+    // the take is fixed now: a pause and resume moves take.start.
+    p.beat = (t - take.start) / BSMASH_BEAT;
+    take.presses.push(p);
     let best = null;
     take.notes.forEach(note => {
         if (note.hit || note.missed || Math.abs(t - note.t) > take.win) return;
@@ -2565,12 +2603,16 @@ function bsmashVerdict() {
     bsmashTakeStats(take);
     const hits = take.notes.filter(n => n.hit && !n.short && !n.wrongPad).length;
     const score = hits / Math.max(1, take.notes.length + take.strays.length);
-    // The studio: the pass mark, and the student decides what happens next.
-    if (bsmash.scaffold === 'studio') return bsmashStudioVerdict(take, score);
     // One and two bars: every note right. Four and eight: the age's pass
-    // mark, and back in by the next beat 1 after any slip (§6).
-    const passed = bsmash.step <= BSMASH_CLEAN_STEPS ? !issues.length
+    // mark, and back in by the next beat 1 after any slip (§6). The studio:
+    // the pass mark alone.
+    const studio = bsmash.scaffold === 'studio';
+    const passed = studio ? score >= BSMASH_PASS_MARK[bsmashAge()]
+        : bsmash.step <= BSMASH_CLEAN_STEPS ? !issues.length
         : score >= BSMASH_PASS_MARK[bsmashAge()] && !take.lostBar;
+    bsmashRecordStats(take, score, passed, issues);
+    // The studio: the student decides what happens next.
+    if (studio) return bsmashStudioVerdict(take, score);
     if (!passed) return bsmashTakeTwo(issues);
     bsmashEl('beat-reading').classList.add('clean');
     bsmashBandLevel(BSMASH_BAND_FULL);
@@ -2610,6 +2652,52 @@ function bsmashTakeIssues(take) {
         at(stray.t, 'extra', stray.note, stray.note || bsmashBeatAt(take, stray.t));
     });
     return issues.sort((a, b) => a.t - b.t);
+}
+
+/* ---------- The numbers, for the teacher's report ----------
+   Rob: "We should be able to gather their statistics over the one bar, the
+   two bar, the four bar, the eight bar, and the 32 bar." Every take of every
+   step, practice included, adds to its step's row: takes and takes passed,
+   notes and notes played right, what went wrong by reason, how far off the
+   beat the notes were (ms, from the device's delay) and the best score. */
+const BSMASH_STAT_REASONS = ['early', 'late', 'missed', 'rest', 'extra', 'short', 'wrongPad'];
+
+function bsmashBlankStats() {
+    const s = { takes: 0, passed: 0, notes: 0, right: 0, hits: 0, offMs: 0, leanMs: 0, best: 0 };
+    BSMASH_STAT_REASONS.forEach(reason => { s[reason] = 0; });
+    return s;
+}
+
+function bsmashRecordStats(take, score, passed, issues) {
+    const progress = bsmashLoad();
+    const record = progress.musicians[bsmash.musician.id];
+    record.stats = record.stats || {};
+    const s = record.stats[bsmash.step] = Object.assign(bsmashBlankStats(), record.stats[bsmash.step]);
+    s.takes++;
+    if (passed) s.passed++;
+    take.notes.forEach(note => {
+        s.notes++;
+        if (note.hit && !note.short && !note.wrongPad) s.right++;
+        if (!note.hit) return;
+        s.hits++;
+        s.offMs += Math.round(Math.abs(note.offset) * 1000);
+        s.leanMs += Math.round(note.offset * 1000);
+    });
+    issues.forEach(issue => { if (issue.reason in s) s[issue.reason]++; });
+    s.best = Math.max(s.best, Math.round(score * 100));
+    bsmashSave(progress);
+}
+
+// One step's row, ready to read: accuracy and timing as whole numbers.
+function bsmashStatsSummary(s) {
+    if (!s || !s.takes) return null;
+    return {
+        takes: s.takes, passed: s.passed, best: s.best,
+        right: Math.round(100 * s.right / Math.max(1, s.notes)),
+        offMs: Math.round(s.offMs / Math.max(1, s.hits)),
+        leanMs: Math.round(s.leanMs / Math.max(1, s.hits)),
+        early: s.early, late: s.late, missed: s.missed, rest: s.rest + s.extra, short: s.short,
+    };
 }
 
 // The beat a press landed nearest, as a place to mark: { bar, slot, slots }.
@@ -2762,7 +2850,7 @@ function bsmashListenBack(take) {
     const kind = bsmashSoundKind();
     bsmashCancel('playback');
     take.presses.forEach(p => {
-        const at = start + (p.time - take.start);
+        const at = start + p.beat * BSMASH_BEAT;
         const held = p.up !== null ? Math.max(0.08, p.up - p.time) : 0.15;
         bsmashAt(at, t => {
             try { BeatSmashBand.pad(raudioCtx, bsmashPadBus, t, kind, bsmashChordAt(t)).release(t + held); }
@@ -2927,6 +3015,7 @@ function bsmashKeepPart(quietly) {
     const style = picker.choice || BSMASH_STYLES[0];
     picker.locked = true;
     const id = bsmash.musician.id;
+    bsmashKeepTake(id);
     bsmashUpdateMusician(id, { won: true, part: style, step: BSMASH_STUDIO_STEP, streak: 0, studioPassed: false });
     // The band is complete: the Learner's Permit (§15). It used to wait for
     // a booth of its own; now every musician ends in the studio, so the
@@ -2998,50 +3087,420 @@ function keepBeatPart() {
     if (bsmash && bsmash.picker && bsmash.picker.choice) bsmashKeepPart(false);
 }
 
-/* ---------- Playback: the band, loud (§8, step 5) ---------- */
+/* =========================================
+   MY BAND: the song they built, theirs to play with
+   =========================================
+   Rob, 2026-10-03: "Once you've earned a song, you should be able to go and
+   play with it." The band plays every part won, and each musician's kept
+   studio take ("Me") on top: the student hears themselves in the band.
+
+   The MIXER: per channel, one of that musician's parts or none, and Me on
+   or off. Nothing here is earned or lost: it is a toy. Every part Rob writes
+   for a musician appears as a chip here, so more parts mean more to play
+   with. Saved per player as progress.mix. */
+function bsmashMix(progress, id) {
+    const record = progress.musicians[id];
+    const saved = (progress.mix || {})[id] || {};
+    const style = saved.style === 'off' || BSMASH_STYLES.indexOf(saved.style) !== -1 ? saved.style : record.part;
+    return { style: style, me: !!record.take && saved.me !== false };
+}
+
+function bsmashSetMix(id, change) {
+    const progress = bsmashLoad();
+    progress.mix = progress.mix || {};
+    progress.mix[id] = Object.assign(bsmashMix(progress, id), change);
+    bsmashSave(progress);
+    bsmashApplyMix();
+    bsmashRenderMixer();
+    bsmashShareReady(null);      // the recording no longer matches the band
+}
+
+// The band as mixed: { parts: {instrument: part}, me: {instrument: take} }.
+function bsmashMixedBand(progress) {
+    const song = bsmashSongOf(progress);
+    const parts = {}, me = {};
+    ['drums', 'bass', 'keys'].forEach(id => {
+        const record = progress.musicians[id];
+        if (!record.won) return;
+        const mix = bsmashMix(progress, id);
+        if (mix.style !== 'off') parts[id] = bsmashBandPart(id, mix.style, song);
+        if (mix.me) me[id] = record.take;
+    });
+    // The guide piano holds the chords whenever nothing else plays them.
+    if (song && !parts.keys && !me.keys) parts.guide = 'guide:' + song;
+    return { song: song, parts: parts, me: me };
+}
+
 function openBeatBand() {
     const progress = bsmashLoad();
-    const song = bsmashSongOf(progress);
-    const parts = {};
-    ['drums', 'bass', 'keys'].forEach(id => {
-        if (progress.musicians[id].won) parts[id] = bsmashBandPart(id, progress.musicians[id].part, song);
-    });
-    if (!Object.keys(parts).length) return;
-    if (song && !progress.musicians.keys.won) parts.guide = 'guide:' + song;
-    const keepBand = !!bsmashBand;
-    if (!keepBand) bsmashStopAll();
-    if (!bsmash) bsmash = { mode: 'band', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay() };
-    bsmash.song = song;
+    if (!['drums', 'bass', 'keys'].some(id => progress.musicians[id].won)) return;
+    if (!bsmashBand) bsmashStopAll();
+    if (!bsmash || bsmash.mode !== 'band') {
+        if (bsmash && bsmash.frame) cancelAnimationFrame(bsmash.frame);
+        if (bsmash && bsmash.pads) bsmash.pads.destroy();
+        bsmash = { mode: 'band', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay() };
+    }
+    bsmash.song = bsmashSongOf(progress);
     bsmashStopTimers();
-    bsmash.picker = { heard: [], choice: null, locked: true };
-    switchScreenState('beat', 'beat-screen-picker');
-    bsmashEl('beat-picker-title').textContent = KR.t('beat.band.title');
-    bsmashRenderDesk('beat-picker-desk');
-    bsmashEl('beat-picker-desk').classList.remove('dim');
-    const cards = bsmashEl('beat-picker-cards');
-    cards.innerHTML = '';
-    cards.hidden = false;
-    ['drums', 'bass', 'keys'].filter(id => progress.musicians[id].won).forEach(id => {
-        const part = progress.musicians[id].part;
-        const card = bsmashMake('button', 'bsmash-style-card', cards);
-        card.type = 'button';
-        card.classList.add('chosen', 'style-' + part);
-        card.disabled = true;
-        bsmashStylePicture(card, id, part);
-        const name = bsmashMake('span', 'bsmash-style-name', card);
-        name.textContent = KR.t('beat.channel.' + id);
-    });
-    bsmashEl('beat-picker-keep').hidden = true;
-    bsmashEl('beat-picker-done').hidden = false;
-    bsmashResetDrop('beat-picker-drop');
-    bsmashShowNext();
+    switchScreenState('beat', 'beat-screen-band');
+    bsmashEl('beat-band-song').textContent = bsmash.song ? KR.t('song.' + bsmash.song + '.icon') + ' ' + bsmashSongName(bsmash.song) : '';
+    bsmashEl('beat-band-permit').hidden = !progress.permit;
+    bsmashShareReady(null);
     bsmashAudio();
-    Object.keys(parts).forEach(id => {
-        if (bsmashBand && bsmashBand.parts[id] !== parts[id]) bsmashBandSetPart(id, parts[id]);
-    });
-    bsmashBandStart(parts);
+    bsmashApplyMix();
     bsmashBandLevel(BSMASH_BAND_FULL);
+    bsmashRenderMixer();
     bsmashPlayback();
+}
+
+// Put the band as mixed on: parts swapped in time, Me booked from now.
+function bsmashApplyMix() {
+    const band = bsmashMixedBand(bsmashLoad());
+    if (bsmashBand) Object.keys(bsmashBand.parts).filter(id => !(id in band.parts)).forEach(bsmashBandRemovePart);
+    Object.keys(band.parts).forEach(id => {
+        if (bsmashBand && bsmashBand.parts[id] !== band.parts[id]) bsmashBandSetPart(id, band.parts[id]);
+    });
+    bsmashBandStart(band.parts);
+    bsmashMeStart(band.me);
+}
+
+function bsmashRenderMixer() {
+    const box = bsmashEl('beat-mixer');
+    if (!box) return;
+    const progress = bsmashLoad();
+    box.innerHTML = '';
+    ['drums', 'bass', 'keys'].forEach(id => {
+        const record = progress.musicians[id];
+        if (!record.won) return;
+        const mix = bsmashMix(progress, id);
+        const row = bsmashMake('div', 'bsmash-mixer-row', box);
+        row.dataset.id = id;
+        bsmashMake('span', 'bsmash-mixer-name', row).textContent = KR.t('beat.channel.' + id);
+        const chips = bsmashMake('div', 'bsmash-mixer-chips', row);
+        const chip = (text, on, choose, extra) => {
+            const button = bsmashMake('button', 'bsmash-chip', chips);
+            button.type = 'button';
+            button.textContent = text;
+            if (extra) button.classList.add(extra);
+            button.classList.toggle('on', on);
+            button.onclick = choose;
+            return button;
+        };
+        // Me: their own kept take, on top of the part.
+        const me = chip(KR.t('beat.mixer.me'), mix.me, () => bsmashSetMix(id, { me: !mix.me }), 'me');
+        me.disabled = !record.take;
+        BSMASH_STYLES.forEach(style => chip(KR.t('beat.style.' + style), mix.style === style,
+            () => bsmashSetMix(id, { style: style }), 'style-' + style));
+        chip(KR.t('beat.mixer.off'), mix.style === 'off', () => bsmashSetMix(id, { style: 'off' }));
+    });
+}
+
+/* ---------- Me: the kept takes, played over the band ----------
+   Each take loops on the band's clock: its first four bars on a cycle of the
+   band's loop, so every chord falls where it fell in the studio (a studio
+   take always starts at the top of the loop). Booked a cycle at a time by
+   bsmashTick, as the band's own parts are. */
+function bsmashMeStart(me) {
+    if (!bsmashBand) return;
+    BSMASH_MUSICIANS.forEach(m => bsmashCancel('me:' + m.id));
+    bsmashBand.me = me && Object.keys(me).length ? me : null;
+    if (!bsmashBand.me) return;
+    // The cycles the band has already booked: the rest of them, from now.
+    const from = bsmashNow() + 0.05;
+    [bsmashBand.next - 2 * BSMASH_LOOP, bsmashBand.next - BSMASH_LOOP].forEach(cycle => {
+        if (cycle + BSMASH_LOOP > from) bsmashBookMe(cycle, from);
+    });
+}
+
+function bsmashBookMe(cycleStart, from) {
+    if (!bsmashBand || !bsmashBand.me) return;
+    const cycle = Math.round((cycleStart - bsmashBand.start) / BSMASH_LOOP);
+    const song = bsmash && bsmash.song;
+    Object.keys(bsmashBand.me).forEach(id => {
+        bsmashMeHits(bsmashBand.me[id], cycle).forEach(hit => {
+            const at = cycleStart + hit.beat * BSMASH_BEAT;
+            if (at < (from || 0)) return;
+            const chord = song ? BeatSmashBand.chordOf(song, hit.bar) : BSMASH_SONG.chords[hit.bar % 4];
+            bsmashAt(at, t => {
+                try { BeatSmashBand.pad(raudioCtx, bsmashPadBus, t, hit.kind, chord).release(t + hit.held * BSMASH_BEAT); }
+                catch (e) { /* a dud sound must not stop the band */ }
+            }, 'me:' + id);
+        });
+    });
+}
+
+// The presses of a take that fall in one cycle of the band's loop, with
+// their beat in that cycle and the bar of the song whose chord they play (a
+// press just before a barline anticipates the next chord).
+function bsmashMeHits(take, cycle) {
+    if (!take || !take.presses || !take.bars) return [];
+    const total = take.bars * 4, cycles = Math.max(1, Math.round(take.bars / 4));
+    const k = ((cycle % cycles) + cycles) % cycles;
+    const hits = [];
+    take.presses.forEach(([beat, held]) => {
+        const b = ((beat % total) + total) % total;
+        if (Math.floor(b / 16) !== k) return;
+        hits.push({ beat: b - k * 16, held: held, kind: take.kind,
+            bar: Math.floor((b + BSMASH_ANTICIPATE_BEATS) / 4) % 4 });
+    });
+    return hits;
+}
+
+/* =========================================
+   THE REPORT: the numbers, for the teacher
+   =========================================
+   Rob: "They're not going to share it, but what they will do is send it off
+   to their teacher, along with statistics. And we can wrap that into a nice
+   report." One report, three ways: on screen (#beat-report), as a picture
+   to send (bsmashReportImage) and as the message's text (bsmashReportText).
+   They all read bsmashReport(), so they can't disagree. No real names: the
+   student is their nickname. */
+function bsmashReport() {
+    const progress = bsmashLoad();
+    const player = bsmashPlayer();
+    const song = bsmashSongOf(progress);
+    const report = {
+        title: KR.t('beat.report.title'),
+        head: [
+            KR.t('beat.report.who', { name: player ? player.name : KR.t('beat.report.guest') }),
+            song ? KR.t('beat.report.song', { song: bsmashSongName(song) }) : null,
+            KR.t('beat.report.date', { date: new Date().toLocaleDateString() }),
+        ].filter(Boolean),
+        blocks: [],
+    };
+    const test = (progress.beatTests || [])[(progress.beatTests || []).length - 1];
+    if (test) report.head.push(KR.t('beat.report.beatTest', { onBeat: test.onBeat }));
+    BSMASH_MUSICIANS.forEach(m => {
+        const record = progress.musicians[m.id];
+        const stats = record.stats || {};
+        const lines = [];
+        for (let step = 1; step <= BSMASH_STUDIO_STEP; step++) {
+            const s = bsmashStatsSummary(stats[step]);
+            if (!s) continue;
+            const lean = Math.abs(s.leanMs) < 15 ? KR.t('beat.report.lean.even')
+                : KR.t(s.leanMs < 0 ? 'beat.report.lean.early' : 'beat.report.lean.late', { ms: Math.abs(s.leanMs) });
+            lines.push(KR.t(step === BSMASH_STUDIO_STEP ? 'beat.report.studio' : 'beat.report.line', {
+                step: KR.t('beat.step.' + step), takes: s.takes, passed: s.passed, right: s.right,
+                off: s.offMs, lean: lean, best: s.best,
+            }));
+        }
+        if (record.take) lines.push(KR.t('beat.report.kept', { score: record.take.score, bars: record.take.bars }));
+        if (!lines.length) return;
+        const title = record.won ? KR.t('beat.report.musician.won', { who: KR.t('beat.musician.' + m.id), style: KR.t('beat.style.' + record.part) })
+            : KR.t('beat.musician.' + m.id);
+        report.blocks.push({ title: title, lines: lines });
+    });
+    if (!report.blocks.length) report.blocks.push({ title: KR.t('beat.report.none'), lines: [] });
+    return report;
+}
+
+function showBeatReport() {
+    switchScreenState('beat', 'beat-screen-report');
+    const box = bsmashEl('beat-report');
+    box.innerHTML = '';
+    const report = bsmashReport();
+    const head = bsmashMake('div', 'bsmash-report-head', box);
+    report.head.forEach(line => { bsmashMake('div', null, head).textContent = line; });
+    report.blocks.forEach(block => {
+        const el = bsmashMake('div', 'bsmash-report-block', box);
+        bsmashMake('h3', null, el).textContent = block.title;
+        block.lines.forEach(line => { bsmashMake('div', 'bsmash-report-line', el).textContent = line; });
+    });
+    bsmashEl('beat-report-band').hidden = !BSMASH_MUSICIANS.some(m => bsmashMusicianRecord(m.id).won);
+}
+
+function bsmashReportText() {
+    const report = bsmashReport();
+    const out = [report.title].concat(report.head);
+    report.blocks.forEach(block => { out.push('', block.title); block.lines.forEach(l => out.push(l)); });
+    return out.join('\n');
+}
+
+// The report as a picture, with the L plate on it: a PNG Blob.
+function bsmashReportImage() {
+    const report = bsmashReport();
+    const W = 1080, pad = 64;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const font = (size, weight) => (weight || 700) + ' ' + size + 'px system-ui, -apple-system, Segoe UI, Roboto, sans-serif'; // text-ok: a CSS font
+    const wrap = (text, size, weight) => {
+        ctx.font = font(size, weight);
+        const words = text.split(' '), lines = [];
+        let line = '';
+        words.forEach(word => {
+            const tryLine = line ? line + ' ' + word : word;
+            if (ctx.measureText(tryLine).width > W - 2 * pad - 40 && line) { lines.push(line); line = word; }
+            else line = tryLine;
+        });
+        if (line) lines.push(line);
+        return lines;
+    };
+    // Lay it out once to measure, then draw.
+    const rows = [];
+    rows.push({ text: report.title, size: 56, weight: 900, color: '#facc15', gap: 18 });
+    report.head.forEach(line => rows.push({ text: line, size: 34, weight: 600, color: '#cbd5e1', gap: 8 }));
+    report.blocks.forEach(block => {
+        rows.push({ text: block.title, size: 40, weight: 900, color: '#ffffff', gap: 12, top: 34 });
+        block.lines.forEach(line => rows.push({ text: line, size: 31, weight: 500, color: '#dbe4ee', gap: 10 }));
+    });
+    rows.push({ text: KR.t('beat.report.footer'), size: 28, weight: 600, color: '#7c8da0', gap: 0, top: 40 });
+    let height = pad + 150;
+    const laid = rows.map(row => {
+        const lines = wrap(row.text, row.size, row.weight);
+        height += (row.top || 0) + lines.length * row.size * 1.3 + row.gap;
+        return Object.assign({ lines: lines }, row);
+    });
+    canvas.width = W;
+    canvas.height = Math.ceil(height + pad);
+    ctx.fillStyle = '#111a24';
+    ctx.fillRect(0, 0, W, canvas.height);
+    // The L plate: black on yellow.
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(pad, pad, 110, 110);
+    ctx.fillStyle = '#111111';
+    ctx.font = font(84, 900);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(KR.t('beat.permit.plate'), pad + 55, pad + 60);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    let y = pad + 150;
+    laid.forEach(row => {
+        y += row.top || 0;
+        ctx.fillStyle = row.color;
+        ctx.font = font(row.size, row.weight);
+        row.lines.forEach(line => { ctx.fillText(line, pad, y); y += row.size * 1.3; });
+        y += row.gap;
+    });
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+/* =========================================
+   THE RECORDING: My band as an audio file
+   =========================================
+   The band as mixed and every kept take, rendered in an OfflineAudioContext
+   with the same synth the game plays (beat-smash-band.js), then written out
+   as a WAV the phone can share. Rendering takes a moment, and a share must
+   come straight from a tap, so it is two taps: "Make my recording", then
+   "Send to my teacher" once it is ready. */
+const BSMASH_SHARE_RATE = 32000;           // Hz: plenty for the synth, and a smaller file
+let bsmashShared = null;                   // { files, text } once made
+let bsmashSharing = false;                 // the share sheet is up: don't send them to the menu
+
+async function bsmashRenderBand() {
+    const band = bsmashMixedBand(bsmashLoad());
+    const takeBars = Object.keys(band.me).map(id => band.me[id].bars);
+    const bars = takeBars.length ? Math.max.apply(null, takeBars) : 8;
+    const cycles = Math.ceil(bars / 4);
+    const lead = 0.3, tail = 2.5;
+    const length = Math.ceil((lead + cycles * BSMASH_LOOP + tail) * BSMASH_SHARE_RATE);
+    const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const ctx = new Offline(2, length, BSMASH_SHARE_RATE);
+    const master = ctx.createGain();
+    master.connect(ctx.destination);
+    const end = lead + cycles * BSMASH_LOOP;
+    master.gain.setValueAtTime(1, end);
+    master.gain.linearRampToValueAtTime(0, end + tail);
+    const bandBus = ctx.createGain();
+    bandBus.gain.value = BSMASH_BAND_FULL;
+    bandBus.connect(master);
+    const live = ctx.createGain();
+    live.gain.value = BSMASH_LIVE_SCALE;
+    live.connect(bandBus);
+    const padBus = ctx.createGain();
+    padBus.gain.value = 0.9;
+    padBus.connect(master);
+    for (let c = 0; c < cycles; c++) {
+        const t0 = lead + c * BSMASH_LOOP;
+        Object.keys(band.parts).forEach(id => {
+            const part = band.parts[id];
+            try { BeatSmashBand.schedulePart(ctx, live, id, part, t0); } catch (e) { /* a dud part must not stop the render */ }
+        });
+        Object.keys(band.me).forEach(id => bsmashMeHits(band.me[id], c).forEach(hit => {
+            const t = t0 + hit.beat * BSMASH_BEAT;
+            if (t < 0.01) return;
+            const chord = band.song ? BeatSmashBand.chordOf(band.song, hit.bar) : BSMASH_SONG.chords[hit.bar % 4];
+            try { BeatSmashBand.pad(ctx, padBus, t, hit.kind, chord).release(t + hit.held * BSMASH_BEAT); }
+            catch (e) { /* a dud sound must not stop the render */ }
+        }));
+    }
+    const buffer = await ctx.startRendering();
+    return bsmashWav(buffer);
+}
+
+// A mono 16-bit WAV, brought up (or down) to a safe peak.
+function bsmashWav(buffer) {
+    const n = buffer.length, channels = buffer.numberOfChannels;
+    const mono = new Float32Array(n);
+    for (let c = 0; c < channels; c++) {
+        const data = buffer.getChannelData(c);
+        for (let i = 0; i < n; i++) mono[i] += data[i] / channels;
+    }
+    let peak = 0;
+    for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(mono[i]));
+    const gain = peak > 0 ? 0.9 / peak : 1;
+    const out = new DataView(new ArrayBuffer(44 + n * 2));
+    const text = (at, s) => { for (let i = 0; i < s.length; i++) out.setUint8(at + i, s.charCodeAt(i)); };
+    text(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); text(8, 'WAVE');   // text-ok: file format tags
+    text(12, 'fmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true); // text-ok
+    out.setUint32(24, buffer.sampleRate, true); out.setUint32(28, buffer.sampleRate * 2, true);
+    out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+    text(36, 'data'); out.setUint32(40, n * 2, true);   // text-ok
+    for (let i = 0; i < n; i++) {
+        const v = Math.max(-1, Math.min(1, mono[i] * gain));
+        out.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+    }
+    return new Blob([out], { type: 'audio/wav' });
+}
+
+// The button's two states: make it, then send it.
+function bsmashShareReady(shared) {
+    bsmashShared = shared;
+    const button = bsmashEl('beat-band-share');
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = KR.t(shared ? 'beat.share.send' : 'beat.share.make');
+}
+
+async function shareBeatBand() {
+    if (bsmashShared) return bsmashSendShared(bsmashShared);
+    const button = bsmashEl('beat-band-share');
+    button.disabled = true;
+    button.textContent = KR.t('beat.share.making');
+    try {
+        const [wav, png] = await Promise.all([bsmashRenderBand(), bsmashReportImage()]);
+        const progress = bsmashLoad();
+        const song = bsmashSongOf(progress);
+        const base = KR.t('beat.share.file', { song: song ? bsmashSongName(song) : '' }).replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '');
+        const files = [new File([wav], base + '.wav', { type: 'audio/wav' })];
+        if (png) files.push(new File([png], base + '.png', { type: 'image/png' }));
+        bsmashShareReady({ files: files, text: bsmashReportText(), title: KR.t('beat.share.title') });
+        bsmashEvent('beat.share.ready');
+    } catch (e) {
+        console.error('Beat Smash recording failed:', e);   // text-ok: for the console
+        bsmashShareReady(null);
+        bsmashEvent('beat.share.failed');
+    }
+}
+
+// The phone's own share sheet where there is one (the student chooses who
+// gets it: their teacher), otherwise the files are saved to the device.
+function bsmashSendShared(shared) {
+    const data = { files: shared.files, title: shared.title, text: shared.text };
+    if (navigator.canShare && navigator.share && navigator.canShare({ files: shared.files })) {
+        bsmashSharing = true;
+        return navigator.share(data).catch(() => {}).finally(() => { bsmashSharing = false; });
+    }
+    shared.files.forEach(file => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(file);
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    });
+    bsmashEvent('beat.share.saved');
+    return Promise.resolve();
 }
 
 /* =========================================

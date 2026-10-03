@@ -1324,3 +1324,22 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-playline { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: rgba(88,204,2,0.55); border-radius: 2px; z-index: 0; pointer-events: none; }
 .bsmash-playline[hidden] { display: none; }
 .bsmash-paper .bsmash-staff { position: relative; z-index: 1; }
+
+/* My band: the mixer, the recording for the teacher, and the report. */
+#beat-screen-band, #beat-screen-report { padding: 72px 10px 16px; background: radial-gradient(ellipse at 50% 0%, #22303f 0%, #10171f 70%); gap: 10px; overflow-y: auto; }
+#beat-screen-band .btn, #beat-screen-report .btn { width: 100%; max-width: 420px; min-height: 56px; margin: 0 auto; }
+.bsmash-band-song { text-align: center; color: var(--text-muted); font-weight: 900; font-size: 16px; }
+.bsmash-mixer-hint { margin: 0; text-align: center; color: var(--text-muted); font-size: 13px; }
+.bsmash-mixer { width: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+.bsmash-mixer-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 14px; background: #1b2530; border: 2px solid #2c3d4f; }
+.bsmash-mixer-name { color: white; font-weight: 900; font-size: 15px; }
+.bsmash-mixer-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.bsmash-mixer-chips .bsmash-chip { min-height: 44px; padding: 6px 12px; }
+.bsmash-mixer-chips .bsmash-chip.me.on { border-color: var(--accent-green); color: var(--accent-green); background: rgba(88,204,2,0.14); }
+.bsmash-mixer-chips .bsmash-chip:disabled { opacity: 0.35; cursor: default; }
+.bsmash-report { width: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; color: white; }
+.bsmash-report-head { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+.bsmash-report-block { padding: 10px 12px; border-radius: 14px; background: #1b2530; border: 2px solid #2c3d4f; }
+.bsmash-report-block h3 { margin: 0 0 6px; color: var(--accent-gold); font-size: 16px; }
+.bsmash-report-line { font-size: 14px; line-height: 1.45; color: #dbe4ee; }
+.bsmash-report-line + .bsmash-report-line { margin-top: 4px; }

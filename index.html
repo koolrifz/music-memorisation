@@ -807,6 +807,33 @@
         <button class="btn btn-secondary" id="beat-picker-done" hidden onclick="showBeatPathway()" data-text="beat.button.studio"></button>
     </div>
 
+    <!-- My band: the band won, each musician's kept take on top, a mixer to
+         play with it, and the recording and report for the teacher
+         (beat-smash.js, "MY BAND"). -->
+    <div id="beat-screen-band" class="screen">
+        <div class="kr-guide" id="beat-band-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <h2 class="bsmash-picker-title" data-text="beat.band.title"></h2>
+        <div class="bsmash-band-song" id="beat-band-song"></div>
+        <p class="bsmash-mixer-hint" data-text="beat.mixer.hint"></p>
+        <div class="bsmash-mixer" id="beat-mixer"></div>
+        <button class="btn btn-start" id="beat-band-share" onclick="shareBeatBand()" data-text="beat.share.make"></button>
+        <button class="btn btn-secondary" onclick="showBeatReport()" data-text="beat.report.button"></button>
+        <button class="btn btn-secondary" id="beat-band-permit" hidden onclick="showBeatPermit()" data-text="beat.permit.show"></button>
+        <button class="btn btn-secondary" onclick="showBeatPathway()" data-text="beat.button.studio"></button>
+    </div>
+
+    <!-- The report for the teacher: every step's numbers (beat-smash.js,
+         "THE REPORT"). -->
+    <div id="beat-screen-report" class="screen">
+        <h2 class="bsmash-picker-title" data-text="beat.report.title"></h2>
+        <div class="bsmash-report" id="beat-report"></div>
+        <button class="btn btn-secondary" id="beat-report-band" onclick="openBeatBand()" data-text="beat.band.title"></button>
+        <button class="btn btn-secondary" onclick="showBeatPathway()" data-text="beat.jam.menu"></button>
+    </div>
+
     <!-- The song the band is built on: auditioned, then held and slid up into
          the Add box (beat-smash.js, "THE SONG"). -->
     <div id="beat-screen-song" class="screen">
