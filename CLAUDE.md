@@ -1583,6 +1583,28 @@ Smash's players list. Beat Smash adds an **age** to a player.
   is practice: the stars fill as usual but the saved row (`streak`) belongs to
   the step the student is working on (`bsmashOnRecord()`), and clearing an
   earlier step never moves `step` backwards.
+- **A sitting can end anywhere and the next picks up there** (Rob,
+  2026-10-03: *"my mum has just come in the room and told me to go and take
+  out the rubbish. I should be able to close the game and the game remembers
+  how far I'm through… this song might take more than just one sitting"*).
+  The step and every star were already saved the moment they landed; what
+  was missing was the student being told, and three things that were lost:
+  - **The pathway says where they're up to**: the step's chip carries its
+    stars (`Four bars ★★☆`, `bsmashStepName()`), Start reads **Carry on**,
+    and the guide box says *"Welcome back! You're up to…"*
+    (`bsmashWhereUpTo()`: `new` / `carry` / `passed`).
+  - **The studio's bars are kept** with the musician (`studioBars`,
+    `bsmashStudioBars()`), so the 32 bars are the same song in the next
+    sitting. Rolled again only if the teacher changes the studio's length;
+    a new song resets them with the band.
+  - **A studio take at the pass mark is saved before Keep** (`studioPassed`).
+    Closed before choosing, the next sitting says the take was a keeper and
+    Start (**Choose my part**) goes straight to the part picker. Keeping a
+    part clears it.
+  - **A guest's progress is on the device** (`koolRiffsBeatGuest`), not in
+    memory: a warm-up and a song chosen before any name survive the tab
+    closing, and move to the player when one is added. The teacher's Reset
+    clears it with every other `koolRiffs*` key.
 
 **Calls made where the brief left room (Rob to confirm):**
 - **One die per bar**, its face the bar's four dots (§4). §4.1 says "four
@@ -1613,7 +1635,8 @@ Smash's players list. Beat Smash adds an **age** to a player.
   empty), so the child still sees the bar in notation. From the second star
   a miss empties the row and the bar is retaken as practice (§4).
 - **The name and age are asked after the first star**, never before (§11).
-  Until then progress lives in memory and moves to the player when added.
+  Until then progress is the guest's, kept on the device, and moves to the
+  player when added.
 - **Every event with several lines takes turns** (`KR.event` in `text.js`,
   the §8.3 build note). An event with one line is unchanged, and tested.
 - **Ages 6–8 / 9–10 / 11+**: windows 220 / 195 / 170 ms, pass marks 80 / 85 /
@@ -2032,7 +2055,9 @@ green playback line, Open going to the pathway, the kick), the song (the five
 squares, auditioning, Rob's audition tune with its drums and bass, holding a
 song and sliding it into the Add box, the band
 and the pads over its chords, a new song a new band with the old one kept, a
-part added by the same drag), his songs (voicings,
+part added by the same drag), picking up after a break (the pathway's stars,
+Carry on and welcome back; the same studio bars after a reload; a passed
+take kept to choose; a guest's warm-up and song kept and adopted), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),

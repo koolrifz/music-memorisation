@@ -262,6 +262,7 @@ const BSMASH_PICKER_INTRO_MS = 2000;       // the win is felt before any choice 
 
 const BSMASH_PROGRESS_KEY = 'koolRiffsBeatProgress';
 const BSMASH_DELAY_KEY = 'koolRiffsBeatDelay';   // per device, not per player
+const BSMASH_GUEST_KEY = 'koolRiffsBeatGuest';   // progress before a name is given
 
 /* =========================================
    TIMERS - everything pending, so leaving stops it dead
@@ -284,9 +285,12 @@ function bsmashStopTimers() {
    adds an age to a player, asked once (§12).
 
    The first minute needs no name: nothing to read before the first win
-   (§11). Until a player is chosen, progress lives in memory (the guest
-   record) and is written to the player the moment one is added. */
-let bsmashGuest = null;
+   (§11). Until a player is chosen, progress is the guest record, kept on
+   the device (so a warm-up and a song chosen before any name survive the
+   tab being closed), and moved to the player the moment one is added. */
+function bsmashReadGuest() {
+    try { return JSON.parse(localStorage.getItem(BSMASH_GUEST_KEY)); } catch (e) { return null; }
+}
 
 function bsmashPlayer() {
     return (typeof vsmashCurrentPlayer === 'function') ? vsmashCurrentPlayer() : null;
@@ -321,7 +325,7 @@ function bsmashReadAll() {
 // THE ONLY TWO FUNCTIONS THAT TOUCH BEAT SMASH PROGRESS.
 function bsmashLoad() {
     const player = bsmashPlayer();
-    const saved = player ? bsmashReadAll().players[player.id] : bsmashGuest;
+    const saved = player ? bsmashReadAll().players[player.id] : bsmashReadGuest();
     const blank = bsmashBlankProgress();
     const progress = Object.assign(blank, saved ? JSON.parse(JSON.stringify(saved)) : {});
     progress.settings = Object.assign(bsmashBlankProgress().settings, progress.settings);
@@ -338,7 +342,10 @@ function bsmashLoad() {
 
 function bsmashSave(progress) {
     const player = bsmashPlayer();
-    if (!player) { bsmashGuest = JSON.parse(JSON.stringify(progress)); return; }
+    if (!player) {
+        try { localStorage.setItem(BSMASH_GUEST_KEY, JSON.stringify(progress)); } catch (e) {}
+        return;
+    }
     const all = bsmashReadAll();
     all.players[player.id] = progress;
     try { localStorage.setItem(BSMASH_PROGRESS_KEY, JSON.stringify(all)); } catch (e) {}
@@ -2034,7 +2041,10 @@ function startBeatMusician(id, keepBand, step) {
         streak: bsmashOnRecord(record, playing) ? record.streak : 0,
         delay: bsmashDelay(), lastBeat: null, pads: pads, frame: frame, take: null, bars: null,
     };
-    bsmashOpenStudio();
+    // A studio take already passed (and the game closed before the part was
+    // chosen): straight to choosing it, once the band is playing.
+    const choosing = playing === BSMASH_STUDIO_STEP && record.studioPassed && !record.won;
+    if (!choosing) bsmashOpenStudio();
     bsmashEl('beat-screen-studio').classList.remove('jam');
     bsmashEl('beat-jam-next').hidden = true;
     bsmashEl('beat-jam-nav').hidden = true;
@@ -2045,6 +2055,7 @@ function startBeatMusician(id, keepBand, step) {
     // Anything else playing (the song chooser's click and audition) stops.
     if (bsmashBand) Object.keys(bsmashBand.parts).filter(part => !(part in soFar)).forEach(bsmashBandRemovePart);
     bsmashBandLevel(BSMASH_BAND_QUIET);
+    if (choosing) return bsmashOpenPicker(false);
     bsmashNewRoll();
     if (record.plays === 1) bsmashEvent('beat.musician.intro.' + id);
 }
@@ -2091,11 +2102,22 @@ function bsmashPictureStep() {
     return bsmash.step <= BSMASH_PICTURE_STEPS;
 }
 
+// The studio's bars are rolled once and kept with the musician: "the song is
+// the song", in this sitting and the next. Rolled again only if the teacher
+// changes the studio's length.
+function bsmashStudioBars(record) {
+    const count = bsmashBarCount(bsmash.musician, BSMASH_STUDIO_STEP);
+    if (record.studioBars && record.studioBars.length === count) return record.studioBars;
+    const bars = bsmashRoll(bsmash.musician, BSMASH_STUDIO_STEP, record.clean);
+    bsmashUpdateMusician(bsmash.musician.id, { studioBars: bars });
+    return bars;
+}
+
 function bsmashNewRoll() {
     const record = bsmashMusicianRecord(bsmash.musician.id);
     const studio = bsmash.step === BSMASH_STUDIO_STEP;
     bsmash.scaffold = studio ? 'studio' : ['star1', 'star2', 'star3'][bsmash.streak];
-    bsmash.bars = bsmashRoll(bsmash.musician, bsmash.step, record.clean, bsmash.bars);
+    bsmash.bars = studio ? bsmashStudioBars(record) : bsmashRoll(bsmash.musician, bsmash.step, record.clean, bsmash.bars);
     bsmash.studioTake = null;
     // Eight bars and more: the lines sit closer, so the pads stay on screen.
     bsmashEl('beat-screen-studio').classList.toggle('long', bsmash.bars.length >= 8);
@@ -2313,7 +2335,9 @@ function bsmashStudioVerdict(take, score) {
         bsmashBandLevel(BSMASH_BAND_FULL);
         bsmashStarSound();
         const record = bsmashMusicianRecord(bsmash.musician.id);
-        bsmashUpdateMusician(bsmash.musician.id, { clean: record.clean + 1 });
+        // studioPassed: the part is theirs to choose, even if the tab is
+        // closed before Keep it is pressed.
+        bsmashUpdateMusician(bsmash.musician.id, { clean: record.clean + 1, studioPassed: !record.won });
     }
     bsmashControlRoom(take);
     const vars = { score: Math.round(score * 100), mark: Math.round(BSMASH_PASS_MARK[bsmashAge()] * 100) };
@@ -2903,7 +2927,7 @@ function bsmashKeepPart(quietly) {
     const style = picker.choice || BSMASH_STYLES[0];
     picker.locked = true;
     const id = bsmash.musician.id;
-    bsmashUpdateMusician(id, { won: true, part: style, step: BSMASH_STUDIO_STEP, streak: 0 });
+    bsmashUpdateMusician(id, { won: true, part: style, step: BSMASH_STUDIO_STEP, streak: 0, studioPassed: false });
     // The band is complete: the Learner's Permit (§15). It used to wait for
     // a booth of its own; now every musician ends in the studio, so the
     // third part laid down is the L plates.
@@ -3082,9 +3106,9 @@ function chooseBeatPlayer(playerId) {
 // that name already has Beat Smash progress on this device.
 function bsmashAdoptGuest(guest) {
     const player = bsmashPlayer();
-    if (!player || !bsmashGuest) return;
+    if (!player || !bsmashReadGuest()) return;
     if (!bsmashReadAll().players[player.id]) bsmashSave(guest);
-    bsmashGuest = null;
+    try { localStorage.removeItem(BSMASH_GUEST_KEY); } catch (e) {}
 }
 
 function addBeatPlayer() {
@@ -3210,7 +3234,16 @@ function renderBeatPathway() {
     const say = progress.permit ? 'beat.pathway.permit'
         : won('bass') ? 'beat.pathway.keys' : won('drums') ? 'beat.pathway.riff' : 'beat.pathway.say';
     const riff = won('drums') && !won('keys');
-    KR.say(say, { box: bsmashEl('beat-pathway-guide'), silent: true, speaker: riff ? 'riff' : 'tango' });
+    const guide = { box: bsmashEl('beat-pathway-guide'), silent: true, speaker: riff ? 'riff' : 'tango' };
+    // Back after a break (Rob: "the game remembers how far I'm through"):
+    // the musician on the go says where the student is up to.
+    const current = progress.musicians[bsmashSelected];
+    const upTo = current && bsmashWhereUpTo(current);
+    const back = upTo === 'passed' ? 'beat.pathway.back.passed'
+        : upTo === 'carry' && current.step === BSMASH_STUDIO_STEP ? 'beat.pathway.back.studio'
+        : upTo === 'carry' ? 'beat.pathway.back' : null;
+    if (back) guide.vars = { step: bsmashStepName(current, current.step) };
+    KR.say(back || say, guide);
     bsmashRenderPathwaySettings();
 }
 
@@ -3248,21 +3281,44 @@ function bsmashStepChoices(id) {
     return choices;
 }
 
+// A step's name, and on the step the student is working on, the stars won
+// so far: "Four bars ★★☆". The studio is one take, so no stars.
+function bsmashStepName(record, step) {
+    const name = KR.t('beat.step.' + step);
+    if (!record || typeof step !== 'number' || step === BSMASH_STUDIO_STEP || !bsmashOnRecord(record, step)) return name;
+    let stars = '';
+    for (let i = 0; i < 3; i++) stars += KR.t(i < record.streak ? 'beat.star.full' : 'beat.star.empty');
+    return KR.t('beat.step.stars', { step: name, stars: stars });
+}
+
+// Where the student is up to, to pick up from: 'new' (never played this
+// musician), 'passed' (a studio take kept, the part not yet chosen) or
+// 'carry' (part-way through the steps).
+function bsmashWhereUpTo(record) {
+    if (!record || record.won) return null;
+    if (record.studioPassed) return 'passed';
+    return record.plays ? 'carry' : 'new';
+}
+
 function bsmashRenderSteps() {
     const row = bsmashEl('beat-steps');
     row.innerHTML = '';
+    const record = BSMASH_MUSICIANS.some(m => m.id === bsmashSelected) ? bsmashMusicianRecord(bsmashSelected) : null;
     bsmashStepChoices(bsmashSelected).forEach(step => {
         const chip = bsmashMake('button', 'bsmash-chip bsmash-step-chip', row); // text-ok
         chip.type = 'button';
-        chip.textContent = step === 'song' && bsmashSong() ? KR.t('beat.step.ourSong') : KR.t('beat.step.' + step);
+        chip.textContent = step === 'song' && bsmashSong() ? KR.t('beat.step.ourSong') : bsmashStepName(record, step);
         chip.classList.toggle('on', step === bsmashSelectedStep);
         chip.onclick = () => { bsmashSelectedStep = step; bsmashRenderSteps(); };
     });
     const start = bsmashEl('beat-pathway-start');
     start.disabled = false;
+    const upTo = record && bsmashOnRecord(record, bsmashSelectedStep) ? bsmashWhereUpTo(record) : null;
     start.textContent = KR.t(bsmashSelectedStep === 'band' ? 'beat.playBand'
         : bsmashSelectedStep === 'permit' ? 'beat.permit.show'
-        : bsmashSelectedStep === 'song' ? 'beat.songs.button' : 'beat.start');
+        : bsmashSelectedStep === 'song' ? 'beat.songs.button'
+        : upTo === 'passed' ? 'beat.choosePart'
+        : upTo === 'carry' ? 'beat.carryOn' : 'beat.start');
 }
 
 function startSelectedBeat() {

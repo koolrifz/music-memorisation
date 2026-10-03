@@ -1522,6 +1522,82 @@ def code(page, text):
     return page.inner_text('#kr-code-result')
 
 
+def test_resume(page):
+    """Rob, 2026-10-03: "I should be able to close the game and the game
+    remembers how far I'm through." Mum calls, the tab closes, and the next
+    sitting picks up on the same step, the same stars, the same studio bars."""
+    players = "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+    fresh(page, players + "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
+                "song:'c-1-4-1-5',settings:{studioBars:8},musicians:{drums:{step:5,streak:0,clean:20,won:true,part:'spicy',plays:5},"
+                "bass:{step:3,streak:1,clean:9,won:false,part:null,plays:4}}}}}));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(500)
+    path = page.evaluate("""({ selected: bsmashSelected + '/' + bsmashSelectedStep,
+        on: (document.querySelector('#beat-steps .bsmash-chip.on') || {}).textContent,
+        start: document.getElementById('beat-pathway-start').textContent })""")
+    check('Back after a break: the pathway opens on the step they were on, its stars on the chip, "Carry on"',
+          path == {'selected': 'bass/3', 'on': 'Four bars ★☆☆', 'start': 'Carry on'}, path)
+    check('...and the guide says where they are up to', 'Welcome back' in guide(page, 'beat-pathway-guide')
+          and 'Four bars ★☆☆' in guide(page, 'beat-pathway-guide'), guide(page, 'beat-pathway-guide'))
+    page.click('#beat-pathway-start')
+    play_take(page)
+    page.wait_for_timeout(2500)
+    check('A star won is saved as it lands', record(page, 'bass')['streak'] == 2, record(page, 'bass'))
+    page.reload()
+    page.wait_for_timeout(400)
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.click('#beat-pathway-start')
+    page.wait_for_function("bsmash && bsmash.phase", timeout=5000)
+    check('...and the next sitting starts on that step with those two stars', [state(page)['step'], state(page)['streak']] == [3, 2], state(page))
+
+    # The studio: the same bars in the next sitting.
+    page.evaluate("bsmashUpdateMusician('bass', { step: 5, streak: 0 }); startBeatMusician('bass', false, 5)")
+    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=8000)
+    bars = page.evaluate("bsmash.bars.map(b => b.join()).join('|')")
+    page.reload()
+    page.wait_for_timeout(400)
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    page.click('#beat-pathway-start')
+    page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=8000)
+    check('The studio\'s bars are the same in the next sitting: the song is the song',
+          page.evaluate("bsmash.bars.map(b => b.join()).join('|')") == bars and len(bars.split('|')) == 8)
+    record_take(page)
+    page.wait_for_function("bsmash.phase === 'verdict'", timeout=8000)
+    check('A studio take at the pass mark is saved before Keep is pressed', record(page, 'bass').get('studioPassed') is True, record(page, 'bass'))
+    page.reload()
+    page.wait_for_timeout(400)
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    check('Closed before Keep: the pathway says the take was a keeper, "Choose my part"',
+          page.text_content('#beat-pathway-start') == 'Choose my part' and 'keeper' in guide(page, 'beat-pathway-guide'),
+          [page.text_content('#beat-pathway-start'), guide(page, 'beat-pathway-guide')])
+    page.click('#beat-pathway-start')
+    page.wait_for_timeout(400)
+    check('...and goes straight to choosing the part', screen(page) == 'beat-screen-picker', screen(page))
+    page.wait_for_selector('#beat-picker-cards .bsmash-style-card', timeout=8000)
+    page.click('#beat-picker-cards .bsmash-style-card')
+    page.wait_for_timeout(300)
+    page.evaluate("bsmashKeepPart(true)")
+    check('Keeping the part clears it', record(page, 'bass')['won'] and not record(page, 'bass').get('studioPassed'), record(page, 'bass'))
+
+    # Before any name is given: the warm-up and the song are kept on the device.
+    fresh(page)
+    page.evaluate("const p = bsmashLoad(); p.jamDone = true; p.song = 'c-1-4-1-5'; bsmashSave(p);")
+    page.reload()
+    page.wait_for_timeout(400)
+    page.click('.game-card.red')
+    page.wait_for_timeout(400)
+    check('A guest\'s warm-up and song survive the tab closing: back to the pathway, not the jam',
+          screen(page) == 'beat-screen-pathway' and page.evaluate("bsmashSong()") == 'c-1-4-1-5', screen(page))
+    adopted = page.evaluate("""(() => {
+        localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:null}));
+        chooseBeatPlayer('p1');
+        return { guest: localStorage.getItem('koolRiffsBeatGuest'), song: bsmashSong(), jam: bsmashLoad().jamDone }; })()""")
+    check('...and go with them to their name', adopted == {'guest': None, 'song': 'c-1-4-1-5', 'jam': True}, adopted)
+
+
 def test_teacher_codes(page):
     fresh(page)
     said = code(page, 'koolopen')
@@ -1646,6 +1722,7 @@ def main():
         test_jam_variations(page)
         test_song_choice(page)
         test_playtest_two(page)
+        test_resume(page)
         test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()
