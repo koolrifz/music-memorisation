@@ -692,9 +692,10 @@ def test_picker(page):
     rec = record(page)
     check('Keep: Spicy drums locked in', rec['won'] and rec['part'] == 'spicy', rec)
     kept = rec.get('take') or {}
+    notes = page.evaluate("bsmashMusicianRecord('drums').studioBars.flat().filter(k => !RSTOMP_VOCABULARY[k].isRest).length")
     check('...and the studio take is kept for My band: every press, its sound, its score',
-          kept.get('bars') == 8 and len(kept.get('presses', [])) >= 20 and kept.get('kind') == 'kick'
-          and kept.get('score', 0) >= 85 and not rec.get('passedTake'), {k: kept.get(k) for k in ('bars', 'kind', 'score')})
+          kept.get('bars') == 8 and len(kept.get('presses', [])) >= notes > 0 and kept.get('kind') == 'kick'
+          and kept.get('score', 0) >= 85 and not rec.get('passedTake'), [notes, len(kept.get('presses', []))] + [kept.get(k) for k in ('bars', 'kind', 'score')])
     stats = rec.get('stats') or {}
     check('Every step\'s takes are counted for the report: one bar to the studio',
           all(str(n) in stats and stats[str(n)]['takes'] >= 1 for n in range(1, 6))
