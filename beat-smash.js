@@ -39,9 +39,30 @@ const BSMASH_SONG = {
     bars: 4,
     chords: ['I', 'IV', 'I', 'V'],
 };
-const BSMASH_BEAT = 60 / BSMASH_SONG.bpm;                 // 0.6 s
-const BSMASH_BAR = BSMASH_BEAT * BSMASH_SONG.beatsPerBar; // 2.4 s
-const BSMASH_LOOP = BSMASH_BAR * BSMASH_SONG.bars;        // 9.6 s
+/* THE TEMPO IS THE SONG'S. Every song is 100 bpm unless it says otherwise
+   (`bpm` in content/songs.js): Skate Park, the eighth-note song, is slower
+   (Rob, 2026-10-04: "Slower song"). The band, every take and every grade are
+   counted in these three, so they change only while the band is stopped
+   (bsmashBandStart, starting a new band, calls bsmashSetTempo). The loop
+   files are 100 bpm, so at any other tempo the synth plays every part. */
+let BSMASH_BPM = BSMASH_SONG.bpm;
+let BSMASH_BEAT = 60 / BSMASH_BPM;                    // 0.6 s at 100 bpm
+let BSMASH_BAR = BSMASH_BEAT * BSMASH_SONG.beatsPerBar; // 2.4 s
+let BSMASH_LOOP = BSMASH_BAR * BSMASH_SONG.bars;        // 9.6 s
+
+function bsmashSetTempo(bpm) {
+    BSMASH_BPM = bpm || BSMASH_SONG.bpm;
+    BSMASH_BEAT = 60 / BSMASH_BPM;
+    BSMASH_BAR = BSMASH_BEAT * BSMASH_SONG.beatsPerBar;
+    BSMASH_LOOP = BSMASH_BAR * BSMASH_SONG.bars;
+    if (window.BeatSmashBand && BeatSmashBand.setTempo) BeatSmashBand.setTempo(BSMASH_BPM);
+}
+
+// A song's tempo (content/songs.js `bpm`), or the band's own 100.
+function bsmashSongBpm(id) {
+    const song = id && window.KR && KR.songs && KR.songs[id];
+    return (song && song.bpm) || BSMASH_SONG.bpm;
+}
 const BSMASH_STYLES = ['spicy', 'smooth', 'hop'];
 
 function bsmashLoopId(instrument, style) {
@@ -52,6 +73,7 @@ function bsmashLoopId(instrument, style) {
    Space-separated note values: q = quarter note, qr = quarter rest, h / hr
    = half, w / wr = whole. 'q qr q q' is note, rest, note, note. */
 const BSMASH_TOKENS = {
+    '8': 'eighth-note', '8r': 'eighth-rest',
     q: 'quarter-note', qr: 'quarter-rest',
     h: 'half-note', hr: 'half-rest',
     w: 'whole-note', wr: 'whole-rest',
@@ -140,6 +162,69 @@ const BSMASH_STEP_BARS = { 1: 1, 2: 2, 3: 4, 4: 8 };
 const BSMASH_STUDIO_STEP = 5;
 const BSMASH_STUDIO_BARS = [32, 16, 8];    // the studio take's length; the first is the default, the others a teacher's setting
 const BSMASH_CLEAN_STEPS = 2;              // steps up to this one need every note right; longer ones need the age's pass mark
+
+/* ---------- THE EIGHTH-NOTE SONG: a rhythm level carried by a song ----------
+   Rob, 2026-10-04: "Let's use one of the songs we've made to become the
+   container for the beginning of eighth notes." A song names its level in
+   content/songs.js (`rhythm: 'quavers'`); every take of its band is read on
+   the quaver grid ("1 + 2 + 3 + 4 +"), and each musician's dice come from
+   here instead of BSMASH_MUSICIANS. The figures are Rob's:
+
+     Tango, drums   q q q 8 8 on the kick; the off-beats on the hi-hat
+     Riff, bass     8r 8 8 8  8r 8 8 8
+     Riff, keys     h 8 8 qr, and the syncopation 8 q 8
+
+   "In the 1, 2 and 4 bar figures, weight the notation heavier in favour of
+   quavers. When we reach the eight bar and 32 bar, make sure that you've
+   included the quarter notes, half notes and whole notes in amongst it so
+   it's nice and evenly balanced."
+
+   So each musician has CELLS, the pieces a bar is built from (a beat, or two
+   for a half note or 8 q 8, which start on beat 1 or 3), and the tables are:
+     'quavers'   Rob's figures for half the rolls, the other half every bar
+                 of the cells with an eighth note in it
+     'balanced'  half the musician's own bars from the first song (quarters,
+                 halves, wholes), half the eighth-note bars
+   Steps 1, 2 and 4 bars roll 'quavers'; 8 and 32 bars roll 'balanced'. The
+   one-bar step is a ladder, as on the first song: each figure on its own
+   first, then the mix. Every bar still passes the Rhythm pillar's engraving
+   rules (rstompShapeIsLegal). */
+const BSMASH_RHYTHMS = {
+    quavers: {
+        labels: ['1', '+', '2', '+', '3', '+', '4', '+'], // text-ok: counting labels
+        slot: '8',
+        perBeat: 2,
+        // The tightest a quaver's window gets: half a quaver either side, so a
+        // tap is never nearer one note than the note it is counted for.
+        windowQuavers: 0.5,
+        // A press this many beats from a note still to be played is that
+        // note early or late (half a beat on the first song: here that is a
+        // whole quaver, so less).
+        nearBeat: 0.375,
+        musicians: {
+            drums: {
+                cells: ['q', 'qr', '8 8', '8r 8'], // text-ok: bars, not words
+                figures: ['q q q 8 8', '8r 8 8r 8 8r 8 8r 8'], // text-ok: bars, not words
+                // Rob: the first on the kick, the off-beats on the hi-hat. A
+                // bar with no note on a beat is played on the hi-hat.
+                hatBars: true,
+                steps: { 1: [['q q q 8 8'], ['8r 8 8r 8 8r 8 8r 8'], 'figures', 'quavers'], // text-ok: bars, not words
+                         2: ['quavers'], 3: ['quavers'], 4: ['balanced'], 5: ['balanced'] },
+            },
+            bass: {
+                cells: ['q', 'qr', '8 8', '8r 8', 'h', 'hr'], // text-ok: bars, not words
+                figures: ['8r 8 8 8 8r 8 8 8'], // text-ok: bars, not words
+                steps: { 1: ['figures', 'quavers'], 2: ['quavers'], 3: ['quavers'], 4: ['balanced'], 5: ['balanced'] },
+            },
+            keys: {
+                cells: ['q', 'qr', '8 8', '8r 8', 'h', 'hr', 'w', '8 q 8'], // text-ok: bars, not words
+                figures: ['h 8 8 qr', '8 q 8 h', 'h 8 q 8'], // text-ok: bars, not words
+                steps: { 1: [['h 8 8 qr'], ['8 q 8 h', 'h 8 q 8'], 'figures', 'quavers'], // text-ok: bars, not words
+                         2: ['quavers'], 3: ['quavers'], 4: ['balanced'], 5: ['balanced'] },
+            },
+        },
+    },
+};
 
 /* ---------- Defaults Rob will tune ----------
    All in one place. Ages are asked once, when the player is added (§12). */
@@ -469,8 +554,9 @@ function bsmashBandStart(parts) {
     const ctx = bsmashAudio();
     if (!ctx) return;
     if (!bsmashBand) {
+        bsmashSetTempo(bsmashSongBpm(bsmashTempoSong()));
         const start = ctx.currentTime + 0.15;
-        bsmashBand = { start: start, next: start, parts: {}, sources: {} };
+        bsmashBand = { start: start, next: start, parts: {}, sources: {}, bpm: BSMASH_BPM };
     }
     Object.keys(parts).forEach(instrument => bsmashBand.parts[instrument] = parts[instrument]);
     Object.keys(bsmashBand.parts).forEach(instrument =>
@@ -478,10 +564,18 @@ function bsmashBandStart(parts) {
     if (!bsmashTicker) bsmashTicker = setInterval(bsmashTick, 25);
 }
 
+// The song whose tempo a new band takes: the one being auditioned on the song
+// screen, otherwise the one in play. The warm-up jam keeps 100.
+function bsmashTempoSong() {
+    if (!bsmash || bsmash.mode === 'jam') return null;
+    return bsmash.mode === 'songs' ? bsmash.audition : bsmash.song;
+}
+
 // A part is 'warmup', a style ('spicy'...), or one played live (see
-// bsmashIsSongPart), which has no loop file.
+// bsmashIsSongPart), which has no loop file. The loop files are 100 bpm: at
+// any other tempo every part is the synth's.
 function bsmashPartLoopId(instrument, style) {
-    if (bsmashIsSongPart(style)) return null;
+    if (bsmashIsSongPart(style) || BSMASH_BPM !== BSMASH_SONG.bpm) return null;
     return style === 'warmup' ? 'beat.loop.warmup' : bsmashLoopId(instrument, style);
 }
 
@@ -691,6 +785,78 @@ function bsmashGrid(musician) {
     return rstompGridFor({ labels: RSTOMP_LABELS_BEAT, slot: 'q', pool: musician.pool });
 }
 
+// The rhythm level of the song in play, or null for the first song's grid.
+function bsmashRhythmOf(song) {
+    const meta = song && window.KR && KR.songs && KR.songs[song];
+    return (meta && BSMASH_RHYTHMS[meta.rhythm]) || null;
+}
+
+function bsmashRhythm() {
+    return bsmashRhythmOf(bsmash && bsmash.song);
+}
+
+// Grid slots to a beat: 1 on the first song's crotchet grid, 2 on quavers.
+function bsmashPerBeat() {
+    const rhythm = bsmashRhythm();
+    return rhythm ? rhythm.perBeat : 1;
+}
+
+// Every bar a musician's cells can make on a rhythm level's grid, legal by
+// the engraving rules. A two-beat cell starts on beat 1 or 3; a whole note
+// fills the bar.
+const bsmashCellBarsCache = {};
+function bsmashCellBars(rhythm, id) {
+    const key = rhythm.slot + ':' + id;
+    if (bsmashCellBarsCache[key]) return bsmashCellBarsCache[key];
+    const cells = rhythm.musicians[id].cells.map(text => {
+        const keys = bsmashParseBar(text);
+        const beats = keys.reduce((a, k) => a + bsmashBeatsOf(k), 0);
+        return { keys: keys, beats: beats };
+    });
+    const pool = [...new Set([].concat(...cells.map(c => c.keys)))];
+    const grid = rstompGridFor({ labels: rhythm.labels, slot: rhythm.slot, pool: pool });
+    const bars = [];
+    (function build(beat, keys) {
+        if (beat === 4) { bars.push(keys); return; }
+        cells.forEach(cell => {
+            if (beat + cell.beats > 4) return;
+            if (cell.beats === 2 && beat % 2) return;
+            if (cell.beats === 4 && beat) return;
+            build(beat + cell.beats, keys.concat(cell.keys));
+        });
+    })(0, []);
+    const legal = bars.filter(bar => rstompShapeIsLegal(bar, grid.slotsPerBar, 0, grid));
+    return (bsmashCellBarsCache[key] = legal);
+}
+
+function bsmashHasQuaver(bar) {
+    return bar.some(key => bsmashBeatsOf(key) < 1);
+}
+
+// How many beats a written note or rest lasts: a quarter is one.
+function bsmashBeatsOf(key) {
+    return rstompSlotsFor(RSTOMP_VOCABULARY[key].value, '8') / 2;
+}
+
+// A rhythm level's dice table, by name. Weighting is by repetition, so the
+// roll stays a plain pick: Rob's figures are as many as all the other
+// eighth-note bars put together, and in 'balanced' the first song's bars
+// are as many as the eighth-note bars.
+function bsmashRhythmTable(rhythm, musician, name) {
+    const own = rhythm.musicians[musician.id];
+    const figures = own.figures.map(bsmashParseBar);
+    if (name === 'figures') return figures;
+    const quaverBars = bsmashCellBars(rhythm, musician.id).filter(bsmashHasQuaver);
+    const repeat = (list, times) => [].concat(...Array.from({ length: Math.max(1, times) }, () => list));
+    if (name === 'quavers') {
+        const others = quaverBars.filter(bar => !figures.some(f => bsmashSameBar(f, bar)));
+        return repeat(figures, Math.round(others.length / figures.length)).concat(others);
+    }
+    // 'balanced': the first song's bars and the eighth-note bars, half each.
+    const first = bsmashAllBars(musician);
+    return repeat(first, Math.round(quaverBars.length / first.length)).concat(quaverBars);
+}
+
 // Every legal bar of the musician's notes, by the Rhythm pillar's own
 // engraving rules. Tango's is 15 bars.
 const bsmashAllBarsCache = {};
@@ -704,8 +870,10 @@ function bsmashAllBars(musician) {
 
 // The bars a step's dice can land on, at the rung the student has reached.
 function bsmashDiceTable(musician, step, clean) {
-    const rungs = musician.steps[step];
+    const rhythm = bsmashRhythm();
+    const rungs = rhythm ? rhythm.musicians[musician.id].steps[step] : musician.steps[step];
     const rung = rungs[Math.min(clean, rungs.length - 1)];
+    if (rhythm && typeof rung === 'string') return bsmashRhythmTable(rhythm, musician, rung);
     if (rung === 'all') return bsmashAllBars(musician);
     return rung.map(bsmashParseBar);
 }
@@ -736,7 +904,8 @@ function bsmashRoll(musician, step, clean, previous) {
     let table = bsmashDiceTable(musician, step, clean);
     const count = bsmashBarCount(musician, step);
     if (count === 1) table = table.filter(bsmashHasNote);
-    const weight = bar => step === BSMASH_STUDIO_STEP ? bar.length : 1;
+    // (Not on a rhythm level: its tables are balanced on purpose.)
+    const weight = bar => step === BSMASH_STUDIO_STEP && !bsmashRhythm() ? bar.length : 1;
     for (let attempt = 0; attempt < 20; attempt++) {
         const bars = [];
         let last = previous && previous.length ? previous[previous.length - 1] : null;
@@ -754,25 +923,46 @@ function bsmashRoll(musician, step, clean, previous) {
     return [table.find(bsmashHasNote)];
 }
 
-// One bar as the specs renderRstompStaff draws: { value, isRest, slots, tied },
-// plus where each starts.
+// One bar as specs: { key, value, isRest, slot, slots }, where slot and
+// slots are in BEATS (a quarter note is one, an eighth note a half), so the
+// timing, the pads and the grading read the same on every grid.
 function bsmashSpecs(bar) {
     let slot = 0;
     return bar.map(key => {
         const entry = RSTOMP_VOCABULARY[key];
-        const slots = rstompSlotsFor(entry.value, 'q');
+        const slots = bsmashBeatsOf(key);
         const spec = { key: key, value: entry.value, isRest: entry.isRest, slots: slots, slot: slot, tied: false };
         slot += slots;
         return spec;
     });
 }
 
+// The same bar in the grid's slots, as renderRstompStaff draws it.
+function bsmashGridSpecs(specs) {
+    const per = bsmashPerBeat();
+    return specs.map(spec => Object.assign({}, spec, { slot: spec.slot * per, slots: spec.slots * per }));
+}
+
+// A drum bar played on the hi-hat (the eighth-note song): no note on a beat.
+function bsmashIsHatBar(specs) {
+    const rhythm = bsmashRhythm();
+    if (!rhythm || !bsmash || bsmash.musician.id !== 'drums' || !rhythm.musicians.drums.hatBars) return false;
+    return !specs.some(spec => !spec.isRest && Number.isInteger(spec.slot));
+}
+
 // renderRstompStaff reads Stomp Lab's grid from four globals. Beat Smash
-// draws on Stage A's grid, so it sets them for the one call and puts back
-// whatever Stomp Lab had. Reused, not copied.
+// draws on Stage A's grid (or the quaver grid, for the eighth-note song), so
+// it sets them for the one call and puts back whatever Stomp Lab had.
+// Reused, not copied.
 function bsmashWithStompGrid(fn) {
     const saved = [rstompSlotsPerBar, rstompSlotValue, rstompSlotsPerBeat, rstompBeamSlots];
-    rstompSlotsPerBar = 4; rstompSlotValue = 'q'; rstompSlotsPerBeat = 1; rstompBeamSlots = 1;
+    const rhythm = bsmashRhythm();
+    if (rhythm) {
+        rstompSlotsPerBar = rhythm.labels.length; rstompSlotValue = rhythm.slot;
+        rstompSlotsPerBeat = rhythm.perBeat; rstompBeamSlots = rhythm.perBeat;
+    } else {
+        rstompSlotsPerBar = 4; rstompSlotValue = 'q'; rstompSlotsPerBeat = 1; rstompBeamSlots = 1;
+    }
     try { return fn(); }
     finally { [rstompSlotsPerBar, rstompSlotValue, rstompSlotsPerBeat, rstompBeamSlots] = saved; }
 }
@@ -788,7 +978,7 @@ function bsmashWithStompGrid(fn) {
    Above each line, a small mark at each barline: beat 1 is home base (§6).
    Below it, the verdict: the notes that went wrong are marked there. Nothing
    is ever drawn over the notation. */
-const BSMASH_VALUE_CLASS = { q: 'quarter', h: 'half', w: 'whole' };
+const BSMASH_VALUE_CLASS = { '8': 'eighth', q: 'quarter', h: 'half', w: 'whole' };
 const BSMASH_BLOCK_MAX = 52;      // px: the largest a beat's square gets (the paper is 65 high)
 const BSMASH_BLOCK_GAP = 8;       // px between neighbouring squares
 
@@ -813,7 +1003,9 @@ function bsmashRenderReading() {
     const bars = bsmash.specs;
     if (!bars || !bars.length) return;
     const width = Math.max(240, reading.clientWidth || 340);
-    const perLine = Math.min(bars.length, width < 560 ? 2 : 4);
+    // Eighth notes in the picture need the room: one bar to a line on a phone.
+    const roomy = bsmashPerBeat() > 1 && bsmash.mode === 'steps' && bsmashPictureStep();
+    const perLine = Math.min(bars.length, width < 560 ? (roomy ? 1 : 2) : 4);
     const perBar = Math.min(300, Math.floor((width - 16) / perLine));
     const lines = [];
     for (let first = 0; first < bars.length; first += perLine) {
@@ -830,13 +1022,21 @@ function bsmashRenderReading() {
         const under = bsmashMake('div', 'bsmash-under', line);
         paper.style.width = (perBar * lineBars.length + 8) + 'px';
         marks.style.width = under.style.width = paper.style.width;
-        const drawn = bsmashWithStompGrid(() => renderRstompStaff(staff, lineBars, perBar));
+        const drawn = bsmashWithStompGrid(() => renderRstompStaff(staff, lineBars.map(bsmashGridSpecs), perBar));
+        const per = bsmashPerBeat();
         drawn.forEach((layout, i) => {
             const barIndex = first + i;
             const left = 4 + i * perBar;
             const mark = bsmashMake('div', 'bsmash-mark', marks);
             mark.style.left = left + 'px';
-            bsmash.layout[barIndex] = { layout: layout, picture: picture, under: under, mark: mark, left: left, width: perBar, specs: lineBars[i] };
+            // Where a slot of the bar sits, on the notation's own grid. Stomp
+            // Lab's pulseX reads its grid globals when it is CALLED, so every
+            // call goes through bsmashWithStompGrid too (otherwise it measures
+            // against whatever grid Stomp Lab last had).
+            const slotX = slots => bsmashWithStompGrid(() => layout.pulseX(slots));
+            // x(beats): the same, in beats.
+            const x = beats => slotX(beats * per);
+            bsmash.layout[barIndex] = { layout: layout, slotX: slotX, x: x, picture: picture, under: under, mark: mark, left: left, width: perBar, specs: lineBars[i] };
             bsmashDrawPicture(barIndex);
         });
         const cursor = bsmashMake('div', 'bsmash-cursor', picture);
@@ -902,9 +1102,11 @@ function bsmashOpenPage(firstBar) {
 // hollow shows sound or silence; colour only repeats the length.
 function bsmashDrawPicture(barIndex) {
     const entry = bsmash.layout[barIndex];
-    const x = entry.layout.pulseX;
+    const x = entry.slotX;                  // in the grid's slots: a square per slot
+    const per = bsmashPerBeat();
     entry.blocks = [];
-    entry.specs.forEach((spec, index) => {
+    entry.specs.forEach((beatSpec, index) => {
+        const spec = { value: beatSpec.value, isRest: beatSpec.isRest, slot: beatSpec.slot * per, slots: beatSpec.slots * per };
         const valueClass = BSMASH_VALUE_CLASS[spec.value] || 'quarter';
         const block = bsmashMake('div', 'bsmash-block', entry.picture);
         block.classList.add('pic-blocks', valueClass); // text-ok: class names
@@ -985,7 +1187,7 @@ function bsmashPictureCursor(takeBeat) {
     const bar = Math.floor(takeBeat / 4);
     const entry = bsmash.layout[bar];
     if (!entry) return;
-    const x = entry.layout.pulseX;
+    const x = entry.x;
     const cursor = entry.picture.querySelector('.bsmash-cursor');
     const beat = takeBeat % 4;
     cursor.style.left = x(beat) + 'px';
@@ -996,7 +1198,7 @@ function bsmashPictureCursor(takeBeat) {
 function bsmashMarkUnder(barIndex, slot, slots) {
     const entry = bsmash.layout[barIndex];
     if (!entry) return null;
-    const x = entry.layout.pulseX;
+    const x = entry.x;
     const mark = bsmashMake('div', 'bsmash-miss', entry.under);
     mark.style.left = (x(slot) + 1) + 'px';
     mark.style.width = Math.max(10, x(slot + slots) - x(slot) - 4) + 'px';
@@ -1011,10 +1213,12 @@ function bsmashDiceRoll(bars) {
     const row = bsmashEl('beat-dice');
     row.innerHTML = '';
     row.hidden = false;
+    const per = bsmashPerBeat();
     const dice = bars.map(() => {
         const die = bsmashMake('div', 'bsmash-die', row);
         die.classList.add('rolling');
-        for (let i = 0; i < 4; i++) bsmashMake('span', 'bsmash-pip', die);
+        if (per > 1) die.classList.add('eighths');
+        for (let i = 0; i < 4 * per; i++) bsmashMake('span', 'bsmash-pip', die);
         return die;
     });
     let flips = 0;
@@ -1031,7 +1235,7 @@ function bsmashDiceRoll(bars) {
             die.classList.remove('rolling');
             const pips = die.querySelectorAll('.bsmash-pip');
             bsmashSpecs(bars[i]).forEach(spec => {
-                for (let k = 0; k < spec.slots; k++) pips[spec.slot + k].classList.toggle('on', !spec.isRest);
+                for (let k = 0; k < spec.slots * per; k++) pips[spec.slot * per + k].classList.toggle('on', !spec.isRest);
             });
         });
     }, 850);
@@ -1863,6 +2067,22 @@ function bsmashSwitchSong(progress, id) {
     progress.song = id;
 }
 
+// A finished band: all three musicians won.
+function bsmashBandFinished(musicians) {
+    return !!musicians && BSMASH_MUSICIANS.every(m => musicians[m.id] && musicians[m.id].won);
+}
+
+// Is a song open? Most are from the start. The eighth-note song opens once a
+// band has been finished on a first-level song (Rob: "only available when
+// they have created a song with whole notes, half notes and quarter notes").
+function bsmashSongOpen(progress, id) {
+    const meta = (window.KR && KR.songs && KR.songs[id]) || {};
+    if (meta.opens !== 'a-song-finished' || KR.openAll()) return true;
+    const bands = bsmashBands(progress);
+    const finished = song => !bsmashRhythmOf(song) && bsmashBandFinished(song === bsmashSongOf(progress) ? progress.musicians : (bands[song] || {}).musicians);
+    return bsmashBandSongs().some(finished);
+}
+
 // How far a band has got, for its song card: finished, where it is up to,
 // or null if it hasn't been begun.
 function bsmashBandStatus(musicians) {
@@ -1914,6 +2134,16 @@ function bsmashRenderSongs() {
         card.classList.toggle('ours', id === ours);
         bsmashMake('span', 'bsmash-song-icon', card).textContent = KR.t('song.' + id + '.icon');
         bsmashMake('span', 'bsmash-song-name', card).textContent = bsmashSongName(id);
+        // A song with a rhythm level says so: the eighth-note song.
+        const rhythm = (KR.songs[id] || {}).rhythm;
+        if (rhythm) bsmashMake('small', 'bsmash-song-level', card).textContent = KR.t('beat.songs.level.' + rhythm);
+        // Not open yet: shown, named, and what opens it.
+        if (!bsmashSongOpen(progress, id)) {
+            card.classList.add('locked');
+            card.disabled = true;
+            bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t('beat.songs.locked');
+            return;
+        }
         // My songs: how far each one's band has got.
         const status = bsmashBandStatus(id === ours ? progress.musicians : (bands[id] || {}).musicians);
         if (status) bsmashMake('small', 'bsmash-song-status', card).textContent = status;
@@ -1933,6 +2163,11 @@ function auditionBeatSong(id) {
     if (!bsmash || bsmash.mode !== 'songs') return;
     bsmashAudio();
     bsmash.audition = id;
+    // A song at another tempo: the band starts again at its tempo.
+    if (bsmashBand && bsmashBand.bpm !== bsmashSongBpm(id)) {
+        bsmashBandStop();
+        bsmashBandStart({ click: 'click' });
+    }
     bsmashBandSetPart('guide', 'guide:' + id);
     // Rob's audition for the song, where he has written one: his four-bar
     // phrase, and a simple drum part and bass line under it.
@@ -2038,6 +2273,7 @@ function bsmashOverBox(box, x, y) {
 function addBeatSong(id) {
     if (!bsmash || bsmash.mode !== 'songs' || bsmash.adding) return;
     const progress = bsmashLoad();
+    if (!bsmashSongOpen(progress, id)) return;
     bsmashSwitchSong(progress, id);
     progress.songAt = progress.songAt || Date.now();
     bsmashSave(progress);
@@ -2073,6 +2309,8 @@ function startBeatMusician(id, keepBand, step) {
     // A band is built on a song: no song chosen yet, choose one first.
     if (!bsmashSong()) return showBeatSongs();
     const record = bsmashUpdateMusician(id, { plays: bsmashMusicianRecord(id).plays + 1 });
+    // The band can play on into the takes only at the song's own tempo.
+    if (bsmashBand && bsmashBand.bpm !== bsmashSongBpm(bsmashSong())) keepBand = false;
     if (!keepBand) bsmashStopAll();
     const pads = bsmash && bsmash.pads;
     const frame = bsmash && bsmash.frame;
@@ -2100,7 +2338,9 @@ function startBeatMusician(id, keepBand, step) {
     bsmashBandLevel(BSMASH_BAND_QUIET);
     if (choosing) return bsmashOpenPicker(false);
     bsmashNewRoll();
-    if (record.plays === 1) bsmashEvent('beat.musician.intro.' + id);
+    // The first time in on a rhythm level, the musician says what is new.
+    const rhythm = bsmashRhythm();
+    if (record.plays === 1) bsmashEvent(rhythm ? 'beat.' + (KR.songs[bsmash.song].rhythm) + '.intro.' + id : 'beat.musician.intro.' + id);
 }
 
 // The band under a musician's takes: every part won so far, and Tango's
@@ -2132,7 +2372,10 @@ function bsmashOnRecord(record, step) {
 function bsmashWindow() {
     const clean = bsmashMusicianRecord(bsmash.musician.id).clean;
     const extra = Math.max(0, BSMASH_WINDOW_START_EXTRA_MS - BSMASH_WINDOW_TIGHTEN_MS * clean);
-    return (BSMASH_WINDOW_MS[bsmashAge()] + extra) / 1000;
+    const win = (BSMASH_WINDOW_MS[bsmashAge()] + extra) / 1000;
+    // On quavers, never wider than half a quaver either side.
+    const rhythm = bsmashRhythm();
+    return rhythm ? Math.min(win, rhythm.windowQuavers * BSMASH_BEAT / rhythm.perBeat) : win;
 }
 
 // THE SQUARES COME DOWN AT FOUR BARS. Rob, playtest 2, on the eight-bar
@@ -2381,10 +2624,16 @@ function bsmashControlRoom(take) {
    press as [beat in the take, beats held], and the pad sound it was played
    on. My band plays it back over the band, and it goes into the audio file
    they send their teacher. Rob: "You get to re-record your 32 bars." */
+// The bars of the take in play that are played on the hi-hat.
+function bsmashHatBars() {
+    return (bsmash.specs || []).map((specs, i) => bsmashIsHatBar(specs) ? i : -1).filter(i => i >= 0);
+}
+
 function bsmashTakeData(take, score) {
     const round = x => Math.round(x * 1000) / 1000;
     return {
         at: Date.now(), score: Math.round(score * 100), bars: take.bars, kind: bsmashSoundKind(),
+        hatBars: bsmashHatBars(),
         presses: take.presses.map(p => [round(p.beat),
             round(p.up !== null && p.up !== undefined ? Math.max(0.1, (p.up - p.time) / BSMASH_BEAT) : 0.25)]),
     };
@@ -2509,16 +2758,28 @@ function bsmashBookTake(take) {
     }
 }
 
+// The sound a press makes: the musician's pad sound, or on the eighth-note
+// song's drums the hi-hat, in a bar of off-beats (Rob: the off-beats on the
+// hi-hat).
+function bsmashPressKind(t) {
+    const take = bsmash && bsmash.mode === 'steps' && bsmash.take;
+    if (take && bsmash.specs) {
+        const bar = Math.floor((t - take.start) / BSMASH_BAR + BSMASH_ANTICIPATE_BEATS / 4);
+        if (bsmash.specs[bar] && bsmashIsHatBar(bsmash.specs[bar])) return 'hat';
+    }
+    return bsmashSoundKind();
+}
+
 function bsmashPress(p) {
     if (!bsmash) return;
-    bsmashPadSound(p, bsmashSoundKind());
+    bsmashPadSound(p, bsmashPressKind(p.time));
     if (bsmash.mode === 'jam') return bsmashJamPress(p);
     const take = bsmash.take;
     if (!take || take.done || take.paused) return;
     const t = p.time;
     // Taps in the count-in, or after the last note, are free; but a press
     // within half a beat of the first note is that note, early.
-    if (t < take.playFrom - Math.max(take.win, BSMASH_NEAR_BEAT * BSMASH_BEAT) || t > take.end + take.win) return;
+    if (t < take.playFrom - Math.max(take.win, bsmashNearBeat() * BSMASH_BEAT) || t > take.end + take.win) return;
     // What the student played, for listening back and keeping. Its beat in
     // the take is fixed now: a pause and resume moves take.start.
     p.beat = (t - take.start) / BSMASH_BEAT;
@@ -2538,9 +2799,9 @@ function bsmashPress(p) {
         // we need to call an alert to tell them to follow along the beats.
         // Get on the beat." It sounded, in time, but it isn't clean: the
         // right pad lights to show where that beat lives.
-        if (bsmash.pads.count === 4 && p.pad !== best.spec.slot) {
+        if (bsmash.pads.count === 4 && p.pad !== Math.floor(best.spec.slot)) {
             best.wrongPad = true;
-            bsmash.pads.flash(best.spec.slot, 'demo', 500);
+            bsmash.pads.flash(Math.floor(best.spec.slot), 'demo', 500);
             if (!take.saidWrongPad) { take.saidWrongPad = true; bsmashEvent('beat.take.wrongPad'); }
         }
         if (take.mustHit.has(best)) take.cameBack = true;
@@ -2567,11 +2828,17 @@ function bsmashPress(p) {
     bsmashSlip(Math.floor((t - take.start) / BSMASH_BAR));
 }
 
+// How near a note a press must be to be that note early or late, in beats.
+function bsmashNearBeat() {
+    const rhythm = bsmashRhythm();
+    return rhythm ? rhythm.nearBeat : BSMASH_NEAR_BEAT;
+}
+
 // The nearest note not yet played within half a beat of a press, or null.
 function bsmashNearNote(take, t) {
     let near = null;
     take.notes.forEach(note => {
-        if (note.hit || Math.abs(t - note.t) >= BSMASH_NEAR_BEAT * BSMASH_BEAT) return;
+        if (note.hit || Math.abs(t - note.t) >= bsmashNearBeat() * BSMASH_BEAT) return;
         if (!near || Math.abs(t - note.t) < Math.abs(t - near.t)) near = note;
     });
     return near;
@@ -2612,8 +2879,9 @@ function bsmashTakeFrame() {
     if (take.go === 'picture') take.notes.forEach(note => {
         if (!note.hit || note.press.up !== null || note.spec.slots < 2) return;
         const block = bsmash.layout[note.bar] && bsmash.layout[note.bar].blocks[note.index];
-        const beats = Math.min(note.spec.slots, Math.floor((judged - note.t) / BSMASH_BEAT) + 1);
-        if (block) for (let k = 0; k < beats; k++) block.children[k].classList.add('filled');
+        const per = bsmashPerBeat();
+        const cells = Math.min(note.spec.slots * per, Math.floor((judged - note.t) / BSMASH_BEAT * per) + 1);
+        if (block) for (let k = 0; k < cells; k++) block.children[k].classList.add('filled');
     });
     take.notes.forEach(note => {
         if (note.hit || note.missed || judged <= note.t + take.win) return;
@@ -2888,9 +3156,10 @@ function bsmashListenBack(take) {
     let bar = Math.ceil((bsmashNow() + 0.6 - bsmashBand.start) / BSMASH_BAR);
     while (((bar - takeBar) % 4 + 4) % 4) bar++;
     const start = bsmashBand.start + bar * BSMASH_BAR;
-    const kind = bsmashSoundKind();
+    const hatBars = bsmashHatBars();
     bsmashCancel('playback');
     take.presses.forEach(p => {
+        const kind = hatBars.indexOf(Math.floor(p.beat / 4 + BSMASH_ANTICIPATE_BEATS / 4)) !== -1 ? 'hat' : bsmashSoundKind();
         const at = start + p.beat * BSMASH_BEAT;
         const held = p.up !== null ? Math.max(0.08, p.up - p.time) : 0.15;
         bsmashAt(at, t => {
@@ -2926,7 +3195,7 @@ function bsmashFollowPlayback() {
     const entry = bsmash.layout[bar];
     if (entry) {
         const playline = entry.picture.parentNode.querySelector('.bsmash-playline');
-        playline.style.left = entry.layout.pulseX(beats - bar * 4) + 'px';
+        playline.style.left = entry.x(beats - bar * 4) + 'px';
         playline.hidden = false;
     }
     const line = Math.max(0, Math.min(page.lines.length - 1, Math.floor(bar / page.perLine)));
@@ -3182,6 +3451,7 @@ function openBeatBand() {
         bsmash = { mode: 'band', musician: BSMASH_MUSICIANS[0], delay: bsmashDelay() };
     }
     bsmash.song = bsmashSongOf(progress);
+    if (bsmashBand && bsmashBand.bpm !== bsmashSongBpm(bsmash.song)) bsmashBandStop();
     bsmashStopTimers();
     switchScreenState('beat', 'beat-screen-band');
     bsmashEl('beat-band-song').textContent = bsmash.song ? KR.t('song.' + bsmash.song + '.icon') + ' ' + bsmashSongName(bsmash.song) : '';
@@ -3281,8 +3551,9 @@ function bsmashMeHits(take, cycle) {
     take.presses.forEach(([beat, held]) => {
         const b = ((beat % total) + total) % total;
         if (Math.floor(b / 16) !== k) return;
-        hits.push({ beat: b - k * 16, held: held, kind: take.kind,
-            bar: Math.floor((b + BSMASH_ANTICIPATE_BEATS) / 4) % 4 });
+        const takeBar = Math.floor((b + BSMASH_ANTICIPATE_BEATS) / 4);
+        const hat = (take.hatBars || []).indexOf(takeBar % take.bars) !== -1;
+        hits.push({ beat: b - k * 16, held: held, kind: hat ? 'hat' : take.kind, bar: takeBar % 4 });
     });
     return hits;
 }

@@ -25,12 +25,23 @@
 (function (root) {
   'use strict';
 
-  const BPM = 100;
-  const BEAT = 60 / BPM;          // 0.6 s
-  const STEP = BEAT / 4;          // a semiquaver, 0.15 s
-  const BAR = BEAT * 4;           // 2.4 s
+  // THE TEMPO. 100 bpm, as the loop files were rendered; a song can ask for
+  // another (Skate Park, the eighth-note song, is slower: content/songs.js
+  // `bpm`). setTempo() changes it for everything booked from then on, so the
+  // game sets it only while nothing is playing.
+  let BPM = 100;
+  let BEAT = 60 / BPM;            // 0.6 s
+  let STEP = BEAT / 4;            // a semiquaver, 0.15 s
+  let BAR = BEAT * 4;             // 2.4 s
   const BARS = 4;
-  const LOOP = BAR * BARS;        // 9.6 s
+  let LOOP = BAR * BARS;          // 9.6 s
+  function setTempo(bpm) {
+    BPM = bpm || 100;
+    BEAT = 60 / BPM;
+    STEP = BEAT / 4;
+    BAR = BEAT * 4;
+    LOOP = BAR * BARS;
+  }
 
   const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
 
@@ -110,6 +121,14 @@
     },
     hat(ctx, out, t, v, open) {
       noiseBurst(ctx, out, t, open ? 0.32 : 0.05, 'highpass', 7500, 0.7, 0.28 * v);
+    },
+    // The student's hi-hat pad (the eighth-note song's off-beats). A pad
+    // sounds alone on a phone speaker, so it is built louder and a little
+    // longer than the kit's hat, with a lower layer a phone can carry: the
+    // lesson of Stomp Lab's tap snare.
+    padHat(ctx, out, t, v) {
+      noiseBurst(ctx, out, t, 0.09, 'highpass', 7000, 0.7, 0.5 * v);
+      noiseBurst(ctx, out, t, 0.05, 'bandpass', 4200, 1.2, 0.3 * v);
     },
     shaker(ctx, out, t, v) {
       noiseBurst(ctx, out, t, 0.08, 'bandpass', 6500, 1.4, 0.22 * v, 0.012);
@@ -937,6 +956,7 @@
     switch (kind) {
       case 'kick': drum.padKick(ctx, dest, t, 1); return { release() {} };
       case 'clave': drum.padClave(ctx, dest, t, 1); return { release() {} };
+      case 'hat': drum.padHat(ctx, dest, t, 1); return { release() {} };
       case 'snare': drum.snare(ctx, dest, t, 1); return { release() {} };
       case 'bass-electric': return bassVoice.electric(ctx, dest, t, c.bass + 12, 1);
       case 'bass-acoustic': return bassVoice.acoustic(ctx, dest, t, c.bass + 12, 1);
@@ -947,11 +967,13 @@
   }
 
   root.BeatSmashBand = {
-    BPM, BEAT, STEP, BAR, BARS, LOOP,
+    get BPM() { return BPM; }, get BEAT() { return BEAT; }, get STEP() { return STEP; },
+    get BAR() { return BAR; }, get LOOP() { return LOOP; }, BARS,
+    setTempo,
     SONG_NAMES: ['I', 'IV', 'I', 'V'],
     INSTRUMENTS: ['drums', 'bass', 'keys'],
     STYLES: ['spicy', 'smooth', 'hop'],
-    PAD_SOUNDS: ['kick', 'clave', 'snare', 'bass-electric', 'bass-acoustic', 'rhodes', 'organ'],
+    PAD_SOUNDS: ['kick', 'clave', 'hat', 'snare', 'bass-electric', 'bass-acoustic', 'rhodes', 'organ'],
     schedulePart,
     fill,
     pad,

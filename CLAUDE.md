@@ -1880,8 +1880,62 @@ their 32 bar is over that same chord progression."*
   song's form (AABA and the like) is still not shown.
 - **Songs will prove their levels** (Rob: *"over time I can add more complex
   rhythms into these songs and they can be rated a little bit more
-  challenging"*). Every song uses the same dice today. Quavers in one song
-  are being discussed; nothing is built.
+  challenging"*). The first is built: see "THE EIGHTH-NOTE SONG" below.
+
+### THE EIGHTH-NOTE SONG: a rhythm level carried by a song
+Rob, 2026-10-04: *"Let's use one of the songs we've made to become the
+container for the beginning of eighth notes… This song will only be available
+when they have created a song with whole notes, half notes and quarter notes…
+If they can make 32 bars correctly, I think we've made a huge leap forward."*
+
+- **Skate Park (`c-4-1-5-1`, IV I V I) is the eighth-note song.** A song names
+  its level in `content/songs.js`: `rhythm: 'quavers'`, `bpm: 80`, `opens:
+  'a-song-finished'`. Its card says "♪♪ Eighth notes", and until a band is
+  finished on a first-level song it shows locked, named, with "🔒 Finish a song
+  first" (`bsmashSongOpen()`; the teacher's Open code opens it).
+- **Rob's figures** (`BSMASH_RHYTHMS.quavers`): Tango `q q q 8 8` on the kick
+  and the off-beats `8r 8 8r 8 8r 8 8r 8` on the hi-hat; Riff's bass `8r 8 8 8
+  8r 8 8 8`; Riff's keys `h 8 8 qr` and the syncopation `8 q 8` (as `8 q 8 h`
+  and `h 8 q 8`). Each musician also has **cells**, the pieces a bar is built
+  from (a beat: `q qr`, `8 8`, `8r 8`; two beats from beat 1 or 3: `h`, `hr`,
+  `8 q 8`; the keys' `w`), and every bar they make passes the engraving rules.
+- **Weighting** (Rob: *"in the 1, 2 and 4 bar figures, weight the notation
+  heavier in favour of quavers. When we reach the eight bar and 32 bar…
+  include the quarter notes, half notes and whole notes in amongst it so it's
+  nice and evenly balanced"*). Steps 1–3 roll **'quavers'**: Rob's figures for
+  half the rolls, every other eighth-note bar of the cells for the rest. Steps
+  4–5 roll **'balanced'**: half the musician's own first-song bars, half
+  eighth-note bars (measured: 50/50 for every musician). The one-bar ladder
+  starts with each figure on its own. Weighting is by repetition in the table
+  (`bsmashRhythmTable()`), so the roll is unchanged.
+- **The hi-hat**: on Skate Park's drums a bar with no note on a beat is played
+  on the hi-hat (`bsmashIsHatBar()`, `drum.padHat`, built loud enough for a
+  phone like Stomp Lab's tap snare). The listen-back, the kept take
+  (`hatBars`) and the recording all play it.
+- **A slower song** (Rob's answer to "tighter window or slower song?"). The
+  tempo is the song's: `BSMASH_BPM`/`BEAT`/`BAR`/`LOOP` are set by
+  `bsmashSetTempo()` when a new band starts, from the song in play
+  (`bsmashTempoSong()`: the one auditioned on the song screen, else the
+  band's; the warm-up stays 100), and `BeatSmashBand.setTempo()` moves the
+  synth with it. They change only while nothing is playing: auditioning,
+  starting a musician or opening My band on a song at another tempo starts
+  the band again. The loop files are 100 bpm, so at any other tempo every part
+  is the synth's (`bsmashPartLoopId()`).
+- **Timing on quavers**: at 80 bpm an eighth note is 0.375 s, so the window is
+  capped at half an eighth either side (187 ms; `windowQuavers`), and a press
+  is a note early or late within 0.375 of a beat (`nearBeat`), not half a beat.
+  The pad is still the beat: an eighth on the "and" of 2 is pad 2.
+- **Specs are in BEATS** everywhere in Beat Smash (`spec.slot`, `spec.slots`:
+  an eighth is 0.5), so timing, pads and grading read the same on both grids;
+  `bsmashGridSpecs()` turns them into the grid's slots for `renderRstompStaff`,
+  and the picture is a square per grid slot (an eighth is one square, a quarter
+  two). The dice show eight pips. A picture step on a phone puts one bar to a
+  line, so the eighth-note squares have room.
+- **A fix found on the way**: Stomp Lab's `pulseX` reads its grid globals when
+  it is *called*, not when the staff was drawn, so Beat Smash's picture, cursor,
+  marks and play line measured against whatever grid Stomp Lab had last. Every
+  call now goes through `bsmashWithStompGrid` (`entry.slotX`, `entry.x`).
+- Each musician's first time in says what is new (`beat.quavers.intro.<id>`).
 
 ### MY BAND: the song they built, theirs to play with
 Rob, 2026-10-03, after finishing his first band: *"Once you've earned a song,
@@ -2130,7 +2184,11 @@ the pathway pointing at the songs when a band is complete), a
 part added by the same drag), My band (the mixer, ME, a take looping on the
 band's clock, the mix kept, the report, the recording as a WAV and a picture,
 a re-record kept into the band, a real studio take kept and every step
-counted), picking up after a break (the pathway's stars,
+counted), the eighth-note song (locked until a band is finished, Rob's figures
+half of every short roll, the long rolls balanced, every bar legal and full,
+80 bpm from the audition on, the window, his figures played in time and clean,
+the hi-hat bars, My band and its recording at 80, and 100 again on a first
+song), picking up after a break (the pathway's stars,
 Carry on and welcome back; the same studio bars after a reload; a passed
 take kept to choose; a guest's warm-up and song kept and adopted), his songs (voicings,
 transposition, every pump rhythm, anticipation, variety, every bass style,
