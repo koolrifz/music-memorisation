@@ -1,7 +1,8 @@
 /* =========================================
    KOOL RIFFS - SONGS FOR THE BAND, BY ID
    =========================================
-   Rob writes these. Each song is a loop of four bars at 100 bpm (a song of
+   Rob writes these. Each song is a loop of four bars at 100 bpm unless it
+   says otherwise (`bpm`; see Skate Park, the eighth-note song) (a song of
    one or two bars is played round until the four are full), played live by
    the synthesised band (beat-smash-band.js): Tango's warm-up drums, a bass
    and a suitcase Rhodes. Beat Smash's warm-up jam plays the songs listed in
@@ -175,8 +176,26 @@ window.KR.songs = {
         comp: { whole: 'w', pumps: KR_COMP_PUMPS },
         bass: { whole: 'whole', groove: 'pump' },
     },
+    /* SKATE PARK IS THE EIGHTH-NOTE SONG (Rob, 2026-10-04: "Let's use one
+       of the songs we've made to become the container for the beginning of
+       eighth notes"). Its band is read on the quaver grid, from Rob's
+       figures (beat-smash.js, BSMASH_RHYTHMS), at a slower tempo, and it
+       opens once a band is finished on a first-level song.
+         rhythm  the rhythm level its band is read at
+         bpm     its tempo (every other song is 100)
+         opens   'a-song-finished': shown locked until a band is finished */
     'c-4-1-5-1': {
         name: 'song.c-4-1-5-1',
+        rhythm: 'quavers',
+        bpm: 80,
+        opens: 'a-song-finished',
+        // AN EXAMPLE, Claude's, in eighth notes: Rob will write his own. The
+        // Hop drums put open hats on the off-beats, as his figure does.
+        audition: {
+            phrase: 'q:A4 8:A4 8:C5 h:F5 | q:E5 8:E5 8:G5 h:C6 | q:D5 8:D5 8:F5 q:B4 q:G4 | h.:C5 qr',
+            drums: 'hop',
+            bass: 'halves',
+        },
         bars: [
             { chord: 'Fmaj7', bass: 'F2', keys: ['F4', 'A4', 'C5', 'E5'] },
             { chord: 'C6',    bass: 'C3', keys: ['G4', 'A4', 'C5', 'E5'] },

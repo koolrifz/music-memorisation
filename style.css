@@ -1345,3 +1345,10 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-report-line + .bsmash-report-line { margin-top: 4px; }
 /* My songs: how far each song's band has got, on its card. */
 .bsmash-song-status { pointer-events: none; font-size: 11px; font-weight: 800; color: var(--accent-gold); }
+/* The eighth-note song: a square per quaver, eight pips on a die, and the
+   song card's level and lock. */
+.bsmash-block.eighth { --c: #E69F00; }
+.bsmash-die.eighths { width: 110px; }
+.bsmash-die.eighths .bsmash-pip { width: 10px; height: 10px; border-width: 2px; }
+.bsmash-song-level { pointer-events: none; font-size: 11px; font-weight: 800; color: #E69F00; }
+.bsmash-song-card.locked { opacity: 0.6; cursor: default; }

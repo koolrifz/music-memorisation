@@ -152,7 +152,7 @@ def wait_for_take(page, timeout=20):
                              " end: bsmash.take.end, notes: bsmash.take.notes.map(n => n.t),"
                              " noteBars: bsmash.take.notes.map(n => n.bar),"
                              " slots: bsmash.take.notes.map(n => n.spec.slots),"
-                             " rests: bsmash.take.rests.map(r => [r.t, r.end]), delay: bsmash.delay }")
+                             " rests: bsmash.take.rests.map(r => [r.t, r.end]), delay: bsmash.delay, beat: BSMASH_BEAT }")
         if take:
             return take
         time.sleep(0.05)
@@ -175,13 +175,15 @@ def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=
     offset = clock_offset(page)
     pads = page.locator('#beat-pads .krpad').count()
     presses = [(t + (shift or {}).get(i, 0), i) for i, t in enumerate(take['notes']) if i not in skip]
-    hold = lambda i: 0.08 if i < 0 or i in let_go or take['slots'][i] < 2 else (take['slots'][i] - 0.25) * 0.6
+    beat_s = take['beat']
+    hold = lambda i: 0.08 if i < 0 or i in let_go or take['slots'][i] < 2 else (take['slots'][i] - 0.25) * beat_s
     if rest_tap and take['rests']:
         r0, r1 = take['rests'][0]
         presses.append((r0 + 0.3 * (r1 - r0), -1))
     presses.sort()
     for t, i in presses:
-        beat = int(round((t - take['start']) / 0.6)) % 4
+        # The pad is the beat the note sits in: an eighth on the "and" of 2 is pad 2.
+        beat = int((t - take['start']) / beat_s + 0.01) % 4
         key = str(beat + 1) if use_key == 'beats' else use_key
         pad = beat if pads == 4 else 0
         if i >= 0 and i in wrong_pad:
@@ -1727,6 +1729,99 @@ def test_resume(page):
     check('...and go with them to their name', adopted == {'guest': None, 'song': 'c-1-4-1-5', 'jam': True}, adopted)
 
 
+def test_quaver_song(page):
+    """Rob, 2026-10-04: one song becomes the eighth-note level. Skate Park:
+    his figures, read on the quaver grid, a slower song, open once a band is
+    finished on a first-level song."""
+    won = {'step': 5, 'streak': 0, 'clean': 20, 'won': True, 'part': 'spicy', 'plays': 5}
+    players = "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Zed',age:'9-10'}],current:'p1'}));"
+    fresh(page, players + "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true,firstStar:true,"
+                "song:'c-1-4-1-5',musicians:{drums:%s}}}}));" % json.dumps(won))
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate('showBeatSongs()')
+    page.wait_for_timeout(300)
+    card = '.bsmash-song-card[data-song="c-4-1-5-1"]'
+    check('Skate Park is the eighth-note song: shown, named, and locked until a band is finished',
+          page.evaluate("document.querySelector('%s').disabled" % card) and 'Eighth notes' in page.inner_text(card)
+          and 'Finish a song first' in page.inner_text(card), page.inner_text(card))
+    page.evaluate("const p = bsmashLoad(); p.musicians.bass = %s; p.musicians.keys = %s; bsmashSave(p); showBeatSongs()" % (json.dumps(won), json.dumps(won)))
+    page.wait_for_timeout(300)
+    check('...a band finished on a first-level song opens it', not page.evaluate("document.querySelector('%s').disabled" % card))
+    tables = page.evaluate("""(() => { const r = BSMASH_RHYTHMS.quavers, out = {};
+        for (const m of BSMASH_MUSICIANS) {
+            const figs = r.musicians[m.id].figures.map(bsmashParseBar), q = bsmashRhythmTable(r, m, 'quavers'), b = bsmashRhythmTable(r, m, 'balanced');
+            const grid = rstompGridFor({ labels: r.labels, slot: r.slot, pool: Object.keys(RSTOMP_VOCABULARY) });
+            const all = q.concat(b);
+            out[m.id] = { figures: Math.round(100 * q.filter(x => figs.some(f => bsmashSameBar(f, x))).length / q.length),
+                          quaverBars: q.every(bsmashHasQuaver),
+                          balanced: Math.round(100 * b.filter(bsmashHasQuaver).length / b.length),
+                          firstSong: b.filter(x => !bsmashHasQuaver(x)).every(x => bsmashAllBars(m).some(y => bsmashSameBar(x, y))),
+                          legal: all.every(x => rstompShapeIsLegal(x, 8, 0, grid)),
+                          full: all.every(x => bsmashSpecs(x).reduce((a, s) => a + s.slots, 0) === 4) };
+        }
+        return out; })()""")
+    check('Rob\'s figures are half of every 1, 2 and 4-bar roll, the rest all eighth-note bars',
+          all(45 <= t['figures'] <= 55 and t['quaverBars'] for t in tables.values()), tables)
+    check('...8 and 32 bars are balanced: half eighth-note bars, half the first song\'s quarters, halves and wholes',
+          all(45 <= t['balanced'] <= 55 and t['firstSong'] for t in tables.values()), tables)
+    check('...and every bar is legal by the engraving rules and fills its four beats',
+          all(t['legal'] and t['full'] for t in tables.values()), tables)
+    page.click(card)
+    page.wait_for_timeout(400)
+    check('Auditioning it: the band starts again at its tempo, slower', page.evaluate("[bsmashBand.bpm, BeatSmashBand.BPM]") == [80, 80])
+    page.click('#beat-song-add')
+    page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.take", timeout=10000)
+    st = page.evaluate("""({ song: bsmash.song, bars: bsmash.bars.map(b => b.join(' ')), bpm: bsmashBand.bpm, beat: BSMASH_BEAT,
+        win: bsmashWindow(), guide: document.getElementById('beat-studio-guide').innerText, pips: document.querySelectorAll('#beat-dice .bsmash-pip').length,
+        squares: document.querySelectorAll('#beat-reading .bsmash-block').length })""")
+    check('Into Tango\'s drums at 80 bpm: the first bar is his figure, and Tango says what is new',
+          st['song'] == 'c-4-1-5-1' and st['bars'] == ['quarter-note quarter-note quarter-note eighth-note eighth-note']
+          and st['bpm'] == 80 and abs(st['beat'] - 0.75) < 1e-9 and 'Eighth notes' in st['guide'], st)
+    check('...a timing window of half an eighth note at most, and the picture a square per eighth', abs(st['win'] - 0.1875) < 1e-6
+          and st['squares'] == 5, st)
+    ok = play_until(page, "bsmash.streak >= 1 || bsmashMusicianRecord('drums').clean > 0", limit=3)
+    check('...played in time on the beat pads (the "and" of 4 on pad 4), the take is clean', ok, state(page))
+    page.wait_for_timeout(2400)
+    page.evaluate("bsmashUpdateMusician('drums', { clean: 1 }); bsmash.streak = 0; bsmashNewRoll()")
+    page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=10000)
+    hat = page.evaluate("""({ bars: bsmash.bars.map(b => b.join(' ')), kind: bsmashPressKind(bsmash.take.start + 0.5 * BSMASH_BEAT),
+        hatBars: bsmashHatBars() })""")
+    check('The second rung is the off-beats, and they are played on the hi-hat',
+          hat['bars'] == ['eighth-rest eighth-note eighth-rest eighth-note eighth-rest eighth-note eighth-rest eighth-note']
+          and hat['kind'] == 'hat' and hat['hatBars'] == [0], hat)
+    play_take(page)
+    page.wait_for_timeout(300)
+    check('...and played on the "and"s, it is clean', page.evaluate("bsmash.phase === 'reveal' || bsmash.streak >= 1"), [state(page), guide(page)])
+    # Riff's bass figure, held where it should be.
+    page.evaluate("startBeatMusician('bass', false, 1)")
+    page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=10000)
+    bass = page.evaluate("bsmash.bars.map(b => b.join(' '))")
+    play_take(page)
+    page.wait_for_timeout(300)
+    check('Riff\'s bass figure first, and played in time it is clean',
+          bass == ['eighth-rest eighth-note eighth-note eighth-note eighth-rest eighth-note eighth-note eighth-note']
+          and page.evaluate("bsmash.phase === 'reveal' || bsmash.streak >= 1"), [bass, state(page)])
+    # The band finished at the slower tempo: My band and its recording are 80 bpm.
+    page.evaluate('showBeatPathway()')
+    take = {'at': 1, 'score': 90, 'bars': 32, 'kind': 'kick', 'hatBars': [1], 'presses': [[b * 0.5, 0.4] for b in range(0, 256, 3)]}
+    page.evaluate("const p = bsmashLoad(); ['drums', 'bass', 'keys'].forEach(id => Object.assign(p.musicians[id], %s)); p.musicians.drums.take = %s; bsmashSave(p); openBeatBand()"
+                  % (json.dumps(won), json.dumps(take)))
+    page.wait_for_timeout(400)
+    hits = page.evaluate("[...new Set(bsmashMeHits(bsmashLoad().musicians.drums.take, 0).map(h => h.bar + ':' + h.kind))].sort()")
+    check('My band plays the eighth-note song at 80 bpm, the hi-hat bars of a kept take on the hi-hat',
+          page.evaluate("bsmashBand.bpm") == 80 and hits == ['0:kick', '1:hat', '2:kick', '3:kick'], hits)
+    seconds = page.evaluate("bsmashRenderBand().then(blob => (blob.size - 44) / 2 / 32000)")
+    check('...and its recording is 32 bars at 80 bpm', 97 < seconds < 100, seconds)
+    page.evaluate('showBeatPathway()')
+    page.wait_for_timeout(200)
+    page.evaluate("const p = bsmashLoad(); p.song = 'c-1-4-1-5'; bsmashSave(p); startBeatMusician('drums', false, 1)")
+    page.wait_for_timeout(500)
+    check('Back on a first-level song the band is 100 bpm again, on the crotchet grid',
+          page.evaluate("[bsmashBand.bpm, BeatSmashBand.BPM, bsmashPerBeat()]") == [100, 100, 1])
+    page.evaluate('showBeatPathway()')
+
+
 def test_teacher_codes(page):
     fresh(page)
     said = code(page, 'koolopen')
@@ -1854,6 +1949,7 @@ def main():
         test_playtest_two(page)
         test_resume(page)
         test_my_band(page)
+        test_quaver_song(page)
         test_teacher_codes(page)
         test_rest_of_app(page)
         page.close()
