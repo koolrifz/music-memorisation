@@ -1804,9 +1804,16 @@ function bsmashJamMorph() {
    that appears above (Rob, after Balatro: "you click on it and hold it
    down, and then a box above appears, and it says add, so you just slide it
    up to the box and drop it in"). Once chosen, that is the song: "They
-   don't get to change. They can start another one if they like." A new song
-   is a new band, built from the beginning; the old band is kept in
-   progress.songs, and the Learner's Permit, earned once, stays. */
+   don't get to change. They can start another one if they like."
+
+   MY SONGS: every song keeps its own band (Rob, 2026-10-04: "I want to make
+   another song and go through the whole process again… I wouldn't care if
+   they got halfway through and abandoned one song and then went back and
+   started another. They can have a list of songs"). Choosing a song puts
+   its band on, exactly where it was left: a new song starts from the
+   beginning, a song already begun carries on, and nothing is lost by
+   switching, so nothing is asked. The bands not playing wait in
+   progress.bands, one per song. The Learner's Permit, earned once, stays. */
 const BSMASH_DEFAULT_SONG = 'c-1-4-1-5';   // the C loops' own I IV I V
 const BSMASH_HOLD_MS = 220;                // how long a card is held before it lifts
 const BSMASH_HOLD_SLOP = 12;               // px a finger may move and still be a tap
@@ -1827,6 +1834,45 @@ function bsmashSongOf(progress) {
 
 function bsmashSong() {
     return bsmashSongOf(bsmashLoad());
+}
+
+// Every song's band that isn't the one playing: { songId: { musicians, mix } }.
+// Bands kept before switching was possible (progress.songs, a list) are read
+// in too.
+function bsmashBands(progress) {
+    const bands = Object.assign({}, progress.bands || {});
+    (progress.songs || []).forEach(old => {
+        if (old && old.song && !bands[old.song]) bands[old.song] = { musicians: old.musicians, mix: {} };
+    });
+    return bands;
+}
+
+// Put a song's band on: the band playing now waits with its song, and the
+// song chosen comes back as it was left, or starts from the beginning.
+function bsmashSwitchSong(progress, id) {
+    const current = bsmashSongOf(progress);
+    if (current === id) return;
+    const bands = bsmashBands(progress);
+    if (current) bands[current] = { musicians: progress.musicians, mix: progress.mix || {}, at: Date.now() };
+    const band = bands[id] || {};
+    progress.musicians = band.musicians || {};
+    progress.mix = band.mix || {};
+    delete bands[id];
+    progress.bands = bands;
+    delete progress.songs;
+    progress.song = id;
+}
+
+// How far a band has got, for its song card: finished, where it is up to,
+// or null if it hasn't been begun.
+function bsmashBandStatus(musicians) {
+    if (!musicians) return null;
+    const record = id => Object.assign(bsmashBlankMusician(), musicians[id]);
+    if (BSMASH_MUSICIANS.every(m => record(m.id).won)) return KR.t('beat.songs.status.done');
+    const next = BSMASH_MUSICIANS.find(m => !record(m.id).won);
+    const r = record(next.id);
+    if (!r.plays && !BSMASH_MUSICIANS.some(m => record(m.id).won)) return null;
+    return KR.t('beat.songs.status.upTo', { who: KR.t('beat.channel.' + next.id), step: KR.t('beat.step.' + r.step) });
 }
 
 // A won part's style ('spicy'...) as the band plays it: over the chosen
@@ -1858,7 +1904,9 @@ function bsmashSongName(id) {
 function bsmashRenderSongs() {
     const box = bsmashEl('beat-song-cards');
     box.innerHTML = '';
-    const ours = bsmashLoad().song;
+    const progress = bsmashLoad();
+    const ours = bsmashSongOf(progress);
+    const bands = bsmashBands(progress);
     bsmashBandSongs().forEach(id => {
         const card = bsmashMake('button', 'bsmash-song-card', box); // text-ok: class names
         card.type = 'button';
@@ -1866,6 +1914,9 @@ function bsmashRenderSongs() {
         card.classList.toggle('ours', id === ours);
         bsmashMake('span', 'bsmash-song-icon', card).textContent = KR.t('song.' + id + '.icon');
         bsmashMake('span', 'bsmash-song-name', card).textContent = bsmashSongName(id);
+        // My songs: how far each one's band has got.
+        const status = bsmashBandStatus(id === ours ? progress.musicians : (bands[id] || {}).musicians);
+        if (status) bsmashMake('small', 'bsmash-song-status', card).textContent = status;
         // The chords, for the teacher only: the children are just listening.
         if (KR.openAll()) bsmashMake('small', 'bsmash-song-chords', card).textContent = KR.t('song.' + id + '.chords');
         bsmashDragToAdd(card, {
@@ -1987,17 +2038,7 @@ function bsmashOverBox(box, x, y) {
 function addBeatSong(id) {
     if (!bsmash || bsmash.mode !== 'songs' || bsmash.adding) return;
     const progress = bsmashLoad();
-    const current = bsmashSongOf(progress);
-    const begun = BSMASH_MUSICIANS.some(m => progress.musicians[m.id].won || progress.musicians[m.id].plays > 0);
-    if (current && current !== id && begun && !window.confirm(KR.t('beat.songs.newConfirm', { song: bsmashSongName(current) }))) {
-        bsmashEl('beat-song-drop').hidden = true;
-        return;
-    }
-    if (current !== id && begun) {
-        progress.songs = (progress.songs || []).concat([{ song: current, musicians: progress.musicians, at: Date.now() }]);
-        progress.musicians = {};
-    }
-    progress.song = id;
+    bsmashSwitchSong(progress, id);
     progress.songAt = progress.songAt || Date.now();
     bsmashSave(progress);
     bsmash.adding = true;
@@ -3687,6 +3728,9 @@ function renderBeatPathway() {
             if (!record.won || bsmashSelected === 'jam') bsmashSelected = musician.id;
         }
     });
+    // The band complete: the next thing is another song (Rob: "I want to make
+    // another song and go through the whole process again").
+    if (song && BSMASH_MUSICIANS.every(m => progress.musicians[m.id].won)) bsmashSelected = 'song';
     selectBeatMusician(bsmashSelected);
     bsmashRenderStats();
     const won = id => progress.musicians[id].won;
