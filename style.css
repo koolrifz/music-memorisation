@@ -1343,3 +1343,5 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-report-block h3 { margin: 0 0 6px; color: var(--accent-gold); font-size: 16px; }
 .bsmash-report-line { font-size: 14px; line-height: 1.45; color: #dbe4ee; }
 .bsmash-report-line + .bsmash-report-line { margin-top: 4px; }
+/* My songs: how far each song's band has got, on its card. */
+.bsmash-song-status { pointer-events: none; font-size: 11px; font-weight: 800; color: var(--accent-gold); }

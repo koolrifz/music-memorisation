@@ -1400,31 +1400,42 @@ def test_song_choice(page):
     parts = page.evaluate('Object.assign({}, bsmashBand.parts)')
     check('The band won so far plays over the song: the bass follows its chords, the guide piano holds them',
           parts == {'drums': 'hop', 'bass': 'band:c-2-5-1-6:spicy', 'guide': 'guide:c-2-5-1-6'}, parts)
-    # The song can't be swapped quietly: another song is a new band.
+    # My songs: every song keeps its own band, and switching loses nothing.
     page.evaluate('showBeatPathway()')
     check('The song square shows the song chosen', 'Night Owl' in page.inner_text('#beat-pathway-track [data-id=song]'))
-    say_no = lambda d: d.dismiss()
-    page.on('dialog', say_no)
     page.evaluate('showBeatSongs()')
     page.wait_for_timeout(300)
-    check('Back at the songs: ours is marked, and Tango says another starts a new band',
+    check('Back at the songs: ours is marked, and Tango says every song started is kept',
           page.evaluate("document.querySelector('.bsmash-song-card.ours').dataset.song") == 'c-2-5-1-6'
-          and 'new band' in guide(page, 'beat-song-guide'), guide(page, 'beat-song-guide'))
+          and 'kept' in guide(page, 'beat-song-guide'), guide(page, 'beat-song-guide'))
+    check('...its card says how far its band has got',
+          page.inner_text('.bsmash-song-card[data-song="c-2-5-1-6"] .bsmash-song-status') == 'Keys · One bar')
     page.click('.bsmash-song-card[data-song="c-1-4-5-1"]')
     page.click('#beat-song-add')
     page.wait_for_timeout(300)
-    check('...say no, and nothing changes', page.evaluate('bsmashLoad().song') == 'c-2-5-1-6'
-          and page.evaluate('bsmashLoad().musicians.bass.won'))
-    page.remove_listener('dialog', say_no)
-    say_yes = lambda d: d.accept()
-    page.on('dialog', say_yes)
+    after = page.evaluate("""(() => { const p = bsmashLoad(); return { song: p.song, waiting: Object.keys(p.bands || {}),
+        bass: p.bands['c-2-5-1-6'].musicians.bass.part, won: ['drums', 'bass', 'keys'].filter(id => p.musicians[id].won).length }; })()""")
+    check('Another song, no questions asked: a new band from the beginning, and the old band waits with its song',
+          after == {'song': 'c-1-4-5-1', 'waiting': ['c-2-5-1-6'], 'bass': 'spicy', 'won': 0}, after)
+    page.wait_for_timeout(2800)
+    check('...and straight on to the new band\'s drums', page.evaluate("bsmash && bsmash.musician.id") == 'drums'
+          and page.evaluate("bsmash.song") == 'c-1-4-5-1')
+    page.evaluate('showBeatSongs()')
+    page.wait_for_timeout(300)
+    page.click('.bsmash-song-card[data-song="c-2-5-1-6"]')
     page.click('#beat-song-add')
     page.wait_for_timeout(300)
-    after = page.evaluate("""(() => { const p = bsmashLoad(); return { song: p.song, kept: (p.songs || []).map(s => s.song + ':' + s.musicians.bass.part),
-        won: ['drums', 'bass', 'keys'].filter(id => p.musicians[id].won).length }; })()""")
-    check('...say yes: a new song, a new band from the beginning, and the old band kept',
-          after == {'song': 'c-1-4-5-1', 'kept': ['c-2-5-1-6:spicy'], 'won': 0}, after)
-    page.remove_listener('dialog', say_yes)
+    back = page.evaluate("""(() => { const p = bsmashLoad(); return { song: p.song, won: ['drums', 'bass', 'keys'].filter(id => p.musicians[id].won),
+        waiting: Object.keys(p.bands || {}), newBand: p.bands['c-1-4-5-1'].musicians.drums.plays }; })()""")
+    check('...and back to the first song: its band exactly where it was left, the new one waiting in turn',
+          back == {'song': 'c-2-5-1-6', 'won': ['drums', 'bass'], 'waiting': ['c-1-4-5-1'], 'newBand': 1}, back)
+    page.wait_for_timeout(2800)
+    check('...carrying on with the musician it was up to', page.evaluate("bsmash && bsmash.musician.id") == 'keys')
+    page.evaluate('showBeatSongs()')
+    page.wait_for_timeout(300)
+    page.click('.bsmash-song-card[data-song="c-1-4-5-1"]')
+    page.click('#beat-song-add')
+    page.wait_for_timeout(2800)
     # A part is added the same way: hold it, slide it up into the box.
     page.evaluate("startBeatMusician('drums', false, 5); bsmashOpenPicker(false)")
     page.wait_for_selector('#beat-picker-cards .bsmash-style-card', timeout=8000)
@@ -1625,6 +1636,18 @@ def test_my_band(page):
     check('...Keep it: the new take is the one in the band, and My band plays it',
           screen(page) == 'beat-screen-band' and rec['take']['bars'] == 8 and rec['take']['at'] > 1
           and page.evaluate("bsmashBand.me && bsmashBand.me.drums && bsmashBand.me.drums.bars") == 8, rec['take'].get('bars'))
+    # A finished song, and on to the next one.
+    check('My band leads on to another song', page.is_visible('#beat-band-another'))
+    page.click('#beat-band-another')
+    page.wait_for_timeout(400)
+    check('...back at the song list, the finished song marked so',
+          screen(page) == 'beat-screen-song'
+          and page.inner_text('.bsmash-song-card[data-song="c-1-4-1-5"] .bsmash-song-status') == '★ Finished')
+    page.evaluate('showBeatPathway()')
+    page.wait_for_timeout(300)
+    check('With the band complete the pathway points at the songs: Start reads "My songs"',
+          page.evaluate('bsmashSelected') == 'song' and page.text_content('#beat-pathway-start') == 'My songs'
+          and 'another song' in guide(page, 'beat-pathway-guide'), [page.evaluate('bsmashSelected'), page.text_content('#beat-pathway-start')])
 
 
 def test_resume(page):

@@ -1842,12 +1842,22 @@ their 32 bar is over that same chord progression."*
   picker adds the same way** (*"they're going to be able to add them as they
   win their parts"*): hold a part, slide it into its box, and it is in the
   band; Keep still works. One helper, `bsmashDragToAdd()`, does both.
-- **Once chosen, that is the song** (*"They don't get to change. They can
-  start another one if they like."*). Choosing another asks first; yes starts
-  a **new band from the beginning** (`progress.musicians` reset) and the old
-  one is kept in `progress.songs`. The Learner's Permit, earned once, stays.
-  A band begun before songs existed keeps I IV I V (`BSMASH_DEFAULT_SONG`),
-  which is what it was built on.
+- **MY SONGS: every song keeps its own band** (Rob, 2026-10-04: *"I want to
+  make another song and go through the whole process again. 1, 2, 4, 8 and
+  32 bars… I wouldn't care if they got halfway through and abandoned one song
+  and then went back and started another. They can have a list of songs."*).
+  This **replaces** "choosing another asks first, and the old band is kept":
+  choosing a song now puts its band on exactly where it was left
+  (`bsmashSwitchSong()`), a new song from the beginning, a song already begun
+  carrying on with the musician and step it was up to. Nothing is lost by
+  switching, so nothing is asked. The bands not playing wait in
+  `progress.bands` (`{ song: { musicians, mix } }`; the old `progress.songs`
+  list is read in by `bsmashBands()`). Each song card says how far its band
+  has got (`★ Finished`, or `Bass · Four bars`: `bsmashBandStatus()`). The
+  way back to the songs: **Make another song** on My band, and with a band
+  complete the pathway selects the song square, so Start reads **My songs**.
+  The Learner's Permit, earned once, stays. A band begun before songs existed
+  keeps I IV I V (`BSMASH_DEFAULT_SONG`), which is what it was built on.
 - **The band follows the song.** Bass and keys parts are played live over it:
   `'band:<song>:<style>'` (`beat-smash-band.js`), the same spicy / smooth /
   hop patterns taking each bar's root and the song's voicing
@@ -1868,6 +1878,10 @@ their 32 bar is over that same chord progression."*
   parts himself (*"I am a composer, so I might as well put myself to good
   use"*); the bass and keys styles are reused across songs until then. The
   song's form (AABA and the like) is still not shown.
+- **Songs will prove their levels** (Rob: *"over time I can add more complex
+  rhythms into these songs and they can be rated a little bit more
+  challenging"*). Every song uses the same dice today. Quavers in one song
+  are being discussed; nothing is built.
 
 ### MY BAND: the song they built, theirs to play with
 Rob, 2026-10-03, after finishing his first band: *"Once you've earned a song,
@@ -2110,7 +2124,9 @@ four bars, the cowbell, anticipation, Pause and Resume in the studio, the
 green playback line, Open going to the pathway, the kick), the song (the five
 squares, auditioning, Rob's audition tune with its drums and bass, holding a
 song and sliding it into the Add box, the band
-and the pads over its chords, a new song a new band with the old one kept, a
+and the pads over its chords, my songs (a new song a new band, the old band
+waiting, back to it where it was left, the card's status, Make another song,
+the pathway pointing at the songs when a band is complete), a
 part added by the same drag), My band (the mixer, ME, a take looping on the
 band's clock, the mix kept, the report, the recording as a WAV and a picture,
 a re-record kept into the band, a real studio take kept and every step
