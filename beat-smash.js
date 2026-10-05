@@ -189,8 +189,45 @@ const BSMASH_CLEAN_STEPS = 2;              // steps up to this one need every no
    one-bar step is a ladder, as on the first song: each figure on its own
    first, then the mix. Every bar still passes the Rhythm pillar's engraving
    rules (rstompShapeIsLegal). */
+/* LEVEL 2: NIGHT OWL, EIGHTH NOTES FIRST. Rob, 2026-10-05: "If Level 1 is
+   the first song and covers w, h, q notes and rests, then level 2 would be
+   adding in eighth notes. Rules for Night Owl (Level 2): no syncopation, no
+   er on the down beat, er only happen on the upbeat. Make sure to include
+   whole notes or rests 5% in Level 2's 4-bar and 8-bar and 32-bar." His
+   examples: ee q q q, q ee q q, q q ee q, q q q ee, ee h q, q ee h, q h ee.
+
+   So every musician's bars are built from beat cells that keep the
+   downbeat: q, qr, 8 8, and 8 8r (the rest only on the "and"), with the
+   half note on any beat it fits (q h ee is his own: the minim on beats 2-3
+   is Level 1's named exception) and the half rest where the engraving rules
+   allow. Nothing starts off the beat and lasts past it, so there is no
+   syncopation. Skate Park, with the rest on the beat and the push, is the
+   level after (Level 3). The same rules for drums, bass and keys: they are
+   the level's, not one musician's. */
+const BSMASH_EIGHTHS_PART = {
+    cells: ['q', 'qr', '8 8', '8 8r', 'h', 'hr'], // text-ok: bars, not words
+    figures: ['8 8 q q q', 'q 8 8 q q', 'q q 8 8 q', 'q q q 8 8', // text-ok: bars, not words
+              '8 8 h q', 'q 8 8 h', 'q h 8 8'], // text-ok: bars, not words
+    steps: { 1: [['8 8 q q q', 'q 8 8 q q', 'q q 8 8 q', 'q q q 8 8'], ['8 8 h q', 'q 8 8 h', 'q h 8 8'], 'figures', 'quavers'], // text-ok: bars, not words
+             2: ['quavers'], 3: ['wholes'], 4: ['wholes'], 5: ['wholes'] },
+};
+
 const BSMASH_RHYTHMS = {
+    eighths: {
+        name: 'eighths',
+        labels: ['1', '+', '2', '+', '3', '+', '4', '+'], // text-ok: counting labels
+        slot: '8',
+        perBeat: 2,
+        windowQuavers: 0.5,
+        nearBeat: 0.375,
+        // A half note may start on any beat it fits (q h 8 8): never off one.
+        halfOnAnyBeat: true,
+        // 'wholes': a whole note or whole rest bar in this share of the rolls.
+        wholeShare: 0.05,
+        musicians: { drums: BSMASH_EIGHTHS_PART, bass: BSMASH_EIGHTHS_PART, keys: BSMASH_EIGHTHS_PART },
+    },
     quavers: {
+        name: 'quavers',
         labels: ['1', '+', '2', '+', '3', '+', '4', '+'], // text-ok: counting labels
         slot: '8',
         perBeat: 2,
@@ -806,7 +843,7 @@ function bsmashPerBeat() {
 // fills the bar.
 const bsmashCellBarsCache = {};
 function bsmashCellBars(rhythm, id) {
-    const key = rhythm.slot + ':' + id;
+    const key = rhythm.name + ':' + id;
     if (bsmashCellBarsCache[key]) return bsmashCellBarsCache[key];
     const cells = rhythm.musicians[id].cells.map(text => {
         const keys = bsmashParseBar(text);
@@ -820,7 +857,7 @@ function bsmashCellBars(rhythm, id) {
         if (beat === 4) { bars.push(keys); return; }
         cells.forEach(cell => {
             if (beat + cell.beats > 4) return;
-            if (cell.beats === 2 && beat % 2) return;
+            if (cell.beats === 2 && beat % 2 && !rhythm.halfOnAnyBeat) return;
             if (cell.beats === 4 && beat) return;
             build(beat + cell.beats, keys.concat(cell.keys));
         });
@@ -851,6 +888,13 @@ function bsmashRhythmTable(rhythm, musician, name) {
     if (name === 'quavers') {
         const others = quaverBars.filter(bar => !figures.some(f => bsmashSameBar(f, bar)));
         return repeat(figures, Math.round(others.length / figures.length)).concat(others);
+    }
+    // 'wholes': every eighth-note bar, and a whole note or whole rest bar in
+    // the level's share of the rolls (Night Owl: 5%).
+    if (name === 'wholes') {
+        const wholes = [['whole-note'], ['whole-rest']];
+        const share = rhythm.wholeShare || 0.05;
+        return quaverBars.concat(repeat(wholes, Math.round(share * quaverBars.length / ((1 - share) * wholes.length))));
     }
     // 'balanced': the first song's bars and the eighth-note bars, half each.
     const first = bsmashAllBars(musician);
@@ -2075,11 +2119,19 @@ function bsmashBandFinished(musicians) {
 // Is a song open? Most are from the start. The eighth-note song opens once a
 // band has been finished on a first-level song (Rob: "only available when
 // they have created a song with whole notes, half notes and quarter notes").
-function bsmashSongOpen(progress, id) {
+function bsmashSongLevel(id) {
     const meta = (window.KR && KR.songs && KR.songs[id]) || {};
-    if (meta.opens !== 'a-song-finished' || KR.openAll()) return true;
+    return meta.level || 1;
+}
+
+// A song of Level 2 or more opens once a band is finished on a song of the
+// level below (Night Owl after any first song; Skate Park after Night Owl).
+function bsmashSongOpen(progress, id) {
+    const level = bsmashSongLevel(id);
+    if (level <= 1 || KR.openAll()) return true;
     const bands = bsmashBands(progress);
-    const finished = song => !bsmashRhythmOf(song) && bsmashBandFinished(song === bsmashSongOf(progress) ? progress.musicians : (bands[song] || {}).musicians);
+    const finished = song => bsmashSongLevel(song) === level - 1
+        && bsmashBandFinished(song === bsmashSongOf(progress) ? progress.musicians : (bands[song] || {}).musicians);
     return bsmashBandSongs().some(finished);
 }
 
@@ -2141,7 +2193,7 @@ function bsmashRenderSongs() {
         if (!bsmashSongOpen(progress, id)) {
             card.classList.add('locked');
             card.disabled = true;
-            bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t('beat.songs.locked');
+            bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t('beat.songs.locked', { level: bsmashSongLevel(id) - 1 });
             return;
         }
         // My songs: how far each one's band has got.
