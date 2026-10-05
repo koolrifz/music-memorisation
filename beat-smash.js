@@ -2977,14 +2977,24 @@ function bsmashVerdict() {
     if (!passed) return bsmashTakeTwo(issues);
     bsmashEl('beat-reading').classList.add('clean');
     bsmashBandLevel(BSMASH_BAND_FULL);
-    // The first star's picture go: now the reveal, then the same bar from
-    // the notation (§3, §4.1).
-    if (bsmash.scaffold === 'star1' && take.go === 'picture') return bsmashReveal();
-    bsmashEvent('beat.take.clean');
-    if (bsmash.scaffold === 'retake') {
-        bsmashLater(() => bsmashEvent('beat.retake.clean'), 1400);
-        return bsmashLater(bsmashNewRoll, 2800);
+    /* EVERY CLEAN PLAYING EARNS A STAR. Rob, 2026-10-05, on Riff's eight
+       bars: "I just completed my first one correctly and I look up and the
+       star has not appeared… make sure the first star always appears after
+       a correct playing… If it's waiting to the second correct answer before
+       you get one star, then I think we've added on an extra layer of
+       difficulty and too much time. And boredom."
+       Two places held a star back: a clean practice take after a miss (it
+       used to earn nothing and roll again), and the first star's picture go
+       (it used to wait for the same bar from the notation). Now both land a
+       star. The rule of three is untouched: three clean playings in a row,
+       and a miss still empties the row. */
+    // The first star's picture go: the star, then the reveal, and the same
+    // bar from the notation is the second star (§3, §4.1).
+    if (bsmash.scaffold === 'star1' && take.go === 'picture') {
+        bsmashEvent('beat.take.clean');
+        return bsmashStarLands(bsmashReveal);
     }
+    bsmashEvent('beat.take.clean');
     bsmashStarLands();
 }
 
@@ -3160,10 +3170,13 @@ function bsmashReveal() {
         bsmashEl('beat-reading').classList.remove('clean');
         bsmashEl('beat-reading').querySelectorAll('.bsmash-block.lit').forEach(b => b.classList.remove('lit'));
         bsmashScheduleTake('notation');
+        // The first star has landed: reading it from the music is the second.
+        bsmash.scaffold = 'star2';
     }, seconds * 1000 + 300);
 }
 
-function bsmashStarLands() {
+// then: what comes after the star instead of a new roll (the reveal).
+function bsmashStarLands(then) {
     const id = bsmash.musician.id;
     const record = bsmashMusicianRecord(id);
     const clearedStep = bsmash.step;
@@ -3190,10 +3203,14 @@ function bsmashStarLands() {
         bsmash.streak = 0;
     }
     const next = () => {
-            // The name and age are asked after the first win, never before (§11).
+        // The name and age are asked after the first win, never before (§11);
+        // whatever was to come next waits for them.
         const player = bsmashPlayer();
-        if (firstStar && (!player || BSMASH_AGES.indexOf(player.age) === -1)) return showBeatPlayers(true);
-        bsmashNewRoll();
+        if (firstStar && (!player || BSMASH_AGES.indexOf(player.age) === -1)) {
+            bsmash.afterName = then || null;
+            return showBeatPlayers(true);
+        }
+        (then || bsmashNewRoll)();
     };
     bsmashLater(next, cleared ? 4200 : 2200);
 }
@@ -3968,7 +3985,9 @@ function addBeatPlayer() {
 function bsmashPlayerDone() {
     if (bsmashPlayerThen && bsmash && bsmash.mode === 'steps') {
         switchScreenState('beat', 'beat-screen-studio');
-        return bsmashLater(bsmashNewRoll, 400);
+        const next = bsmash.afterName || bsmashNewRoll;
+        bsmash.afterName = null;
+        return bsmashLater(next, 400);
     }
     showBeatPathway();
 }

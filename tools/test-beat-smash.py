@@ -504,16 +504,13 @@ def test_follow_me(page):
 
 
 def test_one_bar_step(page):
-    # The first star: the picture go, the reveal, then the notation go.
+    # The first star: the picture go earns it (Rob: "make sure the first star
+    # always appears after a correct playing"), then the reveal.
     take = play_take(page)
     check('The first star starts from the picture', take is not None and page.evaluate("bsmash.take.go") == 'picture')
     check('A clean picture go: the bar glows', page.evaluate("document.getElementById('beat-reading').classList.contains('clean')"))
-    page.wait_for_timeout(200)
-    check('...then the picture morphs into notation', state(page)['phase'] == 'reveal', state(page)['phase'])
-    take = play_take(page)
-    check('...and the same bar is played again from the notation', page.evaluate("bsmash.take.go") == 'notation')
-    page.wait_for_timeout(500)
-    check('The first star lands', record(page)['streak'] == 1, record(page))
+    page.wait_for_timeout(300)
+    check('...and the first star lands at once, on the first clean playing', record(page)['streak'] == 1, record(page))
     page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-player'", timeout=8000)
     check('After the first star, and not before, the name and age are asked', screen(page) == 'beat-screen-player')
     page.fill('#beat-name-input', 'Garnet')
@@ -525,19 +522,17 @@ def test_one_bar_step(page):
     page.wait_for_timeout(600)
     check('Back to the studio, and the first star kept for the new player',
           screen(page) == 'beat-screen-studio' and record(page)['streak'] == 1, record(page))
+    page.wait_for_timeout(200)
+    check('...then the picture morphs into notation', state(page)['phase'] == 'reveal', state(page)['phase'])
+    take = play_take(page)
+    check('...and the same bar is played again from the notation, for the second star',
+          page.evaluate("bsmash.take.go") == 'notation' and page.evaluate("bsmash.take.flashPicture") is False)
+    page.wait_for_timeout(500)
+    check('Two stars', record(page)['streak'] == 2, record(page))
     check('The age is stored on the player', page.evaluate('bsmashPlayer().age') == '6-8')
     check('One picture only: squares, no choice to make (Rob: "just give them one interface of squares")',
           page.evaluate("!document.getElementById('beat-picture-choice')")
           and page.evaluate("[...document.querySelectorAll('#beat-reading .bsmash-block')].every(b => b.classList.contains('pic-blocks'))"))
-
-    # The second star: the picture only during the count-in.
-    take = wait_for_take(page)
-    check('The second star reads from notation', state(page)['scaffold'] == 'star2' and state(page)['take']['go'] == 'notation')
-    check('...with the picture shown during the count-in', page.evaluate("bsmash.showing") == 'picture')
-    play_take(page)
-    check('...which gave way to the notation before beat 1', page.evaluate("bsmash.showing") == 'notation')
-    page.wait_for_timeout(500)
-    check('Two stars', record(page)['streak'] == 2, record(page))
 
     # A miss on the third star: the stars empty, the same bar is retaken.
     wait_for_take(page)
@@ -559,9 +554,17 @@ def test_one_bar_step(page):
     check('A tap in a rest is not clean either, and the verdict counts: "Take three!"',
           'Take three' in guide(page) and state(page)['scaffold'] == 'retake', guide(page))
     play_take(page)
-    page.wait_for_timeout(1800)
-    check('A clean retake earns no star; a new roll starts again at the first star',
-          record(page)['streak'] == 0, record(page))
+    page.wait_for_timeout(600)
+    check('A clean retake is the first star of a new row (Rob: the first star after the first correct playing)',
+          record(page)['streak'] == 1, record(page))
+    # The second star of a new row: the picture only during the count-in.
+    take = wait_for_take(page)
+    check('The second star reads from new bars in notation', state(page)['scaffold'] == 'star2' and state(page)['take']['go'] == 'notation')
+    check('...with the picture shown during the count-in', page.evaluate("bsmash.showing") == 'picture')
+    play_take(page)
+    check('...which gave way to the notation before beat 1', page.evaluate("bsmash.showing") == 'notation')
+    page.wait_for_timeout(500)
+    check('Two stars again', record(page)['streak'] == 2, record(page))
     ok = play_until(page, "bsmashMusicianRecord('drums').step === 2", limit=12)
     check('Three clean takes in a row clear the one-bar step', ok, record(page))
 
@@ -890,10 +893,12 @@ def test_riff_bass(page):
           and 'Hold those long notes' in guide(page), guide(page))
     play_take(page)
     page.wait_for_timeout(300)
-    check('Held right through: a clean take, and Riff\'s reveal', state(page)['phase'] == 'reveal' and 'read it' in guide(page), guide(page))
+    check('Held right through: a clean take, and the first star at once', state(page)['streak'] == 1, state(page))
+    page.wait_for_function("bsmash.phase === 'reveal'", timeout=8000)
+    check('...then Riff\'s reveal', 'read it' in guide(page), guide(page))
     play_take(page)
     page.wait_for_timeout(600)
-    check('...then from the notation, held: the first star', state(page)['streak'] == 1, state(page))
+    check('...then from the notation, held: the second star', state(page)['streak'] == 2, state(page))
     # The studio, and the part.
     # The studio (eight bars, to keep the test short): one take at the pass mark wins the part.
     page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p);"
@@ -955,10 +960,11 @@ def test_riff_keys(page):
     check('A whole note is four squares joined', page.evaluate("bsmash.layout[0].blocks[0].children.length") == 4)
     play_take(page)
     page.wait_for_timeout(300)
-    check('Held all four beats: a clean take', state(page)['phase'] == 'reveal', state(page))
+    check('Held all four beats: a clean take, and the first star', state(page)['streak'] == 1, state(page))
+    page.wait_for_function("bsmash.phase === 'reveal'", timeout=8000)
     play_take(page)
     page.wait_for_timeout(600)
-    check('...and the first star', state(page)['streak'] == 1, state(page))
+    check('...and from the notation, the second', state(page)['streak'] == 2, state(page))
     page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p);"
                   "bsmashUpdateMusician('keys', { step: 5, streak: 0 }); startBeatMusician('keys', false, 5)")
     page.wait_for_function("bsmash.phase === 'ready'", timeout=15000)

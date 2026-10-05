@@ -1639,7 +1639,23 @@ Smash's players list. Beat Smash adds an **age** to a player.
   song stay for everyone.
 - **A miss on the first star just repeats that go** (the stars were already
   empty), so the child still sees the bar in notation. From the second star
-  a miss empties the row and the bar is retaken as practice (§4).
+  a miss empties the row and the bar is retaken (§4).
+- **EVERY CLEAN PLAYING EARNS A STAR** (Rob, 2026-10-05, on Riff's eight
+  bars: *"I just completed my first one correctly and I look up and the star
+  has not appeared… make sure the first star always appears after a correct
+  playing… If it's waiting to the second correct answer before you get one
+  star, then I think we've added on an extra layer of difficulty and too much
+  time. And boredom."*). Two places held a star back, and both now land one:
+  - **A clean retake** (the bar replayed after a miss) is the **first star of
+    the new row**. It used to earn nothing and roll again, so the star came
+    on the playing after.
+  - **The first star's picture go** earns the first star, then the reveal,
+    and the same bar read from the notation is the **second** star
+    (`bsmashStarLands(bsmashReveal)`; the reveal take is `star2`). It used to
+    wait for the notation go. If the name is asked after that first star, the
+    reveal waits for it (`bsmash.afterName`).
+  The rule of three is untouched: three clean playings in a row clear a step,
+  and a miss still empties the row.
 - **The name and age are asked after the first star**, never before (§11).
   Until then progress is the guest's, kept on the device, and moves to the
   player when added.
