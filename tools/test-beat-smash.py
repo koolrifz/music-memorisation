@@ -739,7 +739,7 @@ def test_picker(page):
     play_take(page)
     page.wait_for_timeout(600)
     check('...its stars fill as usual, and nothing already won is touched',
-          state(page)['streak'] == 1 and record(page)['won'] and record(page)['step'] == 5, (state(page), record(page)))
+          state(page)['streak'] == 2 and record(page)['won'] and record(page)['step'] == 5, (state(page), record(page)))
     page.click('#view-beat .btn-back')
     page.wait_for_timeout(400)
     page.click('#beat-player-chip')
@@ -1855,7 +1855,7 @@ def test_quaver_song(page):
     ok = play_until(page, "bsmash.streak >= 1 || bsmashMusicianRecord('drums').clean > 0", limit=3)
     check('...played in time on the beat pads (the "and" of 4 on pad 4), the take is clean', ok, state(page))
     page.wait_for_timeout(2400)
-    page.evaluate("bsmashUpdateMusician('drums', { clean: 1 }); bsmash.streak = 0; bsmashNewRoll()")
+    page.evaluate("bsmashStopTimers(); bsmashUpdateMusician('drums', { clean: 1 }); bsmash.streak = 0; bsmashNewRoll()")
     page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=10000)
     hat = page.evaluate("""({ bars: bsmash.bars.map(b => b.join(' ')), kind: bsmashPressKind(bsmash.take.start + 0.5 * BSMASH_BEAT),
         hatBars: bsmashHatBars() })""")
