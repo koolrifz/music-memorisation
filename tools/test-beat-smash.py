@@ -1956,6 +1956,78 @@ def test_teacher_codes(page):
     check('...and "yes" takes everything back to zero', left == [], left)
 
 
+def test_dashboard(page):
+    """Rob, 2026-10-05: the nickname at the very top, then every game in his
+    order, its number in the coloured square, its pathway and its numbers."""
+    fresh(page)
+    cards = page.evaluate("""[...document.querySelectorAll('#home-games .game-card')].map(c => ({
+        id: c.dataset.game, n: c.querySelector('.game-icon').textContent, title: c.querySelector('h2').textContent,
+        dots: c.querySelectorAll('.home-dot').length, bar: !!c.querySelector('.home-bar'),
+        stats: c.querySelector('.home-stats') && c.querySelector('.home-stats').textContent }))""")
+    check('The dashboard lists the games in Rob\'s order, numbered 1 to 7 in the coloured square',
+          [c['title'] for c in cards] == ['Beat Smash', 'Staff Smash', 'Value Smash', 'Note Smash', 'Real Smash', 'Rhythm Stomp', 'Rhythm Stomp Lab']
+          and [c['n'] for c in cards] == [str(n) for n in range(1, 8)], cards)
+    check('...each with its pathway (dots, or a bar for a long one) and a line of numbers',
+          all((c['dots'] or c['bar']) and c['stats'] for c in cards) and cards[0]['dots'] == 5 and cards[1]['dots'] == 5, cards)
+    check('...a fresh device: nothing played yet', all(c['stats'] == 'Not played yet' for c in cards), [c['stats'] for c in cards])
+    top = page.evaluate("""(() => { const v = document.getElementById('view-dashboard');
+        const first = [...v.children].find(e => e.offsetHeight > 0); return first && first.id; })()""")
+    check('"What\'s your nickname?" is the very first thing on the dashboard', top == 'home-player'
+          and 'nickname' in page.inner_text('#home-player').lower(), [top, page.inner_text('#home-player')])
+    page.click('#home-player .home-player-go')
+    check('...an empty nickname is refused', 'first' in page.inner_text('#home-player').lower()
+          and page.evaluate("vsmashCurrentPlayer()") is None)
+    page.fill('#home-player-input', 'Ziggy')
+    page.press('#home-player-input', 'Enter')
+    page.wait_for_timeout(200)
+    check('...a nickname sets the player for the whole app', page.evaluate("vsmashCurrentPlayer() && vsmashCurrentPlayer().name") == 'Ziggy'
+          and 'Playing as Ziggy' in page.inner_text('#home-player'), page.inner_text('#home-player'))
+    # Some progress in several games, then back to the dashboard.
+    page.evaluate("""(() => {
+        const id = vsmashCurrentPlayer().id;
+        localStorage.setItem('koolRiffsG1Progress', JSON.stringify({ unlockedStages: ['lines', 'spaces', 'mixed'],
+            stageProgress: { lines: { cleared: true, bestScore: 41.6 }, spaces: { cleared: true, bestScore: 30 } }, totalPlays: 6 }));
+        localStorage.setItem('koolRiffsValueProgress', JSON.stringify({ players: { [id]: { unlocked: ['v1-tree', 'v1-smash'],
+            floors: { 'v1-tree': { cleared: true, plays: 2 }, 'v1-smash': { plays: 3 } }, license: false } } }));
+        localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({ players: { [id]: { jamDone: true, song: 'c-1-6-2-5',
+            musicians: { drums: { won: true, step: 5, plays: 4 }, bass: { step: 3, plays: 2 } } } } }));
+        launchGame('view-dashboard');
+    })()""")
+    cards = page.evaluate("""Object.fromEntries([...document.querySelectorAll('#home-games .game-card')].map(c => [c.dataset.game, {
+        dots: [...c.querySelectorAll('.home-dot')].map(d => d.classList[1]), stats: c.querySelector('.home-stats').textContent }]))""")
+    check('Staff Smash shows two cleared, one open, two locked; its best and its plays',
+          cards['staff']['dots'] == ['cleared', 'cleared', 'open', 'locked', 'locked']
+          and cards['staff']['stats'] == '2 of 5 cleared · best 42 · 6 plays', cards['staff'])
+    check('Value Smash shows its floors, for the player playing', cards['value']['dots'][:2] == ['cleared', 'open']
+          and cards['value']['stats'].startswith('1 of'), cards['value'])
+    check('Beat Smash shows its five squares and how far the band has got',
+          cards['beat']['dots'] == ['cleared', 'cleared', 'cleared', 'open', 'locked']
+          and cards['beat']['stats'].startswith('Bubblegum: '), cards['beat'])
+    page.click('#home-player .home-player-change')
+    page.fill('#home-player-input', 'Ruby')
+    page.click('#home-player .home-player-go')
+    page.wait_for_timeout(200)
+    check('"Not you?" adds another: Ruby\'s Value Smash and Beat Smash are her own',
+          page.evaluate("vsmashPlayers().list.length") == 2 and 'Playing as Ruby' in page.inner_text('#home-player')
+          and page.evaluate("document.querySelector('#home-games [data-game=beat] .home-stats').textContent") == 'Not played yet')
+    page.click('#home-player .home-player-change')
+    page.click('#home-player .home-player-chip:has-text("Ziggy")')
+    page.wait_for_timeout(200)
+    check('...and a chip switches back to Ziggy', 'Playing as Ziggy' in page.inner_text('#home-player')
+          and page.evaluate("document.querySelector('#home-games [data-game=beat] .home-stats').textContent") != 'Not played yet')
+    page.click('#home-games [data-game=beat]')
+    page.wait_for_timeout(400)
+    check('...and a card still opens its game', page.evaluate("document.getElementById('view-beat').classList.contains('active')"))
+    page.evaluate("bsmashStopAll(); launchGame('view-dashboard')")
+    # A guest's Beat Smash warm-up goes with them to the nickname given here.
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true }));")
+    page.fill('#home-player-input', 'Kai')
+    page.click('#home-player .home-player-go')
+    page.wait_for_timeout(200)
+    check('A guest\'s warm-up moves to the nickname given on the dashboard',
+          page.evaluate("bsmashLoad().jamDone && !localStorage.getItem('koolRiffsBeatGuest')"))
+
+
 def test_rest_of_app(page):
     fresh(page)
     page.click('.game-card.orange')
@@ -2024,6 +2096,7 @@ def main():
         test_eighths_song(page)
         test_quaver_song(page)
         test_teacher_codes(page)
+        test_dashboard(page)
         test_rest_of_app(page)
         page.close()
         test_layout(browser)

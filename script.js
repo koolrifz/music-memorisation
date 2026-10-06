@@ -441,6 +441,7 @@ function launchGame(targetViewId) {
     
     if (targetViewId === 'view-dashboard') {
         switchScreenState('game1', 'g1-screen-setup');
+        if (typeof renderDashboard === 'function') renderDashboard();
     } else if (targetViewId === 'view-game1') {
         renderG1Pathway();
         switchScreenState('game1', 'g1-screen-pathway');
