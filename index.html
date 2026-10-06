@@ -14,62 +14,18 @@
 
 <!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
+    <!-- Who is playing: the nickname, first thing on the dashboard (dashboard.js
+         renderHomePlayer). The same players list Value Smash and Beat Smash use. -->
+    <div id="home-player" class="home-player"></div>
+
     <div class="header">
         <h1>🎷 Kool Riffs</h1>
         <p>Essential Music Mastery</p>
     </div>
 
-    <div class="menu-container">
-        <div class="game-card red" onclick="enterBeatSmash()">
-            <div class="game-icon icon-red" data-text="home.beat.icon"></div>
-            <div class="game-details">
-                <h2 data-text="home.beat.title"></h2>
-                <p data-text="home.beat.blurb"></p>
-            </div>
-        </div>
-        <div class="game-card purple" onclick="launchGame('view-game1')">
-            <div class="game-icon icon-purple">1</div>
-            <div class="game-details">
-                <h2>Staff Smash</h2>
-                <p>Build instant staff orientation, one position at a time.</p>
-            </div>
-        </div>
-        <div class="game-card blue" onclick="launchGame('view-game2')">
-            <div class="game-icon icon-blue">2</div>
-            <div class="game-details">
-                <h2>Note Smash</h2>
-                <p>Find the right note fast. Progressive grid logic.</p>
-            </div>
-        </div>
-        <div class="game-card green" onclick="launchGame('view-game3')">
-            <div class="game-icon icon-green">3</div>
-            <div class="game-details">
-                <h2>Real Smash</h2>
-                <p>The ultimate 60-second sprint. Read the staff and hit the keys.</p>
-            </div>
-        </div>
-        <div class="game-card gold" onclick="launchGame('view-rhythm')">
-            <div class="game-icon icon-gold">4</div>
-            <div class="game-details">
-                <h2>Rhythm Stomp</h2>
-                <p>Count when the next note starts, before you ever play it.</p>
-            </div>
-        </div>
-        <div class="game-card orange" onclick="enterValueSmash()">
-            <div class="game-icon icon-orange" data-text="home.value.icon"></div>
-            <div class="game-details">
-                <h2 data-text="home.value.title"></h2>
-                <p data-text="home.value.blurb"></p>
-            </div>
-        </div>
-        <div class="game-card teal" onclick="launchGame('view-rhythm-lab')">
-            <div class="game-icon icon-teal">🧪</div>
-            <div class="game-details">
-                <h2>Rhythm Stomp Lab</h2>
-                <p>New interface prototype — Level 1 only, for comparison.</p>
-            </div>
-        </div>
-    </div>
+    <!-- The games, in Rob's order, each with its pathway and numbers
+         (dashboard.js renderDashboard). -->
+    <div class="menu-container" id="home-games"></div>
 
     <section class="practice-tools" aria-label="Kool Riffs practice tools">
         <div class="practice-tool-card beat-tool" id="beat-tool-card">
@@ -955,5 +911,6 @@
 <script src="beat-smash-band.js"></script>
 <script src="beat-pads.js"></script>
 <script src="beat-smash.js"></script>
+<script src="dashboard.js"></script>
 </body>
 </html>

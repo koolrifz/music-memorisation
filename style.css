@@ -1352,3 +1352,37 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-die.eighths .bsmash-pip { width: 10px; height: 10px; border-width: 2px; }
 .bsmash-song-level { pointer-events: none; font-size: 11px; font-weight: 800; color: #E69F00; }
 .bsmash-song-card.locked { opacity: 0.6; cursor: default; }
+
+/* =========================================
+   THE DASHBOARD (dashboard.js): who is playing, then each game's pathway
+   ========================================= */
+.home-player { width: 100%; max-width: 500px; margin: 10px 0 0; }
+.home-player-row { display: flex; align-items: center; justify-content: center; gap: 12px; background: var(--bg-panel); border: 2px solid var(--accent-gold); border-radius: 14px; padding: 8px 12px; }
+.home-player-name { font-weight: 900; color: var(--accent-gold); font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-player-change, .home-player-chip { background: transparent; color: var(--text-main); border: 2px solid #324a64; border-radius: 12px; padding: 8px 14px; font: inherit; font-weight: bold; cursor: pointer; min-height: 44px; }
+.home-player-chip.current { border-color: var(--accent-gold); color: var(--accent-gold); }
+.home-player .kr-guide { margin-bottom: 8px; }
+.home-player-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.home-player-form { display: flex; gap: 8px; }
+.home-player-input { flex: 1 1 auto; min-width: 0; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 12px; border: 2px solid #324a64; background: var(--bg-dark); color: var(--text-main); }
+.home-player-go { flex: 0 0 auto; width: auto; margin: 0; padding: 10px 18px; }
+
+#home-games .game-card { padding: 16px 18px; }
+#home-games .game-icon { flex: 0 0 auto; font-size: 30px; }
+#home-games .game-details { flex: 1 1 auto; min-width: 0; }
+.game-card.red { --home: var(--accent-red); }
+.game-card.purple { --home: var(--accent-purple); }
+.game-card.orange { --home: var(--accent-orange); }
+.game-card.blue { --home: var(--accent-blue); }
+.game-card.green { --home: var(--accent-green); }
+.game-card.gold { --home: var(--accent-gold); }
+.game-card.teal { --home: var(--accent-teal); }
+.home-progress { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.home-dots { display: flex; flex-wrap: wrap; gap: 5px; }
+.home-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--home); box-sizing: border-box; }
+.home-dot.cleared { background: var(--home); }
+.home-dot.open { background: transparent; }
+.home-dot.locked { border-color: #3d556f; background: #2b3e54; }
+.home-bar { height: 10px; border-radius: 5px; background: #2b3e54; overflow: hidden; }
+.home-bar-fill { display: block; height: 100%; background: var(--home); border-radius: 5px; }
+.home-stats { color: var(--text-muted); font-size: 13px; font-weight: bold; }

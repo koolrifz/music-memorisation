@@ -28,10 +28,42 @@ KR.lang('en-US', {
     'note.quarter-rest':     'quarter rest',
     'note.quarter-rest.many': 'quarter rests',
 
-    /* ---------- Dashboard: the Beat Smash card ---------- */
-    'home.beat.icon':        '🥁',
+    /* ---------- The dashboard (dashboard.js) ----------
+       Each card's number is its place in Rob's order, so a card has no icon
+       of its own. */
     'home.beat.title':       'Beat Smash',
     'home.beat.blurb':       'Step into the studio. Play the beat, win a band.',
+    'home.staff.title':      'Staff Smash',
+    'home.staff.blurb':      'Build instant staff orientation, one position at a time.',
+    'home.note.title':       'Note Smash',
+    'home.note.blurb':       'Find the right note fast. Progressive grid logic.',
+    'home.real.title':       'Real Smash',
+    'home.real.blurb':       'The ultimate 60-second sprint. Read the staff and hit the keys.',
+    'home.rhythm.title':     'Rhythm Stomp',
+    'home.rhythm.blurb':     'Count when the next note starts, before you ever play it.',
+    'home.lab.title':        'Rhythm Stomp Lab',
+    'home.lab.blurb':        'Write the counting under the notes, level by level.',
+
+    // One line of numbers under each card's pathway.
+    'home.stats.new':        'Not played yet',
+    'home.stats.cleared':    '{cleared} of {total} cleared',
+    'home.stats.best':       'best {score}',
+    'home.stats.plays':      '{plays} plays',
+    'home.stats.join':       ' · ',
+    'home.stats.license':    '🎨 Artistic License',
+    'home.stats.beat.song':  '{song}: {status}',
+    'home.stats.beat.begin': 'just begun',
+    'home.stats.beat.finished': '{n} finished',
+    'home.stats.beat.permit': '🚗 Learner\'s Permit',
+    'home.stats.beat.warmedUp': 'Warmed up. Choose a song!',
+
+    // Who is playing, at the very top.
+    'home.player.playingAs': 'Playing as {name}',
+    'home.player.change':    'Not you?',
+    'home.player.ask':       "What's your nickname?",
+    'home.player.placeholder': 'Nickname',
+    'home.player.go':        "Let's go",
+    'home.player.needed':    'Type a nickname first!',
 
     /* ---------- Beat Smash: every screen ---------- */
     'beat.title':            'Beat Smash',
@@ -366,7 +398,6 @@ KR.lang('en-US', {
     'code.open':             'Every level in every game is open on this device. Press Open again to turn it off.',
 
     /* ---------- Dashboard: the Value Smash card ---------- */
-    'home.value.icon':       '♩',
     'home.value.title':      'Value Smash',
     'home.value.blurb':      'How long does each note last? Smash the values.',
 

@@ -5,7 +5,7 @@ Read this before touching the code. It's the accumulated context from months of 
 ## What this is
 A browser-based music-education app (single HTML page, no build step) teaching primary/secondary students to read music at speed, deployed at koolrifz.github.io. Built by a career instrumental music teacher, not a developer — code quality and correctness matter, but so does keeping the file structure simple enough that he can read and reason about it himself.
 
-**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"), `teacher-codes.js` (see "TEACHER CODES"), and `content/songs.js`, Rob's chord progressions for the band (see "ROB'S SONGS"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
+**Files:** `index.html`, `script.js`, `style.css`, plus `rhythm.js` and `rhythm-stomp-lab.js` for the Rhythm pillar, `value-smash.js` for the Value silo (being built on `idea/value-smash`), `beat-smash.js` + `beat-pads.js` + `beat-smash-band.js` for Beat Smash (see "BEAT SMASH"), `teacher-codes.js` (see "TEACHER CODES"), `dashboard.js` (see "THE DASHBOARD"), and `content/songs.js`, Rob's chord progressions for the band (see "ROB'S SONGS"). Notation rendering uses VexFlow 3.0.9 via CDN. Words, dialogue, pictures and recorded sounds live by ID in `lang/` and `content/`, looked up through `text.js` (`KR.t`, `KR.say`, `KR.event`), all loaded before `script.js`; `tools/check-text.py` checks them.
 
 **WORDS DO NOT GO IN THE CODE.** Rob, 2026-09-23: *"I was disappointed to learn
 that Staff Smash, Note Smash and Real Smash are all pretty much hard-coded. That
@@ -1144,6 +1144,39 @@ The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Sma
 Each game keeps its own localStorage key (`koolRiffsG1Progress`, `koolRiffsG2Progress`, `koolRiffsG3Progress`) storing per-device unlocked stages, best score/time per stage, resume position, and total plays. This is real browser storage on a real deployed site — no sandbox restriction applies here. On relaunch, route to the pathway screen at the saved resume position, not back to the dashboard.
 
 **Progress stays on the device** until networking is designed once, for the whole app (Rob: *"until we wrap this whole thing up in an umbrella"*). One addition Rob approved for shared school iPads and Chromebooks: a **local player picker**, a list of names on the device with no passwords and no network, so that each student's progress is their own. It arrives with Value Smash.
+
+## THE DASHBOARD: who is playing, then every game's pathway
+Rob, 2026-10-05: *"Move the 'What's your name' to the very top of the Kool
+Riffs game dashboard. Rework our dashboard so it shows their statistics and
+what pathways have been unlocked."* `dashboard.js`, loaded last because it
+reads every game.
+
+- **The order is Rob's, and the number in each coloured square is it:**
+  1 Beat Smash · 2 Staff Smash · 3 Value Smash · 4 Note Smash · 5 Real Smash ·
+  6 Rhythm Stomp · 7 Rhythm Stomp Lab. `KR_HOME_GAMES` is the list; the cards
+  are built from it (`renderDashboard()`), so index.html holds only
+  `#home-games`. Each card keeps its old `onclick`, which the tests find
+  cards by. Titles and blurbs are `home.<id>.title/blurb`.
+- **Each card shows its pathway**: a dot per stage (filled = cleared, ringed
+  = open, grey = locked), or a bar when there are more than ten
+  (`KR_HOME_MAX_DOTS`: Stomp Lab's 29), and one line of numbers (cleared,
+  best, plays; Value Smash's License; Beat Smash's song, how far its band has
+  got, songs finished, the Permit). **Read through each game's own getter**
+  (`getG1PathwayProgress()`, `vsmashLoad()`, `bsmashLoad()`…), never a copy of
+  its storage, so the teacher's Open code shows every stage open here too.
+- **The nickname is at the very top** (`#home-player`): "What's your
+  nickname?" with the names already on the device, or "Playing as Ziggy ·
+  Not you?". It is the one players list Value Smash and Beat Smash already
+  share, so choosing here chooses for the whole app, and a guest's Beat Smash
+  warm-up moves to the nickname as it does when Beat Smash asks. It never
+  blocks a game: Beat Smash still asks after the first star if nobody is set.
+- **Re-drawn on every return** (`launchGame('view-dashboard')` calls
+  `renderDashboard()`), so the numbers are always the latest.
+- **Staff, Note and Real Smash, Rhythm Stomp and Stomp Lab keep progress per
+  device**, not per player (only Value Smash and Beat Smash are per player
+  yet): their cards are the same for every nickname until "Playing as" reaches
+  every game.
+- Rob will rework **Rhythm Stomp** later; its card is the old one, numbered.
 
 ## TEACHER CODES: reset everything, or open everything
 Rob: *"I should have two codes: one to reset all of my levels of all the games
