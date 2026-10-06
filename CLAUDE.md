@@ -1639,7 +1639,23 @@ Smash's players list. Beat Smash adds an **age** to a player.
   song stay for everyone.
 - **A miss on the first star just repeats that go** (the stars were already
   empty), so the child still sees the bar in notation. From the second star
-  a miss empties the row and the bar is retaken as practice (§4).
+  a miss empties the row and the bar is retaken (§4).
+- **EVERY CLEAN PLAYING EARNS A STAR** (Rob, 2026-10-05, on Riff's eight
+  bars: *"I just completed my first one correctly and I look up and the star
+  has not appeared… make sure the first star always appears after a correct
+  playing… If it's waiting to the second correct answer before you get one
+  star, then I think we've added on an extra layer of difficulty and too much
+  time. And boredom."*). Two places held a star back, and both now land one:
+  - **A clean retake** (the bar replayed after a miss) is the **first star of
+    the new row**. It used to earn nothing and roll again, so the star came
+    on the playing after.
+  - **The first star's picture go** earns the first star, then the reveal,
+    and the same bar read from the notation is the **second** star
+    (`bsmashStarLands(bsmashReveal)`; the reveal take is `star2`). It used to
+    wait for the notation go. If the name is asked after that first star, the
+    reveal waits for it (`bsmash.afterName`).
+  The rule of three is untouched: three clean playings in a row clear a step,
+  and a miss still empties the row.
 - **The name and age are asked after the first star**, never before (§11).
   Until then progress is the guest's, kept on the device, and moves to the
   player when added.
@@ -1880,19 +1896,57 @@ their 32 bar is over that same chord progression."*
   song's form (AABA and the like) is still not shown.
 - **Songs will prove their levels** (Rob: *"over time I can add more complex
   rhythms into these songs and they can be rated a little bit more
-  challenging"*). The first is built: see "THE EIGHTH-NOTE SONG" below.
+  challenging"*). Songs now carry a **level**: Level 1 is every song without
+  one (whole, half and quarter notes); Night Owl is Level 2 (eighth notes,
+  first steps) and Skate Park Level 3 (off-beats and the push). See "THE
+  EIGHTH-NOTE SONGS" below.
 
-### THE EIGHTH-NOTE SONG: a rhythm level carried by a song
+### THE EIGHTH-NOTE SONGS: rhythm levels carried by songs
 Rob, 2026-10-04: *"Let's use one of the songs we've made to become the
 container for the beginning of eighth notes… This song will only be available
 when they have created a song with whole notes, half notes and quarter notes…
 If they can make 32 bars correctly, I think we've made a huge leap forward."*
 
-- **Skate Park (`c-4-1-5-1`, IV I V I) is the eighth-note song.** A song names
-  its level in `content/songs.js`: `rhythm: 'quavers'`, `bpm: 80`, `opens:
-  'a-song-finished'`. Its card says "♪♪ Eighth notes", and until a band is
-  finished on a first-level song it shows locked, named, with "🔒 Finish a song
-  first" (`bsmashSongOpen()`; the teacher's Open code opens it).
+**SONG LEVELS.** A song in `content/songs.js` may carry `rhythm` (the dice
+it is read with, a key of `BSMASH_RHYTHMS`), `level` and `bpm`. A song of
+Level 2 or more shows locked, named, with "🔒 Finish a Level N song first",
+until a band is finished on a song of the level below (`bsmashSongOpen()`,
+`bsmashSongLevel()`; the teacher's Open code opens them all). The card says
+its level ("♪♪ Level 2 · Eighth notes").
+
+**LEVEL 2: NIGHT OWL (`c-2-5-1-6`), EIGHTH NOTES FIRST** (Rob, 2026-10-05:
+*"If Level 1 is the first song and covers w, h, q notes and rests, then level
+2 would be adding in eighth notes. Rules for Night Owl (Level 2): no
+syncopation, no er on the down beat, er only happen on the upbeat. Make sure
+to include whole notes or rests 5% in Level 2's 4-bar and 8-bar and
+32-bar."* His examples: `ee q q q`, `q ee q q`, `q q ee q`, `q q q ee`,
+`ee h q`, `q ee h`, `q h ee`, *"not exhaustive… come up with as many
+possibilities as you can"*).
+
+- `BSMASH_RHYTHMS.eighths`, **the same rules for drums, bass and keys**
+  (`BSMASH_EIGHTHS_PART`): they are the level's. Bars are built from beat
+  cells that keep the downbeat, `q`, `qr`, `8 8`, `8 8r` (the eighth rest
+  only on the "and"), with `h` on any beat it fits (`halfOnAnyBeat`: his own
+  `q h ee` is Level 1's named exception, the minim on beats 2–3) and `hr`
+  where the engraving rules allow. Nothing starts off a beat and lasts past
+  it, so there is no syncopation; measured, no bar breaks either rule.
+- **1 and 2 bars** (`'quavers'`): his seven examples are half the rolls, every
+  other bar of the cells the rest. The one-bar ladder: his four `ee` + three
+  quarters first, then the three with a half note, then all seven, then the mix.
+- **4, 8 and 32 bars** (`'wholes'`): every eighth-note bar, and a whole-note or
+  whole-rest bar in `wholeShare` (5%) of the rolls (measured 5.1%).
+- 80 bpm, like Skate Park; the quaver window and early/late rules are the
+  same. Each musician's first time in says what is new
+  (`beat.eighths.intro.<id>`).
+- **Skate Park became Level 3** because it is the harder one: the eighth rest
+  ON the beat and the push are what Night Owl rules out. So it now opens once
+  Night Owl's band is finished. One word to change (`level` in its song
+  entry) if Rob wants it back beside Night Owl.
+
+**LEVEL 3: SKATE PARK (`c-4-1-5-1`, IV I V I), OFF-BEATS AND THE PUSH**, the
+first eighth-note song built (2026-10-04):
+
+- `rhythm: 'quavers'`, `level: 3`, `bpm: 80` in `content/songs.js`.
 - **Rob's figures** (`BSMASH_RHYTHMS.quavers`): Tango `q q q 8 8` on the kick
   and the off-beats `8r 8 8r 8 8r 8 8r 8` on the hi-hat; Riff's bass `8r 8 8 8
   8r 8 8 8`; Riff's keys `h 8 8 qr` and the syncopation `8 q 8` (as `8 q 8 h`
@@ -1936,6 +1990,8 @@ If they can make 32 bars correctly, I think we've made a huge leap forward."*
   marks and play line measured against whatever grid Stomp Lab had last. Every
   call now goes through `bsmashWithStompGrid` (`entry.slotX`, `entry.x`).
 - Each musician's first time in says what is new (`beat.quavers.intro.<id>`).
+- **The song test that used Night Owl** as an ordinary song now uses Bubblegum
+  (Level 1): Night Owl is locked on a fresh device.
 
 ### MY BAND: the song they built, theirs to play with
 Rob, 2026-10-03, after finishing his first band: *"Once you've earned a song,
@@ -2184,7 +2240,11 @@ the pathway pointing at the songs when a band is complete), a
 part added by the same drag), My band (the mixer, ME, a take looping on the
 band's clock, the mix kept, the report, the recording as a WAV and a picture,
 a re-record kept into the band, a real studio take kept and every step
-counted), the eighth-note song (locked until a band is finished, Rob's figures
+counted), Night Owl at Level 2 (locked until a Level 1 band, Rob's seven
+examples half of the short rolls, no eighth rest on the beat and no
+syncopation anywhere, whole bars about 5% of the long rolls, every bar legal
+and full, the same rules for every musician, played in time and clean),
+Skate Park at Level 3 (locked until Night Owl's band is finished, Rob's figures
 half of every short roll, the long rolls balanced, every bar legal and full,
 80 bpm from the audition on, the window, his figures played in time and clean,
 the hi-hat bars, My band and its recording at 80, and 100 again on a first

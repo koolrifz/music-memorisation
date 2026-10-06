@@ -176,19 +176,21 @@ window.KR.songs = {
         comp: { whole: 'w', pumps: KR_COMP_PUMPS },
         bass: { whole: 'whole', groove: 'pump' },
     },
-    /* SKATE PARK IS THE EIGHTH-NOTE SONG (Rob, 2026-10-04: "Let's use one
-       of the songs we've made to become the container for the beginning of
-       eighth notes"). Its band is read on the quaver grid, from Rob's
-       figures (beat-smash.js, BSMASH_RHYTHMS), at a slower tempo, and it
-       opens once a band is finished on a first-level song.
+    /* SKATE PARK IS LEVEL 3: off-beat eighth notes and the push (Rob,
+       2026-10-04: his figures in beat-smash.js, BSMASH_RHYTHMS.quavers). It
+       was the first eighth-note song; once Night Owl took Level 2 (eighth
+       notes with no rest on the beat and no syncopation), this became the
+       level after it.
          rhythm  the rhythm level its band is read at
-         bpm     its tempo (every other song is 100)
-         opens   'a-song-finished': shown locked until a band is finished */
+         level   the song's level: Level 2 and up open once a band is
+                 finished on a song of the level below (a song without one
+                 is Level 1, open from the start)
+         bpm     its tempo (every other song is 100) */
     'c-4-1-5-1': {
         name: 'song.c-4-1-5-1',
         rhythm: 'quavers',
+        level: 3,
         bpm: 80,
-        opens: 'a-song-finished',
         // AN EXAMPLE, Claude's, in eighth notes: Rob will write his own. The
         // Hop drums put open hats on the off-beats, as his figure does.
         audition: {
@@ -216,8 +218,16 @@ window.KR.songs = {
         comp: { whole: 'w', pumps: KR_COMP_PUMPS },
         bass: { whole: 'whole', groove: 'walk' },
     },
+    /* NIGHT OWL IS LEVEL 2: EIGHTH NOTES, FIRST STEPS (Rob, 2026-10-05).
+       No syncopation, no rest on the beat (an eighth rest only on the "and"),
+       and a whole note or whole rest bar now and then in 4, 8 and 32 bars.
+       beat-smash.js, BSMASH_RHYTHMS.eighths. Opens once a Level 1 band is
+       finished; slower, like every eighth-note song. */
     'c-2-5-1-6': {
         name: 'song.c-2-5-1-6',
+        rhythm: 'eighths',
+        level: 2,
+        bpm: 80,
         bars: [
             { chord: 'Dm7',   bass: 'D3', keys: ['F4', 'A4', 'C5', 'D5'] },
             { chord: 'G7',    bass: 'G2', keys: ['F4', 'G4', 'B4', 'D5'] },
