@@ -44,6 +44,14 @@ KR.lang('en-US', {
     'home.lab.title':        'Rhythm Stomp Lab',
     'home.lab.blurb':        'Write the counting under the notes, level by level.',
 
+    // The picture a Staff, Note or Real Smash result is shared as (script.js makeScoreCard).
+    'share.card.brand':      'Kool Riffs',
+    'share.card.stage':      'Stage: {stage}',
+    'share.card.score':      'points',
+    'share.card.stats':      '{attempts} attempts · {time}s left',
+    'share.card.player':     'Played by {name}',
+    'share.card.file':       'kool-riffs-{game}',
+
     // One line of numbers under each card's pathway.
     'home.stats.new':        'Not played yet',
     'home.stats.cleared':    '{cleared} of {total} cleared',

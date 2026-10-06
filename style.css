@@ -238,6 +238,8 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .helper-note-labels .helper-label-rest { position: static; transform: none; white-space: nowrap; margin-left: 0.58em; }
 .helper-note-labels b { font-size: 1.35em; font-weight: 900; }
 .helper-note-labels.below { bottom: 2px; }
+.helper-note-labels.below.staggered > span:nth-child(even) { bottom: -1.5em; }
+.staggered-labels { margin-bottom: 18px; }
 .helper-note-labels.above { top: 2px; }
 .helper-note-labels.above.ledger { top: 48px; }
 .helper-note-labels.below.ledger { bottom: 8px; }

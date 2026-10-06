@@ -2028,6 +2028,40 @@ def test_dashboard(page):
           page.evaluate("bsmashLoad().jamDone && !localStorage.getItem('koolRiffsBeatGuest')"))
 
 
+def test_notation_helpers_and_share(page):
+    """The older games: every clef's helper labels each line and space with a
+    word, and a result is shared as a picture where the phone can."""
+    fresh(page)
+    for clef in ['treble', 'bass', 'alto', 'tenor']:
+        page.evaluate("localStorage.setItem('koolRiffsClefPreference', '%s'); launchGame('view-game3');"
+                      "document.querySelector('#g3-pathway-track .pathway-node:not(.locked)').click();"
+                      "document.getElementById('g3-pathway-start').click()" % clef)
+        page.wait_for_timeout(800)
+        page.evaluate("toggleG3HelperModal()")
+        page.wait_for_timeout(500)
+        rows = page.evaluate("""['helper-lines-canvas', 'helper-spaces-canvas'].map(id => {
+            const row = document.querySelector('#' + id + ' .helper-note-labels');
+            const spans = [...row.children], rects = spans.map(e => e.getBoundingClientRect());
+            const clash = rects.some((r, i) => rects.some((q, j) => j > i && r.right > q.left + 1 && q.right > r.left + 1 && r.bottom > q.top + 1 && q.bottom > r.top + 1));
+            return { n: spans.length, lefts: new Set(rects.map(r => Math.round(r.left))).size, clash: clash,
+                     px: parseFloat(getComputedStyle(row).fontSize), words: spans.map(e => e.textContent).join(' ') }; })""")
+        check('The %s helper labels its 5 lines and 4 spaces, each under its own note, none overlapping, none under 10px' % clef,
+              [r['n'] for r in rows] == [5, 4] and [r['lefts'] for r in rows] == [5, 4]
+              and not any(r['clash'] for r in rows) and all(r['px'] >= 10 for r in rows), rows)
+        page.evaluate("toggleG3HelperModal(); stopAllGames()")
+    shared = page.evaluate("""(async () => { let got = null;
+        navigator.canShare = d => !!(d.files && d.files.length); navigator.share = async d => { got = d; };
+        g2Score = 17; g2TotalAttempts = 20; g2SecondsLeft = 3.2;
+        await shareGameResult('game2');
+        return got && { files: got.files.length, type: got.files[0].type, name: got.files[0].name, size: got.files[0].size }; })()""")
+    check('A Note Smash result is shared as a picture where the phone can share one',
+          shared and shared['files'] == 1 and shared['type'] == 'image/png' and shared['size'] > 10000, shared)
+    text = page.evaluate("""(async () => { let got = null;
+        navigator.canShare = d => false; navigator.share = async d => { got = d; };
+        await shareGameResult('game1'); return got && !got.files && got.text.startsWith('I smashed the staff'); })()""")
+    check('...and as text where it can\'t', text)
+
+
 def test_rest_of_app(page):
     fresh(page)
     page.click('.game-card.orange')
@@ -2097,6 +2131,7 @@ def main():
         test_quaver_song(page)
         test_teacher_codes(page)
         test_dashboard(page)
+        test_notation_helpers_and_share(page)
         test_rest_of_app(page)
         page.close()
         test_layout(browser)

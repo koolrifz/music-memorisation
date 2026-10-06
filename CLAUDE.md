@@ -1203,28 +1203,36 @@ Each game's entry point is a pathway screen (`g1-screen-pathway`, etc.) — a co
 
 ## Open items to fix now
 
-### 1. HIGH PRIORITY — Game 3 Helpers popup SVG isn't rendering
-The note-name-mnemonic helper modal (`helper-sheet-modal` in Game 3, mirrors the existing working `g2-helper-modal`) draws its staves via `renderHelperSheetGraphics()` in script.js. **The entire function body is wrapped in `try { ... } catch(e) {}` with an empty catch — this is swallowing whatever error is actually occurring, which is why the failure is hard to diagnose.**
+**Items 1–5 of this list are done** (checked 2026-10-06, in the code and in a
+browser). What each was, so nobody goes looking for them again:
 
-First step, before attempting any fix: change the catch to `catch(e) { console.error('renderHelperSheetGraphics failed:', e); }`, reproduce (open Real Smash → tap Helpers), and read the actual console error. Do not guess at a fix without seeing the real error first.
+- **1. Real Smash's Helpers popup** draws in every clef. Its catch logs
+  (`renderHelperSheetGraphics failed:`) and it reads the clef from
+  `getClefPreference()`, not a hidden form field. **A bug was found while
+  checking it, and fixed:** the Spaces row was blank in bass, alto and tenor,
+  on Note Smash's helper too. Every mnemonic was split letter by letter, which
+  only works for "FACE": "All Cows Eat Grass" gave 18 labels for 4 notes, and
+  the aligner gives up on a mismatch. `helperMnemonicWords()` gives a word per
+  note for a sentence and a letter per note for one word. And a sentence that
+  would shrink below 10px on a phone ("Good Boys Deserve Fruit Always" needed
+  7.6px) now **drops every other word a line** instead (`.staggered`), which
+  also lets it stay bigger (12.9px).
+- **2. The tuner's F transposition** is `f: 7`.
+- **3. Real Smash's old setup screen** (`g3-screen-setup`) is gone.
+- **4. A target is announced only when it changes**, in every game that
+  speaks one: Note Smash (`g2LastAnnouncedNote`) and Staff Smash
+  (`g1CurrentPromptLabel`). Real Smash speaks no target. The one deliberate
+  repeat is Note Smash's resume from pause, as a reminder.
+- **5. A Staff, Note or Real Smash result is shared as a picture** where the
+  phone can share a file (`makeScoreCard()`: the game in its colour, the stage,
+  the score, attempts and time left, the nickname playing). It is drawn with
+  `toDataURL`, not `toBlob`, so the share sheet still opens from the tap.
+  Without file sharing it falls back to the text share, as before.
 
-One thing worth checking while in there: `renderHelperSheetGraphics()` determines the current clef via `document.getElementById('clef-select') || document.getElementById('g2-clef-select')`. The `clef-select` element lives in `g3-screen-setup`, a screen that's no longer shown in the normal flow (see item 3 below) — confirm this element still reliably exists and holds the right value when the Game 3 Helpers modal opens.
-
-### 2. CONFIRMED BUG — Tuner's F-instrument transposition is wrong
-In `updateTunerInstrument`, the transposition table is:
-```js
-const transposition = { concert: 0, bb: 2, eb: -3, f: -7 }[tunerInstrument] || 0;
-```
-Bb (+2) and Eb (-3, a valid mod-12-equivalent of the usual +9) are correct. **F is wrong** — an F instrument (e.g. French horn) sounds a perfect fifth below written pitch, so the written note is the concert pitch **+7 semitones**, not -7. As written, -7 produces a completely different letter name than the correct one (e.g. concert C should read as G for an F instrument; the current code will show F instead). Fix: change `f: -7` to `f: 7` (or the mod-12-equivalent `-5` if the intent was to bias toward a lower octave display — either works for a tuner that only cares about pitch class).
-
-### 3. Game 3 dead code — leftover pre-pathway setup screen
-`g3-screen-setup` (with `clef-select`, `level-select`, `mode-select` dropdowns) predates the pathway system and is now bypassed — `startSelectedG3Stage()` sets `level-select`/`mode-select` programmatically and launches straight into the game without the screen ever being shown. It's inert, not currently causing a visible bug, but worth removing as part of general cleanup: delete the screen and rewire `startSelectedG3Stage`/`startG3Game` to read stage config directly rather than through hidden form fields (matches how Games 1 and 2 already work).
-
-### 4. Design fix — Game 2 repeats its target announcement unnecessarily
-In `loadG2Grid()`, the target letter is re-displayed and re-spoken (`speakLetter(g2TargetNote)`) on every single screen redraw, even when the target hasn't changed from the previous screen. This should only announce (visually and audibly) when the target actually changes — if the same letter comes up again, refresh the grid silently.
-
-### 5. Not yet built — share button needs an image, not just text/URL
-`shareGameResult()` currently shares via the Web Share API with text + URL only, which is why email is often the only share target offered on a phone. Wants the result screen rendered to a canvas snapshot and shared as a file (`navigator.canShare({ files: [...] })` with feature detection and a fallback for browsers that don't support file sharing).
+**Still open, and a written decision:** the alto and tenor helpers still use
+word mnemonics ("Fat Alley Cats Eat Garbage"). "Alto & Tenor clef: teach via
+Middle C" below says they must not, and gives the copy. Not built yet: it
+needs a Middle C highlight on the staff and the copy moved into `lang/`.
 
 ### 6. Not yet fleshed out — streak encouragement audio
 Idea: audio encouragement at streak 1/2/3 within a density tier, matching Rob's in-person teaching cadence (encouraging early reps, playful tension on the final rep before advancement, celebration on success — see teaching philosophy note below). Content and exact trigger points aren't decided yet — check with Rob before implementing, this isn't ready to build from yet.

@@ -1242,6 +1242,19 @@ async function shareGameResult(gameId) {
     const shareData = { title: `Kool Riffs - ${gameName}`, text: shareText, url: window.location.href };
     const button = document.querySelector(`#${gameId}-screen-summary .btn-secondary[onclick*="shareGameResult"]`);
 
+    // A picture of the result where the phone can share one: a text share
+    // offers little more than email, a picture goes to messages and photos.
+    // Made synchronously, so the share still counts as coming from the tap.
+    let card = null;
+    try {
+        card = makeScoreCard(gameId, stage, Math.round(scoreValue), attemptsValue, Math.max(0, timeValue).toFixed(1));
+    } catch (error) { console.error('Score card failed:', error); }   // text-ok: for the console
+    if (card && navigator.canShare && navigator.share && navigator.canShare({ files: [card] })) {
+        try { await navigator.share({ files: [card], title: shareData.title, text: shareText }); }
+        catch (error) { if (error.name !== 'AbortError' && button) button.innerText = 'Share Unavailable'; }
+        return;
+    }
+
     try {
         if (navigator.share) {
             await navigator.share(shareData);
@@ -1264,6 +1277,54 @@ async function shareGameResult(gameId) {
     } catch (error) {
         if (error.name !== 'AbortError' && button) button.innerText = 'Share Unavailable';
     }
+}
+
+// The result as a square picture, in the game's colour: the game, the stage,
+// the score, and the nickname playing. Returns a PNG File.
+const SCORE_CARD_GAMES = {
+    game1: { id: 'staff', colour: '#ce82ff' },
+    game2: { id: 'note', colour: '#1cb0f6' },
+    game3: { id: 'real', colour: '#58cc02' }
+};
+
+function makeScoreCard(gameId, stage, scoreValue, attempts, timeLeft) {
+    const game = SCORE_CARD_GAMES[gameId];
+    const W = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = W;
+    const ctx = canvas.getContext('2d');
+    const font = (size, weight) => (weight || 800) + ' ' + size + 'px system-ui, -apple-system, Segoe UI, Roboto, sans-serif'; // text-ok: a CSS font
+    const centre = (text, y, size, colour, weight) => {
+        ctx.font = font(size, weight);
+        ctx.fillStyle = colour;
+        ctx.textAlign = 'center';
+        ctx.fillText(text, W / 2, y, W - 120);
+    };
+    ctx.fillStyle = '#1a2634';
+    ctx.fillRect(0, 0, W, W);
+    ctx.fillStyle = '#243447';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(60, 60, W - 120, W - 120, 48);   // older iPads have no roundRect
+    else ctx.rect(60, 60, W - 120, W - 120);
+    ctx.fill();
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = game.colour;
+    ctx.stroke();
+    centre(KR.t('share.card.brand'), 190, 72, '#ffc800', 900);
+    centre(KR.t('home.' + game.id + '.title'), 300, 84, game.colour, 900);
+    centre(KR.t('share.card.stage', { stage: stage }), 380, 46, '#ffffff', 700);
+    centre(String(scoreValue), 600, 220, '#ffc800', 900);
+    centre(KR.t('share.card.score'), 680, 46, '#8696a7', 700);
+    centre(KR.t('share.card.stats', { attempts: attempts, time: timeLeft }), 790, 42, '#ffffff', 700);
+    const player = typeof vsmashCurrentPlayer === 'function' ? vsmashCurrentPlayer() : null;
+    if (player) centre(KR.t('share.card.player', { name: player.name }), 880, 42, '#8696a7', 700);
+    centre(window.location.host || KR.t('share.card.brand'), 975, 34, '#8696a7', 600);
+    // toDataURL, not toBlob: toBlob waits, and a share sheet opened after a
+    // wait may no longer count as the student's tap.
+    const data = atob(canvas.toDataURL('image/png').split(',')[1]);
+    const bytes = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
+    return new File([bytes], KR.t('share.card.file', { game: game.id }) + '.png', { type: 'image/png' });
 }
 
 function finishG1Game(isOfficialSmash = false) {
@@ -1888,6 +1949,14 @@ const helperMnemonics = {
     tenor: { lines: 'Dogs Fight All Cats Elegantly', spaces: 'Every Good Boy Deserves' }
 };
 
+// One label per note: a sentence gives a word each ("All Cows Eat Grass"),
+// a single word a letter each ("FACE"). Splitting every mnemonic letter by
+// letter gave the bass, alto and tenor spaces 18 labels for 4 notes, which
+// the aligner refuses, so their spaces row came out blank.
+function helperMnemonicWords(mnemonic) {
+    return mnemonic.includes(' ') ? mnemonic.split(' ') : mnemonic.split('');
+}
+
 function getHelperLedgerNotes(config, side) {
     const lines = config.ledgerLines;
     const spaces = config.ledgerSpaces;
@@ -1933,22 +2002,27 @@ function alignHelperLabelsToNotes(canvas, labelsRow) {
 
 // Measures how much a label row's font-size must shrink so no label overlaps
 // the next one (or runs past the canvas edge). Returns 1 when it already fits.
+// A staggered row (every other word dropped a line) only has to clear the
+// word after next.
 function measureRequiredLabelScale(canvas, labelsRow) {
     if (!labelsRow || !labelsRow.children.length) return 1;
+    const step = labelsRow.classList.contains('staggered') ? 2 : 1;
     const canvasRect = canvas.getBoundingClientRect();
     const rects = [...labelsRow.children].map(span => span.getBoundingClientRect());
     let ratio = 1;
     rects.forEach((rect, index) => {
-        const rightBound = index < rects.length - 1 ? rects[index + 1].left : canvasRect.right;
+        const rightBound = index + step < rects.length ? rects[index + step].left : canvasRect.right;
         const available = rightBound - rect.left;
         if (available > 0 && rect.width > available) ratio = Math.min(ratio, available / rect.width);
     });
     return ratio;
 }
 
+const HELPER_LABEL_MIN_PX = 10;
+
 function applyLabelScale(labelsRow, ratio) {
     const baseSize = parseFloat(getComputedStyle(labelsRow).fontSize);
-    labelsRow.style.fontSize = `${Math.max(10, baseSize * ratio * 0.94)}px`;
+    labelsRow.style.fontSize = `${Math.max(HELPER_LABEL_MIN_PX, baseSize * ratio * 0.94)}px`;
 }
 
 function renderHelperSheetGraphics() {
@@ -1958,8 +2032,8 @@ function renderHelperSheetGraphics() {
         const config = NOTE_CONFIGS[currentClef];
         const ledgerLineMidpoint = config.ledgerLines.length / 2;
         const helperRows = [
-            { ids: ['helper-lines-canvas', 'g2-helper-lines-canvas'], notes: config.staffLines, labels: helperMnemonics[currentClef].lines.split(' ') },
-            { ids: ['helper-spaces-canvas', 'g2-helper-spaces-canvas'], notes: config.staffSpaces, labels: helperMnemonics[currentClef].spaces.split('') },
+            { ids: ['helper-lines-canvas', 'g2-helper-lines-canvas'], notes: config.staffLines, labels: helperMnemonicWords(helperMnemonics[currentClef].lines) },
+            { ids: ['helper-spaces-canvas', 'g2-helper-spaces-canvas'], notes: config.staffSpaces, labels: helperMnemonicWords(helperMnemonics[currentClef].spaces) },
             { ids: ['helper-ledger-canvas', 'g2-helper-ledger-canvas'], ledger: true, notes: getHelperLedgerNotes(config, 'above'), belowNotes: getHelperLedgerNotes(config, 'below'), labels: getHelperLedgerNotes(config, 'above').map(note => note[0]), belowLabels: getHelperLedgerNotes(config, 'below').map(note => note[0]) }
         ];
 
@@ -1980,6 +2054,7 @@ function renderHelperSheetGraphics() {
             if (!canvas) return;
             const instanceKey = id.startsWith('g2-') ? 'g2' : 'g3';
             canvas.innerHTML = '';
+            canvas.classList.remove('staggered-labels');
             const helperWidth = Math.max(260, canvas.clientWidth || 320);
             const renderer = new VF.Renderer(canvas, VF.Renderer.Backends.SVG);
             renderer.resize(helperWidth, row.ledger ? 235 : 125);
@@ -2015,6 +2090,17 @@ function renderHelperSheetGraphics() {
                 if (belowLabelsRow) bucket.entries.push({ canvas, labelsRow: belowLabelsRow });
                 bucket.remaining--;
                 if (bucket.remaining === 0) {
+                    // A sentence that would have to shrink below what a child
+                    // can read ("Good Boys Deserve Fruit Always" on a phone)
+                    // drops every other word a line instead.
+                    bucket.entries.forEach(entry => {
+                        const base = parseFloat(getComputedStyle(entry.labelsRow).fontSize);
+                        if (entry.labelsRow.classList.contains('below')
+                            && base * measureRequiredLabelScale(entry.canvas, entry.labelsRow) < HELPER_LABEL_MIN_PX) {
+                            entry.labelsRow.classList.add('staggered');
+                            entry.canvas.classList.add('staggered-labels');
+                        }
+                    });
                     const ratio = Math.min(1, ...bucket.entries.map(entry => measureRequiredLabelScale(entry.canvas, entry.labelsRow)));
                     if (ratio < 1) bucket.entries.forEach(entry => applyLabelScale(entry.labelsRow, ratio));
                 }
