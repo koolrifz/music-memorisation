@@ -181,7 +181,15 @@ def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=
         r0, r1 = take['rests'][0]
         presses.append((r0 + 0.3 * (r1 - r0), -1))
     presses.sort()
+    synced = time.perf_counter()
     for t, i in presses:
+        # Line the clocks up again every couple of seconds, while there is
+        # room before the next press: over an eight-bar or a 32-bar take the
+        # page's audio clock and this one drift apart, and one offset taken
+        # at the start left the late presses late enough to fail the take.
+        if time.perf_counter() - synced > 2 and t + offset - time.perf_counter() > 0.25:
+            offset = clock_offset(page)
+            synced = time.perf_counter()
         # The pad is the beat the note sits in: an eighth on the "and" of 2 is pad 2.
         beat = int((t - take['start']) / beat_s + 0.01) % 4
         key = str(beat + 1) if use_key == 'beats' else use_key
