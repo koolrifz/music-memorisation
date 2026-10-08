@@ -211,6 +211,20 @@ def record_take(page, **kw):
     return play_take(page, **kw)
 
 
+def record_passing_take(page, tries=2):
+    """A studio take meant to pass: played on time, and recorded once more,
+    as a student would, if a press landed late in this headless browser (a
+    scripted 8-bar take lost a note or two to input lag in 2 of 6 full runs).
+    What is checked afterwards is unchanged."""
+    for attempt in range(tries):
+        take = record_take(page)
+        page.wait_for_function("bsmash.phase === 'verdict'", timeout=8000)
+        page.wait_for_timeout(300)
+        if page.is_visible('#beat-transport-keep'):
+            break
+    return take
+
+
 def play_until(page, predicate, limit=12, **kw):
     for _ in range(limit):
         if page.evaluate(predicate):
@@ -747,8 +761,8 @@ def test_long_steps(page):
     page.click('#beat-transport-stop')
     page.wait_for_timeout(200)
     check('Stop ends the listen-back', state(page)['phase'] == 'verdict')
-    take = record_take(page)
-    page.wait_for_timeout(400)
+    take = record_passing_take(page)
+    page.wait_for_timeout(100)
     check('The same bars every take: the song is the song', page.evaluate("bsmash.bars.map(b => b.join()).join('|')") == bars_before)
     c = page.evaluate("""[document.getElementById('beat-control').classList.contains('passed'),
                           !document.getElementById('beat-transport-keep').hidden]""")
@@ -1746,8 +1760,7 @@ def test_my_band(page):
     check('Re-record: Tango names the score to beat', 'Can you beat it' in guide(page) and '91%' in guide(page), guide(page))
     check('...and only the band plays under it: the takes in My band stop', page.evaluate("!bsmashBand.me")
           and page.evaluate("bsmashQueue.filter(e => /^me:/.test(e.tag)).length") == 0)
-    record_take(page)
-    page.wait_for_function("bsmash.phase === 'verdict'", timeout=8000)
+    record_passing_take(page)
     page.click('#beat-transport-keep')
     page.wait_for_timeout(500)
     rec = record(page)
@@ -1809,8 +1822,7 @@ def test_resume(page):
     page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=8000)
     check('The studio\'s bars are the same in the next sitting: the song is the song',
           page.evaluate("bsmash.bars.map(b => b.join()).join('|')") == bars and len(bars.split('|')) == 8)
-    record_take(page)
-    page.wait_for_function("bsmash.phase === 'verdict'", timeout=8000)
+    record_passing_take(page)
     check('A studio take at the pass mark is saved before Keep is pressed', record(page, 'bass').get('studioPassed') is True, record(page, 'bass'))
     page.reload()
     page.wait_for_timeout(400)
