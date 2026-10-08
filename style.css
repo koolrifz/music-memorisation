@@ -1166,6 +1166,34 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-light.hit .bsmash-light-ring { animation: bsmash-light-hit 0.22s ease-out; }
 @keyframes bsmash-light-hit { from { transform: scale(1.08); } to { transform: none; } }
 @media (max-height: 700px) { .bsmash-light-ring { width: 96px; height: 96px; } }
+/* The pocket: right on the student's own beat, the light beats twice, lub-dub,
+   and flashes brighter (bsmashJamLight, BSMASH_LIGHT_POCKET_MS). */
+.bsmash-light.pocket .bsmash-light-ring { animation: bsmash-light-pocket 0.36s ease-out; }
+.bsmash-light.pocket .bsmash-light-fill { animation: bsmash-light-pocket-glow 0.36s ease-out; }
+@keyframes bsmash-light-pocket {
+    0% { transform: scale(1); }
+    14% { transform: scale(1.13); }
+    32% { transform: scale(1.01); }
+    48% { transform: scale(1.09); }
+    100% { transform: none; }
+}
+@keyframes bsmash-light-pocket-glow {
+    0%, 48% { filter: brightness(1.45) saturate(1.2); }
+    100% { filter: none; }
+}
+/* THE WARM-UP IS INTIMATE (Rob, 2026-10-08: "take that circle in the middle
+   and open it right up... right in your face pulsing... and then those
+   buttons aren't too far away from it... squashed together more by
+   inflating"). In the jam the light fills the middle and the pads sit right
+   under it: the light, the meter and the pads are one group, centred in the
+   space under the desk. Its side is whatever is smallest: the width less
+   room for "early" and "late", 38% of the height, or 520 px. */
+#beat-screen-studio.jam .bsmash-light { margin: auto auto 10px; }
+#beat-screen-studio.jam .bsmash-light-ring { width: min(calc(100vw - 150px), 38vh, 520px); height: auto; aspect-ratio: 1; border-width: 6px; container-type: inline-size; }
+/* With "Show me what I played" or the stop menu on screen, it gives them room. */
+#beat-screen-studio.jam:has(#beat-jam-next:not([hidden]), #beat-jam-nav:not([hidden])) .bsmash-light-ring { width: min(calc(100vw - 150px), 28vh, 520px); }
+#beat-screen-studio.jam .bsmash-light-count { font-size: 56px; font-size: 42cqw; }
+#beat-screen-studio.jam .bsmash-light-word { font-size: 14px; }
 .bsmash-jam-coming { display: flex; justify-content: center; gap: 10px; margin: 8px auto 0; }
 .bsmash-jam-coming[hidden] { display: none; }
 .bsmash-jam-coming span { width: 12px; height: 12px; border-radius: 50%; background: #1b2530; border: 2px solid #2c3a49; transition: background 0.3s, box-shadow 0.3s; }

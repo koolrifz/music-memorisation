@@ -2258,6 +2258,25 @@ because that makes the music go."*
   left to right, as in the music); **red at the edge** = off the beat. How far
   the fill misses the centre is how far the tap missed. Rob asked for "that
   same icon" to show early and late, so it is one icon, not three lights.
+- **It fills the middle, and the pads sit right under it** (Rob, 2026-10-08:
+  *"take that circle in the middle and open it right up... right in your face
+  pulsing, pulsing, pulsing, and then those buttons aren't too far away from
+  it... It should all be very intimate"*). In the jam the ring is the width
+  less room for "early" and "late", 38% of the height, or 520 px, whichever is
+  smallest: 507 px on an iPad (it was 120), about 240 on a phone; the light,
+  the meter and the pads are one group, centred under the desk, about 20–30 px
+  apart. When "Show me what I played" or the stop menu shows, it shrinks to
+  28% of the height to make room (measured: nothing scrolls at 820×1180,
+  390×844, 360×640 or 1366×657, with or without them).
+- **THE POCKET: a heartbeat when it's spot on** (Rob: *"when they're really
+  spot on... it throbs, like a heartbeat... not a single pulse, maybe two quick
+  ones milliseconds apart, and that's letting them know that that's the
+  pocket. That's the perfect"*). One more layer inside the green: a tap within
+  `BSMASH_LIGHT_POCKET_MS` (25 ms) of the student's own steady beat makes the
+  ring beat twice, lub-dub, about 150 ms apart, with a brighter flash
+  (`.pocket`); any other green tap throbs once (`.hit`). 25 ms is the same for
+  every age, against green's 60–90: tight enough to mean something, loose
+  enough for a tablet's touch timing. Counted in `jam.pockets`.
 - **Holding it green** makes it glow brighter (`--run`, eight greens to full).
   Yellow still fills the meter; red is a miss and two in a row sag the band.
   So "keep it green, keep the music going" is literally true.
@@ -2362,7 +2381,8 @@ take kept to choose; a guest's warm-up and song kept and adopted), his songs (vo
 transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),
-the beat light (green, early left, late right, way off, the glow) and Tango's
+the beat light (green, early left, late right, way off, the glow, the pocket's
+double beat, big in the middle with the pads right under it) and Tango's
 rushing / dragging coaching, "Follow me" counted in time until order is
 restored (and the encouragement when they stop),
 Riff on bass (his ladder, his voice, a half note let go early and held through,

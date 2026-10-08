@@ -546,6 +546,20 @@ def test_beat_light(page):
         press_at(page, None, t + k * 0.64, index=k % 4)
     said = guide(page)
     check('Slower than the band: Tango says speed up', 'dragging' in said or 'behind the band' in said, said)
+    # The pocket: right on the student's own beat, the light beats twice.
+    pocket = page.evaluate("""(() => { const l = document.getElementById('beat-light'), out = {};
+        const before = bsmash.jam.pockets;
+        bsmashJamLight(0.012, true); out.dead = [l.dataset.state, l.classList.contains('pocket'), l.classList.contains('hit')];
+        bsmashJamLight(-0.02, true); out.early = [l.dataset.state, l.classList.contains('pocket')];
+        bsmashJamLight(0.05, true); out.green = [l.dataset.state, l.classList.contains('pocket'), l.classList.contains('hit')];
+        out.count = bsmash.jam.pockets - before; return out; })()""")
+    check('Within 25 ms of their own beat: the pocket, the light beats twice (lub-dub) instead of once',
+          pocket['dead'] == ['on', True, False] and pocket['early'] == ['on', True] and pocket['green'] == ['on', False, True]
+          and pocket['count'] == 2, pocket)
+    size = page.evaluate("""(() => { const r = document.querySelector('#beat-light .bsmash-light-ring').getBoundingClientRect(),
+        p = document.getElementById('beat-pads').getBoundingClientRect(); return { ring: r.width, gap: p.top - r.bottom, width: innerWidth }; })()""")
+    check('The light fills the middle, the pads right under it (Rob: "right in your face pulsing")',
+          size['ring'] >= 0.55 * size['width'] and 0 <= size['gap'] < 60, size)
     page.evaluate('bsmashJamMorph()')
     page.wait_for_timeout(300)
     check('Once the notes appear, the light is gone', page.is_hidden('#beat-light'))

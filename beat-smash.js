@@ -375,6 +375,12 @@ const BSMASH_SAG_AFTER = 2;                // taps off the beat in a row before 
    against the beat they have been keeping can, and so can rushing. */
 const BSMASH_LIGHT_GREEN_MS = { '6-8': 90, '9-10': 75, '11+': 60 };  // how close counts as green
 const BSMASH_LIGHT_IDLE_MS = 900;          // no tap for this long and the light goes dark
+// THE POCKET (Rob, 2026-10-08): "when they're really spot on... it throbs,
+// like a heartbeat... not a single pulse, maybe two quick ones milliseconds
+// apart, and that's letting them know that that's the pocket. That's the
+// perfect." One more layer inside the green: a tap this close to the
+// student's own steady beat makes the light beat twice, lub-dub.
+const BSMASH_LIGHT_POCKET_MS = 25;
 // Tango coaches the time. Rob: "She should be saying you're a little bit too
 // fast, slow down, or speed up, you're dragging." Rushing or dragging is the
 // gap between taps, averaged over four: a beat this much short or long.
@@ -1558,7 +1564,7 @@ function startBeatJam() {
                styles: bsmashJamStyles(), missesInRow: 0, sag: 0,
                taps: 0, lastTap: 0, stopped: false,
                song: bsmashJamSong(), variations: null, variation: 0,
-               rounds: 0, cycleTaps: {}, shaker: false,
+               rounds: 0, cycleTaps: {}, shaker: false, pockets: 0,
                follow: null, greenRun: 0, praiseAt: BSMASH_GREEN_PRAISE_AT, sawGreen: false, lastCoach: -Infinity, lastTapRaw: null, gaps: [] },
     };
     bsmashOpenStudio();
@@ -1968,9 +1974,12 @@ function bsmashJamLight(d, onBeat) {
     light.dataset.state = state;
     light.style.setProperty('--miss', (miss * 100).toFixed(1) + '%');
     light.style.setProperty('--run', Math.min(1, jam.greenRun / BSMASH_GREEN_PRAISE_AT).toFixed(2));
-    light.classList.remove('hit');
+    // Green throbs once; in the pocket it beats twice, like a heart.
+    const pocket = state === 'on' && Math.abs(d) <= BSMASH_LIGHT_POCKET_MS / 1000;
+    if (pocket) jam.pockets++;
+    light.classList.remove('hit', 'pocket');
     void light.offsetWidth;
-    light.classList.add('hit');
+    light.classList.add(pocket ? 'pocket' : 'hit');
     const taps = jam.taps;
     bsmashLater(() => { if (bsmash && bsmash.jam === jam && jam.taps === taps) light.dataset.state = 'idle'; },
         BSMASH_LIGHT_IDLE_MS);
