@@ -2185,6 +2185,38 @@ def test_notation_helpers_and_share(page):
     check('...and as text where it can\'t', text)
 
 
+def test_wait_for_count(page):
+    """Rob, after his classes: impulsive children tap before the count-in and
+    the take falls apart before it starts. A WAIT sign until the count, the
+    pads dimmed, and an early tap does nothing to the take: a dull thud, the
+    sign shakes, and Tango says to wait."""
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate("startBeatMusician('drums', false, 1)")
+    page.wait_for_function("bsmash && bsmash.take && bsmash.phase === 'wait'", timeout=20000)
+    page.wait_for_timeout(700)
+    sign = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
+        return { shown: !r.hidden, wait: r.classList.contains('wait'), word: r.innerText, dim: document.getElementById('beat-pads').classList.contains('waiting') }; })()""")
+    check('Before the count: a WAIT sign in the middle, the pads dimmed', sign['shown'] and sign['wait'] and 'count' in sign['word'].lower() and sign['dim'], sign)
+    take = wait_for_take(page)
+    beat = take['beat']
+    # Jump in on the count-in's first and third beats, as the class did.
+    press_at(page, None, take['start'] - 4 * beat + 0.05 + take['delay'], index=0)
+    press_at(page, None, take['start'] - 2 * beat + 0.04 + take['delay'], index=2)
+    state_now = page.evaluate("({ presses: bsmash.take.presses.length, strays: bsmash.take.strays.length, jumped: bsmash.jumped,"
+                              " nudge: document.getElementById('beat-countin').classList.contains('nudge') })")
+    check('A tap before the count has ended: not played, not counted against the take', state_now['presses'] == 0
+          and state_now['strays'] == 0 and state_now['jumped'] == 2, state_now)
+    check('...the sign shakes and Tango says to wait', state_now['nudge'] and 'Wait for my count' in guide(page), [state_now, guide(page)])
+    page.wait_for_function("bsmash.phase === 'take'", timeout=8000)
+    check('At beat 1 the sign has gone and the pads are lit again', page.evaluate(
+        "!document.getElementById('beat-countin').classList.contains('wait') && !document.getElementById('beat-pads').classList.contains('waiting')"))
+    play_take(page)
+    page.wait_for_timeout(300)
+    check('...and the take that follows is clean: jumping in cost nothing but the wait', record(page)['streak'] == 1, record(page))
+
+
 def test_rest_of_app(page):
     fresh(page)
     page.click('.game-card.orange')
@@ -2255,6 +2287,7 @@ def main():
         test_quaver_song(page)
         test_teacher_codes(page)
         test_dashboard(page)
+        test_wait_for_count(page)
         test_notation_helpers_and_share(page)
         test_rest_of_app(page)
         page.close()

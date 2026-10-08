@@ -125,8 +125,10 @@ KR.turns = {};           // event name -> how many times it has spoken
    KR.say writes into the guide box that is on screen, or into opts.box.
    The portrait stays hidden until content/art.js has a picture for the
    speaker. It sits BESIDE the box, never over the notation. */
+// Never the dashboard's nickname box: a line spoken as a game is left must
+// not land in the "What's your nickname?" prompt.
 KR.visibleGuide = function () {
-    const boxes = document.querySelectorAll('.kr-guide');
+    const boxes = document.querySelectorAll('.kr-guide:not(.home-player-guide)');
     for (const box of boxes) if (box.offsetParent !== null) return box;
     return null;
 };

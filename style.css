@@ -1324,6 +1324,21 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 /* ---------- Beat Smash: the count-in (1 2 3 4 in red, above the pads) ---------- */
 .bsmash-countin { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 6px solid #ff4b4b; background: rgba(179,38,30,0.25); color: white; font-weight: 900; line-height: 1; box-sizing: border-box; pointer-events: none; z-index: 2; }
 .bsmash-countin[hidden] { display: none; }
+.bsmash-countin .bsmash-countin-word, .bsmash-countin .bsmash-countin-dots { display: none; }
+/* WAIT FOR THE COUNT: a white lollipop sign with a hand, red-rimmed, on a
+   stick; the dots are the bars until the count-in. The pads dim while it
+   shows. An early tap shakes the sign and the pads. */
+.bsmash-countin.wait { flex-direction: column; gap: 2%; background: #ffffff; border-color: #ff4b4b; color: #1a2634; box-shadow: 0 0 0 4px #ffffff, 0 8px 22px rgba(0,0,0,0.45); }
+.bsmash-countin.wait::after { content: ''; position: absolute; top: 100%; left: 50%; width: 10px; height: 46px; margin-left: -5px; margin-top: 6px; border-radius: 0 0 5px 5px; background: linear-gradient(90deg, #c9d2db, #ffffff, #c9d2db); z-index: -1; }
+.bsmash-countin.wait > span { font-size: 0.5em; line-height: 1; }
+.bsmash-countin.wait .bsmash-countin-word { display: block; font-size: 0.16em; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; text-align: center; color: #d32f2f; line-height: 1.1; padding: 0 12%; }
+.bsmash-countin.wait .bsmash-countin-dots { display: flex; gap: 0.05em; font-size: 0.1em; min-height: 1em; }
+.bsmash-countin-dot { width: 1em; height: 1em; border-radius: 50%; background: #ff4b4b; }
+.bsmash-countin.nudge { animation: bsmash-wait-nudge 0.4s ease-out; }
+@keyframes bsmash-wait-nudge { 0%, 100% { transform: translateX(-50%) rotate(0); } 20% { transform: translateX(-50%) rotate(-12deg) scale(1.08); } 45% { transform: translateX(-50%) rotate(10deg); } 70% { transform: translateX(-50%) rotate(-5deg); } }
+#beat-pads.waiting .krpad { opacity: 0.45; filter: saturate(0.4); }
+#beat-pads.nudge { animation: bsmash-pads-nudge 0.3s ease-out; }
+@keyframes bsmash-pads-nudge { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
 .bsmash-countin.pulse { animation: bsmash-countin 0.55s ease-out; }
 @keyframes bsmash-countin {
     from { transform: translateX(-50%) scale(1.14); background: rgba(255,75,75,0.85); box-shadow: 0 0 40px rgba(255,75,75,0.9); }

@@ -1663,6 +1663,21 @@ Smash's players list. Beat Smash adds an **age** to a player.
   (`countin`). Red because it is the recording light. The ring sizes itself
   to the gap and never sits over the notation; where there is no room (the
   studio on a 360×640 phone) the red pads count alone. It goes at beat 1.
+- **WAIT FOR THE COUNT** (Rob, 2026-10-08, after his classes: *"they just
+  started tapping at random before the counting... We have to teach them to
+  wait for the count-in... the computer doesn't react to their intention, it
+  just reacts to what they're doing... so they are guided to wait for the
+  count and then they can relax. That gives them time to look at the rhythm
+  and know when to start instead of panicking... They're very impulsive."*).
+  From the roll until the count-in, the middle shows a **WAIT sign**: a white
+  lollipop on a stick, red rim, a hand and "Wait for the count", with a dot
+  for each bar still to go; **the pads dim** (`bsmashWaitSign()`). At the
+  count-in it becomes the red 1 2 3 4. **A tap before the count has ended
+  does nothing to the take** (`bsmashTooSoon()`): no drum, a dull thud, the
+  sign and the pads shake, and Tango says *"Hands still! Wait for my count"*,
+  once a roll (`beat.take.wait`). A press within the first note's grace is
+  still that note, early: anticipating beat 1 is playing, not jumping in.
+  Early taps are counted in `bsmash.jumped` (not yet in the teacher's report).
 - **The fading scaffold** is `bsmash.scaffold`: `star1` (picture, reveal,
   same bar from notation), `star2` (picture until two beats before beat 1),
   `star3` (notation only), `retake`, and `studio` for the 32 bars. The picture is laid out on the
@@ -2365,7 +2380,8 @@ buttons at each moment, under and at the pass mark, the control room, listen
 back and Stop, the same bars every take, Keep to the picker), the pages turning
 over 16 bars, the Permit when the band is complete, the studio's 32 bars on
 three screen sizes,
-the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
+waiting for the count (the WAIT sign, the pads dimmed, early taps not counted,
+the sign shaking and Tango's line, a clean take after), the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,
 "Next" after Keep straight into the next musician,
 the warm-up's guide (the red count-in with Tango counting and the red ring,

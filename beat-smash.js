@@ -1246,9 +1246,74 @@ function bsmashShow(what, seconds) {
 const BSMASH_COUNTIN_MAX = 140;     // px: the ring's largest size
 const BSMASH_COUNTIN_MIN = 56;      // px: smaller than this, the pads count alone
 
+/* WAIT FOR THE COUNT (Rob, 2026-10-08, after his classes: "as soon as they
+   saw the rhythm and they heard the metronome... they just started tapping at
+   random before the counting... We have to teach them to wait for the
+   count-in, because their first thing is to just start engaging and punching
+   buttons... the computer doesn't react to their intention, it just reacts
+   to what they're doing... How can we completely handle that situation so
+   they are guided to wait for the count and then they can relax? That gives
+   them time to look at the rhythm and know when to start... They're very
+   impulsive.")
+   From the moment a bar is rolled until the count-in, the middle shows a
+   WAIT sign, a white lollipop with a hand on it, and the dots under it say
+   how many bars until the count; the pads dim. At the count-in the sign
+   becomes the red 1 2 3 4. A tap before the count has ended does nothing to
+   the take: no drum, a dull thud, the sign shakes, and Tango says to wait
+   (once a roll). A press within the grace of the first note is still that
+   note, early: anticipating beat 1 is playing, not jumping in. */
+const BSMASH_WAIT_PHASES = ['roll', 'reveal', 'wait', 'countin'];
+
+// Is this press before the count has ended, in a reading step or the studio?
+function bsmashTooSoon(p) {
+    if (bsmash.mode !== 'steps' || !BSMASH_WAIT_PHASES.includes(bsmash.phase)) return false;
+    const take = bsmash.take;
+    if (bsmash.phase === 'countin' && take && !take.done && !take.paused
+        && p.time >= take.playFrom - Math.max(take.win, bsmashNearBeat() * BSMASH_BEAT)) return false;
+    return true;
+}
+
+function bsmashWaitNudge() {
+    bsmash.jumped = (bsmash.jumped || 0) + 1;
+    const ring = bsmashEl('beat-countin');
+    ring.classList.remove('nudge');
+    void ring.offsetWidth;
+    ring.classList.add('nudge');
+    const pads = bsmashEl('beat-pads');
+    pads.classList.remove('nudge');
+    void pads.offsetWidth;
+    pads.classList.add('nudge');
+    // A dull thud, not the drum: nothing was played.
+    if (bsmashAudio()) raudioTone(raudioCtx.currentTime + 0.02, 150, 0.09, 0.14, 'sine', 'click');
+    if (!bsmash.saidWait) { bsmash.saidWait = true; bsmashEvent('beat.take.wait'); }
+}
+
+// The WAIT sign: `left` is the bars until the count-in (-1 when not yet
+// known, while the bar is still being rolled), or null to take it away.
+function bsmashWaitSign(left) {
+    const ring = bsmashEl('beat-countin');
+    const waiting = left !== null;
+    bsmashEl('beat-pads').classList.toggle('waiting', waiting);
+    if (!waiting) {
+        if (ring.classList.contains('wait')) { ring.classList.remove('wait'); ring.hidden = true; }
+        return;
+    }
+    bsmashPlaceCountIn(ring);              // the music above it changes size between roll and take
+    if (!ring.classList.contains('wait')) {
+        ring.classList.add('wait');
+        ring.firstChild.textContent = KR.t('beat.wait.icon');
+        ring.querySelector('.bsmash-countin-word').textContent = KR.t('beat.wait.sign');
+    }
+    ring.hidden = !ring.sized;
+    const dots = ring.querySelector('.bsmash-countin-dots');
+    dots.innerHTML = '';
+    for (let i = 0; i < Math.min(4, Math.max(0, left)); i++) bsmashMake('span', 'bsmash-countin-dot', dots);
+}
+
 function bsmashCountIn(n) {
     const ring = bsmashEl('beat-countin');
-    if (n === null) { ring.hidden = true; return; }
+    if (n === null) { if (!ring.classList.contains('wait')) ring.hidden = true; return; }
+    if (ring.classList.contains('wait')) { ring.classList.remove('wait'); bsmashEl('beat-pads').classList.remove('waiting'); }
     if (n === 1) bsmashPlaceCountIn(ring);
     if (!ring.sized) return;
     ring.hidden = false;
@@ -1527,6 +1592,14 @@ function bsmashOnBeat(beat) {
 
     if (bsmash.mode === 'jam') return bsmashJamBeat(beat, bar, inBar);
     bsmashLoopGuide(bar);
+    if (bsmash.mode === 'steps' && bsmash.phase !== 'countin') {
+        const waiting = BSMASH_WAIT_PHASES.includes(bsmash.phase);
+        const booked = take && !take.done && bsmash.phase === 'wait';
+        // Bars until the count-in, from the take's own count-in beat (a pause
+        // and resume in the studio moves it).
+        const left = booked ? Math.ceil((take.firstBeat + take.from - 4 - beat) / 4) : -1;
+        bsmashWaitSign(waiting ? left : null);
+    }
     if (!take || take.done || take.paused) return;
     const takeBeat = beat - take.firstBeat;
     const pad = bsmash.pads.count === 1 ? 0 : inBar;
@@ -2589,6 +2662,8 @@ function bsmashNewRoll() {
     bsmashEl('beat-take-stats').hidden = true;
     bsmashEl('beat-countin').hidden = true;
     bsmash.phase = 'roll';
+    bsmash.saidWait = false;
+    bsmashWaitSign(-1);
     bsmash.pads.setCount(bsmashPadCount());
     bsmashHeader();
     bsmashControlRoom(null);
@@ -2948,6 +3023,7 @@ function bsmashPressKind(t) {
 
 function bsmashPress(p) {
     if (!bsmash) return;
+    if (bsmashTooSoon(p)) return bsmashWaitNudge();
     bsmashPadSound(p, bsmashPressKind(p.time));
     if (bsmash.mode === 'jam') return bsmashJamPress(p);
     const take = bsmash.take;

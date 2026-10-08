@@ -231,6 +231,10 @@ KR.lang('en-US', {
        Rob will rewrite them. Stars are shown, never said. */
     'beat.line.copy':        'Copy me!',
     'beat.line.morph':       "That's what you just played!",
+    // WAIT FOR THE COUNT: the sign before the count-in, and Tango when a tap jumps in.
+    'beat.wait.icon':        '✋',
+    'beat.wait.sign':        'Wait for the count',
+    'beat.line.wait':        'Hands still! Wait for my count: 1, 2, 3, 4, then you play.',
     'beat.line.shaker':      'Hear the shaker? Chick, chick: it plays in between your beats. Keep tapping on the tick!',
     'beat.line.story':       'The band needs a pulse, and that is your job. Keep the beat and the band will join you!',
     'beat.line.layer.drums': 'Here come the drums!',
