@@ -1160,9 +1160,40 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-light[data-state="way-early"] .bsmash-light-word:first-child, .bsmash-light[data-state="way-late"] .bsmash-light-word:last-child { color: #ff4b4b; }
 .bsmash-light-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 900; color: #ffc800; text-shadow: 0 2px 0 #10171f, 0 0 12px rgba(16,23,31,0.9); pointer-events: none; }
 .bsmash-light.counting .bsmash-light-ring { border-color: #ffc800; }
+/* The warm-up's count-in: red, as the reading steps' count-in is (the recording light). */
+.bsmash-light.countin .bsmash-light-ring { border-color: #ff4b4b; box-shadow: 0 0 26px rgba(255,75,75,0.6); }
+.bsmash-light.countin .bsmash-light-count { color: #ff6b6b; }
 .bsmash-light.hit .bsmash-light-ring { animation: bsmash-light-hit 0.22s ease-out; }
 @keyframes bsmash-light-hit { from { transform: scale(1.08); } to { transform: none; } }
 @media (max-height: 700px) { .bsmash-light-ring { width: 96px; height: 96px; } }
+/* The pocket: right on the student's own beat, the light beats twice, lub-dub,
+   and flashes brighter (bsmashJamLight, BSMASH_LIGHT_POCKET_MS). */
+.bsmash-light.pocket .bsmash-light-ring { animation: bsmash-light-pocket 0.36s ease-out; }
+.bsmash-light.pocket .bsmash-light-fill { animation: bsmash-light-pocket-glow 0.36s ease-out; }
+@keyframes bsmash-light-pocket {
+    0% { transform: scale(1); }
+    14% { transform: scale(1.13); }
+    32% { transform: scale(1.01); }
+    48% { transform: scale(1.09); }
+    100% { transform: none; }
+}
+@keyframes bsmash-light-pocket-glow {
+    0%, 48% { filter: brightness(1.45) saturate(1.2); }
+    100% { filter: none; }
+}
+/* THE WARM-UP IS INTIMATE (Rob, 2026-10-08: "take that circle in the middle
+   and open it right up... right in your face pulsing... and then those
+   buttons aren't too far away from it... squashed together more by
+   inflating"). In the jam the light fills the middle and the pads sit right
+   under it: the light, the meter and the pads are one group, centred in the
+   space under the desk. Its side is whatever is smallest: the width less
+   room for "early" and "late", 38% of the height, or 520 px. */
+#beat-screen-studio.jam .bsmash-light { margin: auto auto 10px; }
+#beat-screen-studio.jam .bsmash-light-ring { width: min(calc(100vw - 150px), 38vh, 520px); height: auto; aspect-ratio: 1; border-width: 6px; container-type: inline-size; }
+/* With "Show me what I played" or the stop menu on screen, it gives them room. */
+#beat-screen-studio.jam:has(#beat-jam-next:not([hidden]), #beat-jam-nav:not([hidden])) .bsmash-light-ring { width: min(calc(100vw - 150px), 28vh, 520px); }
+#beat-screen-studio.jam .bsmash-light-count { font-size: 56px; font-size: 42cqw; }
+#beat-screen-studio.jam .bsmash-light-word { font-size: 14px; }
 .bsmash-jam-coming { display: flex; justify-content: center; gap: 10px; margin: 8px auto 0; }
 .bsmash-jam-coming[hidden] { display: none; }
 .bsmash-jam-coming span { width: 12px; height: 12px; border-radius: 50%; background: #1b2530; border: 2px solid #2c3a49; transition: background 0.3s, box-shadow 0.3s; }
@@ -1175,7 +1206,10 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-jam-nav[hidden] { display: none; }
 .bsmash-jam-nav .btn { margin-top: 0; min-height: 56px; font-size: 15px; }
 #beat-pads { --hype: 0; }
-#beat-screen-studio.jam .krpad.beat, #beat-screen-studio.jam .krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #6d8fb0, 0 0 calc(12px + 26px * var(--hype)) rgba(255,200,0, calc(0.3 + 0.6 * var(--hype))); }
+/* Once the beat is established the walk becomes this: the beat's pad outlined
+   in pale green, beat 1 a little stronger, the glow growing with the meter. */
+#beat-screen-studio.jam .krpad.beat { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #9be06a, 0 0 calc(10px + 22px * var(--hype)) rgba(155,224,106, calc(0.25 + 0.45 * var(--hype))); }
+#beat-screen-studio.jam .krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 3px #b8f08c, 0 0 calc(12px + 26px * var(--hype)) rgba(155,224,106, calc(0.35 + 0.5 * var(--hype))); }
 
 /* The steps on the pathway, and the teacher's beat-test numbers. */
 .bsmash-steps { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
@@ -1211,6 +1245,8 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .krpad.beat { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #6d8fb0, 0 0 12px rgba(109,143,176,0.6); }
 .krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 3px #ff6b6b, 0 0 18px rgba(255,75,75,0.7); }
 .krpad.countin { background: linear-gradient(#ff6b6b, #d32f2f); color: white; box-shadow: 0 6px 0 #8e1b1b, 0 0 26px rgba(255,75,75,0.95); }
+/* The warm-up's "follow the green": the beat's pad, lit for most of the beat. */
+.krpad.guide { background: linear-gradient(#8ee84a, #58cc02); color: white; box-shadow: 0 6px 0 #3d8c01, 0 0 26px rgba(88,204,2,0.95); }
 .krpad.demo { background: linear-gradient(#ffae42, #ff9600); color: white; box-shadow: 0 6px 0 #a35f00, 0 0 22px rgba(255,150,0,0.9); }
 .krpad.hit { background: linear-gradient(#ffe066, #ffc800); color: #4a3a00; box-shadow: 0 6px 0 #a88400, 0 0 24px rgba(255,200,0,0.95); }
 .krpad-label { pointer-events: none; }

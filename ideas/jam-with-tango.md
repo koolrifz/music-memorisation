@@ -21,6 +21,14 @@ Beat Smash Phase 1 on his phone.
 > *"It's also aural training, but we're not asking them to notate it down…
 > The object is just reproducing the sound."*
 
+**Update, 2026-10-08: Rob's next priority.** After the first classroom
+session: *"I should really look into the call and response with Tango. After
+we get this settled down, that's the next thing we need to look at, because
+it's it. They're ready. That's what they want to do. They want to mimic, and
+they do it in class already, where the teacher claps rhythms to them... I'm a
+professional musician... So I've got really good rhythms."* So the figures
+are Rob's to supply.
+
 ## What it teaches, and why the app misses it
 
 Rhythm **by ear, before by eye**. Beat Smash asks a child to read from the

@@ -70,7 +70,9 @@
     return buf;
   }
 
-  function noiseBurst(ctx, out, t, dur, filterType, freq, q, peak, attack) {
+  // offset (optional): where in the noise to start. A fixed one makes every
+  // hit the same sound, as a drum machine's sample is.
+  function noiseBurst(ctx, out, t, dur, filterType, freq, q, peak, attack, offset) {
     const src = ctx.createBufferSource();
     src.buffer = noise(ctx);
     const f = ctx.createBiquadFilter();
@@ -80,7 +82,7 @@
     g.gain.exponentialRampToValueAtTime(peak, t + (attack || 0.002));
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(f); f.connect(g); g.connect(out);
-    src.start(t, (t * 7.13) % 1 * 0.5); src.stop(t + dur + 0.02);   // offset from t: repeatable
+    src.start(t, offset === undefined ? (t * 7.13) % 1 * 0.5 : offset); src.stop(t + dur + 0.02);   // offset from t: repeatable
     return g;
   }
 
@@ -189,6 +191,28 @@
     padClave(ctx, out, t, v) {
       tone(ctx, out, t, 'sine', 2500, 2400, 0.02, 0.07, 0.55 * v);
       noiseBurst(ctx, out, t, 0.008, 'highpass', 4000, 0.7, 0.12 * v);
+    },
+    // THE WARM-UP'S GUIDE (Rob, after four classes of clarinets on an iPad:
+    // "Let's just have a metronome. Just start with a tick... like a wooden
+    // clave"). Wood, not a beep: a short pitched knock with a click on the
+    // front, beat 1 a fifth higher. Built to be heard over a noisy room on a
+    // tablet speaker, so it is loud on its own (0.6 peak, like Stomp Lab's
+    // tap snare) and all of it sits above 900 Hz, where a small speaker plays.
+    woodTick(ctx, out, t, v, accent) {
+      const f = accent ? 2100 : 1400;
+      tone(ctx, out, t, 'sine', f * 1.04, f, 0.012, 0.075, 0.26 * v);
+      tone(ctx, out, t, 'triangle', f * 0.5, f * 0.48, 0.02, 0.05, 0.14 * v);
+      noiseBurst(ctx, out, t, 0.008, 'highpass', 3500, 0.7, 0.14 * v);
+    },
+    // "Chick chick chick chick": the quavers, so the student can hear the
+    // "and" between the beats. A swish (a short swell of air) with a bright
+    // top, louder than the kit's shaker because it is on its own at first.
+    // Every hit the same slice of noise, so it is as steady as a pulse should
+    // be: left to the shared noise, one hit in sixteen came out three times
+    // louder than the rest (0.68 against 0.2), an accent in the wrong place.
+    guideShaker(ctx, out, t, v) {
+      noiseBurst(ctx, out, t, 0.075, 'bandpass', 5200, 1.1, 0.48 * v, 0.012, 0.31);
+      noiseBurst(ctx, out, t, 0.035, 'highpass', 8500, 0.7, 0.18 * v, undefined, 0.73);
     },
     crash(ctx, out, t, v) {
       noiseBurst(ctx, out, t, 1.0, 'highpass', 5200, 0.5, 0.3 * v, 0.004);
@@ -901,6 +925,25 @@
     }
   }
 
+  // The warm-up's metronome: the wooden tick on every beat, beat 1 higher.
+  function metronomePart(ctx, out, t0) {
+    for (let beat = 0; beat < BARS * 4; beat++) {
+      const t = t0 + beat * BEAT;
+      if (t < skipBefore - 1e-6) continue;
+      drum.woodTick(ctx, out, t, 1, beat % 4 === 0);
+    }
+  }
+
+  // The warm-up's shaker: every quaver, the "and" a little stronger than the
+  // beat (Rob: "use that offbeat of the quaver to guide you").
+  function shakerPart(ctx, out, t0) {
+    for (let e = 0; e < BARS * 8; e++) {
+      const t = t0 + e * BEAT / 2;
+      if (t < skipBefore - 1e-6) continue;
+      drum.guideShaker(ctx, out, t, e % 2 ? 1 : 0.5);
+    }
+  }
+
   // from (optional): an audio time before which nothing is played, so a
   // part can join part-way through its cycle, in time.
   function schedulePart(ctx, dest, instrument, style, t0, from) {
@@ -914,6 +957,7 @@
       : guide ? LEVEL.guide
       : phrase ? LEVEL.phrase
       : style === 'click' ? LEVEL.click
+      : style === 'metronome' || style === 'shaker' ? 1
       : LEVEL[instrument] * (TRIM[instrument + '-' + style] || 1);
     g.connect(dest);
     skipBefore = from || 0;
@@ -923,6 +967,8 @@
       else if (guide) guidePart(ctx, g, guide[1], t0);
       else if (phrase) phrasePart(ctx, g, phrase[1], t0);
       else if (style === 'click') clickPart(ctx, g, t0);
+      else if (style === 'metronome') metronomePart(ctx, g, t0);
+      else if (style === 'shaker') shakerPart(ctx, g, t0);
       else PARTS[instrument][style](ctx, g, t0);
     } finally {
       skipBefore = 0;

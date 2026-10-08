@@ -40,6 +40,7 @@ KR.dialogue = {
         { on: 'beat.jam.restored',     speaker: 'tango', text: 'beat.line.restored.2' },
         { on: 'beat.jam.struggled',    speaker: 'tango', text: 'beat.line.struggled' },
         { on: 'beat.jam.story',        speaker: 'tango', text: 'beat.line.story' },
+        { on: 'beat.jam.shaker',       speaker: 'tango', text: 'beat.line.shaker' },
         { on: 'beat.songs.open',       speaker: 'tango', text: 'beat.line.songs.open' },
         { on: 'beat.songs.ours',       speaker: 'tango', text: 'beat.line.songs.ours' },
         { on: 'beat.songs.added',      speaker: 'tango', text: 'beat.line.songs.added' },
