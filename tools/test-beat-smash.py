@@ -197,7 +197,10 @@ def play_take(page, skip=(), rest_tap=False, use_key=None, let_go=(), wrong_pad=
         if i >= 0 and i in wrong_pad:
             pad = (pad + 2) % 4
         press_at(page, offset, t + take['delay'], index=pad, key=key, hold=hold(i))
-    wait_take_done(page)
+    # Long enough for the take's own end, however long it waited for the top
+    # of the loop: an eight-bar studio take can start four bars out and run
+    # 31 s at 100 bpm, past a fixed 25 s.
+    wait_take_done(page, timeout=max(25, take['end'] + offset - time.perf_counter() + 6))
     return take
 
 
