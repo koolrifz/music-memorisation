@@ -1724,9 +1724,18 @@ function bsmashJamBeat(beat, bar, inBar) {
         return;
     }
     // "Follow the green": the beat's pad lights for most of the beat, so the
-    // light walks 1, 2, 3, 4 across the pads with the tick. It keeps walking
-    // when the band has stopped, with the tick, for the next one in line.
-    bsmash.pads.flash(inBar, 'guide', BSMASH_BEAT * 850);
+    // light walks 1, 2, 3, 4 across the pads with the tick. It is only there
+    // to get them started (Rob: "Once they're established, of course I don't
+    // want them relying on the green walk"): it walks until the drums join,
+    // and comes back whenever the beat has to be found again, while Tango
+    // counts them back in and while the band has stopped (for the next one in
+    // line). The rest of the time the beat's pad keeps a pale green outline,
+    // so beat 3 is still played on pad 3 (Rob: "to encourage them to
+    // remember that beat one... you don't use the beat one pad for beat
+    // three").
+    const following = jam.follow && beat >= jam.follow.fromBeat;
+    if (bsmashJamWalking(following)) bsmash.pads.flash(inBar, 'guide', BSMASH_BEAT * 850);
+    else bsmash.pads.flash(inBar, inBar === 0 ? 'beat-one' : 'beat', BSMASH_BEAT * 850);
     // The shaker comes in on the beat: booked from the beat before, so its
     // first quaver is the downbeat, not the "and" after it.
     if (!jam.shaker && beat + 1 >= BSMASH_JAM_SHAKER_BAR * 4) bsmashJamShaker();
@@ -1735,7 +1744,6 @@ function bsmashJamBeat(beat, bar, inBar) {
     if (jam.taps && bsmashNow() - jam.lastTap > BSMASH_JAM_IDLE_BARS * BSMASH_BAR) return bsmashJamStop();
     if (inBar === 0) bsmashJamBar(bar - 1);
     if (inBar === 0 && ((bar % 4) + 4) % 4 === 3) bsmashJamRound(bar);
-    const following = jam.follow && beat >= jam.follow.fromBeat;
     bsmashJamCount(following ? inBar + 1 : null);
     // Tango's count is booked a beat ahead, so it lands ON the beat.
     if (jam.follow && beat + 1 >= jam.follow.fromBeat) {
@@ -1748,6 +1756,14 @@ function bsmashJamBeat(beat, bar, inBar) {
         // Her count always starts; her words wait if she has only just spoken.
         bsmashJamFollow(bar + 1, bsmashNow() - jam.lastCoach >= BSMASH_COACH_EVERY_BARS * BSMASH_BAR);
     }
+}
+
+// Does the green walk the pads this beat? Until the beat is established (the
+// drums have joined), and again while it is being found: Tango counting
+// them back in, or the band stopped.
+function bsmashJamWalking(following) {
+    const jam = bsmash.jam;
+    return jam.level === 0 || !!following || jam.stopped;
 }
 
 // Four bars after the count-in, the shaker joins on the quavers.

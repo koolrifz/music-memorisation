@@ -384,7 +384,7 @@ def test_warmup_guide(page):
     page.evaluate("""window.lit = []; setInterval(() => { if (!bsmashBand) return;
         const b = (raudioCtx.currentTime - bsmashBand.start) / BSMASH_BEAT, f = b - Math.floor(b);
         if (b < 0 || f < 0.25 || f > 0.7) return;
-        [...document.querySelectorAll('#beat-pads .krpad')].forEach((p, i) => ['countin', 'guide'].forEach(k => {
+        [...document.querySelectorAll('#beat-pads .krpad')].forEach((p, i) => ['countin', 'guide', 'beat', 'beat-one'].forEach(k => {
             if (p.classList.contains(k)) lit.push([Math.floor(b), i, k]); }));
         if (document.getElementById('beat-light').classList.contains('countin')) lit.push([Math.floor(b), -1, 'ring']); }, 40); 0""")
     check('The tick from the very first beat, nobody else playing', page.evaluate('JSON.stringify(bsmashBand.parts)') == '{"metro":"metronome"}',
@@ -430,6 +430,13 @@ def test_warmup_guide(page):
     sleep_until(start + 8 * 2.4 + 0.5 + clock_offset(page))
     parts = page.evaluate('Object.keys(bsmashBand.parts).sort()')
     check('Drums lost: the tick comes back, at full level', parts == ['metro', 'shaker'] and page.evaluate('bsmashGuideBus.gain.value') > 0.9, parts)
+    walk = page.evaluate("lit.filter(l => l[0] >= 29 && l[0] <= 32)")  # bar 7, with the drums in
+    check('Established: the green stops walking, and the beat\'s pad keeps a pale outline (beat 1 its own)',
+          walk and not any(l[2] == 'guide' for l in walk) and all(l[1] == l[0] % 4 for l in walk)
+          and any(l[2] == 'beat-one' for l in walk) and any(l[2] == 'beat' for l in walk), sorted(set(map(tuple, walk))))
+    page.wait_for_timeout(700)
+    walk = page.evaluate("lit.filter(l => l[0] >= 33)")
+    check('...and the green walks again, to find the beat', any(l[2] == 'guide' for l in walk), walk[-4:])
     # Nobody tapping: the band stops, the tick and the green carry on for the next one.
     page.wait_for_function('bsmash.jam.stopped', timeout=12000)
     page.evaluate('lit.length = 0')
@@ -482,7 +489,10 @@ def test_beat_light(page):
     fresh(page)
     page.click('.game-card.red')
     page.wait_for_timeout(800)
-    page.evaluate('bsmashJamShaker()')       # the band can be won from here (test_warmup_guide waits for it)
+    # The light, not the band: nobody joins, and Tango doesn't start "follow
+    # me", to talk over the coaching this test listens for (test_follow_me
+    # has that). Both landed on a bar boundary now and then and failed it.
+    page.evaluate('bsmashJamShaker(); BSMASH_JAM_BUILD.forEach(step => { step.bars = 99; }); bsmash.jam.lastDemoBar = 1e9')
     check('The beat light sits in the empty middle of the jam, dark until a tap',
           page.is_visible('#beat-light') and page.evaluate("document.getElementById('beat-light').dataset.state") == 'idle')
     light = "(() => { const l = document.getElementById('beat-light'); return [l.dataset.state, l.style.getPropertyValue('--miss')]; })()"

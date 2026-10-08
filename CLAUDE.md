@@ -1499,10 +1499,20 @@ Smash's players list. Beat Smash adds an **age** to a player.
     3× the old click** (0.18). It was 0.80 first; the student's kick landing
     on the tick then clipped (1.17), so it came down to keep the worst case
     (tick + kick + shaker together) at 0.90;
-  - **"follow the green"**: from bar 1 the beat's pad lights green for most
-    of the beat, so the light walks 1, 2, 3, 4 across the pads with the tick
-    (`.krpad.guide`). It pre-teaches the pad-is-the-beat rule of the reading
-    steps, and keeps walking until "Show me what I played";
+  - **"follow the green", only to get started**: from bar 1 the beat's pad
+    lights green for most of the beat, so the light walks 1, 2, 3, 4 across
+    the pads with the tick (`.krpad.guide`). **It walks until the beat is
+    established, which is when the drums join, and comes back whenever the
+    beat has to be found again**: while Tango counts them back in, and while
+    the band has stopped (`bsmashJamWalking()`). Rob, 2026-10-08: *"When the
+    beat has been established, we don't need to keep walking the green
+    buttons anymore. But just like when there's a recovery... they do that
+    walk then as well... Once they're established, of course I don't want
+    them relying on the green walk. That's only just to get started."* The
+    rest of the time the beat's pad keeps **a pale green outline**, beat 1 a
+    little stronger, the glow growing with the meter (*"I don't mind the
+    silhouette... just paler. And just so to encourage them to remember that
+    beat one... you don't use the beat one pad for the beat three"*);
   - **the shaker on the quavers from bar 5** (`BSMASH_JAM_SHAKER_BAR`, the
     `shaker` part: `guideShaker`), by time, never earned, the "and" stronger
     than the beat (0.26 against 0.13). Rob talks to the student over it:
@@ -1522,11 +1532,17 @@ Smash's players list. Beat Smash adds an **age** to a player.
     handed the iPad down a line: *"sometimes we'd lose the beat and have to
     start over. But it's great because you can just keep going"*).
   - "Copy me!" and the story wait for bar 1, so they don't land on the count.
+  **Is it too much for grades 5 and 6?** Rob's question, with the research:
+  `docs/beat-position-research.md`. Short answer: no, but it is a real skill
+  (the beat and the rhythm held together, the place in the bar kept through
+  the rests) that is still maturing at 10–12. Build it beat first, slower at
+  first, and with games of its own: `ideas/rhythm-rudiments.md`. Zach's idea
+  (letter names tapped in time) is `ideas/note-names-in-time.md`; call and
+  response with Tango is Rob's next priority (`ideas/jam-with-tango.md`).
   **Still open from the classroom:** the noise of a class (Rob: *"I'll talk
-  to you about that later"*); whether reading plus four beat pads is too much
-  at once for grades 5 and 6 (see the chat of 2026-10-08: the proposal is to
-  carry the green walk into the first star's picture go, not to drop the four
-  pads); and four bars feeling less fun than one or two. Rob is recording
+  to you about that later"*); a slower tempo for the first reading steps and
+  a faint walk in the first star's picture go (both proposals in the research
+  note); and four bars feeling less fun than one or two. Rob is recording
   himself coaching a focus group, to write Tango's coaching from it.
 - **THE BAND NEEDS A PULSE: the warm-up is a story** (playtest 2, 2026-10-02:
   *"A little story that the band needs a pulse. Your job is to keep the
@@ -2314,7 +2330,8 @@ the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,
 "Next" after Keep straight into the next musician,
 the warm-up's guide (the red count-in with Tango counting and the red ring,
-the tick from the first beat on its own channel, the green walking the pads,
+the tick from the first beat on its own channel, the green walking the pads
+until the drums join, then the pale outline, and walking again when they are lost,
 held bars winning nothing before the shaker, the shaker at bar 5, the drums
 taking the beat from the tick and giving it back, the tick and the green
 carrying on when the band stops), the jam (the band needs a pulse: the band joining bar by bar, a player lost
