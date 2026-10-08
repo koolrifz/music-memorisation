@@ -776,11 +776,24 @@ function bsmashTick() {
         bsmashBookMe(when, now);
         bsmashBand.next += BSMASH_LOOP;
     }
-    while (bsmashQueue.length && bsmashQueue[0].when < now + 0.1) {
+    while (bsmashQueue.length && bsmashQueue[0].when < now + BSMASH_QUEUE_AHEAD) {
         const e = bsmashQueue.shift();
+        // Too late to be in time: dropped, not played late. A count a beat
+        // behind the tick is worse than a count missing.
+        if (e.when < now - BSMASH_QUEUE_LATE) continue;
         try { e.play(Math.max(e.when, now)); } catch (err) { /* a dud sound must not stop the take */ }
     }
 }
+
+/* The queue of single sounds (the counting voice, the count-in's clicks, Tango's
+   demo, the listen-back) hands each one to the audio clock this far ahead.
+   It was 0.1 s, serviced from the page: on a busy iPad (the big glowing light,
+   speech starting up) the page can stall longer than that, and a count handed
+   over late played late against the tick, which is booked 0.6 s ahead. Rob,
+   2026-10-08: "our counting is not in time with the metronome at all."
+   Measured with the CPU slowed 6x: the count-in's first "1" went 139 ms late. */
+const BSMASH_QUEUE_AHEAD = 0.3;
+const BSMASH_QUEUE_LATE = 0.03;            // later than this and a sound is skipped
 
 function bsmashAt(when, play, tag) {
     bsmashQueue.push({ when: when, play: play, tag: tag || null });
@@ -1602,9 +1615,12 @@ function startBeatJam() {
 // Tango counts the warm-up in, in time: her counting voice on each beat of
 // the count-in bar (the pads light red with it, in bsmashJamBeat).
 function bsmashJamCountIn() {
+    // Straight onto the audio clock, now: the first count is only 0.15 s off,
+    // closer than the page can be trusted to come back to its queue.
+    const now = bsmashNow();
     for (let i = 0; i < 4; i++) {
         const when = bsmashBand.start + (BSMASH_JAM_COUNTIN_BAR * 4 + i) * BSMASH_BEAT;
-        bsmashAt(when, t => raudioSyllable(t, String(i + 1), i === 0, i), 'jam');
+        if (when > now + 0.01) raudioSyllable(when, String(i + 1), i === 0, i);
     }
 }
 

@@ -14,12 +14,15 @@
    voices: the placeholder synthesised voice for each speaker, used until a
    recorded file for the line is listed in content/audio.js.
      Riff  - hip and gruff:          lower and a little slower.
-     Tango - high, tight, squeaky:   higher and quicker.
+     Tango - bright, but NOT hyper:  a little higher, at an easy pace. She was
+             pitch 1.6 and rate 1.1 ("high, tight, squeaky"); Rob's classes
+             found her annoying (2026-10-08), so she was calmed down. These
+             numbers only matter until her lines are recorded.
    ========================================= */
 KR.dialogue = {
     voices: {
         riff:     { pitch: 0.7, rate: 0.95 },
-        tango:    { pitch: 1.6, rate: 1.1 },
+        tango:    { pitch: 1.2, rate: 0.95 },
         narrator: {},
     },
     lines: [

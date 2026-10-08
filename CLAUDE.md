@@ -1328,8 +1328,12 @@ Rob's two characters, created in 1997; he owns them, and they will be redrawn.
 1997 sunglasses are gone) with a
 **hip, gruff** voice, and he handles **pitch**: the Notation games. **Tango** is
 an orange cat who walks on two legs, with a big **red mane** and a **blue
-vest**. She is a drummer, with a **high, tight, squeaky** voice, and she
-handles **rhythm**: Value Smash and Stomp Lab. *"Together rhythm and pitch make
+vest**. She is a drummer, and she handles **rhythm**: Value Smash, Stomp Lab
+and Beat Smash. Her voice was **high, tight, squeaky**; Rob's classes found it
+annoying (2026-10-08), so it is now **bright but not hyper** (the browser
+voice's pitch 1.2, rate 0.95 in `content/dialogue.js`, was 1.6 and 1.1).
+Riff is to sound **hip and cool, a New York jazz man** who knows all the
+secrets of memorising and making music (Rob, 2026-10-08). *"Together rhythm and pitch make
 melody, and that's music."*
 
 - **Coaches, not a universe.** Rob: *"a baby bit of a backstory that allows them
@@ -1347,7 +1351,10 @@ melody, and that's music."*
   ID and a speaker.
 - **Voices.** Until Rob chooses synthesised voices, the browser's speech reads
   each line with a pitch and rate per speaker. After that, each line is
-  generated once and saved as an audio file under its ID.
+  generated once and saved as an audio file under its ID. **The game already
+  plays a recorded file in place of the browser's voice** when one is listed
+  for the line's ID in `content/audio.js` (`KR.speak`), so choosing the voices
+  is the only step left; nothing in the code changes.
 
 Reference art (Rob's 2026 Gemini redraws of both, the 1997 originals, and what
 the pose images must look like: flat background, no watermark, one image per
@@ -1532,6 +1539,15 @@ Smash's players list. Beat Smash adds an **age** to a player.
     handed the iPad down a line: *"sometimes we'd lose the beat and have to
     start over. But it's great because you can just keep going"*).
   - "Copy me!" and the story wait for bar 1, so they don't land on the count.
+  - **The count is booked onto the audio clock, ahead, like the tick** (Rob:
+    *"our counting is not in time with the metronome at all"*). Single sounds
+    went to the audio clock from a queue only 0.1 s ahead, serviced by the
+    page; a busy iPad stalled past that and the counts played late against a
+    tick booked 0.6 s ahead (measured, CPU slowed 6×: the first "1" 139 ms
+    late). The count-in is now booked straight onto the clock at the start,
+    the queue hands sounds over 0.3 s ahead (`BSMASH_QUEUE_AHEAD`), and a
+    sound that is still late is skipped, not played out of time. Measured the
+    same way: every count booked 150–1900 ms ahead.
   **Is it too much for grades 5 and 6?** Rob's question, with the research:
   `docs/beat-position-research.md`. Short answer: no, but it is a real skill
   (the beat and the rhythm held together, the place in the bar kept through
