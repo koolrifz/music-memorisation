@@ -2139,6 +2139,10 @@ we can wrap that into a nice report."*
   becomes **Send to my teacher** when it is ready. The phone's share sheet
   sends it; with none, the files are saved to the device. Changing the mix
   makes it again.
+  **Each four-bar cycle is booked just before it plays** (`ctx.suspend`): the
+  browser works through every sound booked for the whole render, sounding or
+  not, so booking all 32 bars up front made the time grow with the square of
+  the length. Measured: 80 s of band took 120 s to make, now 13 s.
 - **Nicknames, not names** (Rob: *"don't worry about their names, because
   we're not really asking their names… their own nickname. I don't want to
   know who they are anyway."*). The player prompt asks for a nickname; the

@@ -348,13 +348,15 @@ def test_first_minute(page):
     bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
     for k in range(8):
         press_at(page, None, start + bar * 2.4 + k * 0.6 + 0.04, index=k % 4)
-    page.wait_for_timeout(200)
+    # Either of the two bars held brings the drums in by the top of the next:
+    # wait for that barline, so one late tap can't fail the check.
+    sleep_until(start + (bar + 2) * 2.4 + 0.3 + clock_offset(page))
     check('Back on the beat after a wobbly start: a bar held brings the drums in, the pads stay pads',
           'drums' in page.evaluate('Object.keys(bsmashBand.parts)') and page.evaluate('bsmashJamProgress()') > 0
           and not page.evaluate('bsmash.jam.morphed') and page.is_hidden('#beat-jam-next'),
           page.evaluate('Object.keys(bsmashBand.parts)'))
     # Hold the beat, with a steady 40 ms of "device delay", until the groove is full.
-    bar += 2
+    bar += 3
     for k in range(48):
         press_at(page, None, start + bar * 2.4 + k * 0.6 + 0.04, index=k % 4)
         if page.evaluate('bsmash.jam.full'):

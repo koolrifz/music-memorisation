@@ -3899,7 +3899,7 @@ async function bsmashRenderBand() {
     const padBus = ctx.createGain();
     padBus.gain.value = 0.9;
     padBus.connect(master);
-    for (let c = 0; c < cycles; c++) {
+    const book = c => {
         const t0 = lead + c * BSMASH_LOOP;
         Object.keys(band.parts).forEach(id => {
             const part = band.parts[id];
@@ -3912,6 +3912,18 @@ async function bsmashRenderBand() {
             try { BeatSmashBand.pad(ctx, padBus, t, hit.kind, chord).release(t + hit.held * BSMASH_BEAT); }
             catch (e) { /* a dud sound must not stop the render */ }
         }));
+    };
+    // Each four-bar cycle is booked just before it plays, not all at the
+    // start: the browser works through every sound booked, sounding or not,
+    // for the whole render, so booking 32 bars up front made the time grow
+    // with the square of the length (80 s of band took 99 s to make). The
+    // render stops itself a second before each cycle, books it, and carries
+    // on. Without suspend (an old browser), everything is booked at once.
+    book(0);
+    for (let c = 1; c < cycles; c++) {
+        if (typeof ctx.suspend !== 'function') { book(c); continue; }
+        const at = Math.floor((lead + c * BSMASH_LOOP - 1) * BSMASH_SHARE_RATE / 128) * 128 / BSMASH_SHARE_RATE;
+        ctx.suspend(at).then(() => { book(c); ctx.resume(); });
     }
     const buffer = await ctx.startRendering();
     return bsmashWav(buffer);
