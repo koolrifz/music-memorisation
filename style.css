@@ -1160,6 +1160,9 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-light[data-state="way-early"] .bsmash-light-word:first-child, .bsmash-light[data-state="way-late"] .bsmash-light-word:last-child { color: #ff4b4b; }
 .bsmash-light-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 900; color: #ffc800; text-shadow: 0 2px 0 #10171f, 0 0 12px rgba(16,23,31,0.9); pointer-events: none; }
 .bsmash-light.counting .bsmash-light-ring { border-color: #ffc800; }
+/* The warm-up's count-in: red, as the reading steps' count-in is (the recording light). */
+.bsmash-light.countin .bsmash-light-ring { border-color: #ff4b4b; box-shadow: 0 0 26px rgba(255,75,75,0.6); }
+.bsmash-light.countin .bsmash-light-count { color: #ff6b6b; }
 .bsmash-light.hit .bsmash-light-ring { animation: bsmash-light-hit 0.22s ease-out; }
 @keyframes bsmash-light-hit { from { transform: scale(1.08); } to { transform: none; } }
 @media (max-height: 700px) { .bsmash-light-ring { width: 96px; height: 96px; } }
@@ -1211,6 +1214,8 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .krpad.beat { box-shadow: 0 6px 0 #141c25, inset 0 0 0 2px #6d8fb0, 0 0 12px rgba(109,143,176,0.6); }
 .krpad.beat-one { box-shadow: 0 6px 0 #141c25, inset 0 0 0 3px #ff6b6b, 0 0 18px rgba(255,75,75,0.7); }
 .krpad.countin { background: linear-gradient(#ff6b6b, #d32f2f); color: white; box-shadow: 0 6px 0 #8e1b1b, 0 0 26px rgba(255,75,75,0.95); }
+/* The warm-up's "follow the green": the beat's pad, lit for most of the beat. */
+.krpad.guide { background: linear-gradient(#8ee84a, #58cc02); color: white; box-shadow: 0 6px 0 #3d8c01, 0 0 26px rgba(88,204,2,0.95); }
 .krpad.demo { background: linear-gradient(#ffae42, #ff9600); color: white; box-shadow: 0 6px 0 #a35f00, 0 0 22px rgba(255,150,0,0.9); }
 .krpad.hit { background: linear-gradient(#ffe066, #ffc800); color: #4a3a00; box-shadow: 0 6px 0 #a88400, 0 0 24px rgba(255,200,0,0.95); }
 .krpad-label { pointer-events: none; }

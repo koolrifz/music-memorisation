@@ -295,16 +295,16 @@ def test_engraving(page):
 def test_first_minute(page):
     fresh(page)
     page.click('.game-card.red')
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(2900)
     check('A new device goes straight into the studio, no name asked', screen(page) == 'beat-screen-studio', screen(page))
-    check('Tango says "Copy me!"', 'Copy me' in guide(page), guide(page))
+    check('Tango says "Copy me!" after the count-in', 'Copy me' in guide(page), guide(page))
     check('Four beat pads for the first minute', page.locator('#beat-pads .krpad').count() == 4)
     check('Nothing to read in the first minute: no stars, no step', page.evaluate(
         "document.getElementById('beat-stars').hidden && document.getElementById('beat-step-label').hidden"))
     check('Beat Smash is first on the dashboard', page.evaluate(
         "document.querySelector('#view-dashboard .game-card').classList.contains('red')"))
-    check('The band needs a pulse: nobody is playing until the student does',
-          page.evaluate('Object.keys(bsmashBand.parts).length') == 0)
+    check('The band needs a pulse: only the tick, nobody playing until the student does',
+          page.evaluate('Object.keys(bsmashBand.parts)') == ['metro'], page.evaluate('Object.keys(bsmashBand.parts)'))
     # Off-beat taps: they sound, nothing lights, nothing fails.
     offset = clock_offset(page)
     start = page.evaluate('bsmashBand.start')
@@ -316,6 +316,8 @@ def test_first_minute(page):
     # The build, shortened for the test: a bar held each for the drums, two
     # each for the bass and the keys, two for the full groove.
     page.evaluate('[1, 2, 2, 2].forEach((bars, i) => { BSMASH_JAM_BUILD[i].bars = bars; })')
+    # The band is won once the shaker is in (test_warmup_guide waits for it).
+    page.evaluate('bsmashJamShaker()')
     # Back on the beat, from the top of a bar: a wobbly start doesn't stop the
     # meter filling, and a bar held brings the drums in.
     bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
@@ -334,7 +336,7 @@ def test_first_minute(page):
             break
     page.wait_for_timeout(300)
     parts = page.evaluate('Object.keys(bsmashBand.parts).sort()')
-    check('Holding the beat builds the band: the bass and keys join in', parts == ['bass', 'drums', 'keys'], parts)
+    check('Holding the beat builds the band: the bass and keys join in, the shaker with them', parts == ['bass', 'drums', 'keys', 'shaker'], parts)
     check('The groove is full, and "Show me what I played" appears',
           page.evaluate('bsmash.jam.full') and page.is_visible('#beat-jam-next'), page.evaluate('bsmashJamProgress()'))
     page.wait_for_timeout(1500)
@@ -362,6 +364,73 @@ def test_first_minute(page):
           and parts == {'drums': 'warmup', 'guide': 'guide:c-1-4-1-5'}, parts)
 
 
+def test_warmup_guide(page):
+    """Rob, after four classes of clarinets on an iPad: hear the beat straight
+    away, loud. A red count-in with Tango counting, a wooden tick, the green
+    light walking the pads 1 2 3 4, the shaker on the quavers four bars
+    later, and only then the drums, which take the beat from the tick."""
+    fresh(page)
+    page.evaluate("window.counted = []; const say = raudioSyllable;"
+                  "raudioSyllable = (t, label, strong, beat) => { counted.push([t, label]); say(t, label, strong, beat); }; 0")
+    page.click('.game-card.red')
+    page.evaluate("""window.lit = []; setInterval(() => { if (!bsmashBand) return;
+        const b = (raudioCtx.currentTime - bsmashBand.start) / BSMASH_BEAT, f = b - Math.floor(b);
+        if (b < 0 || f < 0.25 || f > 0.7) return;
+        [...document.querySelectorAll('#beat-pads .krpad')].forEach((p, i) => ['countin', 'guide'].forEach(k => {
+            if (p.classList.contains(k)) lit.push([Math.floor(b), i, k]); }));
+        if (document.getElementById('beat-light').classList.contains('countin')) lit.push([Math.floor(b), -1, 'ring']); }, 40); 0""")
+    check('The tick from the very first beat, nobody else playing', page.evaluate('JSON.stringify(bsmashBand.parts)') == '{"metro":"metronome"}',
+          page.evaluate('JSON.stringify(bsmashBand.parts)'))
+    check('...on its own channel, at full level, not the warm-up\'s quiet band', page.evaluate('bsmashGuideBus.gain.value') > 0.95
+          and page.evaluate('bsmashBandBus.gain.value') < 0.7)
+    start = page.evaluate('bsmashBand.start')
+    # Tap bars 1 and 2 on the beat: before the shaker, held bars win nothing.
+    for k in range(8):
+        press_at(page, None, start + 2.4 + k * 0.6 + 0.04, index=k % 4)
+    page.evaluate('bsmash.jam.lastCoach = -Infinity')
+    counted = page.evaluate('counted.filter(c => c[0] < bsmashBand.start + 2.39).map(c => [Math.round((c[0] - bsmashBand.start) / 0.6), c[1]])')
+    check('A count-in: Tango counts 1 2 3 4 on the beats of the first bar', counted == [[0, '1'], [1, '2'], [2, '3'], [3, '4']], counted)
+    lit = page.evaluate('lit')
+    countin = [l for l in lit if l[2] == 'countin']
+    guide_lit = [l for l in lit if l[2] == 'guide']
+    check('...the pads lit red with it, each beat its own pad', countin and all(l[0] < 4 and l[1] == l[0] for l in countin)
+          and sorted(set(l[1] for l in countin)) == [0, 1, 2, 3], countin[:8])
+    ring = [l for l in lit if l[2] == 'ring']
+    check('...and the number in the middle in a red ring, for the count-in only', ring and all(l[0] < 4 for l in ring), ring[-3:])
+    check('Then the green walks the pads, 1 2 3 4, a pad a beat', guide_lit and all(l[0] >= 4 and l[1] == l[0] % 4 for l in guide_lit)
+          and sorted(set(l[1] for l in guide_lit)) == [0, 1, 2, 3], guide_lit[:8])
+    check('...and held bars before the shaker win nothing yet', page.evaluate('Object.keys(bsmashBand.parts)') == ['metro'],
+          page.evaluate('Object.keys(bsmashBand.parts)'))
+    # Keep tapping through bars 3 and 4, or the band (and the story) stops;
+    # the last beat before the shaker left quiet, so Tango has room to name it.
+    for k in range(7):
+        press_at(page, None, start + 3 * 2.4 + k * 0.6 + 0.04, index=k % 4)
+    page.evaluate('bsmash.jam.lastCoach = -Infinity')
+    sleep_until(start + 5 * 2.4 + 0.3 + clock_offset(page))
+    check('Four bars after the count-in, the shaker joins on the quavers', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['metro', 'shaker']
+          and page.evaluate('(bsmashBand.sources.shaker || []).length') > 0)
+    check('...and Tango says so', 'shaker' in guide(page), guide(page))
+    # Two bars held now: the drums, and the tick hands them the beat.
+    for k in range(8):
+        press_at(page, None, start + 5 * 2.4 + k * 0.6 + 0.04, index=k % 4)
+    sleep_until(start + 7 * 2.4 + 0.9 + clock_offset(page))
+    parts = page.evaluate('Object.keys(bsmashBand.parts).sort()')
+    check('Two bars held after the shaker: the drums join, and the tick steps out', parts == ['drums', 'shaker'], parts)
+    check('...the shaker stepping back under them', 0.4 < page.evaluate('bsmashGuideBus.gain.value') < 0.6, page.evaluate('bsmashGuideBus.gain.value'))
+    # One tap in bar 7: let go, and the drums leave; the tick takes the beat back.
+    press_at(page, None, start + 7 * 2.4 + 0.04 + 0.6, index=1)
+    sleep_until(start + 8 * 2.4 + 0.5 + clock_offset(page))
+    parts = page.evaluate('Object.keys(bsmashBand.parts).sort()')
+    check('Drums lost: the tick comes back, at full level', parts == ['metro', 'shaker'] and page.evaluate('bsmashGuideBus.gain.value') > 0.9, parts)
+    # Nobody tapping: the band stops, the tick and the green carry on for the next one.
+    page.wait_for_function('bsmash.jam.stopped', timeout=12000)
+    page.evaluate('lit.length = 0')
+    page.wait_for_timeout(1500)
+    check('Stopped: the tick, the shaker and the green walk carry on for the next in line',
+          page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['metro', 'shaker'] and len(page.evaluate("lit.filter(l => l[2] === 'guide')")) > 3)
+    page.evaluate('bsmashStopAll()')
+
+
 def test_warmup_story(page):
     """Rob, playtest 2: the band needs a pulse, and keeping it is the
     student's job. Each player joins after bars held; back off and the last
@@ -369,9 +438,9 @@ def test_warmup_story(page):
     not what this song needs."""
     fresh(page)
     page.click('.game-card.red')
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(5600)
     check('The story: the band needs a pulse', 'pulse' in guide(page), guide(page))
-    page.evaluate('BSMASH_JAM_BUILD.forEach(step => { step.bars = 1; })')
+    page.evaluate('BSMASH_JAM_BUILD.forEach(step => { step.bars = 1; }); bsmashJamShaker()')
     start = page.evaluate('bsmashBand.start')
     bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
     for k in range(8):
@@ -379,7 +448,7 @@ def test_warmup_story(page):
     # One tap in the next bar: that bar will be let go.
     press_at(page, None, start + (bar + 2) * 2.4 + 0.04, index=0)
     page.wait_for_timeout(250)
-    check('Two bars held: the drums, then the bass', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['bass', 'drums'],
+    check('Two bars held: the drums, then the bass', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['bass', 'drums', 'shaker'],
           page.evaluate('Object.keys(bsmashBand.parts)'))
     check('...and the desk lights the channels playing', page.evaluate(
         "[...document.querySelectorAll('#beat-desk .lit')].length") == 2)
@@ -388,9 +457,9 @@ def test_warmup_story(page):
         if k == 0:
             page.wait_for_timeout(150)
             parts = page.evaluate('Object.keys(bsmashBand.parts)')
-            check('Back off, and the last to join leaves: the bass', parts == ['drums'] and 'bass' in guide(page), [parts, guide(page)])
+            check('Back off, and the last to join leaves: the bass', sorted(parts) == ['drums', 'shaker'] and 'bass' in guide(page), [parts, guide(page)])
     sleep_until(start + (bar + 4) * 2.4 + 0.25 + clock_offset(page))
-    check('...and a bar held wins it back', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['bass', 'drums'])
+    check('...and a bar held wins it back', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['bass', 'drums', 'shaker'])
     # A rhythm of their own: every tap on the "and".
     page.evaluate('bsmash.jam.lastCoach = -Infinity')
     for k in range(4):
@@ -405,6 +474,7 @@ def test_beat_light(page):
     fresh(page)
     page.click('.game-card.red')
     page.wait_for_timeout(800)
+    page.evaluate('bsmashJamShaker()')       # the band can be won from here (test_warmup_guide waits for it)
     check('The beat light sits in the empty middle of the jam, dark until a tap',
           page.is_visible('#beat-light') and page.evaluate("document.getElementById('beat-light').dataset.state") == 'idle')
     light = "(() => { const l = document.getElementById('beat-light'); return [l.dataset.state, l.style.getPropertyValue('--miss')]; })()"
@@ -450,9 +520,12 @@ def test_beat_light(page):
     for k in range(8):
         press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
     page.evaluate('bsmash.jam.lastCoach = -Infinity; bsmash.jam.praiseAt = 999')
+    # 0.64 s apart: 6.7% slow, past the 6% Tango listens for, and never
+    # drifting onto the "and" (0.65 put the last two there: a groove of
+    # their own, which outranks dragging, and the check failed now and then).
     t = start + (beat + 8) * 0.6 + 0.04
     for k in range(6):
-        press_at(page, None, t + k * 0.65, index=k % 4)
+        press_at(page, None, t + k * 0.64, index=k % 4)
     said = guide(page)
     check('Slower than the band: Tango says speed up', 'dragging' in said or 'behind the band' in said, said)
     page.evaluate('bsmashJamMorph()')
@@ -465,7 +538,8 @@ def test_follow_me(page):
     restored, says so; and if they fall apart and stop, she encourages."""
     fresh(page)
     page.click('.game-card.red')
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(2900)
+    page.evaluate('bsmashJamShaker()')       # the band can be won from here (test_warmup_guide waits for it)
     page.evaluate("window.counted = []; const say = raudioSyllable;"
                   "raudioSyllable = (t, label, strong, beat) => { counted.push([t, label]); say(t, label, strong, beat); }; 0")
     start = page.evaluate('bsmashBand.start')
@@ -1221,7 +1295,7 @@ def test_song_jam(page):
     page.click('#beat-pathway-track [data-id=jam]')
     page.click('#beat-pathway-start')
     page.wait_for_timeout(600)
-    page.evaluate('[1, 1, 1, 2].forEach((bars, i) => { BSMASH_JAM_BUILD[i].bars = bars; })')
+    page.evaluate('[1, 1, 1, 2].forEach((bars, i) => { BSMASH_JAM_BUILD[i].bars = bars; }); bsmashJamShaker()')
     offset = clock_offset(page)
     start = page.evaluate('bsmashBand.start')
     bar = int((page.evaluate('raudioCtx.currentTime') - start) / 2.4) + 1
@@ -2119,6 +2193,7 @@ def main():
         test_riff_keys(page)
         test_beat_light(page)
         test_follow_me(page)
+        test_warmup_guide(page)
         test_warmup_story(page)
         test_songs(page)
         test_song_jam(page)

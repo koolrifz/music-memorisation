@@ -299,6 +299,27 @@ const BSMASH_JAM_BUILD = [
     { instrument: 'keys', bars: 4 },
     { instrument: null, bars: 8 },         // the whole band: then the groove is full
 ];
+/* THE WARM-UP'S GUIDE (Rob, 2026-10-08, after four classes of seven clarinets
+   played it on an iPad: "they need to hear the beat straight away, way
+   louder... Let's just have a metronome. Just start with a tick... like a
+   wooden clave. And then we're going to add in the quavers because they need
+   to hear the quavers... after maybe four bars. And then we can add the drums
+   in... the experience first is to find the beat, feel what the quavers are,
+   and then be able to count up to four.")
+   So the warm-up opens on a red count-in, Tango counting 1 2 3 4 in time with
+   the pads lit red, then a loud wooden tick on every beat and a green light
+   walking the pads 1, 2, 3, 4 ("follow the green"). Four bars later the
+   shaker joins on the quavers, and only then does the band start to be won,
+   the drums first. The tick hands the beat to the drums when they join, and
+   takes it back if they are lost.
+   The guide is the clock, not the band: it is never earned or lost, it has
+   its own channel to the speakers (not the warm-up's quiet band level, nor
+   the sag), and it keeps going when the band stops, so the next student in
+   line can pick the beat straight up. */
+const BSMASH_GUIDE_PARTS = { metro: 'metronome', shaker: 'shaker' };
+const BSMASH_JAM_COUNTIN_BAR = 0;          // the bar Tango counts in, the pads red
+const BSMASH_JAM_SHAKER_BAR = 5;           // four bars of the tick alone after the count-in
+const BSMASH_GUIDE_UNDER_DRUMS = 0.5;      // the shaker's level once the drums carry the beat
 const BSMASH_JAM_HELD_TAPS = 3;            // taps on the beat in a bar that hold it
 const BSMASH_JAM_DROPPED_TAPS = 1;         // this many or fewer and the bar is let go
 const BSMASH_AND_WINDOW = 0.12;            // beats either side of the "and" (72 ms): a tap there is a groove of their own
@@ -512,6 +533,7 @@ function bsmashSaveDelay(delay) {
 let bsmashBandBus = null;
 let bsmashPadBus = null;
 let bsmashLiveBus = null;
+let bsmashGuideBus = null;
 let bsmashSagFilter = null;
 let bsmashSagGain = null;
 const bsmashBuffers = {};       // loop id -> AudioBuffer, 'loading' or 'failed'
@@ -537,6 +559,10 @@ function bsmashAudio() {
         bsmashPadBus = ctx.createGain();
         bsmashPadBus.gain.value = 0.9;
         bsmashPadBus.connect(ctx.destination);
+        // The warm-up's tick and shaker: past the band's level and the sag.
+        bsmashGuideBus = ctx.createGain();
+        bsmashGuideBus.gain.value = 1;
+        bsmashGuideBus.connect(ctx.destination);
     }
     return ctx;
 }
@@ -619,9 +645,10 @@ function bsmashPartLoopId(instrument, style) {
 // A part played live, note by note, so it can join part-way through a cycle:
 // one of Rob's songs ('song:'), a won part over the band's chosen song
 // ('band:'), the chord guide ('guide:'), a song's audition tune ('phrase:'),
-// or the metronome ('click').
+// or the metronome ('click'), or the warm-up's guide ('metronome', 'shaker').
 function bsmashIsSongPart(style) {
-    return typeof style === 'string' && (/^(song|band|guide|phrase):/.test(style) || style === 'click');
+    return typeof style === 'string' && (/^(song|band|guide|phrase):/.test(style)
+        || style === 'click' || style === 'metronome' || style === 'shaker');
 }
 
 function bsmashBandStop() {
@@ -667,7 +694,8 @@ function bsmashPlayCycle(instrument, style, when) {
         // Rob's songs are played note by note, so one can join part-way
         // through a cycle: every hit from now on is booked, none before.
         if (when + BSMASH_LOOP < now) return;
-        const gain = BeatSmashBand.schedulePart(ctx, bsmashLiveBus, instrument, style, when, now + 0.03);
+        const bus = instrument in BSMASH_GUIDE_PARTS ? bsmashGuideBus : bsmashLiveBus;
+        const gain = BeatSmashBand.schedulePart(ctx, bus, instrument, style, when, now + 0.03);
         list.push({ src: null, gain: gain });
     } else {
         // The placeholder synth books whole cycles only - a synthesised loop
@@ -1530,7 +1558,7 @@ function startBeatJam() {
                styles: bsmashJamStyles(), missesInRow: 0, sag: 0,
                taps: 0, lastTap: 0, stopped: false,
                song: bsmashJamSong(), variations: null, variation: 0,
-               rounds: 0, cycleTaps: {},
+               rounds: 0, cycleTaps: {}, shaker: false,
                follow: null, greenRun: 0, praiseAt: BSMASH_GREEN_PRAISE_AT, sawGreen: false, lastCoach: -Infinity, lastTapRaw: null, gaps: [] },
     };
     bsmashOpenStudio();
@@ -1547,8 +1575,10 @@ function startBeatJam() {
     bsmashEl('beat-light').hidden = false;
     bsmashEl('beat-light').dataset.state = 'idle';
     bsmashDiceHide();
-    // The pulse alone: the band's clock runs, and nobody is playing yet.
-    bsmashBandStart({});
+    // The tick alone: the band's clock runs, and nobody is playing yet.
+    bsmashBandStart({ metro: BSMASH_GUIDE_PARTS.metro });
+    bsmashGuideLevel(1, 0.05);
+    bsmashJamCountIn();
     bsmash.jam.variations = bsmashJamVariations();
     Object.keys(bsmash.jam.styles).forEach(instrument => bsmashLoadLoop(bsmashPartLoopId(instrument, bsmash.jam.styles[instrument])));
     bsmash.jam.variations.forEach(v => Object.keys(v.parts).forEach(instrument =>
@@ -1557,8 +1587,27 @@ function startBeatJam() {
     bsmashJamMeter();
     bsmashJamDemo(1);
     bsmashRenderDesk('beat-desk');
-    bsmashEvent('beat.jam.start');
-    bsmashLater(() => { if (bsmash && bsmash.mode === 'jam' && !bsmash.jam.taps) bsmashEvent('beat.jam.story'); }, 2600);
+    // "Copy me!" on bar 1, after the count-in, not over it.
+    const bar1 = Math.max(0, (bsmashBand.start + BSMASH_BAR - bsmashNow()) * 1000);
+    bsmashLater(() => { if (bsmash && bsmash.mode === 'jam') bsmashEvent('beat.jam.start'); }, bar1);
+    bsmashLater(() => { if (bsmash && bsmash.mode === 'jam' && !bsmash.jam.taps) bsmashEvent('beat.jam.story'); }, bar1 + 2600);
+}
+
+// Tango counts the warm-up in, in time: her counting voice on each beat of
+// the count-in bar (the pads light red with it, in bsmashJamBeat).
+function bsmashJamCountIn() {
+    for (let i = 0; i < 4; i++) {
+        const when = bsmashBand.start + (BSMASH_JAM_COUNTIN_BAR * 4 + i) * BSMASH_BEAT;
+        bsmashAt(when, t => raudioSyllable(t, String(i + 1), i === 0, i), 'jam');
+    }
+}
+
+// The guide's level, gliding (the shaker steps back when the drums come in).
+function bsmashGuideLevel(level, seconds) {
+    if (!bsmashGuideBus) return;
+    const now = bsmashNow();
+    bsmashGuideBus.gain.cancelScheduledValues(now);
+    bsmashGuideBus.gain.setTargetAtTime(level, now, (seconds || 0.3) / 3);
 }
 
 // The jam song's id, if the student (or Rob) chose one of Rob's songs.
@@ -1665,14 +1714,28 @@ function bsmashJamDemo(bar) {
 
 function bsmashJamBeat(beat, bar, inBar) {
     const jam = bsmash.jam;
-    if (jam.stopped || jam.morphed) return;
+    if (jam.morphed) return;
+    const light = bsmashEl('beat-light');
+    light.classList.toggle('countin', bar === BSMASH_JAM_COUNTIN_BAR);
+    if (bar === BSMASH_JAM_COUNTIN_BAR) {
+        // The count-in: red, the number in the middle.
+        bsmash.pads.flash(inBar, 'countin', BSMASH_BEAT * 850);
+        bsmashJamCount(inBar + 1);
+        return;
+    }
+    // "Follow the green": the beat's pad lights for most of the beat, so the
+    // light walks 1, 2, 3, 4 across the pads with the tick. It keeps walking
+    // when the band has stopped, with the tick, for the next one in line.
+    bsmash.pads.flash(inBar, 'guide', BSMASH_BEAT * 850);
+    // The shaker comes in on the beat: booked from the beat before, so its
+    // first quaver is the downbeat, not the "and" after it.
+    if (!jam.shaker && beat + 1 >= BSMASH_JAM_SHAKER_BAR * 4) bsmashJamShaker();
+    if (jam.stopped) return;
     // The student has stopped playing: so does the band.
     if (jam.taps && bsmashNow() - jam.lastTap > BSMASH_JAM_IDLE_BARS * BSMASH_BAR) return bsmashJamStop();
     if (inBar === 0) bsmashJamBar(bar - 1);
     if (inBar === 0 && ((bar % 4) + 4) % 4 === 3) bsmashJamRound(bar);
     const following = jam.follow && beat >= jam.follow.fromBeat;
-    if (jam.demoBars.has(bar) || following) bsmash.pads.flash(inBar, 'demo', 320);
-    else bsmash.pads.glow(inBar, inBar === 0 ? 'beat-one' : 'beat');
     bsmashJamCount(following ? inBar + 1 : null);
     // Tango's count is booked a beat ahead, so it lands ON the beat.
     if (jam.follow && beat + 1 >= jam.follow.fromBeat) {
@@ -1687,12 +1750,23 @@ function bsmashJamBeat(beat, bar, inBar) {
     }
 }
 
+// Four bars after the count-in, the shaker joins on the quavers.
+function bsmashJamShaker() {
+    const jam = bsmash.jam;
+    jam.shaker = true;
+    bsmashBandSetPart('shaker', BSMASH_GUIDE_PARTS.shaker);
+    // The shaker speaks for itself: Tango names it only if she isn't in the
+    // middle of coaching (rushing, follow me, the story).
+    if (!jam.stopped && jam.level === 0 && bsmashNow() - jam.lastCoach >= BSMASH_COACH_EVERY_BARS * BSMASH_BAR) bsmashEvent('beat.jam.shaker');
+}
+
 // The bar just played: held, let go, or neither. Held bars bring the next
 // player in; a bar let go loses the last one to join, to be won back. Once
-// the groove is full nothing more is lost: the variations take over.
+// the groove is full nothing more is lost: the variations take over. The
+// band is won only once the shaker is in: the tick, the quavers, the drums.
 function bsmashJamBar(bar) {
     const jam = bsmash.jam;
-    if (!jam.taps || jam.full || jam.stopped) return;
+    if (!jam.taps || jam.full || jam.stopped || !jam.shaker) return;
     const taps = jam.barTaps[bar] || 0;
     delete jam.barTaps[bar - 1];
     if (taps >= BSMASH_JAM_HELD_TAPS) {
@@ -1711,6 +1785,11 @@ function bsmashJamJoin() {
     jam.held = 0;
     if (step.instrument) {
         bsmashBandSetPart(step.instrument, jam.styles[step.instrument]);
+        // The drums carry the beat now: the tick steps out, the shaker back.
+        if (step.instrument === 'drums') {
+            bsmashBandRemovePart('metro');
+            bsmashGuideLevel(BSMASH_GUIDE_UNDER_DRUMS, 0.6);
+        }
         bsmashEvent('beat.jam.layer.' + step.instrument);
     } else {
         // The whole band, and the groove is full: the song's own grooves.
@@ -1730,6 +1809,10 @@ function bsmashJamLose() {
     jam.held = 0;
     const instrument = BSMASH_JAM_BUILD[jam.level].instrument;
     bsmashBandRemovePart(instrument);
+    if (instrument === 'drums') {
+        bsmashGuideLevel(1, 0.3);
+        bsmashBandSetPart('metro', BSMASH_GUIDE_PARTS.metro);
+    }
     bsmashRenderDesk('beat-desk');
     // Always said: losing a player IS the story, and outranks any coaching.
     jam.lastCoach = bsmashNow();
@@ -2011,7 +2094,7 @@ function bsmashJamMorph() {
     bsmashJamCount(null);
     // The band steps back to Tango alone: the rest of it is still to be won.
     bsmashBand.pending = null;
-    ['bass', 'keys'].forEach(bsmashBandRemovePart);
+    ['bass', 'keys'].concat(Object.keys(BSMASH_GUIDE_PARTS)).forEach(bsmashBandRemovePart);
     if (bsmashBand.parts.drums !== 'warmup') bsmashBandSetPart('drums', 'warmup');
     bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-light').hidden = true;

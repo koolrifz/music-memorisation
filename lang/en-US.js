@@ -231,6 +231,7 @@ KR.lang('en-US', {
        Rob will rewrite them. Stars are shown, never said. */
     'beat.line.copy':        'Copy me!',
     'beat.line.morph':       "That's what you just played!",
+    'beat.line.shaker':      'Hear the shaker? Chick, chick: it plays in between your beats. Keep tapping on the tick!',
     'beat.line.story':       'The band needs a pulse, and that is your job. Keep the beat and the band will join you!',
     'beat.line.layer.drums': 'Here come the drums!',
     'beat.line.layer.bass':  'Here comes the bass!',

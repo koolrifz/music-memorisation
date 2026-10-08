@@ -1482,12 +1482,58 @@ Smash's players list. Beat Smash adds an **age** to a player.
   The first version turned the pads into notes after four on-beat taps (*"I
   think I've been robbed of the fun of maintaining that beat"*); the second
   filled a meter in 24 taps with the band building under it.
+- **THE WARM-UP'S GUIDE: hear the beat straight away** (Rob, 2026-10-08,
+  after four classes of seven clarinets, grade 5 and 6, played it on an iPad
+  in a line, handing it on: *"they loved it... they all wanted another turn"*;
+  and *"they need to hear the beat straight away, way louder... Let's just
+  have a metronome. Just start with a tick... like a wooden clave. And then
+  we're going to add in the quavers... after maybe four bars. And then we can
+  add the drums in... the experience first is to find the beat, feel what the
+  quavers are, and then be able to count up to four."*). So the warm-up now
+  opens:
+  - **bar 0, a red count-in**: Tango's counting voice 1 2 3 4 in time, each
+    beat's pad red, the number in a red ring in the middle
+    (`bsmashJamCountIn()`; *"they should go red for the count in"*);
+  - **a wooden tick on every beat from that count-in** (`metro`, the
+    `metronome` part: `woodTick`, beat 1 a fifth higher). **0.50 peak, nearly
+    3× the old click** (0.18). It was 0.80 first; the student's kick landing
+    on the tick then clipped (1.17), so it came down to keep the worst case
+    (tick + kick + shaker together) at 0.90;
+  - **"follow the green"**: from bar 1 the beat's pad lights green for most
+    of the beat, so the light walks 1, 2, 3, 4 across the pads with the tick
+    (`.krpad.guide`). It pre-teaches the pad-is-the-beat rule of the reading
+    steps, and keeps walking until "Show me what I played";
+  - **the shaker on the quavers from bar 5** (`BSMASH_JAM_SHAKER_BAR`, the
+    `shaker` part: `guideShaker`), by time, never earned, the "and" stronger
+    than the beat (0.26 against 0.13). Rob talks to the student over it:
+    *"listen to the shaker in the background that goes tick tock... use that
+    offbeat of the quaver to guide you."* Every hit is the **same slice of
+    noise** (`noiseBurst`'s new `offset`): left to the shared noise, one hit
+    in sixteen came out three times louder, an accent in the wrong place.
+    Tango names it (`beat.jam.shaker`) unless she is mid-coaching;
+  - **then the band is won as before**, but held bars only count once the
+    shaker is in: the tick, the quavers, the drums. **The drums take the
+    beat from the tick** (it steps out, the shaker drops to half,
+    `BSMASH_GUIDE_UNDER_DRUMS`) **and give it back if they are lost**.
+  - **The guide is the clock, not the band**: never earned or lost, on its own
+    channel to the speakers (`bsmashGuideBus`), past the warm-up's quiet band
+    level and the sag. **When the band stops, the tick, the shaker and the
+    green walk carry on**, so the next student in line picks the beat up (Rob
+    handed the iPad down a line: *"sometimes we'd lose the beat and have to
+    start over. But it's great because you can just keep going"*).
+  - "Copy me!" and the story wait for bar 1, so they don't land on the count.
+  **Still open from the classroom:** the noise of a class (Rob: *"I'll talk
+  to you about that later"*); whether reading plus four beat pads is too much
+  at once for grades 5 and 6 (see the chat of 2026-10-08: the proposal is to
+  carry the green walk into the first star's picture go, not to drop the four
+  pads); and four bars feeling less fun than one or two. Rob is recording
+  himself coaching a focus group, to write Tango's coaching from it.
 - **THE BAND NEEDS A PULSE: the warm-up is a story** (playtest 2, 2026-10-02:
   *"A little story that the band needs a pulse. Your job is to keep the
   pulse… If at any time you back off and stop playing, then you lose the
-  instrument. You got to win it back."*). It starts with **nobody playing**
-  but the student (`bsmashBandStart({})`), and Tango tells the story if no tap
-  comes. The band joins a player at a time, each after so many bars **held**
+  instrument. You got to win it back."*). It starts with **no band playing**,
+  only the student and the guide's tick (`bsmashBandStart({ metro })`), and
+  Tango tells the story if no tap comes. The band joins a player at a time, each after so many bars **held**
   (`BSMASH_JAM_BUILD`: drums after 2, bass after 4, keys after 4, then 8 for
   the full groove, about a minute as played). A bar is held with
   `BSMASH_JAM_HELD_TAPS` (3) taps on the beat; a bar with
@@ -2267,7 +2313,11 @@ three screen sizes,
 the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,
 "Next" after Keep straight into the next musician,
-the jam (the band needs a pulse: the band joining bar by bar, a player lost
+the warm-up's guide (the red count-in with Tango counting and the red ring,
+the tick from the first beat on its own channel, the green walking the pads,
+held bars winning nothing before the shaker, the shaker at bar 5, the drums
+taking the beat from the tick and giving it back, the tick and the green
+carrying on when the band stops), the jam (the band needs a pulse: the band joining bar by bar, a player lost
 and won back, a groove of their own; a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over a jam song and the Roman-numeral
 menu), playtest 2 (takes on the four-bar loop, the loop guide, notation from
