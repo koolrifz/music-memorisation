@@ -75,9 +75,19 @@ def new_page(browser, size=PHONE):
     return page
 
 
-def fresh(page, setup=''):
+# Every test but test_rules starts with the rules before the first reading
+# take already seen: the guest's and every saved player's.
+RULES_SEEN = """(() => { const mark = r => Object.assign(r || {}, { seenRules: true });
+    const g = localStorage.getItem('koolRiffsBeatGuest');
+    localStorage.setItem('koolRiffsBeatGuest', JSON.stringify(mark(g ? JSON.parse(g) : {})));
+    const all = JSON.parse(localStorage.getItem('koolRiffsBeatProgress') || 'null');
+    if (all && all.players) { Object.keys(all.players).forEach(k => mark(all.players[k]));
+        localStorage.setItem('koolRiffsBeatProgress', JSON.stringify(all)); } })();"""
+
+
+def fresh(page, setup='', rules_seen=True):
     """A clean device, optionally with some saved state, speech silenced."""
-    page.evaluate('localStorage.clear();' + setup)
+    page.evaluate('localStorage.clear();' + setup + (RULES_SEEN if rules_seen else ''))
     page.reload()
     page.wait_for_timeout(400)
     page.evaluate('KR.speak = () => {}')
@@ -148,6 +158,9 @@ def wait_for_take(page, timeout=20):
     """Wait until a take is booked; return its notes and rests on the audio clock."""
     end = time.time() + timeout
     while time.time() < end:
+        # The rules before a player's very first reading take (test_rules has them).
+        if page.evaluate("!!document.getElementById('beat-rules-go') && !document.getElementById('beat-rules-go').hidden"):
+            page.click('#beat-rules-go')
         take = page.evaluate("bsmash && bsmash.take && !bsmash.take.done && { start: bsmash.take.start,"
                              " end: bsmash.take.end, notes: bsmash.take.notes.map(n => n.t),"
                              " noteBars: bsmash.take.notes.map(n => n.bar),"
@@ -516,7 +529,8 @@ def test_beat_light(page):
           page.is_visible('#beat-light') and page.evaluate("document.getElementById('beat-light').dataset.state") == 'idle')
     light = "(() => { const l = document.getElementById('beat-light'); return [l.dataset.state, l.style.getPropertyValue('--miss')]; })()"
     start = page.evaluate('bsmashBand.start')
-    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    # From bar 2: "Copy me!" waits for bar 1, and would talk over the coaching.
+    beat = max(int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2, 8)
     for k in range(4):
         press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
     on = page.evaluate(light)
@@ -927,7 +941,7 @@ def test_verdict_reasons(page):
     ring = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
         const reading = document.getElementById('beat-reading').getBoundingClientRect();
         const box = r.getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect();
-        return { shown: !r.hidden, n: r.textContent, clear: box.top >= reading.bottom && box.bottom <= pads.top + 8,
+        return { shown: !r.hidden, n: r.firstChild.textContent, clear: box.top >= reading.bottom && box.bottom <= pads.top + 8,
                  pad: document.querySelectorAll('#beat-pads .krpad.countin').length }; })()""")
     check('The count-in: 1 2 3 4 in a red ring in the empty middle, clear of the music, the pad lit red',
           ring['shown'] and ring['n'] in '1234' and ring['clear'] and ring['pad'] == 1, ring)
@@ -963,6 +977,7 @@ def test_verdict_reasons(page):
                 notes: [0, 2, 3].map(s => ({ t: 100 + s * 0.6, end: 100.6 + s * 0.6, bar: 0, index: s, spec: { slot: s, slots: 1 } })),
                 rests: [{ t: 100.6, end: 101.2, bar: 0, index: 1, spec: { slot: 1, slots: 1 } }] };
             bsmash.take = take;
+            bsmash.phase = 'take';          // not waiting for the count: these presses are the take's
             times.forEach(t => bsmashPress({ pad: Math.max(0, Math.round((t - 100) / 0.6)) % 4, time: t, raw: t, touch: false, up: null }));
             return bsmashTakeIssues(take).map(i => i.reason).join() + (take.rests[0].tapped ? '+tapped' : '');
         };
@@ -2185,6 +2200,74 @@ def test_notation_helpers_and_share(page):
     check('...and as text where it can\'t', text)
 
 
+def test_rules(page):
+    """Rob: the very first reading take sets up the rules before anything
+    plays. Every phrase ends on the final double bar line; tap exactly what
+    you see, and a tap past the end loses the star."""
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));", rules_seen=False)
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate("startBeatMusician('drums', false, 1)")
+    page.wait_for_function("bsmash && bsmash.phase === 'rules'", timeout=20000)
+    r = page.evaluate("""({ take: !!(bsmash.take && !bsmash.take.done), button: !document.getElementById('beat-rules-go').hidden,
+        callout: (document.querySelector('#beat-reading .bsmash-end-callout') || {}).textContent || '',
+        final: !!document.querySelector('#beat-reading .bsmash-picture-final') })""")
+    check('The very first bar: nothing plays until the rules are given', not r['take'] and r['button'], r)
+    check('...a callout points at the final double bar line, and Tango says the rules',
+          'stop here' in r['callout'].lower() and r['final'] and 'Tap exactly what you see' in guide(page), [r, guide(page)])
+    page.click('#beat-rules-go')
+    page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=5000)
+    check('"I\'m ready!" starts the take, and the rules are not shown again', page.evaluate("bsmashLoad().seenRules === true")
+          and page.is_hidden('#beat-rules-go') and page.locator('#beat-reading .bsmash-end-callout').count() == 0)
+    # Play it right, then keep going past the double bar line, as the class did.
+    take = wait_for_take(page)
+    offset = clock_offset(page)
+    for i, t in enumerate(take['notes']):
+        press_at(page, offset, t + take['delay'], index=int((t - take['start']) / take['beat'] + 0.01) % 4)
+    press_at(page, offset, take['end'] + 0.03 + take['delay'], index=0)     # beat 1 of the next bar
+    wait_take_done(page)
+    page.wait_for_timeout(300)
+    check('Playing on past the double bar line: no star, and Tango says to stop at the double line',
+          record(page)['streak'] == 0 and 'double line' in guide(page), [record(page), guide(page)])
+    # The notation ends on the final double bar line too.
+    page.evaluate("bsmashShow('notation')")
+    ends = page.evaluate("""(() => { const svg = document.querySelector('#beat-reading .bsmash-staff svg');
+        const rects = [...svg.querySelectorAll('rect')].map(r => +r.getAttribute('width')); return rects.filter(w => w >= 2.5).length; })()""")
+    check('...and the staff ends on the final double bar line (its thick line drawn)', ends >= 1, ends)
+
+
+def test_wait_for_count(page):
+    """Rob, after his classes: impulsive children tap before the count-in and
+    the take falls apart before it starts. A WAIT sign until the count, the
+    pads dimmed, and an early tap does nothing to the take: a dull thud, the
+    sign shakes, and Tango says to wait."""
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));")
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate("startBeatMusician('drums', false, 1)")
+    page.wait_for_function("bsmash && bsmash.take && bsmash.phase === 'wait'", timeout=20000)
+    page.wait_for_timeout(700)
+    sign = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
+        return { shown: !r.hidden, wait: r.classList.contains('wait'), word: r.innerText, dim: document.getElementById('beat-pads').classList.contains('waiting') }; })()""")
+    check('Before the count: a WAIT sign in the middle, the pads dimmed', sign['shown'] and sign['wait'] and 'count' in sign['word'].lower() and sign['dim'], sign)
+    take = wait_for_take(page)
+    beat = take['beat']
+    # Jump in on the count-in's first and third beats, as the class did.
+    press_at(page, None, take['start'] - 4 * beat + 0.05 + take['delay'], index=0)
+    press_at(page, None, take['start'] - 2 * beat + 0.04 + take['delay'], index=2)
+    state_now = page.evaluate("({ presses: bsmash.take.presses.length, strays: bsmash.take.strays.length, jumped: bsmash.jumped,"
+                              " nudge: document.getElementById('beat-countin').classList.contains('nudge') })")
+    check('A tap before the count has ended: not played, not counted against the take', state_now['presses'] == 0
+          and state_now['strays'] == 0 and state_now['jumped'] == 2, state_now)
+    check('...the sign shakes and Tango says to wait', state_now['nudge'] and 'Wait for my count' in guide(page), [state_now, guide(page)])
+    page.wait_for_function("bsmash.phase === 'take'", timeout=8000)
+    check('At beat 1 the sign has gone and the pads are lit again', page.evaluate(
+        "!document.getElementById('beat-countin').classList.contains('wait') && !document.getElementById('beat-pads').classList.contains('waiting')"))
+    play_take(page)
+    page.wait_for_timeout(300)
+    check('...and the take that follows is clean: jumping in cost nothing but the wait', record(page)['streak'] == 1, record(page))
+
+
 def test_rest_of_app(page):
     fresh(page)
     page.click('.game-card.orange')
@@ -2255,6 +2338,8 @@ def main():
         test_quaver_song(page)
         test_teacher_codes(page)
         test_dashboard(page)
+        test_wait_for_count(page)
+        test_rules(page)
         test_notation_helpers_and_share(page)
         test_rest_of_app(page)
         page.close()

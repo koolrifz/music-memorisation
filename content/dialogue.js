@@ -14,12 +14,15 @@
    voices: the placeholder synthesised voice for each speaker, used until a
    recorded file for the line is listed in content/audio.js.
      Riff  - hip and gruff:          lower and a little slower.
-     Tango - high, tight, squeaky:   higher and quicker.
+     Tango - bright, but NOT hyper:  a little higher, at an easy pace. She was
+             pitch 1.6 and rate 1.1 ("high, tight, squeaky"); Rob's classes
+             found her annoying (2026-10-08), so she was calmed down. These
+             numbers only matter until her lines are recorded.
    ========================================= */
 KR.dialogue = {
     voices: {
         riff:     { pitch: 0.7, rate: 0.95 },
-        tango:    { pitch: 1.6, rate: 1.1 },
+        tango:    { pitch: 1.2, rate: 0.95 },
         narrator: {},
     },
     lines: [
@@ -41,6 +44,8 @@ KR.dialogue = {
         { on: 'beat.jam.struggled',    speaker: 'tango', text: 'beat.line.struggled' },
         { on: 'beat.jam.story',        speaker: 'tango', text: 'beat.line.story' },
         { on: 'beat.jam.shaker',       speaker: 'tango', text: 'beat.line.shaker' },
+        { on: 'beat.take.wait',        speaker: 'tango', text: 'beat.line.wait' },
+        { on: 'beat.rules',            speaker: 'tango', text: 'beat.line.rules' },
         { on: 'beat.songs.open',       speaker: 'tango', text: 'beat.line.songs.open' },
         { on: 'beat.songs.ours',       speaker: 'tango', text: 'beat.line.songs.ours' },
         { on: 'beat.songs.added',      speaker: 'tango', text: 'beat.line.songs.added' },
@@ -68,6 +73,7 @@ KR.dialogue = {
         { on: 'beat.take.why.missed',  speaker: 'tango', text: 'beat.line.why.missed' },
         { on: 'beat.take.why.rest',    speaker: 'tango', text: 'beat.line.why.rest' },
         { on: 'beat.take.why.extra',   speaker: 'tango', text: 'beat.line.why.extra' },
+        { on: 'beat.take.why.over',    speaker: 'tango', text: 'beat.line.why.over' },
         { on: 'beat.take.why.wrongPad', speaker: 'tango', text: 'beat.line.why.wrongPad' },
         { on: 'beat.reveal',           speaker: 'tango', text: 'beat.line.reveal' },
         { on: 'beat.retake.clean',     speaker: 'tango', text: 'beat.line.retakeClean' },
@@ -110,6 +116,7 @@ KR.dialogue = {
         { on: 'beat.take.why.missed.riff',  speaker: 'riff', text: 'beat.riff.why.missed' },
         { on: 'beat.take.why.rest.riff',    speaker: 'riff', text: 'beat.riff.why.rest' },
         { on: 'beat.take.why.extra.riff',   speaker: 'riff', text: 'beat.riff.why.extra' },
+        { on: 'beat.take.why.over.riff',    speaker: 'riff', text: 'beat.riff.why.over' },
         { on: 'beat.take.why.wrongPad.riff', speaker: 'riff', text: 'beat.riff.why.wrongPad' },
         { on: 'beat.reveal.riff',           speaker: 'riff', text: 'beat.riff.reveal' },
         { on: 'beat.retake.clean.riff',     speaker: 'riff', text: 'beat.riff.retakeClean' },

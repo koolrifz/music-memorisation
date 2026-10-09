@@ -707,14 +707,14 @@
         <div class="bsmash-dice" id="beat-dice" hidden></div>
         <div class="bsmash-reading" id="beat-reading"></div>
         <!-- The count-in: 1 2 3 4 in red, in the empty space above the pads. -->
-        <div class="bsmash-countin" id="beat-countin" hidden><span></span></div>
+        <div class="bsmash-countin" id="beat-countin" hidden><span></span><b class="bsmash-countin-word"></b><i class="bsmash-countin-dots"></i></div>
         <!-- The teacher's view (the teacher code on): the last take, note by note, in ms. -->
         <p class="bsmash-stats bsmash-take-stats" id="beat-take-stats" hidden></p>
         <!-- The first minute: the beat light. Green, dead centre, is right on
              the beat; yellow left is early, yellow right is late. -->
         <div class="bsmash-light" id="beat-light" data-state="idle" hidden>
             <span class="bsmash-light-word" data-text="beat.light.early"></span>
-            <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-count"></span></div>
+            <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-logo" data-text="beat.drum.logo"></span><span class="bsmash-light-count"></span></div>
             <span class="bsmash-light-word" data-text="beat.light.late"></span>
         </div>
         <!-- The studio (32 bars): the control room says how the take went,
@@ -738,6 +738,8 @@
              beat held. Four, and the band changes. -->
         <div class="bsmash-jam-coming" id="beat-jam-coming" hidden><span></span><span></span><span></span><span></span></div>
         <button class="btn btn-start bsmash-jam-next" id="beat-jam-next" hidden onclick="showBeatJamNotes()" data-text="beat.jam.next"></button>
+        <!-- The rules, before the very first reading take (beat-smash.js bsmashShowRules). -->
+        <button class="btn btn-start bsmash-rules-go" id="beat-rules-go" hidden data-text="beat.rules.go"></button>
         <!-- When the student stops, the band stops, and the way on is here. -->
         <div class="bsmash-jam-nav" id="beat-jam-nav" hidden>
             <button class="btn btn-start" onclick="keepBeatJamming()" data-text="beat.jam.keepGoing"></button>

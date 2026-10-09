@@ -459,6 +459,7 @@ function bsmashBlankProgress() {
         jamDone: false,
         firstStar: false,
         seenMorph: false,
+        seenRules: false,
         musicians: {},
         settings: { padMode: 'four', sound: {}, jamSong: 'c', studioBars: BSMASH_STUDIO_BARS[0] },
     };
@@ -776,11 +777,32 @@ function bsmashTick() {
         bsmashBookMe(when, now);
         bsmashBand.next += BSMASH_LOOP;
     }
-    while (bsmashQueue.length && bsmashQueue[0].when < now + 0.1) {
+    while (bsmashQueue.length && bsmashQueue[0].when < now + BSMASH_QUEUE_AHEAD) {
         const e = bsmashQueue.shift();
+        // Too late to be in time: dropped, not played late. A count a beat
+        // behind the tick is worse than a count missing.
+        if (e.when < now - BSMASH_QUEUE_LATE) continue;
         try { e.play(Math.max(e.when, now)); } catch (err) { /* a dud sound must not stop the take */ }
     }
 }
+
+/* The queue of single sounds (the counting voice, the count-in's clicks, Tango's
+   demo, the listen-back) hands each one to the audio clock this far ahead.
+   It was 0.1 s, serviced from the page: on a busy iPad (the big glowing light,
+   speech starting up) the page can stall longer than that, and a count handed
+   over late played late against the tick, which is booked 0.6 s ahead. Rob,
+   2026-10-08: "our counting is not in time with the metronome at all."
+   Measured with the CPU slowed 6x: the count-in's first "1" went 139 ms late. */
+const BSMASH_QUEUE_AHEAD = 0.3;
+/* STOP AT THE DOUBLE BAR LINE (Rob, 2026-10-09: "after tapping for minutes
+   on just the beat... they will always tap more than the four beats... You're
+   going to tap exactly what you see on the screen and nothing more. You'll
+   stop at the end of one bar. If you go past one bar that does not count
+   towards the star."). A tap up to this many beats past the end is playing on
+   past the final double bar line: the take isn't clean (reason 'over'), and
+   the take is judged once this beat is over. */
+const BSMASH_OVER_BEATS = 1;
+const BSMASH_QUEUE_LATE = 0.03;            // later than this and a sound is skipped
 
 function bsmashAt(when, play, tag) {
     bsmashQueue.push({ when: when, play: play, tag: tag || null });
@@ -1100,7 +1122,12 @@ function bsmashRenderReading() {
         const under = bsmashMake('div', 'bsmash-under', line);
         paper.style.width = (perBar * lineBars.length + 8) + 'px';
         marks.style.width = under.style.width = paper.style.width;
-        const drawn = bsmashWithStompGrid(() => renderRstompStaff(staff, lineBars.map(bsmashGridSpecs), perBar));
+        // Every phrase ends on the final double bar line (Rob, 2026-10-09:
+        // "They need to have access to proper music notation"), on the staff
+        // and in the picture.
+        const lastLine = first + perLine >= bars.length;
+        const drawn = bsmashWithStompGrid(() => renderRstompStaff(staff, lineBars.map(bsmashGridSpecs), perBar, { finalBar: lastLine }));
+        if (lastLine) bsmashMake('div', 'bsmash-picture-final', picture).style.left = (4 + lineBars.length * perBar - 8) + 'px';
         const per = bsmashPerBeat();
         drawn.forEach((layout, i) => {
             const barIndex = first + i;
@@ -1233,9 +1260,74 @@ function bsmashShow(what, seconds) {
 const BSMASH_COUNTIN_MAX = 140;     // px: the ring's largest size
 const BSMASH_COUNTIN_MIN = 56;      // px: smaller than this, the pads count alone
 
+/* WAIT FOR THE COUNT (Rob, 2026-10-08, after his classes: "as soon as they
+   saw the rhythm and they heard the metronome... they just started tapping at
+   random before the counting... We have to teach them to wait for the
+   count-in, because their first thing is to just start engaging and punching
+   buttons... the computer doesn't react to their intention, it just reacts
+   to what they're doing... How can we completely handle that situation so
+   they are guided to wait for the count and then they can relax? That gives
+   them time to look at the rhythm and know when to start... They're very
+   impulsive.")
+   From the moment a bar is rolled until the count-in, the middle shows a
+   WAIT sign, a white lollipop with a hand on it, and the dots under it say
+   how many bars until the count; the pads dim. At the count-in the sign
+   becomes the red 1 2 3 4. A tap before the count has ended does nothing to
+   the take: no drum, a dull thud, the sign shakes, and Tango says to wait
+   (once a roll). A press within the grace of the first note is still that
+   note, early: anticipating beat 1 is playing, not jumping in. */
+const BSMASH_WAIT_PHASES = ['roll', 'rules', 'reveal', 'wait', 'countin'];
+
+// Is this press before the count has ended, in a reading step or the studio?
+function bsmashTooSoon(p) {
+    if (bsmash.mode !== 'steps' || !BSMASH_WAIT_PHASES.includes(bsmash.phase)) return false;
+    const take = bsmash.take;
+    if (bsmash.phase === 'countin' && take && !take.done && !take.paused
+        && p.time >= take.playFrom - Math.max(take.win, bsmashNearBeat() * BSMASH_BEAT)) return false;
+    return true;
+}
+
+function bsmashWaitNudge() {
+    bsmash.jumped = (bsmash.jumped || 0) + 1;
+    const ring = bsmashEl('beat-countin');
+    ring.classList.remove('nudge');
+    void ring.offsetWidth;
+    ring.classList.add('nudge');
+    const pads = bsmashEl('beat-pads');
+    pads.classList.remove('nudge');
+    void pads.offsetWidth;
+    pads.classList.add('nudge');
+    // A dull thud, not the drum: nothing was played.
+    if (bsmashAudio()) raudioTone(raudioCtx.currentTime + 0.02, 150, 0.09, 0.14, 'sine', 'click');
+    if (!bsmash.saidWait) { bsmash.saidWait = true; bsmashEvent('beat.take.wait'); }
+}
+
+// The WAIT sign: `left` is the bars until the count-in (-1 when not yet
+// known, while the bar is still being rolled), or null to take it away.
+function bsmashWaitSign(left) {
+    const ring = bsmashEl('beat-countin');
+    const waiting = left !== null;
+    bsmashEl('beat-pads').classList.toggle('waiting', waiting);
+    if (!waiting) {
+        if (ring.classList.contains('wait')) { ring.classList.remove('wait'); ring.hidden = true; }
+        return;
+    }
+    bsmashPlaceCountIn(ring);              // the music above it changes size between roll and take
+    if (!ring.classList.contains('wait')) {
+        ring.classList.add('wait');
+        ring.firstChild.textContent = KR.t('beat.wait.icon');
+        ring.querySelector('.bsmash-countin-word').textContent = KR.t('beat.wait.sign');
+    }
+    ring.hidden = !ring.sized;
+    const dots = ring.querySelector('.bsmash-countin-dots');
+    dots.innerHTML = '';
+    for (let i = 0; i < Math.min(4, Math.max(0, left)); i++) bsmashMake('span', 'bsmash-countin-dot', dots);
+}
+
 function bsmashCountIn(n) {
     const ring = bsmashEl('beat-countin');
-    if (n === null) { ring.hidden = true; return; }
+    if (n === null) { if (!ring.classList.contains('wait')) ring.hidden = true; return; }
+    if (ring.classList.contains('wait')) { ring.classList.remove('wait'); bsmashEl('beat-pads').classList.remove('waiting'); }
     if (n === 1) bsmashPlaceCountIn(ring);
     if (!ring.sized) return;
     ring.hidden = false;
@@ -1514,6 +1606,15 @@ function bsmashOnBeat(beat) {
 
     if (bsmash.mode === 'jam') return bsmashJamBeat(beat, bar, inBar);
     bsmashLoopGuide(bar);
+    if (bsmash.mode === 'steps' && bsmash.phase !== 'countin') {
+        // Not while the rules are up: "I'm ready!" is the cue then.
+        const waiting = BSMASH_WAIT_PHASES.includes(bsmash.phase) && bsmash.phase !== 'rules';
+        const booked = take && !take.done && bsmash.phase === 'wait';
+        // Bars until the count-in, from the take's own count-in beat (a pause
+        // and resume in the studio moves it).
+        const left = booked ? Math.ceil((take.firstBeat + take.from - 4 - beat) / 4) : -1;
+        bsmashWaitSign(waiting ? left : null);
+    }
     if (!take || take.done || take.paused) return;
     const takeBeat = beat - take.firstBeat;
     const pad = bsmash.pads.count === 1 ? 0 : inBar;
@@ -1602,9 +1703,12 @@ function startBeatJam() {
 // Tango counts the warm-up in, in time: her counting voice on each beat of
 // the count-in bar (the pads light red with it, in bsmashJamBeat).
 function bsmashJamCountIn() {
+    // Straight onto the audio clock, now: the first count is only 0.15 s off,
+    // closer than the page can be trusted to come back to its queue.
+    const now = bsmashNow();
     for (let i = 0; i < 4; i++) {
         const when = bsmashBand.start + (BSMASH_JAM_COUNTIN_BAR * 4 + i) * BSMASH_BEAT;
-        bsmashAt(when, t => raudioSyllable(t, String(i + 1), i === 0, i), 'jam');
+        if (when > now + 0.01) raudioSyllable(when, String(i + 1), i === 0, i);
     }
 }
 
@@ -2573,6 +2677,8 @@ function bsmashNewRoll() {
     bsmashEl('beat-take-stats').hidden = true;
     bsmashEl('beat-countin').hidden = true;
     bsmash.phase = 'roll';
+    bsmash.saidWait = false;
+    bsmashWaitSign(-1);
     bsmash.pads.setCount(bsmashPadCount());
     bsmashHeader();
     bsmashControlRoom(null);
@@ -2591,9 +2697,43 @@ function bsmashNewRoll() {
         bsmashShow(picture && (bsmash.scaffold === 'star1' || bsmash.scaffold === 'star2') ? 'picture' : 'notation');
         bsmashLater(() => {
             bsmashDiceHide();
-            bsmashScheduleTake(picture && bsmash.scaffold === 'star1' ? 'picture' : 'notation');
+            const go = picture && bsmash.scaffold === 'star1' ? 'picture' : 'notation';
+            if (!bsmashLoad().seenRules) return bsmashShowRules(go);
+            bsmashScheduleTake(go);
         }, 500);
     }, 1000);
+}
+
+/* THE RULES, BEFORE THE VERY FIRST BAR (Rob, 2026-10-09: "On the very first
+   one where we put the final bar line, you could annotate it before we start
+   playing. We should set up the rules now. You're going to tap exactly what
+   you see on the screen and nothing more. You'll stop at the end of one bar.
+   If you go past one bar that does not count towards the star... Use kid
+   friendly language... We have to guide them into the next step.")
+   The first time a player reaches a reading take, nothing starts until the
+   rules are given: Tango says them, a callout points at the final double bar
+   line ("The end: stop here!"), and an "I'm ready!" button starts the take.
+   Once per player (progress.seenRules). */
+function bsmashShowRules(go) {
+    bsmash.phase = 'rules';
+    bsmashWaitSign(null);
+    const entry = bsmash.layout[bsmash.layout.length - 1];
+    if (entry) {
+        const callout = bsmashMake('div', 'bsmash-end-callout', entry.under);
+        callout.style.left = (entry.left + entry.width - 8) + 'px';
+        callout.textContent = KR.t('beat.rules.end');
+    }
+    bsmashEvent('beat.rules');
+    const button = bsmashEl('beat-rules-go');
+    button.hidden = false;
+    button.onclick = () => {
+        button.hidden = true;
+        document.querySelectorAll('#beat-reading .bsmash-end-callout').forEach(c => c.remove());
+        const progress = bsmashLoad();
+        progress.seenRules = true;
+        bsmashSave(progress);
+        if (bsmash && bsmash.phase === 'rules') bsmashScheduleTake(go);
+    };
 }
 
 /* =========================================
@@ -2932,6 +3072,7 @@ function bsmashPressKind(t) {
 
 function bsmashPress(p) {
     if (!bsmash) return;
+    if (bsmashTooSoon(p)) return bsmashWaitNudge();
     bsmashPadSound(p, bsmashPressKind(p.time));
     if (bsmash.mode === 'jam') return bsmashJamPress(p);
     const take = bsmash.take;
@@ -2939,7 +3080,7 @@ function bsmashPress(p) {
     const t = p.time;
     // Taps in the count-in, or after the last note, are free; but a press
     // within half a beat of the first note is that note, early.
-    if (t < take.playFrom - Math.max(take.win, bsmashNearBeat() * BSMASH_BEAT) || t > take.end + take.win) return;
+    if (t < take.playFrom - Math.max(take.win, bsmashNearBeat() * BSMASH_BEAT) || t > take.end + BSMASH_OVER_BEATS * BSMASH_BEAT) return;
     // What the student played, for listening back and keeping. Its beat in
     // the take is fixed now: a pause and resume moves take.start.
     p.beat = (t - take.start) / BSMASH_BEAT;
@@ -2977,6 +3118,12 @@ function bsmashPress(p) {
     // little before beat 3 is beat 3 played early, not a tap in beat 2's
     // rest (playtest 1, §4.1). Otherwise a tap in a rest, or one too many.
     const stray = { press: p, t: t, note: bsmashNearNote(take, t), rest: null };
+    // Past the final double bar line: playing on after the end.
+    if (!stray.note && t > take.end - take.win) {
+        stray.over = true;
+        take.strays.push(stray);
+        return;
+    }
     if (stray.note) {
         if (!stray.note.near) stray.note.near = stray;
     } else {
@@ -3049,7 +3196,7 @@ function bsmashTakeFrame() {
         if (take.mustHit.has(note)) take.lostBar = true;
         bsmashSlip(note.bar);
     });
-    if (judged > take.end + take.win + 0.05) {
+    if (judged > take.end + Math.max(take.win, BSMASH_OVER_BEATS * BSMASH_BEAT) + 0.05) {
         take.done = true;
         bsmashPictureCursor(null);
         bsmashEl('beat-rec').classList.remove('recording');
@@ -3127,6 +3274,7 @@ function bsmashTakeIssues(take) {
     });
     take.strays.forEach(stray => {
         if (stray.note && stray.note.near === stray && !stray.note.hit) return;   // the note's own early or late
+        if (stray.over) return at(stray.t, 'over', null, bsmashFinalBarPlace(take));
         if (stray.rest) return at(stray.t, 'rest', stray.rest);
         at(stray.t, 'extra', stray.note, stray.note || bsmashBeatAt(take, stray.t));
     });
@@ -3139,7 +3287,7 @@ function bsmashTakeIssues(take) {
    step, practice included, adds to its step's row: takes and takes passed,
    notes and notes played right, what went wrong by reason, how far off the
    beat the notes were (ms, from the device's delay) and the best score. */
-const BSMASH_STAT_REASONS = ['early', 'late', 'missed', 'rest', 'extra', 'short', 'wrongPad'];
+const BSMASH_STAT_REASONS = ['early', 'late', 'missed', 'rest', 'extra', 'short', 'wrongPad', 'over'];
 
 function bsmashBlankStats() {
     const s = { takes: 0, passed: 0, notes: 0, right: 0, hits: 0, offMs: 0, leanMs: 0, best: 0 };
@@ -3175,8 +3323,14 @@ function bsmashStatsSummary(s) {
         right: Math.round(100 * s.right / Math.max(1, s.notes)),
         offMs: Math.round(s.offMs / Math.max(1, s.hits)),
         leanMs: Math.round(s.leanMs / Math.max(1, s.hits)),
-        early: s.early, late: s.late, missed: s.missed, rest: s.rest + s.extra, short: s.short,
+        early: s.early, late: s.late, missed: s.missed, rest: s.rest + s.extra, short: s.short, over: s.over || 0,
     };
+}
+
+// The last beat of the phrase, where the double bar line is: where a tap
+// past the end is marked.
+function bsmashFinalBarPlace(take) {
+    return { bar: take.bars - 1, spec: { slot: 3, slots: 1 } };
 }
 
 // The beat a press landed nearest, as a place to mark: { bar, slot, slots }.
