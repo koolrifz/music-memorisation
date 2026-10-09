@@ -708,14 +708,110 @@
         <div class="bsmash-reading" id="beat-reading"></div>
         <!-- The count-in: 1 2 3 4 in red, in the empty space above the pads. -->
         <div class="bsmash-countin" id="beat-countin" hidden><span></span><b class="bsmash-countin-word"></b><i class="bsmash-countin-dots"></i></div>
+        <!-- Tango holding the WAIT sign up, like a lollipop lady (Rob,
+             2026-10-09: "She can whip out a white sign"). Her head is a copy
+             of the one at her kit, put in by bsmashTangoSign(). -->
+        <svg class="bsmash-tango-sign" id="beat-tango-sign" viewBox="0 0 160 220" hidden aria-hidden="true">
+            <g class="tango-sign-body">
+                <path d="M76 184 L74 210 M100 184 L102 210" stroke="#b85a12" stroke-width="13" stroke-linecap="round"/>
+                <path d="M76 184 L74 210 M100 184 L102 210" stroke="#f28c28" stroke-width="9" stroke-linecap="round"/>
+                <ellipse cx="72" cy="213" rx="11" ry="6" fill="#fde2b8" stroke="#b85a12" stroke-width="1.5"/>
+                <ellipse cx="104" cy="213" rx="11" ry="6" fill="#fde2b8" stroke="#b85a12" stroke-width="1.5"/>
+                <ellipse cx="88" cy="150" rx="34" ry="40" fill="#f28c28" stroke="#b85a12" stroke-width="2"/>
+                <ellipse cx="88" cy="154" rx="14" ry="30" fill="#fde2b8"/>
+                <path d="M55 134 Q62 116 76 116 L78 186 L58 184 Q50 158 55 134 Z" fill="#1f5fbf" stroke="#123f84" stroke-width="2"/>
+                <path d="M121 134 Q114 116 100 116 L98 186 L118 184 Q126 158 121 134 Z" fill="#1f5fbf" stroke="#123f84" stroke-width="2"/>
+                <circle cx="77" cy="140" r="2.4" fill="#ffc800"/><circle cx="77" cy="158" r="2.4" fill="#ffc800"/>
+                <path d="M114 130 Q136 146 116 168" stroke="#b85a12" stroke-width="13" fill="none" stroke-linecap="round"/>
+                <path d="M114 130 Q136 146 116 168" stroke="#f28c28" stroke-width="9" fill="none" stroke-linecap="round"/>
+            </g>
+            <g class="tango-sign-head"></g>
+            <g class="tango-sign-arm">
+                <path d="M62 130 Q26 120 16 76" stroke="#b85a12" stroke-width="13" fill="none" stroke-linecap="round"/>
+                <path d="M62 130 Q26 120 16 76" stroke="#f28c28" stroke-width="9" fill="none" stroke-linecap="round"/>
+                <circle cx="16" cy="72" r="8" fill="#fde2b8" stroke="#b85a12" stroke-width="1.5"/>
+            </g>
+        </svg>
         <!-- The teacher's view (the teacher code on): the last take, note by note, in ms. -->
         <p class="bsmash-stats bsmash-take-stats" id="beat-take-stats" hidden></p>
         <!-- The first minute: the beat light. Green, dead centre, is right on
              the beat; yellow left is early, yellow right is late. -->
         <div class="bsmash-light" id="beat-light" data-state="idle" hidden>
-            <span class="bsmash-light-word" data-text="beat.light.early"></span>
-            <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-logo" data-text="beat.drum.logo"></span><span class="bsmash-light-count"></span></div>
-            <span class="bsmash-light-word" data-text="beat.light.late"></span>
+            <!-- In the warm-up the light is the front of Tango's kick drum, and
+                 Tango sits behind her kit, talking to the student (Rob,
+                 2026-10-09). The kit is drawn in two layers: what is behind
+                 the kick drum (the cymbals, the toms, the snare, Tango), then
+                 the kick drum itself (the light), then what is in front of it
+                 (her arms and sticks). A placeholder drawing until Rob's art. -->
+            <div class="bsmash-kit" id="beat-kit">
+                <svg class="bsmash-kit-back" viewBox="0 0 400 330" aria-hidden="true">
+                    <g transform="translate(0 30)">
+                    <g class="kit-stands" stroke="#8e9aa6" stroke-width="3" stroke-linecap="round" fill="none">
+                        <path d="M98 62 L116 280 M104 280 L116 262 L128 280"/>
+                        <path d="M306 74 L292 280 M280 280 L292 262 L304 280"/>
+                        <path d="M34 110 L34 280 M20 280 L34 262 L48 280"/>
+                        <path d="M88 190 L88 262 M70 280 L88 262 L106 280"/>
+                        <path d="M296 250 L292 280 M340 250 L344 280"/>
+                    </g>
+                    <g class="kit-cymbal kit-crash"><ellipse cx="92" cy="56" rx="48" ry="8" transform="rotate(-12 92 56)" fill="#e8b923" stroke="#9c7a10" stroke-width="2"/><circle cx="92" cy="56" r="3" fill="#9c7a10"/></g>
+                    <g class="kit-cymbal kit-ride"><ellipse cx="312" cy="70" rx="50" ry="8" transform="rotate(10 312 70)" fill="#e8b923" stroke="#9c7a10" stroke-width="2"/><circle cx="312" cy="70" r="3" fill="#9c7a10"/></g>
+                    <g class="kit-cymbal kit-hat"><ellipse cx="34" cy="116" rx="30" ry="5" fill="#e8b923" stroke="#9c7a10" stroke-width="2"/><ellipse cx="34" cy="123" rx="30" ry="5" fill="#d4a51c" stroke="#9c7a10" stroke-width="2"/></g>
+                    </g>
+                    <g class="tango" id="beat-tango">
+                        <g class="tango-body">
+                            <ellipse cx="200" cy="140" rx="42" ry="38" fill="#f28c28" stroke="#b85a12" stroke-width="2"/>
+                            <ellipse cx="200" cy="144" rx="17" ry="30" fill="#fde2b8"/>
+                            <path d="M160 122 Q168 104 186 106 L189 176 L163 176 Q156 146 160 122 Z" fill="#1f5fbf" stroke="#123f84" stroke-width="2"/>
+                            <path d="M240 122 Q232 104 214 106 L211 176 L237 176 Q244 146 240 122 Z" fill="#1f5fbf" stroke="#123f84" stroke-width="2"/>
+                            <circle cx="185" cy="132" r="2.6" fill="#ffc800"/><circle cx="185" cy="150" r="2.6" fill="#ffc800"/>
+                        </g>
+                        <g class="tango-head" id="beat-tango-head">
+                            <polygon points="200.0,22.7 207.1,35.6 218.5,25.8 220.5,40.3 234.7,34.7 231.4,49.0 246.8,48.4 238.5,60.7 253.2,65.1 241.0,74.0 253.2,82.9 238.5,87.3 246.8,99.6 231.4,99.0 234.7,113.3 220.5,107.7 218.5,122.2 207.1,112.4 200.0,125.3 192.9,112.4 181.5,122.2 179.5,107.7 165.3,113.3 168.6,99.0 153.2,99.7 161.5,87.3 146.8,82.9 159.0,74.0 146.8,65.1 161.5,60.7 153.2,48.4 168.6,49.0 165.3,34.7 179.5,40.3 181.5,25.8 192.9,35.6" fill="#d7262e" stroke="#8e1218" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M178 54 L168 24 L195 44 Z" fill="#f28c28" stroke="#b85a12" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M179 47 L173 32 L187 43 Z" fill="#f4a6b0"/>
+                            <path d="M222 54 L232 24 L205 44 Z" fill="#f28c28" stroke="#b85a12" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M221 47 L227 32 L213 43 Z" fill="#f4a6b0"/>
+                            <circle cx="200" cy="72" r="30" fill="#f28c28" stroke="#b85a12" stroke-width="2"/>
+                            <ellipse cx="200" cy="86" rx="16" ry="11" fill="#fde2b8"/>
+                            <g class="tango-eyes">
+                                <ellipse cx="189" cy="66" rx="7" ry="9" fill="#ffffff" stroke="#1a2634" stroke-width="1.5"/>
+                                <ellipse cx="211" cy="66" rx="7" ry="9" fill="#ffffff" stroke="#1a2634" stroke-width="1.5"/>
+                                <circle cx="189.5" cy="68" r="4.2" fill="#1a2634"/><circle cx="210.5" cy="68" r="4.2" fill="#1a2634"/>
+                                <circle cx="191" cy="66" r="1.5" fill="#ffffff"/><circle cx="212" cy="66" r="1.5" fill="#ffffff"/>
+                            </g>
+                            <path d="M182 54 Q188 50 194 54 M206 54 Q212 50 218 54" stroke="#8e1218" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+                            <circle cx="179" cy="82" r="4.5" fill="#f4a6b0" opacity="0.6"/><circle cx="221" cy="82" r="4.5" fill="#f4a6b0" opacity="0.6"/>
+                            <path d="M196 79 L204 79 L200 83 Z" fill="#e5737f"/>
+                            <path class="tango-mouth" d="M193 87 Q196.5 91 200 87 Q203.5 91 207 87" stroke="#1a2634" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+                            <ellipse class="tango-mouth-open" cx="200" cy="90" rx="5" ry="4" fill="#7a1d2a" stroke="#1a2634" stroke-width="1.2"/>
+                            <path d="M186 85 L166 81 M186 88 L165 90 M214 85 L234 81 M214 88 L235 90" stroke="#1a2634" stroke-width="1" stroke-linecap="round"/>
+                        </g>
+                    </g>
+                    <g transform="translate(0 30)">
+                    <g class="kit-tom kit-tom-l"><rect x="125" y="128" width="50" height="26" fill="#c62828" stroke="#7f1717" stroke-width="2"/><ellipse cx="150" cy="128" rx="25" ry="7" fill="#f4efe4" stroke="#9aa5b1" stroke-width="2.5"/></g>
+                    <g class="kit-tom kit-tom-r"><rect x="225" y="128" width="50" height="26" fill="#c62828" stroke="#7f1717" stroke-width="2"/><ellipse cx="250" cy="128" rx="25" ry="7" fill="#f4efe4" stroke="#9aa5b1" stroke-width="2.5"/></g>
+                    <g class="kit-snare"><rect x="54" y="168" width="68" height="22" fill="#d9dee4" stroke="#8e9aa6" stroke-width="2"/><path d="M66 170 V190 M80 170 V190 M96 170 V190 M110 170 V190" stroke="#8e9aa6" stroke-width="2"/><ellipse cx="88" cy="168" rx="34" ry="8" fill="#f4efe4" stroke="#9aa5b1" stroke-width="2.5"/></g>
+                    <g class="kit-floor-tom"><rect x="282" y="180" width="72" height="72" fill="#c62828" stroke="#7f1717" stroke-width="2"/><path d="M282 186 H354 M282 246 H354" stroke="#c9d2db" stroke-width="3"/><ellipse cx="318" cy="180" rx="36" ry="9" fill="#f4efe4" stroke="#9aa5b1" stroke-width="2.5"/></g>
+                    </g>
+                </svg>
+                <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-logo" data-text="beat.drum.logo"></span><span class="bsmash-light-count"></span></div>
+                <svg class="bsmash-kit-front" viewBox="0 0 400 330" aria-hidden="true">
+                    <g class="tango-arm tango-arm-l" id="beat-tango-arm-l">
+                        <path d="M170 120 Q142 134 128 168" stroke="#b85a12" stroke-width="14" fill="none" stroke-linecap="round"/>
+                        <path d="M170 120 Q142 134 128 168" stroke="#f28c28" stroke-width="10" fill="none" stroke-linecap="round"/>
+                        <line class="tango-stick" x1="140" y1="164" x2="90" y2="196" stroke="#e9c28a" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="128" cy="168" r="7.5" fill="#fde2b8" stroke="#b85a12" stroke-width="1.5"/>
+                    </g>
+                    <g class="tango-arm tango-arm-r" id="beat-tango-arm-r">
+                        <path d="M230 120 Q258 134 274 166" stroke="#b85a12" stroke-width="14" fill="none" stroke-linecap="round"/>
+                        <path d="M230 120 Q258 134 274 166" stroke="#f28c28" stroke-width="10" fill="none" stroke-linecap="round"/>
+                        <line class="tango-stick" x1="262" y1="160" x2="318" y2="206" stroke="#e9c28a" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="274" cy="166" r="7.5" fill="#fde2b8" stroke="#b85a12" stroke-width="1.5"/>
+                    </g>
+                </svg>
+                <span class="bsmash-light-word early" data-text="beat.light.early"></span>
+                <span class="bsmash-light-word late" data-text="beat.light.late"></span>
+            </div>
         </div>
         <!-- The studio (32 bars): the control room says how the take went,
              against the pass mark; the transport records, plays back, stops

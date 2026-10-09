@@ -137,6 +137,7 @@ KR.say = function (id, opts) {
     opts = opts || {};
     const words = KR.t(id, opts.vars);
     const box = opts.box || KR.visibleGuide();
+    KR.lastSpeaker = opts.speaker || null;   // who is talking: a picture of them can move its mouth
     if (box) {
         const text = box.querySelector('.kr-guide-text') || box;
         text.textContent = words;

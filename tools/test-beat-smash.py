@@ -590,9 +590,21 @@ def test_beat_light(page):
           pocket['dead'] == ['on', True, False] and pocket['early'] == ['on', True] and pocket['green'] == ['on', False, True]
           and pocket['count'] == 2, pocket)
     size = page.evaluate("""(() => { const r = document.querySelector('#beat-light .bsmash-light-ring').getBoundingClientRect(),
-        p = document.getElementById('beat-pads').getBoundingClientRect(); return { ring: r.width, gap: p.top - r.bottom, width: innerWidth }; })()""")
-    check('The light fills the middle, the pads right under it (Rob: "right in your face pulsing")',
-          size['ring'] >= 0.55 * size['width'] and 0 <= size['gap'] < 60, size)
+        k = document.getElementById('beat-kit').getBoundingClientRect(), head = document.getElementById('beat-tango-head').getBoundingClientRect(),
+        g = document.querySelector('#beat-studio-guide .kr-guide-text').getBoundingClientRect(),
+        p = document.getElementById('beat-pads').getBoundingClientRect(); return { ring: r.width, kit: k.width, gap: p.top - k.bottom, width: innerWidth,
+        tangoAbove: head.bottom <= r.top + 0.3 * r.height, bubble: head.top - g.bottom }; })()""")
+    check('The light is the kick drum of a whole kit, Tango sitting behind it, the pads right under it (Rob: "get the rest of the drum kit there")',
+          size['kit'] >= 0.7 * size['width'] and 0.3 * size['kit'] <= size['ring'] <= 0.4 * size['kit'] and size['tangoAbove'] and 0 <= size['gap'] < 60, size)
+    check('...and her box is her speech bubble, right above her head', 0 <= size['bubble'] < 40, size)
+    talking = "document.getElementById('beat-screen-studio').classList.contains('talking')"
+    page.evaluate("KR.say('beat.line.locked.1', { speaker: 'tango', silent: true })")
+    page.wait_for_timeout(50)
+    talk = {'tango': page.evaluate(talking)}
+    page.evaluate("KR.say('beat.riff.intro.bass', { speaker: 'riff', silent: true })")
+    page.wait_for_timeout(50)
+    talk['riff'] = page.evaluate(talking)
+    check('She talks while a line of hers is new; a line of Riff\'s leaves her quiet', talk == {'tango': True, 'riff': False}, talk)
     page.evaluate('bsmashJamMorph()')
     page.wait_for_timeout(300)
     check('Once the notes appear, the light is gone', page.is_hidden('#beat-light'))
@@ -2250,6 +2262,12 @@ def test_wait_for_count(page):
     sign = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
         return { shown: !r.hidden, wait: r.classList.contains('wait'), word: r.innerText, dim: document.getElementById('beat-pads').classList.contains('waiting') }; })()""")
     check('Before the count: a WAIT sign in the middle, the pads dimmed', sign['shown'] and sign['wait'] and 'count' in sign['word'].lower() and sign['dim'], sign)
+    held = page.evaluate("""(() => { const t = document.getElementById('beat-tango-sign'), r = document.getElementById('beat-countin').getBoundingClientRect(),
+        b = t.getBoundingClientRect(), paw = t.querySelector('.tango-sign-arm circle').getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect();
+        return { shown: !t.hasAttribute('hidden'), pawX: paw.left + paw.width / 2 - (r.left + r.width / 2), pawBelow: paw.top - r.bottom,
+                 headBelow: t.querySelector('.tango-sign-head').getBoundingClientRect().top - r.bottom, clear: b.bottom <= pads.top + 8 }; })()""")
+    check('Tango holds the sign up: her paw on its stick, her head clear of it, above the pads (Rob: "She can whip out a white sign")',
+          held['shown'] and abs(held['pawX']) < 4 and 0 < held['pawBelow'] < 70 and held['headBelow'] >= 0 and held['clear'], held)
     take = wait_for_take(page)
     beat = take['beat']
     # Jump in on the count-in's first and third beats, as the class did.
@@ -2266,6 +2284,7 @@ def test_wait_for_count(page):
     play_take(page)
     page.wait_for_timeout(300)
     check('...and the take that follows is clean: jumping in cost nothing but the wait', record(page)['streak'] == 1, record(page))
+    check('...and with the sign down, Tango has put it away', page.evaluate("document.getElementById('beat-tango-sign').hasAttribute('hidden')"))
 
 
 def test_rest_of_app(page):
