@@ -620,11 +620,12 @@ def test_beat_light(page):
           and 0.3 * size['kit'] <= size['ring'] <= 0.4 * size['kit'] and 0 <= size['gap'] < 60, size)
     check('...the light lying exactly over his kick drum\'s head (KR.artPlaces)', size['onHead'] < 2, size)
     check('...and her box is her speech bubble, right above her head', 0 <= size['bubble'] < 40, size)
-    page.evaluate("bsmash.jam.shaker = false; bsmashJamLight(0.05, true)")
-    page.wait_for_timeout(60)
-    hit = [page.evaluate("document.getElementById('beat-kit').dataset.frame")]
+    # Asked of the frame picker directly: away from the shaker and the count-in.
+    frame = ("(bsmash.jam.shaker = false, document.getElementById('beat-light').classList.remove('countin'),"
+             " bsmashKitFrame(0), document.getElementById('beat-kit').dataset.frame)")
+    hit = [page.evaluate("bsmashJamLight(0.05, true); " + frame)]
     page.wait_for_timeout(400)
-    hit.append(page.evaluate("document.getElementById('beat-kit').dataset.frame"))
+    hit.append(page.evaluate(frame))
     check('A tap the light shows brings her sticks down, then back to halfway', hit == ['down', 'mid'], hit)
     talking = "document.getElementById('beat-screen-studio').classList.contains('talking')"
     page.evaluate("KR.say('beat.line.locked.1', { speaker: 'tango', silent: true })")
@@ -981,8 +982,10 @@ def test_verdict_reasons(page):
     page.wait_for_timeout(150)
     ring = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
         const reading = document.getElementById('beat-reading').getBoundingClientRect();
-        const box = r.getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect();
-        return { shown: !r.hidden, n: r.firstChild.textContent, clear: box.top >= reading.bottom && box.bottom <= pads.top + 8,
+        const box = r.getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect(), coach = document.getElementById('beat-coach');
+        // Clear of the music (above it when the musician is on screen, below it when not), of the musician, and of the pads.
+        return { shown: !r.hidden, n: r.firstChild.textContent, clear: (box.bottom <= reading.top + 1 || box.top >= reading.bottom) && box.bottom <= pads.top + 8
+                     && (coach.hidden || box.top >= coach.getBoundingClientRect().bottom - 1),
                  pad: document.querySelectorAll('#beat-pads .krpad.countin').length }; })()""")
     check('The count-in: 1 2 3 4 in a red ring in the empty middle, clear of the music, the pad lit red',
           ring['shown'] and ring['n'] in '1234' and ring['clear'] and ring['pad'] == 1, ring)
