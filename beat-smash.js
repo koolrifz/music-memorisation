@@ -1276,7 +1276,48 @@ const BSMASH_COUNTIN_MIN = 56;      // px: smaller than this, the pads count alo
    the take: no drum, a dull thud, the sign shakes, and Tango says to wait
    (once a roll). A press within the grace of the first note is still that
    note, early: anticipating beat 1 is playing, not jumping in. */
-const BSMASH_WAIT_PHASES = ['roll', 'rules', 'reveal', 'wait', 'countin'];
+const BSMASH_WAIT_PHASES = ['roll', 'rules', 'brief', 'reveal', 'wait', 'countin'];
+
+/* THE COACH FINISHES TALKING BEFORE ANYTHING COUNTS IN (Rob, 2026-10-09, on
+   his Pixel: "Explain their instructions fully before there's any count going
+   on. Let them say what they have to say... the count-in and the display of
+   notation just needs to be a little bit grayed out... whoever's speaking, get
+   through the instructions first. In the second level with Riff's bass we're
+   getting a count-in before he's finished saying what it is he needs").
+   A take is only booked once the line being said has ended (KR.speaking() in
+   text.js): until then the phase is 'brief', the music is greyed, there is no
+   WAIT sign and no count, and a tap only thuds (it doesn't make the coach
+   stop to say "wait"). Then a short breath, and the take is booked on the
+   next bar the loop allows, as it always was. */
+const BSMASH_BRIEF_POLL_MS = 150;       // how often to look whether the line has ended
+const BSMASH_BRIEF_BREATH_MS = 500;     // the pause between the last word and the take being booked
+
+function bsmashCoachTalking() {
+    return !!(KR.speaking && KR.speaking());
+}
+
+// Is the coach still talking? Then wait, greyed, and do `then` once they have
+// finished. Returns true when it is waiting.
+function bsmashBriefing(then) {
+    const screen = bsmashEl('beat-screen-studio');
+    if (!bsmashCoachTalking()) { screen.classList.remove('briefing'); return false; }
+    bsmash.phase = 'brief';
+    screen.classList.add('briefing');
+    bsmashWaitSign(null);
+    bsmashEl('beat-countin').hidden = true;
+    bsmashEl('beat-pads').classList.add('waiting');
+    if (bsmash.scaffold === 'studio') bsmashTransport();
+    const check = () => {
+        if (bsmashCoachTalking()) return bsmashLater(check, BSMASH_BRIEF_POLL_MS);
+        bsmashLater(() => {
+            if (!bsmash || bsmash.phase !== 'brief') return;
+            screen.classList.remove('briefing');
+            then();
+        }, BSMASH_BRIEF_BREATH_MS);
+    };
+    bsmashLater(check, BSMASH_BRIEF_POLL_MS);
+    return true;
+}
 
 // Is this press before the count has ended, in a reading step or the studio?
 function bsmashTooSoon(p) {
@@ -1303,7 +1344,8 @@ function bsmashWaitNudge() {
     pads.classList.add('nudge');
     // A dull thud, not the drum: nothing was played.
     if (bsmashAudio()) raudioTone(raudioCtx.currentTime + 0.02, 150, 0.09, 0.14, 'sine', 'click');
-    if (!bsmash.saidWait) { bsmash.saidWait = true; bsmashEvent('beat.take.wait'); }
+    // Never talk over the coach's instructions to say "wait": the thud says it.
+    if (!bsmash.saidWait && !bsmashCoachTalking()) { bsmash.saidWait = true; bsmashEvent('beat.take.wait'); }
 }
 
 // The WAIT sign: `left` is the bars until the count-in (-1 when not yet
@@ -1645,7 +1687,10 @@ function bsmashOnBeat(beat) {
     bsmashLoopGuide(bar);
     if (bsmash.mode === 'steps' && bsmash.phase !== 'countin') {
         // Not while the rules are up: "I'm ready!" is the cue then.
-        const waiting = BSMASH_WAIT_PHASES.includes(bsmash.phase) && bsmash.phase !== 'rules';
+        // Nor while the coach is giving the instructions: the music is greyed then.
+        const briefing = bsmash.phase === 'brief' || (bsmash.phase === 'roll' && bsmashCoachTalking());
+        bsmashEl('beat-screen-studio').classList.toggle('briefing', briefing);
+        const waiting = BSMASH_WAIT_PHASES.includes(bsmash.phase) && bsmash.phase !== 'rules' && !briefing;
         const booked = take && !take.done && bsmash.phase === 'wait';
         // Bars until the count-in, from the take's own count-in beat (a pause
         // and resume in the studio moves it).
@@ -2658,10 +2703,11 @@ function startBeatMusician(id, keepBand, step) {
     if (bsmashBand) Object.keys(bsmashBand.parts).filter(part => !(part in soFar)).forEach(bsmashBandRemovePart);
     bsmashBandLevel(BSMASH_BAND_QUIET);
     if (choosing) return bsmashOpenPicker(false);
-    bsmashNewRoll();
-    // The first time in on a rhythm level, the musician says what is new.
+    // The first time in, the musician says what the job is, and the first
+    // take waits until they have finished (bsmashBriefing).
     const rhythm = bsmashRhythm();
     if (record.plays === 1) bsmashEvent(rhythm ? 'beat.' + (KR.songs[bsmash.song].rhythm) + '.intro.' + id : 'beat.musician.intro.' + id);
+    bsmashNewRoll();
 }
 
 // The band under a musician's takes: every part won so far, and Tango's
@@ -2755,8 +2801,9 @@ function bsmashNewRoll() {
         bsmashLater(() => {
             bsmashDiceHide();
             const go = picture && bsmash.scaffold === 'star1' ? 'picture' : 'notation';
-            if (!bsmashLoad().seenRules) return bsmashShowRules(go);
-            bsmashScheduleTake(go);
+            // The rules wait for the coach too: they would cut the intro off.
+            const begin = () => bsmashLoad().seenRules ? bsmashScheduleTake(go) : bsmashShowRules(go);
+            if (!bsmashBriefing(begin)) begin();
         }, 500);
     }, 1000);
 }
@@ -2830,7 +2877,7 @@ function bsmashTransport() {
     const phase = bsmash.phase;
     const recording = phase === 'wait' || phase === 'countin' || phase === 'take';
     const paused = phase === 'paused';
-    const busy = recording || paused || phase === 'playback';
+    const busy = recording || paused || phase === 'playback' || phase === 'brief';
     const last = bsmash.studioTake;
     const record = bsmashEl('beat-transport-record');
     record.hidden = recording || paused;
@@ -2844,7 +2891,7 @@ function bsmashTransport() {
     const play = bsmashEl('beat-transport-play');
     play.hidden = recording || paused;
     play.disabled = busy || !last;
-    bsmashEl('beat-transport-stop').disabled = !busy;
+    bsmashEl('beat-transport-stop').disabled = !busy || phase === 'brief';
     const keep = bsmashEl('beat-transport-keep');
     keep.hidden = !(last && last.passed) || recording || paused;
     keep.disabled = busy;
@@ -3065,6 +3112,7 @@ function bsmashLoopGuide(bar) {
 }
 
 function bsmashScheduleTake(go) {
+    if (bsmashBriefing(() => { bsmashScheduleTake(go); if (bsmash.scaffold === 'studio') bsmashTransport(); })) return;
     const bars = bsmash.specs.length;
     const startBar = bsmashTakeStartBar(bars);
     const start = bsmashBand.start + startBar * BSMASH_BAR;

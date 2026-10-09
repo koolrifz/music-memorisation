@@ -1430,6 +1430,10 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-countin.wait .bsmash-countin-dots { display: flex; gap: 0.05em; font-size: 0.1em; min-height: 1em; }
 .bsmash-countin-dot { width: 1em; height: 1em; border-radius: 50%; background: #ff4b4b; }
 .bsmash-countin.wait::after { height: 66px; }
+/* While the coach gives the instructions, the music waits greyed and nothing
+   counts (bsmashBriefing): it comes back to full colour when they finish. */
+#beat-reading { transition: opacity 0.4s, filter 0.4s; }
+#beat-screen-studio.briefing #beat-reading { opacity: 0.4; filter: grayscale(1); }
 .bsmash-countin.nudge { animation: bsmash-wait-nudge 0.4s ease-out; transform-origin: 50% calc(100% + 56px); }
 /* Tango under the WAIT sign, her paw on its stick (bsmashTangoSign). When a
    tap comes too soon she waves the sign in that paw and gives a little hop. */
