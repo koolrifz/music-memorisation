@@ -2744,6 +2744,9 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
             { visible: false }, { visible: false }, { visible: true }, { visible: false }, { visible: false }
         ]);
         stave.setStyle({ strokeStyle: '#000000' });
+        // options.finalBar: the phrase ends here, with the final double bar
+        // line (Beat Smash: "you stop at the double bar line").
+        if (isLastInGroup && options.finalBar) stave.setEndBarType(VF.Barline.type.END);
         stave.setContext(context).draw();
 
         // A WHOLE BAR OF SILENCE IS A WHOLE REST, CENTRED - whatever the metre.

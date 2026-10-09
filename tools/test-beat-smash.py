@@ -75,9 +75,19 @@ def new_page(browser, size=PHONE):
     return page
 
 
-def fresh(page, setup=''):
+# Every test but test_rules starts with the rules before the first reading
+# take already seen: the guest's and every saved player's.
+RULES_SEEN = """(() => { const mark = r => Object.assign(r || {}, { seenRules: true });
+    const g = localStorage.getItem('koolRiffsBeatGuest');
+    localStorage.setItem('koolRiffsBeatGuest', JSON.stringify(mark(g ? JSON.parse(g) : {})));
+    const all = JSON.parse(localStorage.getItem('koolRiffsBeatProgress') || 'null');
+    if (all && all.players) { Object.keys(all.players).forEach(k => mark(all.players[k]));
+        localStorage.setItem('koolRiffsBeatProgress', JSON.stringify(all)); } })();"""
+
+
+def fresh(page, setup='', rules_seen=True):
     """A clean device, optionally with some saved state, speech silenced."""
-    page.evaluate('localStorage.clear();' + setup)
+    page.evaluate('localStorage.clear();' + setup + (RULES_SEEN if rules_seen else ''))
     page.reload()
     page.wait_for_timeout(400)
     page.evaluate('KR.speak = () => {}')
@@ -148,6 +158,9 @@ def wait_for_take(page, timeout=20):
     """Wait until a take is booked; return its notes and rests on the audio clock."""
     end = time.time() + timeout
     while time.time() < end:
+        # The rules before a player's very first reading take (test_rules has them).
+        if page.evaluate("!!document.getElementById('beat-rules-go') && !document.getElementById('beat-rules-go').hidden"):
+            page.click('#beat-rules-go')
         take = page.evaluate("bsmash && bsmash.take && !bsmash.take.done && { start: bsmash.take.start,"
                              " end: bsmash.take.end, notes: bsmash.take.notes.map(n => n.t),"
                              " noteBars: bsmash.take.notes.map(n => n.bar),"
@@ -2185,6 +2198,42 @@ def test_notation_helpers_and_share(page):
     check('...and as text where it can\'t', text)
 
 
+def test_rules(page):
+    """Rob: the very first reading take sets up the rules before anything
+    plays. Every phrase ends on the final double bar line; tap exactly what
+    you see, and a tap past the end loses the star."""
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));", rules_seen=False)
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate("startBeatMusician('drums', false, 1)")
+    page.wait_for_function("bsmash && bsmash.phase === 'rules'", timeout=20000)
+    r = page.evaluate("""({ take: !!(bsmash.take && !bsmash.take.done), button: !document.getElementById('beat-rules-go').hidden,
+        callout: (document.querySelector('#beat-reading .bsmash-end-callout') || {}).textContent || '',
+        final: !!document.querySelector('#beat-reading .bsmash-picture-final') })""")
+    check('The very first bar: nothing plays until the rules are given', not r['take'] and r['button'], r)
+    check('...a callout points at the final double bar line, and Tango says the rules',
+          'stop here' in r['callout'].lower() and r['final'] and 'Tap exactly what you see' in guide(page), [r, guide(page)])
+    page.click('#beat-rules-go')
+    page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=5000)
+    check('"I\'m ready!" starts the take, and the rules are not shown again', page.evaluate("bsmashLoad().seenRules === true")
+          and page.is_hidden('#beat-rules-go') and page.locator('#beat-reading .bsmash-end-callout').count() == 0)
+    # Play it right, then keep going past the double bar line, as the class did.
+    take = wait_for_take(page)
+    offset = clock_offset(page)
+    for i, t in enumerate(take['notes']):
+        press_at(page, offset, t + take['delay'], index=int((t - take['start']) / take['beat'] + 0.01) % 4)
+    press_at(page, offset, take['end'] + 0.03 + take['delay'], index=0)     # beat 1 of the next bar
+    wait_take_done(page)
+    page.wait_for_timeout(300)
+    check('Playing on past the double bar line: no star, and Tango says to stop at the double line',
+          record(page)['streak'] == 0 and 'double line' in guide(page), [record(page), guide(page)])
+    # The notation ends on the final double bar line too.
+    page.evaluate("bsmashShow('notation')")
+    ends = page.evaluate("""(() => { const svg = document.querySelector('#beat-reading .bsmash-staff svg');
+        const rects = [...svg.querySelectorAll('rect')].map(r => +r.getAttribute('width')); return rects.filter(w => w >= 2.5).length; })()""")
+    check('...and the staff ends on the final double bar line (its thick line drawn)', ends >= 1, ends)
+
+
 def test_wait_for_count(page):
     """Rob, after his classes: impulsive children tap before the count-in and
     the take falls apart before it starts. A WAIT sign until the count, the
@@ -2288,6 +2337,7 @@ def main():
         test_teacher_codes(page)
         test_dashboard(page)
         test_wait_for_count(page)
+        test_rules(page)
         test_notation_helpers_and_share(page)
         test_rest_of_app(page)
         page.close()

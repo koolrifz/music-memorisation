@@ -231,6 +231,12 @@ KR.lang('en-US', {
        Rob will rewrite them. Stars are shown, never said. */
     'beat.line.copy':        'Copy me!',
     'beat.line.morph':       "That's what you just played!",
+    // The name on the bass drum head: the big beat light in the warm-up.
+    'beat.drum.logo':        'Kool Riffs',
+    // THE RULES, before the very first reading take.
+    'beat.rules.end':        'The end: stop here!',
+    'beat.rules.go':         "I'm ready!",
+    'beat.line.rules':       "Here are the rules! Tap exactly what you see: one tap for each block. Stop at the double line at the end. Go past it and there's no star. Ready?",
     // WAIT FOR THE COUNT: the sign before the count-in, and Tango when a tap jumps in.
     'beat.wait.icon':        '✋',
     'beat.wait.sign':        'Wait for the count',
@@ -275,6 +281,7 @@ KR.lang('en-US', {
     'beat.line.why.missed':  'One got away! Every note gets a tap. {take}',
     'beat.line.why.rest':    "Shh, that's a rest! Keep your hands still. {take}",
     'beat.line.why.extra':   'One tap too many. One tap for every note! {take}',
+    'beat.line.why.over':    'Whoa, you kept going! Stop at the double line at the end. {take}',
     'beat.line.why.wrongPad': 'Each pad is a beat. Follow them round: 1, 2, 3, 4! {take}',
     'beat.take.number':      'Take {n}!',
     'beat.number.2':         'two',
@@ -325,6 +332,7 @@ KR.lang('en-US', {
     'beat.riff.why.missed':  'We dropped a note there, man. {take}',
     'beat.riff.why.rest':    'That rest is part of the groove, man. Let it breathe. {take}',
     'beat.riff.why.extra':   'One tap too many, cat. {take}',
+    'beat.riff.why.over':    'Easy, cat, the tune stops at the double line. {take}',
     'beat.riff.why.wrongPad': 'Follow the beats round, man. Each pad is its own beat. {take}',
     'beat.riff.reveal':      "That's what you played. Now read it, cat.",
     'beat.riff.retakeClean': "There it is. Let's roll a new one.",

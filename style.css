@@ -1105,6 +1105,15 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-reading.clean .bsmash-paper { box-shadow: 0 0 0 4px var(--accent-green), 0 0 22px rgba(88,204,2,0.7); }
 .bsmash-staff { height: 65px; overflow: hidden; transition: opacity var(--morph) ease-in-out; }
 .bsmash-picture { position: absolute; inset: 0; transition: opacity var(--morph) ease-in-out; }
+/* The final double bar line in the picture: thin, then thick, as on the staff. */
+/* The rules' callout, under the final double bar line: "The end: stop here!" */
+.bsmash-end-callout { position: absolute; top: 6px; transform: translateX(-100%); white-space: nowrap; background: #ffc800; color: #1a2634; font-weight: 900; font-size: 15px; padding: 6px 10px; border-radius: 10px; z-index: 3; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: bsmash-callout 1.2s ease-in-out infinite; }
+.bsmash-end-callout::before { content: ''; position: absolute; right: 2px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: #ffc800; }
+@keyframes bsmash-callout { 50% { transform: translateX(-100%) translateY(4px); } }
+.bsmash-rules-go { display: block; width: auto; margin: 10px auto 0; padding: 14px 28px; }
+.bsmash-rules-go[hidden] { display: none; }
+.bsmash-picture-final { position: absolute; top: 22%; bottom: 22%; width: 8px; border-left: 2px solid #1a2634; box-sizing: border-box; }
+.bsmash-picture-final::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 4px; background: #1a2634; }
 .show-picture .bsmash-staff { opacity: 0; }
 .show-notation .bsmash-picture { opacity: 0; pointer-events: none; }
 .show-notation .bsmash-block { transform: scale(0.35, 0.3); transition: transform var(--morph) ease-in-out; }
@@ -1189,9 +1198,49 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
    space under the desk. Its side is whatever is smallest: the width less
    room for "early" and "late", 38% of the height, or 520 px. */
 #beat-screen-studio.jam .bsmash-light { margin: auto auto 10px; }
-#beat-screen-studio.jam .bsmash-light-ring { width: min(calc(100vw - 150px), 38vh, 520px); height: auto; aspect-ratio: 1; border-width: 6px; container-type: inline-size; }
+#beat-screen-studio.jam .bsmash-light-ring { width: min(calc(100vw - 190px), 38vh, 520px); height: auto; aspect-ratio: 1; border-width: 6px; container-type: inline-size; }
+/* THE BASS DRUM HEAD (Rob, 2026-10-09: "go with the bass drum head"). In the
+   warm-up the big light is the front of Tango's kick drum: a cream head in a
+   chrome hoop with its tension lugs, and the band's name printed across it,
+   as every band prints its name on the kick. The light's colours wash over
+   the head under the name; while a count is showing, the name steps aside. */
+.bsmash-light-logo { display: none; }
+#beat-screen-studio.jam .bsmash-light-ring {
+    background: radial-gradient(circle at 50% 42%, #fbf7ee 0%, #efe7d6 62%, #d9cfba 100%);
+    border: 0;
+    box-shadow: 0 0 0 7px #e6ebf0, 0 0 0 10px #8e9aa6, 0 0 0 13px #c9d2db, 0 10px 30px rgba(0,0,0,0.5);
+    overflow: visible;
+    margin: 0 18px;                /* the hoop and its lugs reach 17 px outside: clear of "early" and "late" */
+}
+/* The tension lugs: eight, round the hoop. */
+#beat-screen-studio.jam .bsmash-light-ring::before {
+    content: ''; position: absolute; inset: -17px; border-radius: 50%; pointer-events: none;
+    background: repeating-conic-gradient(from -4deg, #6f7b87 0deg 8deg, transparent 8deg 45deg);
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 10px), #000 calc(100% - 10px) calc(100% - 1px), transparent 100%);
+            mask: radial-gradient(closest-side, transparent calc(100% - 10px), #000 calc(100% - 10px) calc(100% - 1px), transparent 100%);
+}
+#beat-screen-studio.jam .bsmash-light-fill { opacity: 0; mix-blend-mode: multiply; }
+#beat-screen-studio.jam .bsmash-light[data-state="on"] .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="early"] .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="late"] .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="way-early"] .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="way-late"] .bsmash-light-fill { opacity: 0.85; }
+#beat-screen-studio.jam .bsmash-light-logo {
+    display: flex; position: absolute; inset: 0; align-items: center; justify-content: center; text-align: center;
+    padding: 0 14%; font-size: 15cqw; font-weight: 900; line-height: 0.95; letter-spacing: 0.02em; text-transform: uppercase;
+    color: #e53935; -webkit-text-stroke: 0.5cqw #1a2634; text-shadow: 0 0.8cqw 0 #1a2634;
+    transform: rotate(-8deg); pointer-events: none; transition: opacity 0.15s;
+}
+#beat-screen-studio.jam .bsmash-light.counting .bsmash-light-logo,
+#beat-screen-studio.jam .bsmash-light.countin .bsmash-light-logo { opacity: 0; }
+#beat-screen-studio.jam .bsmash-light.counting .bsmash-light-ring,
+#beat-screen-studio.jam .bsmash-light.countin .bsmash-light-ring { box-shadow: 0 0 0 7px #e6ebf0, 0 0 0 10px #8e9aa6, 0 0 0 13px #c9d2db, 0 0 34px 8px rgba(255,75,75,0.55); }
+#beat-screen-studio.jam .bsmash-light.counting .bsmash-light-ring { box-shadow: 0 0 0 7px #e6ebf0, 0 0 0 10px #8e9aa6, 0 0 0 13px #c9d2db, 0 0 34px 8px rgba(255,200,0,0.55); }
+#beat-screen-studio.jam .bsmash-light-count { color: #1a2634; text-shadow: none; }
+#beat-screen-studio.jam .bsmash-light.countin .bsmash-light-count { color: #d32f2f; }
+#beat-screen-studio.jam .bsmash-light[data-state="on"] .bsmash-light-ring { box-shadow: 0 0 0 7px #e6ebf0, 0 0 0 10px #8e9aa6, 0 0 0 13px #c9d2db, 0 0 calc(10px + 40px * var(--run)) calc(4px * var(--run)) rgba(88,204,2, calc(0.45 + 0.5 * var(--run))); }
 /* With "Show me what I played" or the stop menu on screen, it gives them room. */
-#beat-screen-studio.jam:has(#beat-jam-next:not([hidden]), #beat-jam-nav:not([hidden])) .bsmash-light-ring { width: min(calc(100vw - 150px), 28vh, 520px); }
+#beat-screen-studio.jam:has(#beat-jam-next:not([hidden]), #beat-jam-nav:not([hidden])) .bsmash-light-ring { width: min(calc(100vw - 190px), 28vh, 520px); }
 #beat-screen-studio.jam .bsmash-light-count { font-size: 56px; font-size: 42cqw; }
 #beat-screen-studio.jam .bsmash-light-word { font-size: 14px; }
 .bsmash-jam-coming { display: flex; justify-content: center; gap: 10px; margin: 8px auto 0; }

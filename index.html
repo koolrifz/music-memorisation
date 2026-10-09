@@ -714,7 +714,7 @@
              the beat; yellow left is early, yellow right is late. -->
         <div class="bsmash-light" id="beat-light" data-state="idle" hidden>
             <span class="bsmash-light-word" data-text="beat.light.early"></span>
-            <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-count"></span></div>
+            <div class="bsmash-light-ring"><div class="bsmash-light-fill"></div><span class="bsmash-light-logo" data-text="beat.drum.logo"></span><span class="bsmash-light-count"></span></div>
             <span class="bsmash-light-word" data-text="beat.light.late"></span>
         </div>
         <!-- The studio (32 bars): the control room says how the take went,
@@ -738,6 +738,8 @@
              beat held. Four, and the band changes. -->
         <div class="bsmash-jam-coming" id="beat-jam-coming" hidden><span></span><span></span><span></span><span></span></div>
         <button class="btn btn-start bsmash-jam-next" id="beat-jam-next" hidden onclick="showBeatJamNotes()" data-text="beat.jam.next"></button>
+        <!-- The rules, before the very first reading take (beat-smash.js bsmashShowRules). -->
+        <button class="btn btn-start bsmash-rules-go" id="beat-rules-go" hidden data-text="beat.rules.go"></button>
         <!-- When the student stops, the band stops, and the way on is here. -->
         <div class="bsmash-jam-nav" id="beat-jam-nav" hidden>
             <button class="btn btn-start" onclick="keepBeatJamming()" data-text="beat.jam.keepGoing"></button>
