@@ -1717,6 +1717,11 @@ Smash's players list. Beat Smash adds an **age** to a player.
     (`BSMASH_BRIEF_BREATH_MS`), and the take is booked on the next bar the
     loop allows, as before. The first-time rules wait for the intro too,
     instead of cutting it off.
+  - **A step cleared waits for its congratulation too** (Rob, 2026-10-10, on
+    the third star at eight bars: *"that instruction doesn't butt up against
+    the beginning instructions for the 32 bar"*). The move to the next step
+    (and the studio's "Hit Record") waits until the cleared line has been said
+    in full, then a breath (`bsmashAfterTalk()` in `bsmashStarLands()`).
   - **`KR.speaking()`** in `text.js` says whether a line is still being said:
     until the voice or the recording reports its end, or else after a
     generous time for the words (`KR.speechSeconds()`, about 1.8 words a
@@ -2527,7 +2532,8 @@ and her head clear of it, in the studio clear of the transport or on the pads,
 the pads dimmed, early taps not counted,
 the sign shaking and Tango's line, a clean take after), the coach finishing
 first (no take while she talks, the music greyed and back in full after, a tap
-only thudding, the rules waiting for her intro), the rules the first
+only thudding, the rules waiting for her intro, the studio waiting for her
+"into the studio"), the rules the first
 time (no take until I'm ready, the callout at the double bar, a tap past it
 costing the star, the thick final barline drawn), the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,

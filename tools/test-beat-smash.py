@@ -2384,6 +2384,20 @@ def test_coach_briefing(page):
     back = page.evaluate("""(() => ({ grey: document.getElementById('beat-screen-studio').classList.contains('briefing'),
         opacity: +getComputedStyle(document.getElementById('beat-reading')).opacity }))()""")
     check('Once she has finished: the take is booked and the music is back in full', not back['grey'] and back['opacity'] > 0.95, back)
+    # Eight bars cleared: her congratulation is said in full before the studio's
+    # own words (Rob, 2026-10-10: "that instruction doesn't butt up against the
+    # beginning instructions for the 32 bar").
+    page.evaluate("bsmashStopTimers(); bsmashCancel('take'); bsmash.take = null; bsmash.phase = 'verdict';"
+                  "const p = bsmashLoad(); p.firstStar = true; bsmashSave(p);"
+                  "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:'p1'}));"
+                  "bsmash.step = 4; bsmash.streak = 2; bsmashUpdateMusician('drums', { step: 4, streak: 2 }); bsmashStarLands()")
+    page.wait_for_timeout(6000)
+    held = page.evaluate("({ phase: bsmash.phase, step: bsmash.step, studio: bsmash.scaffold })")
+    check('Eight bars cleared: while Tango still says "into the studio", the studio waits', held['step'] == 5
+          and held['studio'] != 'studio' and 'Into the studio to play the whole part' in guide(page), [held, guide(page)])
+    page.evaluate("KR.speechBusy = false")
+    page.wait_for_function("bsmash.scaffold === 'studio'", timeout=4000)
+    check('...and once she has finished, the studio opens with its own words', 'Hit Record' in guide(page), guide(page))
     # The very first time, the rules wait for her too, instead of cutting her off.
     fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));", rules_seen=False)
     page.evaluate("KR.speak = () => { KR.speechBusy = true; }")
