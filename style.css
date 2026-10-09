@@ -1110,7 +1110,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-end-callout { position: absolute; top: 6px; transform: translateX(-100%); white-space: nowrap; background: #ffc800; color: #1a2634; font-weight: 900; font-size: 15px; padding: 6px 10px; border-radius: 10px; z-index: 3; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: bsmash-callout 1.2s ease-in-out infinite; }
 .bsmash-end-callout::before { content: ''; position: absolute; right: 2px; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: #ffc800; }
 @keyframes bsmash-callout { 50% { transform: translateX(-100%) translateY(4px); } }
-.bsmash-rules-go { display: block; width: auto; margin: 10px auto 0; padding: 14px 28px; }
+.bsmash-rules-go { display: block; width: auto; margin: 48px auto 0; padding: 14px 28px; }   /* clear of the "stop here!" callout under the bar */
 .bsmash-rules-go[hidden] { display: none; }
 .bsmash-picture-final { position: absolute; top: 22%; bottom: 22%; width: 8px; border-left: 2px solid #1a2634; box-sizing: border-box; }
 .bsmash-picture-final::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 4px; background: #1a2634; }

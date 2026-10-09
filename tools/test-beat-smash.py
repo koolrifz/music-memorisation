@@ -529,7 +529,8 @@ def test_beat_light(page):
           page.is_visible('#beat-light') and page.evaluate("document.getElementById('beat-light').dataset.state") == 'idle')
     light = "(() => { const l = document.getElementById('beat-light'); return [l.dataset.state, l.style.getPropertyValue('--miss')]; })()"
     start = page.evaluate('bsmashBand.start')
-    beat = int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2
+    # From bar 2: "Copy me!" waits for bar 1, and would talk over the coaching.
+    beat = max(int((page.evaluate('raudioCtx.currentTime') - start) / 0.6) + 2, 8)
     for k in range(4):
         press_at(page, None, start + (beat + k) * 0.6 + 0.04, index=k % 4)
     on = page.evaluate(light)
@@ -940,7 +941,7 @@ def test_verdict_reasons(page):
     ring = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
         const reading = document.getElementById('beat-reading').getBoundingClientRect();
         const box = r.getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect();
-        return { shown: !r.hidden, n: r.textContent, clear: box.top >= reading.bottom && box.bottom <= pads.top + 8,
+        return { shown: !r.hidden, n: r.firstChild.textContent, clear: box.top >= reading.bottom && box.bottom <= pads.top + 8,
                  pad: document.querySelectorAll('#beat-pads .krpad.countin').length }; })()""")
     check('The count-in: 1 2 3 4 in a red ring in the empty middle, clear of the music, the pad lit red',
           ring['shown'] and ring['n'] in '1234' and ring['clear'] and ring['pad'] == 1, ring)
@@ -976,6 +977,7 @@ def test_verdict_reasons(page):
                 notes: [0, 2, 3].map(s => ({ t: 100 + s * 0.6, end: 100.6 + s * 0.6, bar: 0, index: s, spec: { slot: s, slots: 1 } })),
                 rests: [{ t: 100.6, end: 101.2, bar: 0, index: 1, spec: { slot: 1, slots: 1 } }] };
             bsmash.take = take;
+            bsmash.phase = 'take';          // not waiting for the count: these presses are the take's
             times.forEach(t => bsmashPress({ pad: Math.max(0, Math.round((t - 100) / 0.6)) % 4, time: t, raw: t, touch: false, up: null }));
             return bsmashTakeIssues(take).map(i => i.reason).join() + (take.rests[0].tapped ? '+tapped' : '');
         };
