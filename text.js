@@ -155,23 +155,46 @@ KR.say = function (id, opts) {
 
 // A recorded file for this id if there is one, otherwise the browser's voice
 // with the speaker's pitch and rate. Never throws: some devices have no voices.
+//
+// KR.speaking() says whether a line is still being said, so a game can wait
+// for its coach to finish before it counts in (Rob, 2026-10-09: "Let them say
+// what they have to say"). It ends when the voice or the recording says it
+// has ended, or else after a generous time for the line (about 1.8 words a
+// second, slower than any voice): a device with no voice, or one that never
+// reports the end, still gives the words their time on screen.
+KR.speechToken = 0;
+KR.speechBusy = false;
+KR.speaking = function () { return KR.speechBusy; };
+KR.speechSeconds = function (words, rate) {
+    const count = String(words || '').trim().split(/\s+/).filter(Boolean).length;
+    return Math.min(20, 1.5 + count / (1.8 * (rate || 1)));
+};
 KR.speak = function (id, words, speaker) {
+    const token = ++KR.speechToken;
+    const done = () => { if (token === KR.speechToken) KR.speechBusy = false; };
+    KR.speechBusy = true;
     try {
+        const voices = (KR.dialogue && KR.dialogue.voices) || {};
+        const voice = voices[speaker] || voices.narrator || {};
+        const limit = KR.speechSeconds(words, voice.rate);
         const file = KR.audio && KR.audio[id];
         if (file) {
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            new Audio(file).play().catch(() => {});
+            const audio = new Audio(file);
+            audio.onended = audio.onerror = done;
+            audio.play().catch(done);
+            setTimeout(done, 30000);            // a recording reports its own end; this is only a backstop
             return;
         }
+        setTimeout(done, limit * 1000);
         if (!('speechSynthesis' in window)) return;
-        const voices = (KR.dialogue && KR.dialogue.voices) || {};
-        const voice = voices[speaker] || voices.narrator || {};
         const utterance = new SpeechSynthesisUtterance(words);
         if (voice.pitch) utterance.pitch = voice.pitch;
         if (voice.rate) utterance.rate = voice.rate;
+        utterance.onend = utterance.onerror = done;
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
-    } catch (e) {}
+    } catch (e) { done(); }
 };
 
 document.addEventListener('DOMContentLoaded', () => KR.applyText(document));

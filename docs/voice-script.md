@@ -95,7 +95,7 @@ part after them; or leave them to the browser's voice.
 
 | ID (the file name) | Line | Heard when |
 |---|---|---|
-| `beat.line.intro.drums` | My drum part has a few spots that need fixing up. Help me fix them, then we play the whole part in the studio! | `beat.musician.intro.drums` |
+| `beat.line.intro.drums` | My drum part is broken! It needs its quarter notes played back in, and played right. Get a spot right three times in a row, and you go up to the next challenge. In the end we lay down a 32-bar drum track in the studio, so help me fix some spots along the way! | `beat.musician.intro.drums` |
 | `beat.line.step.1` | Three in a row! That spot is fixed. Now a two-bar spot. | `beat.step.cleared.1` |
 | `beat.line.step.2` | Fixed! Now a four-bar spot. | `beat.step.cleared.2` |
 | `beat.line.step.3` | Four bars, three in a row! One more spot: eight bars. | `beat.step.cleared.3` |
@@ -173,12 +173,12 @@ part after them; or leave them to the browser's voice.
 
 | ID (the file name) | Line | Heard when |
 |---|---|---|
-| `beat.riff.intro.bass` | Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. | `beat.musician.intro.bass` |
+| `beat.riff.intro.bass` | Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. Three in a row takes you up to the next challenge, and in the end we lay down 32 bars of bass in the studio. | `beat.musician.intro.bass` |
 | `beat.riff.step.1` | Three in a row! That spot is fixed. Now two bars. | `beat.step.cleared.1.riff` |
 | `beat.riff.step.2` | Fixed, man. Now a four-bar spot. | `beat.step.cleared.2.riff` |
 | `beat.riff.step.3` | Four bars, three in a row. One more spot, cat: eight bars. | `beat.step.cleared.3.riff` |
 | `beat.riff.step.4` | Every spot fixed. The studio is yours, man: the whole part. | `beat.step.cleared.4.riff` |
-| `beat.riff.intro.keys` | Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. | `beat.musician.intro.keys` |
+| `beat.riff.intro.keys` | Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. Three in a row takes you up, and then 32 bars of keys in the studio. | `beat.musician.intro.keys` |
 | `beat.line.eighths.intro.bass` | Eighth notes on the bass. Two quick ones in a beat, still on the pad for that beat. | `beat.eighths.intro.bass` |
 | `beat.line.eighths.intro.keys` | Eighth notes on the keys. Two to a beat, and the half notes still held right through. | `beat.eighths.intro.keys` |
 | `beat.line.quavers.intro.bass` | Eighth notes on the bass. Two to a beat, and listen for the gap where the rest is: "and, 2 and". | `beat.quavers.intro.bass` |

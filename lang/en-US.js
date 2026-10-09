@@ -297,7 +297,7 @@ KR.lang('en-US', {
     'beat.line.retakeClean': "That's it! Now a new one.",
     // The steps are spots in the part to FIX UP, then the whole part is
     // played in the studio (Rob, playtest 2). Placeholders for Rob.
-    'beat.line.intro.drums': 'My drum part has a few spots that need fixing up. Help me fix them, then we play the whole part in the studio!',
+    'beat.line.intro.drums': "My drum part is broken! It needs its quarter notes played back in, and played right. Get a spot right three times in a row, and you go up to the next challenge. In the end we lay down a 32-bar drum track in the studio, so help me fix some spots along the way!",
     'beat.line.step.1':      'Three in a row! That spot is fixed. Now a two-bar spot.',
     'beat.line.step.2':      'Fixed! Now a four-bar spot.',
     'beat.line.step.3':      'Four bars, three in a row! One more spot: eight bars.',
@@ -316,7 +316,7 @@ KR.lang('en-US', {
     'beat.heard.hop.1':      "Hop! That one's bouncy.",
     'beat.locked.drums.1':   '{style} drums, locked in. This is your band now.',
     // Riff, on bass. Hip and gruff. Placeholders for Rob to rewrite.
-    'beat.riff.intro.bass':  "Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through.",
+    'beat.riff.intro.bass': "Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. Three in a row takes you up to the next challenge, and in the end we lay down 32 bars of bass in the studio.",
     'beat.won.bass.1':       'That gives me a great idea!',
     'beat.riff.picker.1':    'I made you three bass lines. Dig through them.',
     'beat.riff.picker.2':    'Tap one to hear it. Keep the one that grooves.',
@@ -343,7 +343,7 @@ KR.lang('en-US', {
     'beat.riff.findOne':     'Find one!',
     'beat.riff.comeback':    'Back in the pocket!',
     'beat.riff.playback':    "Now that's a groove. Listen to your band.",
-    'beat.riff.intro.keys':  "Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats.",
+    'beat.riff.intro.keys': "Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. Three in a row takes you up, and then 32 bars of keys in the studio.",
     'beat.won.keys.1':       'Oh, that gives me an idea for the keys!',
     'beat.locked.keys.1':    "{style} keys, locked in. That's the full band!",
     // The Learner's Permit, when the band is complete: Tango presents it. Placeholders for Rob.

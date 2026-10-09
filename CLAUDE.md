@@ -1689,6 +1689,32 @@ Smash's players list. Beat Smash adds an **age** to a player.
   one at her kit). The sign and Tango are sized to fit the gap together
   (`BSMASH_TANGO_SIGN_*`); on a tap too soon the sign waves in her paw and
   she hops. She puts it away at the count-in.
+- **THE COACH FINISHES TALKING BEFORE ANYTHING COUNTS IN** (Rob, 2026-10-09,
+  playing on his Pixel 9 Pro: *"Explain their instructions fully before
+  there's any count going on. Let them say what they have to say... the
+  count-in and the display of notation just needs to be a little bit grayed
+  out... whoever's speaking get through the instructions first. In the second
+  level with Riff's bass we're getting a count-in before he's finished"*).
+  - **A take is booked only once the line being said has ended**
+    (`bsmashBriefing()`, at the top of `bsmashScheduleTake()`, so it holds
+    for every take: the first, a retake after a verdict, the studio's Record).
+    Until then the phase is `brief`: the music is drawn but **greyed**
+    (`.briefing`), there is no WAIT sign and no count, and a tap only thuds:
+    Tango is never cut off to say "wait". Then half a second's breath
+    (`BSMASH_BRIEF_BREATH_MS`), and the take is booked on the next bar the
+    loop allows, as before. The first-time rules wait for the intro too,
+    instead of cutting it off.
+  - **`KR.speaking()`** in `text.js` says whether a line is still being said:
+    until the voice or the recording reports its end, or else after a
+    generous time for the words (`KR.speechSeconds()`, about 1.8 words a
+    second), so a device with no voice still gives the words their time.
+  - **The intros say the whole job** (Rob: *"There's a broken drum part...
+    you need to play them in and get them right. Three times in a row
+    correctly puts you up to the next challenge. We're ultimately going to lay
+    down a 32 bar drum track. And I need you to help me fix some parts along
+    the way"*): `beat.line.intro.drums`, `beat.riff.intro.bass` and
+    `.keys` now each say what is broken, three in a row to move up, and the
+    32 bars in the studio. The intro is said before the dice roll.
 - **EVERY PHRASE ENDS ON A DOUBLE BAR LINE, AND THE TAKE STOPS THERE** (Rob,
   2026-10-09: *"after tapping for minutes on just the beat... they will always
   tap more than the four beats. We need to put a double bar line, a final bar
@@ -2452,7 +2478,9 @@ over 16 bars, the Permit when the band is complete, the studio's 32 bars on
 three screen sizes,
 waiting for the count (the WAIT sign held up by Tango, her paw on the stick
 and her head clear of it, the pads dimmed, early taps not counted,
-the sign shaking and Tango's line, a clean take after), the rules the first
+the sign shaking and Tango's line, a clean take after), the coach finishing
+first (no take while she talks, the music greyed and back in full after, a tap
+only thudding, the rules waiting for her intro), the rules the first
 time (no take until I'm ready, the callout at the double bar, a tap past it
 costing the star, the thick final barline drawn), the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
 the first note early in the count-in), numbered takes, the teacher's ms view,

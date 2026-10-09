@@ -2326,6 +2326,59 @@ def test_rest_of_app(page):
           all(named.values()) and len(named) == 7, named)
 
 
+def test_coach_briefing(page):
+    """Rob, on his Pixel: the count-in came in before Riff had finished saying
+    what he needs. The coach finishes first: until the line has been said the
+    music is greyed, there is no sign and no count, and a tap only thuds."""
+    # KR.speaking() itself: busy while a line is said, quiet after it.
+    page.reload()
+    page.wait_for_timeout(400)
+    busy = page.evaluate("KR.audio = {}; KR.speak('beat.line.copy', 'Copy me!', 'tango'); KR.speaking()")
+    page.wait_for_function("!KR.speaking()", timeout=6000)
+    check('KR.speaking(): busy while a line is said, quiet once it has been', busy is True)
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));")
+    # A line that goes on until the test says it has ended.
+    page.evaluate("KR.speak = () => { KR.speechBusy = true; }")
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate("startBeatMusician('drums', false, 1)")
+    page.wait_for_function("bsmash && bsmash.phase === 'brief'", timeout=8000)
+    page.wait_for_timeout(2600)
+    state = page.evaluate("""(() => { const s = document.getElementById('beat-screen-studio'), r = document.getElementById('beat-reading');
+        return { phase: bsmash.phase, take: !!bsmash.take, grey: s.classList.contains('briefing'), opacity: +getComputedStyle(r).opacity,
+                 drawn: !!r.querySelector('svg, .bsmash-block'), sign: !document.getElementById('beat-countin').hidden,
+                 tango: !document.getElementById('beat-tango-sign').hasAttribute('hidden') }; })()""")
+    check('While Tango gives the instructions: no take booked, the music drawn but greyed, no WAIT sign, no count',
+          state['phase'] == 'brief' and not state['take'] and state['grey'] and state['opacity'] < 0.6 and state['drawn']
+          and not state['sign'] and not state['tango'], state)
+    check('...and it is her intro in the box', 'quarter notes' in guide(page), guide(page))
+    x, y = pad_point(page, 0)
+    page.mouse.click(x, y)
+    page.wait_for_timeout(150)
+    check('A tap while she talks only thuds: she is not cut off to say "wait"',
+          page.evaluate("bsmash.jumped") == 1 and 'quarter notes' in guide(page), guide(page))
+    page.wait_for_timeout(1500)
+    check('...however long she talks, nothing counts in', page.evaluate("bsmash.phase === 'brief' && !bsmash.take"))
+    page.evaluate("KR.speechBusy = false")
+    page.wait_for_function("bsmash.phase === 'wait' && bsmash.take", timeout=4000)
+    page.wait_for_timeout(600)
+    back = page.evaluate("""(() => ({ grey: document.getElementById('beat-screen-studio').classList.contains('briefing'),
+        opacity: +getComputedStyle(document.getElementById('beat-reading')).opacity }))()""")
+    check('Once she has finished: the take is booked and the music is back in full', not back['grey'] and back['opacity'] > 0.95, back)
+    # The very first time, the rules wait for her too, instead of cutting her off.
+    fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5' }));", rules_seen=False)
+    page.evaluate("KR.speak = () => { KR.speechBusy = true; }")
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    page.evaluate("startBeatMusician('drums', false, 1)")
+    page.wait_for_function("bsmash && bsmash.phase === 'brief'", timeout=8000)
+    early = page.evaluate("[!!document.querySelector('.bsmash-end-callout'), document.getElementById('beat-rules-go').hidden]")
+    page.evaluate("KR.speechBusy = false")
+    page.wait_for_function("bsmash.phase === 'rules'", timeout=4000)
+    check('The first time, the rules wait for her intro to end, then come up',
+          early == [False, True] and page.is_visible('#beat-rules-go') and 'rules' in guide(page).lower(), [early, guide(page)])
+
+
 def main():
     server = serve()
     with sync_playwright() as p:
@@ -2359,6 +2412,7 @@ def main():
         test_dashboard(page)
         test_wait_for_count(page)
         test_rules(page)
+        test_coach_briefing(page)
         test_notation_helpers_and_share(page)
         test_rest_of_app(page)
         page.close()
