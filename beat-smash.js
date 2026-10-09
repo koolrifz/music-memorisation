@@ -17,7 +17,7 @@
      - the notation renderer, renderRstompStaff (stems up, dots by hand, the
        crop window, notes ON the slot grid);
      - the one AudioContext, rstompAudio(), and its instruments: raudioClick
-       for the count, raudioNoise / raudioTone for the dice and the star;
+       for the count, raudioTone for the star;
      - the placeholder band's voices, BeatSmashBand (beat-smash-band.js), for
        the student's pad sound and as a stand-in if a loop file won't load;
      - the pads, KRPads (beat-pads.js);
@@ -854,14 +854,6 @@ function bsmashClick(when, beatInBar, comeback) {
     if (comeback) raudioTone(when, 1568, 0.09, 0.45, 'square', 'click');
 }
 
-function bsmashDiceSound() {
-    const ctx = bsmashAudio();
-    if (!ctx) return;
-    const t = ctx.currentTime + 0.02;
-    for (let i = 0; i < 7; i++) raudioNoise(t + i * 0.1 + Math.random() * 0.04, 0.03, 0.35, 3000 + Math.random() * 2000, 2, 'rhythm');
-    raudioTone(t + 0.8, 520, 0.06, 0.35, 'triangle', 'rhythm');
-}
-
 function bsmashStarSound() {
     const ctx = bsmashAudio();
     if (!ctx) return;
@@ -1355,6 +1347,7 @@ function bsmashWaitSign(left) {
     const waiting = left !== null;
     bsmashEl('beat-pads').classList.toggle('waiting', waiting);
     if (!waiting) {
+        bsmashEl('beat-pads').removeAttribute('data-wait');
         if (ring.classList.contains('wait')) { ring.classList.remove('wait'); ring.hidden = true; }
         bsmashEl('beat-tango-sign').toggleAttribute('hidden', true);
         return;
@@ -1367,6 +1360,13 @@ function bsmashWaitSign(left) {
     }
     ring.hidden = !ring.sized;
     bsmashTangoSign(ring);
+    // THE WAIT IS ALWAYS SHOWN (Rob, 2026-10-10, on the studio's long wait
+    // for the top of the loop: "keep that wait sign all the way through...
+    // They'll get to rely on it"). Where there is no room for the sign, the
+    // pads themselves say it.
+    const pads = bsmashEl('beat-pads');
+    if (ring.sized) pads.removeAttribute('data-wait');
+    else pads.setAttribute('data-wait', KR.t('beat.wait.icon') + ' ' + KR.t('beat.wait.sign') + (left > 0 ? ' · ' + '●'.repeat(Math.min(4, left)) : ''));   // text-ok: a dot per bar to go
     const dots = ring.querySelector('.bsmash-countin-dots');
     dots.innerHTML = '';
     for (let i = 0; i < Math.min(4, Math.max(0, left)); i++) bsmashMake('span', 'bsmash-countin-dot', dots);
@@ -1375,7 +1375,7 @@ function bsmashWaitSign(left) {
 function bsmashCountIn(n) {
     const ring = bsmashEl('beat-countin');
     if (n === null) { if (!ring.classList.contains('wait')) ring.hidden = true; return; }
-    if (ring.classList.contains('wait')) { ring.classList.remove('wait'); bsmashEl('beat-pads').classList.remove('waiting'); bsmashEl('beat-tango-sign').toggleAttribute('hidden', true); }
+    if (ring.classList.contains('wait')) { ring.classList.remove('wait'); bsmashEl('beat-pads').classList.remove('waiting'); bsmashEl('beat-pads').removeAttribute('data-wait'); bsmashEl('beat-tango-sign').toggleAttribute('hidden', true); }
     if (n === 1) bsmashPlaceCountIn(ring);
     if (!ring.sized) return;
     ring.hidden = false;
@@ -1391,12 +1391,23 @@ function bsmashCountIn(n) {
 // drawing's proportions against the sign).
 function bsmashPlaceCountIn(ring, waiting) {
     const reading = bsmashEl('beat-reading');
-    const above = [reading, bsmashEl('beat-take-stats')].filter(el => el && !el.hidden && el.offsetHeight);
+    // Clear of everything above the pads: the music, the teacher's numbers and
+    // the studio's control room and transport (it sat on Pause and Stop).
+    const above = [reading, bsmashEl('beat-take-stats'), bsmashEl('beat-control'), bsmashEl('beat-transport')]
+        .filter(el => el && !el.hidden && el.offsetHeight);
     const top = Math.max(...above.map(el => el.offsetTop + el.offsetHeight));
     const bottom = bsmashEl('beat-pads').offsetTop + 8;
-    const tall = waiting ? BSMASH_TANGO_SIGN_TALL : 1;
-    const extra = waiting ? BSMASH_TANGO_SIGN_GRIP : 0;
-    const size = Math.min(BSMASH_COUNTIN_MAX, (bottom - top - 16 - extra) / tall);
+    // The sign with Tango under it if they fit; else the sign alone; else
+    // nothing here (the pads say it: bsmashWaitSign).
+    const fit = withTango => {
+        const tall = withTango ? BSMASH_TANGO_SIGN_TALL : 1;
+        const extra = withTango ? BSMASH_TANGO_SIGN_GRIP : 0;
+        return { tall: tall, extra: extra, size: Math.min(BSMASH_COUNTIN_MAX, (bottom - top - 16 - extra) / tall) };
+    };
+    let place = fit(!!waiting);
+    ring.noTango = !waiting;
+    if (waiting && place.size < BSMASH_COUNTIN_MIN) { place = fit(false); ring.noTango = true; }
+    const { tall, extra, size } = place;
     ring.sized = size >= BSMASH_COUNTIN_MIN;
     if (!ring.sized) return;
     ring.style.width = ring.style.height = Math.round(size) + 'px';
@@ -1413,8 +1424,10 @@ const BSMASH_TANGO_SIGN_SCALE = 1.3;
 const BSMASH_TANGO_SIGN_TALL = 1 + BSMASH_TANGO_SIGN_SCALE * (220 - 72) / 220;   // the sign, then her below the paw
 function bsmashTangoSign(ring) {
     const tango = bsmashEl('beat-tango-sign');
-    tango.toggleAttribute('hidden', ring.hidden);   // an svg has no .hidden property: the attribute it is
-    if (ring.hidden) return;
+    const away = ring.hidden || ring.noTango;
+    ring.classList.toggle('alone', !!ring.noTango);    // no Tango to hold it: no stick either
+    tango.toggleAttribute('hidden', away);   // an svg has no .hidden property: the attribute it is
+    if (away) return;
     const head = tango.querySelector('.tango-sign-head');
     if (!head.firstChild) {
         const copy = bsmashEl('beat-tango-head').cloneNode(true);
@@ -1452,48 +1465,6 @@ function bsmashMarkUnder(barIndex, slot, slots) {
     mark.style.left = (x(slot) + 1) + 'px';
     mark.style.width = Math.max(10, x(slot + slots) - x(slot) - 4) + 'px';
     return mark;
-}
-
-/* ---------- The dice (§4) ----------
-   One die per bar. A face shows four dots in a row - filled for a note,
-   hollow for a rest - so each face IS a bar. They tumble, land, and the
-   picture appears where they land. */
-function bsmashDiceRoll(bars) {
-    const row = bsmashEl('beat-dice');
-    row.innerHTML = '';
-    row.hidden = false;
-    const per = bsmashPerBeat();
-    const dice = bars.map(() => {
-        const die = bsmashMake('div', 'bsmash-die', row);
-        die.classList.add('rolling');
-        if (per > 1) die.classList.add('eighths');
-        for (let i = 0; i < 4 * per; i++) bsmashMake('span', 'bsmash-pip', die);
-        return die;
-    });
-    let flips = 0;
-    const flicker = setInterval(() => {
-        dice.forEach(die => die.querySelectorAll('.bsmash-pip').forEach(pip =>
-            pip.classList.toggle('on', Math.random() < 0.6)));
-        if (++flips > 9) clearInterval(flicker);
-    }, 80);
-    bsmashTimers.push(flicker);
-    bsmashDiceSound();
-    bsmashLater(() => {
-        clearInterval(flicker);
-        dice.forEach((die, i) => {
-            die.classList.remove('rolling');
-            const pips = die.querySelectorAll('.bsmash-pip');
-            bsmashSpecs(bars[i]).forEach(spec => {
-                for (let k = 0; k < spec.slots * per; k++) pips[spec.slot * per + k].classList.toggle('on', !spec.isRest);
-            });
-        });
-    }, 850);
-}
-
-function bsmashDiceHide() {
-    const row = bsmashEl('beat-dice');
-    row.hidden = true;
-    row.innerHTML = '';
 }
 
 /* =========================================
@@ -1764,7 +1735,6 @@ function startBeatJam() {
     bsmashEl('beat-light').hidden = false;
     bsmashEl('beat-light').dataset.state = 'idle';
     bsmashWatchTango();
-    bsmashDiceHide();
     // The tick alone: the band's clock runs, and nobody is playing yet.
     bsmashBandStart({ metro: BSMASH_GUIDE_PARTS.metro });
     bsmashGuideLevel(1, 0.05);
@@ -1932,6 +1902,7 @@ function bsmashJamBeat(beat, bar, inBar) {
     // The shaker comes in on the beat: booked from the beat before, so its
     // first quaver is the downbeat, not the "and" after it.
     if (!jam.shaker && beat + 1 >= BSMASH_JAM_SHAKER_BAR * 4) bsmashJamShaker();
+    bsmashTangoGroove(jam.shaker && !jam.stopped);
     if (jam.stopped) return;
     // The student has stopped playing: so does the band.
     if (jam.taps && bsmashNow() - jam.lastTap > BSMASH_JAM_IDLE_BARS * BSMASH_BAR) return bsmashJamStop();
@@ -2142,6 +2113,23 @@ function bsmashJamPress(p) {
 
 // The beat light for one tap. d: seconds from the student's own beat, minus
 // early. Returns the state: 'on', 'early', 'late', 'way-early', 'way-late'.
+// TANGO PLAYS THE QUAVERS (Rob, 2026-10-10: "make sure that her arms are
+// starting high for the upbeat and they go down for the downbeat. So once the
+// groove is going and she's there on the drums, her arms should be
+// reinforcing the quaver movement of the shakers"). From the shaker's first
+// bar her arms come down on every beat and are up on every "and", one beat
+// long and started again on each beat as it is heard, so they stay with the
+// sound.
+function bsmashTangoGroove(on) {
+    const kit = bsmashEl('beat-kit');
+    if (!kit) return;
+    kit.classList.remove('drumming');
+    if (!on) return;
+    kit.style.setProperty('--beat', BSMASH_BEAT + 's');
+    void kit.offsetWidth;
+    kit.classList.add('drumming');
+}
+
 // Tango talks while a line of hers is new in the box, at her kit or under the
 // WAIT sign: her mouth moves for about as long as the line takes to say (Rob:
 // "she's sitting there with you looking at you and talking to you"). Riff's
@@ -2786,27 +2774,29 @@ function bsmashNewRoll() {
     bsmashHeader();
     bsmashControlRoom(null);
     bsmashEl('beat-reading').innerHTML = '';
-    // The studio has no dice: the song is the song.
+    // The studio: the song is the song, and the student presses Record.
     if (studio) {
         bsmashRenderReading();
         bsmashShow('notation');
         return bsmashStudioReady(true);
     }
+    /* NO DICE (Rob, 2026-10-10: "the shaking of the dice has lost its
+       meaning in this game... It doesn't have a place in the recording
+       studio. So I think we're much better off without that animation
+       altogether."). The bars are still rolled from the musician's table;
+       they simply appear, and the take is booked on the next bar the loop
+       allows. */
     bsmashTransport();
-    bsmashDiceRoll(bsmash.bars);
     const picture = bsmashPictureStep();
-    bsmashLater(() => {
-        bsmashRenderReading();
-        bsmashShow(picture && (bsmash.scaffold === 'star1' || bsmash.scaffold === 'star2') ? 'picture' : 'notation');
-        bsmashLater(() => {
-            bsmashDiceHide();
-            const go = picture && bsmash.scaffold === 'star1' ? 'picture' : 'notation';
-            // The rules wait for the coach too: they would cut the intro off.
-            const begin = () => bsmashLoad().seenRules ? bsmashScheduleTake(go) : bsmashShowRules(go);
-            if (!bsmashBriefing(begin)) begin();
-        }, 500);
-    }, 1000);
+    bsmashRenderReading();
+    bsmashShow(picture && (bsmash.scaffold === 'star1' || bsmash.scaffold === 'star2') ? 'picture' : 'notation');
+    const go = picture && bsmash.scaffold === 'star1' ? 'picture' : 'notation';
+    // The rules wait for the coach too: they would cut the intro off.
+    const begin = () => bsmashLoad().seenRules ? bsmashScheduleTake(go) : bsmashShowRules(go);
+    bsmashLater(() => { if (!bsmashBriefing(begin)) begin(); }, BSMASH_SHOW_BAR_MS);
 }
+
+const BSMASH_SHOW_BAR_MS = 400;    // a moment to see the new bar before its take is booked
 
 /* THE RULES, BEFORE THE VERY FIRST BAR (Rob, 2026-10-09: "On the very first
    one where we put the final bar line, you could annotate it before we start
@@ -3258,13 +3248,40 @@ function bsmashNearNote(take, t) {
 
 // A long note must be held to the middle of its last beat (§6). Lenient on
 // touch, where a release is unreliable: to the start of its last beat.
+/* HELD LONG ENOUGH? A REMINDER, NEVER A LOST STAR (Rob, 2026-10-10: "if a
+   half note is played for one beat, do we flag that? If a whole note is...
+   not held until the downbeat of four, do we alert them of that? We could
+   just remind them without punishing them... hey, cat, come on, hold on a
+   bit longer... Remember, half notes need to be two full beats.")
+   A long note must be held three quarters of its length, or to the start of
+   its last beat if that is later: a half note past the middle of beat 2 (one
+   beat is not enough), a whole note to the downbeat of 4. One let go sooner
+   is `short`: the take still counts, and the coach reminds them
+   (bsmashHoldReminder). The teacher's numbers still count it. */
+function bsmashHoldBeats(slots) {
+    return Math.max(slots - 1, slots * 0.75);
+}
+
 function bsmashRelease(p) {
     if (!bsmash) return;
     bsmashPadRelease(p);
     const note = p.note;
     if (!note || note.spec.slots < 2) return;
-    const need = note.t + (note.spec.slots - (p.touch ? 1 : 0.5)) * BSMASH_BEAT;
-    if (p.up < need) note.short = true;
+    if (p.up < note.t + bsmashHoldBeats(note.spec.slots) * BSMASH_BEAT) note.short = true;
+}
+
+// The first long note let go too soon in a take that otherwise counts: marked
+// gently under the music, and the coach says to hold it longer.
+function bsmashHoldReminder(take) {
+    const note = take.notes.find(n => n.hit && n.short);
+    if (!note) return false;
+    const mark = bsmashMarkUnder(note.bar, note.spec.slot, note.spec.slots);
+    if (mark) {
+        mark.classList.add('reminder');
+        mark.setAttribute('data-why', KR.t('beat.mark.hold'));
+    }
+    bsmashEvent(note.spec.slots >= 4 ? 'beat.take.hold.whole' : 'beat.take.hold.half');
+    return true;
 }
 
 // After a slip in the big take, the student must be back in by the next
@@ -3322,7 +3339,7 @@ function bsmashVerdict() {
     bsmashOpenPage(issues.length ? issues[0].place.bar : 0);
     issues.forEach((issue, i) => bsmashMarkIssue(issue, i === 0));
     bsmashTakeStats(take);
-    const hits = take.notes.filter(n => n.hit && !n.short && !n.wrongPad).length;
+    const hits = take.notes.filter(n => n.hit && !n.wrongPad).length;     // a note let go early still counts: see bsmashRelease
     const score = hits / Math.max(1, take.notes.length + take.strays.length);
     // One and two bars: every note right. Four and eight: the age's pass
     // mark, and back in by the next beat 1 after any slip (§6). The studio:
@@ -3331,7 +3348,8 @@ function bsmashVerdict() {
     const passed = studio ? score >= BSMASH_PASS_MARK[bsmashAge()]
         : bsmash.step <= BSMASH_CLEAN_STEPS ? !issues.length
         : score >= BSMASH_PASS_MARK[bsmashAge()] && !take.lostBar;
-    bsmashRecordStats(take, score, passed, issues);
+    // The teacher's numbers still count a note let go too soon.
+    bsmashRecordStats(take, score, passed, issues.concat(take.notes.filter(n => n.hit && n.short).map(() => ({ reason: 'short' }))));
     // The studio: the student decides what happens next.
     if (studio) return bsmashStudioVerdict(take, score);
     if (!passed) return bsmashTakeTwo(issues);
@@ -3350,18 +3368,15 @@ function bsmashVerdict() {
        and a miss still empties the row. */
     // The first star's picture go: the star, then the reveal, and the same
     // bar from the notation is the second star (§3, §4.1).
-    if (bsmash.scaffold === 'star1' && take.go === 'picture') {
-        bsmashEvent('beat.take.clean');
-        return bsmashStarLands(bsmashReveal);
-    }
-    bsmashEvent('beat.take.clean');
+    // A long note let go too soon: the star still lands, with a reminder.
+    if (!bsmashHoldReminder(take)) bsmashEvent('beat.take.clean');
+    if (bsmash.scaffold === 'star1' && take.go === 'picture') return bsmashStarLands(bsmashReveal);
     bsmashStarLands();
 }
 
 /* Everything that went wrong in a take, in the order it happened. Each is
    one reason:
      wrongPad  played in time, on another beat's pad
-     short     a long note let go too soon
      early     a note played before its window (within half a beat)
      late      a note played after its window (within half a beat)
      missed    a note not played at all
@@ -3372,7 +3387,6 @@ function bsmashTakeIssues(take) {
     const at = (t, reason, item, place) => issues.push({ t: t, reason: reason, item: item, place: place || item });
     take.notes.forEach(note => {
         if (note.wrongPad) at(note.t, 'wrongPad', note);
-        if (note.short) at(note.press.up, 'short', note);
         if (note.hit) return;
         if (note.near) at(note.near.t, note.near.t < note.t ? 'early' : 'late', note);
         else at(note.t, 'missed', note);

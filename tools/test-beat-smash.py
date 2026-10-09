@@ -441,6 +441,8 @@ def test_warmup_guide(page):
           and sorted(set(l[1] for l in guide_lit)) == [0, 1, 2, 3], guide_lit[:8])
     check('...and held bars before the shaker win nothing yet', page.evaluate('Object.keys(bsmashBand.parts)') == ['metro'],
           page.evaluate('Object.keys(bsmashBand.parts)'))
+    check('...and before the shaker Tango\'s arms keep still between taps',
+          not page.evaluate("document.getElementById('beat-kit').classList.contains('drumming')"))
     # Keep tapping through bars 3 and 4, or the band (and the story) stops;
     # the last beat before the shaker left quiet, so Tango has room to name it.
     for k in range(7):
@@ -450,6 +452,11 @@ def test_warmup_guide(page):
     check('Four bars after the count-in, the shaker joins on the quavers', page.evaluate('Object.keys(bsmashBand.parts).sort()') == ['metro', 'shaker']
           and page.evaluate('(bsmashBand.sources.shaker || []).length') > 0)
     check('...and Tango says so', 'shaker' in guide(page), guide(page))
+    page.wait_for_timeout(700)
+    arms = page.evaluate("""(() => { const arm = getComputedStyle(document.querySelector('#beat-kit .tango-arm-l'));
+        return [document.getElementById('beat-kit').classList.contains('drumming'), arm.animationName, arm.animationDuration]; })()""")
+    check('...and Tango\'s arms play its quavers: down on the beat, up on the "and", a beat long (Rob, 2026-10-10)',
+          arms == [True, 'tango-groove-l', '0.6s'], arms)
     # Two bars held now: the drums, and the tick hands them the beat.
     for k in range(8):
         press_at(page, None, start + 5 * 2.4 + k * 0.6 + 0.04, index=k % 4)
@@ -735,7 +742,7 @@ def test_long_steps(page):
     in a row each, no Record button; then the studio, 32 bars once through,
     with a transport, a control room, listening back and trying again."""
     page.wait_for_function("bsmash && bsmash.step === 3 && bsmash.take && !bsmash.take.done", timeout=20000)
-    check('Four bars come the normal way: dice, count-in, straight into the take, no Record button',
+    check('Four bars come the normal way: the bars, the count-in, straight into the take, no Record button',
           page.evaluate('bsmash.specs.length') == 4 and page.evaluate("bsmash.scaffold") == 'star1'
           and not page.is_visible('#beat-transport'), page.evaluate("bsmash.scaffold"))
     take = wait_for_take(page)
@@ -767,9 +774,9 @@ def test_long_steps(page):
     t = page.evaluate("""(() => { const b = id => document.getElementById(id);
         return { shown: !b('beat-transport').hidden, rec: !b('beat-transport-record').disabled,
                  play: !b('beat-transport-play').disabled, stop: !b('beat-transport-stop').disabled,
-                 keep: !b('beat-transport-keep').hidden, dice: !b('beat-dice').hidden }; })()""")
-    check('The studio has a transport: Record live; Listen and Stop not yet; no Keep; no dice',
-          t == {'shown': True, 'rec': True, 'play': False, 'stop': False, 'keep': False, 'dice': False}, t)
+                 keep: !b('beat-transport-keep').hidden }; })()""")
+    check('The studio has a transport: Record live; Listen and Stop not yet; no Keep',
+          t == {'shown': True, 'rec': True, 'play': False, 'stop': False, 'keep': False}, t)
     bars_before = page.evaluate("bsmash.bars.map(b => b.join()).join('|')")
     page.click('#beat-transport-record')
     page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=8000)
@@ -1036,21 +1043,25 @@ def test_riff_bass(page):
     take = wait_for_take(page)
     cells = page.evaluate("bsmash.layout[0].blocks.map(b => b.children.length)")
     check('A half note is two squares joined', cells == [2, 2], cells)
-    # Let go of the first half note at once: it sounds short, and isn't clean.
+    # Let go of the first half note at once: a reminder, not a lost star (Rob,
+    # 2026-10-10: "We could just remind them without punishing them").
     play_take(page, let_go=(0,))
     page.wait_for_timeout(200)
     filled = page.evaluate("bsmash.layout[0].blocks.map(b => [...b.children].map(c => c.classList.contains('filled')))")
     check('Let go too early: the block is only half filled', filled[0] == [True, False] and filled[1] == [True, True], filled)
-    check('...and it\'s take two, in Riff\'s words', page.evaluate("bsmash.take.notes[0].short")
-          and 'Hold those long notes' in guide(page), guide(page))
-    play_take(page)
-    page.wait_for_timeout(300)
-    check('Held right through: a clean take, and the first star at once', state(page)['streak'] == 1, state(page))
+    held = page.evaluate("""({ short: bsmash.take.notes[0].short, streak: bsmash.streak,
+        mark: [...document.querySelectorAll('#beat-reading .bsmash-miss')].map(m => [m.classList.contains('reminder'), m.getAttribute('data-why')]) })""")
+    check('...but the take still counts: the star lands, the note marked in gold "hold", and Riff says hold it longer',
+          held['short'] and held['streak'] == 1 and held['mark'] == [[True, 'hold']]
+          and 'two full beats' in guide(page), [held, guide(page)])
+    check('Held long enough means: a half note past the middle of beat 2 (one beat is not enough), a whole note to beat 4',
+          page.evaluate("[bsmashHoldBeats(2), bsmashHoldBeats(4), bsmashHoldBeats(3)]") == [1.5, 3, 2.25])
     page.wait_for_function("bsmash.phase === 'reveal'", timeout=8000)
     check('...then Riff\'s reveal', 'read it' in guide(page), guide(page))
     play_take(page)
     page.wait_for_timeout(600)
-    check('...then from the notation, held: the second star', state(page)['streak'] == 2, state(page))
+    check('...then from the notation, held right through: the second star, and no reminder',
+          state(page)['streak'] == 2 and 'two full beats' not in guide(page), [state(page), guide(page)])
     # The studio, and the part.
     # The studio (eight bars, to keep the test short): one take at the pass mark wins the part.
     page.evaluate("const p = bsmashLoad(); p.settings.studioBars = 8; bsmashSave(p);"
@@ -1190,6 +1201,14 @@ def test_studio_layout(browser):
         ready = page.evaluate("document.getElementById('beat-transport').getBoundingClientRect().bottom <= innerHeight")
         page.click('#beat-transport-record')
         page.wait_for_function("bsmash.take && !bsmash.take.done", timeout=8000)
+        page.wait_for_timeout(700)
+        w = page.evaluate("""(() => { const r = document.getElementById('beat-countin'), b = r.getBoundingClientRect(),
+            t = document.getElementById('beat-transport').getBoundingClientRect(), pads = document.getElementById('beat-pads');
+            return { phase: bsmash.phase, sign: !r.hidden && r.classList.contains('wait'), clear: b.top >= t.bottom,
+                     onPads: pads.getAttribute('data-wait') || '' }; })()""")
+        check('%dx%d, the studio: waiting for the loop, the WAIT is always there: the sign clear of the transport, or on the pads (Rob, 2026-10-10)'
+              % (size['width'], size['height']),
+              w['phase'] != 'wait' or (w['sign'] and w['clear'] and not w['onPads']) or (not w['sign'] and 'count' in w['onPads'].lower()), w)
         m = page.evaluate("""(() => { const pads = document.getElementById('beat-pads').getBoundingClientRect();
             const read = document.getElementById('beat-reading').getBoundingClientRect();
             return { bars: bsmash.specs.length, padsBottom: pads.bottom, padsTop: pads.top, readBottom: read.bottom, h: innerHeight,
@@ -1995,7 +2014,7 @@ def test_quaver_song(page):
     page.click('#beat-song-add')
     page.wait_for_function("bsmash && bsmash.mode === 'steps' && bsmash.take", timeout=10000)
     st = page.evaluate("""({ song: bsmash.song, bars: bsmash.bars.map(b => b.join(' ')), bpm: bsmashBand.bpm, beat: BSMASH_BEAT,
-        win: bsmashWindow(), guide: document.getElementById('beat-studio-guide').innerText, pips: document.querySelectorAll('#beat-dice .bsmash-pip').length,
+        win: bsmashWindow(), guide: document.getElementById('beat-studio-guide').innerText,
         squares: document.querySelectorAll('#beat-reading .bsmash-block').length })""")
     check('Into Tango\'s drums at 80 bpm: the first bar is his figure, and Tango says what is new',
           st['song'] == 'c-4-1-5-1' and st['bars'] == ['quarter-note quarter-note quarter-note eighth-note eighth-note']

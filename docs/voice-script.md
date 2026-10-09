@@ -21,7 +21,7 @@ A recording can't change, so these lines are marked below. For now, record them
 without the braced part, and the game will need a small change to play the braced
 part after them; or leave them to the browser's voice.
 
-## Tango (80 lines)
+## Tango (81 lines)
 
 **Voice:** the drummer, an orange cat with a red mane and a blue vest. She handles rhythm. Bright and warm, encouraging, never hyper: Rob's classes found the old high, quick voice annoying (2026-10-08). A drummer counting a band in: steady, on the beat, a smile in it.
 
@@ -76,7 +76,8 @@ part after them; or leave them to the browser's voice.
 | `beat.line.rules` | Here are the rules! Tap exactly what you see: one tap for each block. Stop at the double line at the end. Go past it and there's no star. Ready? | `beat.rules` |
 | `beat.line.clean.1` | That's a take! | `beat.take.clean` |
 | `beat.line.clean.2` | In the can! | `beat.take.clean` |
-| `beat.line.why.short` | You let go too soon. Hold it right to the end! {take} **(filled in: {take})** | `beat.take.why.short` |
+| `beat.line.hold.half` | Nice! Now hold that half note a bit longer: a half note is two full beats. | `beat.take.hold.half` |
+| `beat.line.hold.whole` | Nice! Hold that whole note longer: let it ring right through to beat 4. | `beat.take.hold.whole` |
 | `beat.line.why.early` | Just a bit early. Wait for the beat! {take} **(filled in: {take})** | `beat.take.why.early` |
 | `beat.line.why.late` | Just a bit late. Be right on the beat! {take} **(filled in: {take})** | `beat.take.why.late` |
 | `beat.line.why.missed` | One got away! Every note gets a tap. {take} **(filled in: {take})** | `beat.take.why.missed` |
@@ -145,7 +146,7 @@ part after them; or leave them to the browser's voice.
 |---|---|---|
 | `tango.license.1` | (missing: tango.license.1) | `value.license.awarded` |
 
-## Riff (35 lines)
+## Riff (36 lines)
 
 **Voice:** the jazz Scottie dog in a red beret and green vest. Rob: hip and cool, a New York jazz man who knows all the secrets of memorising and of making beautiful music and melody. Relaxed, unhurried, warm; he calls people "cat".
 
@@ -156,7 +157,8 @@ part after them; or leave them to the browser's voice.
 | `beat.riff.wrongPad` | Follow the beats round, man. Each pad is its own beat. | `beat.take.wrongPad.riff` |
 | `beat.riff.clean.1` | Smooth. That's a take. | `beat.take.clean.riff` |
 | `beat.riff.clean.2` | Solid groove. In the can. | `beat.take.clean.riff` |
-| `beat.riff.why.short` | Hold those long notes right through, man. {take} **(filled in: {take})** | `beat.take.why.short.riff` |
+| `beat.riff.hold.half` | Hey cat, come on, hold on a bit longer. Remember, half notes need two full beats. | `beat.take.hold.half.riff` |
+| `beat.riff.hold.whole` | Hold it longer, cat. A whole note rings right through to beat 4. | `beat.take.hold.whole.riff` |
 | `beat.riff.why.early` | Easy, cat. You jumped in early. {take} **(filled in: {take})** | `beat.take.why.early.riff` |
 | `beat.riff.why.late` | A little behind there, man. Sit right on it. {take} **(filled in: {take})** | `beat.take.why.late.riff` |
 | `beat.riff.why.missed` | We dropped a note there, man. {take} **(filled in: {take})** | `beat.take.why.missed.riff` |
