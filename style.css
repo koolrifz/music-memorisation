@@ -1084,13 +1084,6 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-desk.dim { opacity: 0.35; }
 
 /* The dice: one per bar, a face of four dots is a bar (§4). */
-.bsmash-dice { display: flex; justify-content: center; gap: 12px; min-height: 54px; margin-bottom: 6px; }
-.bsmash-dice[hidden] { display: none; }
-.bsmash-die { width: 86px; height: 46px; border-radius: 10px; background: #f4f4f4; box-shadow: 0 4px 0 #b9c0c8; display: flex; align-items: center; justify-content: space-evenly; }
-.bsmash-die.rolling { animation: bsmash-roll 0.25s linear infinite; }
-@keyframes bsmash-roll { 0% { transform: rotate(0) translateY(0); } 50% { transform: rotate(12deg) translateY(-6px); } 100% { transform: rotate(0) translateY(0); } }
-.bsmash-pip { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #0072B2; box-sizing: border-box; }
-.bsmash-pip.on { background: #0072B2; }
 
 /* The reading line, on white paper. */
 .bsmash-reading { width: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; --morph: 0.25s; }
@@ -1139,6 +1132,9 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-miss { position: absolute; top: 3px; height: 5px; border-radius: 3px; background: #ff4b4b; }
 .bsmash-miss.named { height: 7px; top: 2px; animation: bsmash-named 0.9s ease-in-out 3; }
 .bsmash-miss[data-why]::after { content: attr(data-why); position: absolute; top: 9px; left: 50%; transform: translateX(-50%); color: #ff4b4b; font-size: 11px; font-weight: 900; line-height: 1; white-space: nowrap; }
+/* A long note let go too soon is a reminder, not a mistake: gold, not red. */
+.bsmash-miss.reminder { background: #ffc800; }
+.bsmash-miss.reminder[data-why]::after { color: #ffc800; }
 .bsmash-block.named { box-shadow: 0 0 0 4px #ff4b4b, 0 0 14px rgba(255,75,75,0.6); }
 @keyframes bsmash-named { 50% { opacity: 0.35; } }
 .bsmash-take-stats { margin: 4px 0 0; font-size: 11px; font-weight: 600; }
@@ -1275,6 +1271,13 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 @keyframes tango-hit-l { from { transform: rotate(14deg); } to { transform: none; } }
 @keyframes tango-hit-r { from { transform: rotate(-14deg); } to { transform: none; } }
 @keyframes tango-nod { from { transform: translateY(3px) rotate(-3deg); } to { transform: none; } }
+/* Once the shaker plays, her arms play its quavers: down on the beat, up on
+   the "and" (bsmashTangoGroove starts it again on every beat). A tap still
+   nods her head. */
+.bsmash-kit.drumming .tango-arm-l { animation: tango-groove-l var(--beat, 0.6s) linear; }
+.bsmash-kit.drumming .tango-arm-r { animation: tango-groove-r var(--beat, 0.6s) linear; }
+@keyframes tango-groove-l { 0% { transform: none; animation-timing-function: ease-out; } 50% { transform: rotate(16deg); animation-timing-function: ease-in; } 100% { transform: none; } }
+@keyframes tango-groove-r { 0% { transform: none; animation-timing-function: ease-out; } 50% { transform: rotate(-16deg); animation-timing-function: ease-in; } 100% { transform: none; } }
 /* Her box is her speech bubble: in the warm-up it sits right above her head,
    under the band's desk, with its tail pointing at her. */
 #beat-screen-studio.jam:has(#beat-light:not([hidden])) > * { order: 2; }
@@ -1430,6 +1433,12 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-countin.wait .bsmash-countin-dots { display: flex; gap: 0.05em; font-size: 0.1em; min-height: 1em; }
 .bsmash-countin-dot { width: 1em; height: 1em; border-radius: 50%; background: #ff4b4b; }
 .bsmash-countin.wait::after { height: 66px; }
+.bsmash-countin.wait.alone::after { display: none; }
+/* No room for the sign (the studio on a small phone): the pads say it. */
+#beat-pads[data-wait] { position: relative; }
+#beat-pads[data-wait]::after { content: attr(data-wait); position: absolute; left: 50%; top: calc(50% + 6px); transform: translate(-50%, -50%); z-index: 2; pointer-events: none;
+    white-space: nowrap; background: #ffffff; color: #d32f2f; border: 4px solid #ff4b4b; border-radius: 999px; padding: 8px 18px;
+    font-weight: 900; font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: 0 6px 18px rgba(0,0,0,0.45); }
 /* While the coach gives the instructions, the music waits greyed and nothing
    counts (bsmashBriefing): it comes back to full colour when they finish. */
 #beat-reading { transition: opacity 0.4s, filter 0.4s; }
@@ -1507,8 +1516,6 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 /* The eighth-note song: a square per quaver, eight pips on a die, and the
    song card's level and lock. */
 .bsmash-block.eighth { --c: #E69F00; }
-.bsmash-die.eighths { width: 110px; }
-.bsmash-die.eighths .bsmash-pip { width: 10px; height: 10px; border-width: 2px; }
 .bsmash-song-level { pointer-events: none; font-size: 11px; font-weight: 800; color: #E69F00; }
 .bsmash-song-card.locked { opacity: 0.6; cursor: default; }
 

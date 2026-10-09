@@ -1641,6 +1641,12 @@ Smash's players list. Beat Smash adds an **age** to a player.
   takes the lag between the touch and the code running (bigger on a busy
   phone) back off, using the event's own time stamp. Rob: *"I really thought
   I was hitting on the beat."*
+- **NO DICE** (Rob, 2026-10-10: *"the shaking of the dice has lost its
+  meaning in this game... it doesn't have a place in the recording studio. So
+  I think we're much better off without that animation altogether"*). The
+  bars are still rolled from the table below; they simply appear, and the
+  take is booked a moment later (`BSMASH_SHOW_BAR_MS`). The room the dice
+  took is for the musician (see "Riff and Tango on screen, planned").
 - **The dice table is data** (`BSMASH_MUSICIANS[].steps`), bars written
   `'q qr q q'`. `'all'` = every legal bar by the engraving rules (Tango: 15).
   Tango's one-bar step is a **ladder climbed by clean takes**: every beat ·
@@ -1689,6 +1695,13 @@ Smash's players list. Beat Smash adds an **age** to a player.
   one at her kit). The sign and Tango are sized to fit the gap together
   (`BSMASH_TANGO_SIGN_*`); on a tap too soon the sign waves in her paw and
   she hops. She puts it away at the count-in.
+  **The WAIT is always shown** (Rob, 2026-10-10, after the studio's long wait
+  for the top of the loop: *"keep that wait sign all the way through... They'll
+  get to rely on it"*). The sign keeps clear of everything above the pads,
+  the studio's transport included (it used to sit on Pause and Stop). It is
+  the sign with Tango if they fit; else the sign alone, with no stick; else,
+  on a small phone, **the pads themselves say it** (`#beat-pads[data-wait]`,
+  "✋ Wait for the count · ●●", a dot per bar to go).
 - **THE COACH FINISHES TALKING BEFORE ANYTHING COUNTS IN** (Rob, 2026-10-09,
   playing on his Pixel 9 Pro: *"Explain their instructions fully before
   there's any count going on. Let them say what they have to say... the
@@ -1714,7 +1727,7 @@ Smash's players list. Beat Smash adds an **age** to a player.
     down a 32 bar drum track. And I need you to help me fix some parts along
     the way"*): `beat.line.intro.drums`, `beat.riff.intro.bass` and
     `.keys` now each say what is broken, three in a row to move up, and the
-    32 bars in the studio. The intro is said before the dice roll.
+    32 bars in the studio. The intro is said before the bars appear.
 - **EVERY PHRASE ENDS ON A DOUBLE BAR LINE, AND THE TAKE STOPS THERE** (Rob,
   2026-10-09: *"after tapping for minutes on just the beat... they will always
   tap more than the four beats. We need to put a double bar line, a final bar
@@ -1756,13 +1769,12 @@ Smash's players list. Beat Smash adds an **age** to a player.
   window is already about a third, so a third would have changed nothing.)
   Anything else is a rest tap or one tap too many. Steps 1–2 need a clean take.
 - **The verdict names the reason** (playtest 1, §4.1). `bsmashTakeIssues()`
-  lists what went wrong in time order, each one reason: `wrongPad`, `short`
-  (let go too soon), `early`, `late`, `missed`, `rest`, `extra`. The first is
-  said (`beat.take.why.<reason>`, Tango's or Riff's) and marked most strongly
-  under the staff, "early" or "late" written under it. Riff's *"Hold those long
-  notes right through"* is now his line for `short` only: it used to be his
-  line for every failed take, which is what Rob heard as the holding being
-  "intolerant". **Takes are counted**: "Take two", "Take three"… (§4.2),
+  lists what went wrong in time order, each one reason: `wrongPad`, `early`,
+  `late`, `missed`, `rest`, `extra`, `over`. The first is said
+  (`beat.take.why.<reason>`, Tango's or Riff's) and marked most strongly
+  under the staff, "early" or "late" written under it. A long note let go
+  too soon is not among them: it is a reminder (see "Holding is the skill").
+  **Takes are counted**: "Take two", "Take three"… (§4.2),
   from 1 on each new roll and again after the reveal.
 - **The teacher's view**: with the teacher code on, the last take note by
   note in ms under the reading (`#beat-take-stats`), so the window and the
@@ -1808,8 +1820,6 @@ Smash's players list. Beat Smash adds an **age** to a player.
     clears it with every other `koolRiffs*` key.
 
 **Calls made where the brief left room (Rob to confirm):**
-- **One die per bar**, its face the bar's four dots (§4). §4.1 says "four
-  dice" for one bar; the two sentences disagree.
 - **On the four beat pads, the pad IS the beat** (Rob, 2026-10-01,
   **reversing** an earlier call that any pad counted): *"If you press button
   number one at what should be beat number three, then we need to call an
@@ -1859,6 +1869,27 @@ Smash's players list. Beat Smash adds an **age** to a player.
 - **Ages 6–8 / 9–10 / 11+**: windows 220 / 195 / 170 ms, pass marks 80 / 85 /
   90%. All the tunable numbers are the constants at the top of the file.
 
+### Riff and Tango on screen, planned (Rob, 2026-10-10)
+*"During the bass and the keyboard session, we should have Riff there... the
+music down very low, building upward, starting just above where the buttons
+are, so their eyes don't have to cover so much distance... then above that
+could be Riff on the bass. And each time we add another row of notation, Riff
+gets smaller. His perspective changes... eventually they're going to be talking
+at you. So we should get room for them on the screen now."*
+
+- **Not built: it waits for the pictures.** Rob is making them in Gemini to
+  `kool-riffs-docs/docs/beat-smash-art-brief.md`: Tango behind the Kool Riffs
+  kit (the kick drum's front head a plain circle, where the light goes) and a
+  kit per song, in two frames (sticks down on the beat, up on the "and");
+  congas and bongos; Riff on a double bass or an electric bass per song, and at
+  a Rhodes and an organ. IDs in `content/art.js`: `tango.kit.<song>`(`.up`),
+  `riff.bass.<song>`, `riff.keys.rhodes`…
+- **The layout to build then**: the music low, just above the pads, growing
+  upward with the phrase; the musician above it, under the gold box, big at
+  one and two bars, smaller at four, smaller again at eight; at the studio's
+  32 bars only the speaker's head in the gold box. The dice are gone, which
+  makes the room.
+
 ### Riff on bass (Phase 2, first half) — built 2026-10-01
 Rob: *"Riff is coming to do the bass… I'll be guided by you."* The second
 musician, won the same three steps as Tango, through the same engine. What is
@@ -1872,9 +1903,18 @@ his own:
   all 36. Steps 2 and 3 roll from all 36.
 - **Holding is the skill.** His pads play electric or acoustic bass (a
   "Bass sound" row on the pathway for the teacher), on the bar's root, and
-  **sustain while held**. A half note let go before the middle of its second
-  beat (the start of it, on touch) is short and the take isn't clean; this
-  rule was always in `bsmashRelease()`, his steps are the first to use it. In
+  **sustain while held**. A long note must be held three quarters of its
+  length, or to the start of its last beat if that is later
+  (`bsmashHoldBeats()`): a half note past the middle of beat 2, a whole note
+  to the downbeat of 4. **Let go sooner, it is a REMINDER, never a lost
+  star** (Rob, 2026-10-10: *"if a half note is played for one beat, do we
+  flag that?... We could just remind them without punishing them... hey,
+  cat, come on, hold on a bit longer... Remember, half notes need to be two
+  full beats"*): the take still counts, the note is marked in gold "hold"
+  under the music, and the coach says to hold it longer
+  (`bsmashHoldReminder()`, `beat.take.hold.half` / `.whole`, Riff's own in
+  his steps). The teacher's numbers still count it (`short`). This
+  **reverses** the earlier rule, where a short note failed the take. In
   the picture go a long note **fills beat by beat while it is held**
   (`bsmashTakeFrame()`), so one let go early is left half filled (§4.1).
 - **He coaches his own steps.** `bsmashEvent()` plays `'<event>.riff'` when
@@ -1923,7 +1963,7 @@ Record button: *"I'm a bit disappointed when the four bars comes and now I
 have to press record. I think it should just come the normal way."*
 
 - **Steps 1–4 all run the same way** (`BSMASH_STEP_BARS`: 1, 2, 4, 8 bars):
-  dice, the count-in, straight into the take, the fading picture, three in a
+  the bars, the count-in, straight into the take, the fading picture, three in a
   row. One and two bars need every note right; four and eight need the age's
   pass mark **and** the comeback rule (back in by the next beat 1), the old
   big take's marking (`BSMASH_CLEAN_STEPS`). Eight bars use the closer lines
@@ -2178,7 +2218,7 @@ first eighth-note song built (2026-10-04):
   an eighth is 0.5), so timing, pads and grading read the same on both grids;
   `bsmashGridSpecs()` turns them into the grid's slots for `renderRstompStaff`,
   and the picture is a square per grid slot (an eighth is one square, a quarter
-  two). The dice show eight pips. A picture step on a phone puts one bar to a
+  two). A picture step on a phone puts one bar to a
   line, so the eighth-note squares have room.
 - **A fix found on the way**: Stomp Lab's `pulseX` reads its grid globals when
   it is *called*, not when the staff was drawn, so Beat Smash's picture, cursor,
@@ -2392,6 +2432,12 @@ because that makes the music go."*
     to say; `KR.lastSpeaker` in `text.js` says whose line it is, so Riff's
     lines leave her quiet) and while she counts in; and her sticks come down
     and her head nods on every tap the light shows, twice for the pocket.
+  - **Once the shaker plays, her arms play its quavers** (Rob, 2026-10-10:
+    *"make sure that her arms are starting high for the upbeat and they go
+    down for the downbeat... her arms should be reinforcing the quaver
+    movement of the shakers"*): down on every beat, up on every "and",
+    started again on each beat as it is heard (`bsmashTangoGroove()`,
+    `.drumming`), so they stay with the sound. A tap still nods her head.
   - **"Early" and "late"** sit on the floor under the snare and the floor tom,
     and light up as before.
   - **A placeholder drawing**, made from shapes to Rob's description (orange
@@ -2477,7 +2523,8 @@ back and Stop, the same bars every take, Keep to the picker), the pages turning
 over 16 bars, the Permit when the band is complete, the studio's 32 bars on
 three screen sizes,
 waiting for the count (the WAIT sign held up by Tango, her paw on the stick
-and her head clear of it, the pads dimmed, early taps not counted,
+and her head clear of it, in the studio clear of the transport or on the pads,
+the pads dimmed, early taps not counted,
 the sign shaking and Tango's line, a clean take after), the coach finishing
 first (no take while she talks, the music greyed and back in full after, a tap
 only thudding, the rules waiting for her intro), the rules the first
@@ -2490,7 +2537,7 @@ the tick from the first beat on its own channel, the green walking the pads
 until the drums join, then the pale outline, and walking again when they are lost,
 held bars winning nothing before the shaker, the shaker at bar 5, the drums
 taking the beat from the tick and giving it back, the tick and the green
-carrying on when the band stops), the jam (the band needs a pulse: the band joining bar by bar, a player lost
+carrying on when the band stops, Tango's arms on the shaker's quavers), the jam (the band needs a pulse: the band joining bar by bar, a player lost
 and won back, a groove of their own; a wobbly start, the beat test, the
 sag, the stop and its menu, a jam over a jam song and the Roman-numeral
 menu), playtest 2 (takes on the four-bar loop, the loop guide, notation from
@@ -2524,7 +2571,8 @@ bubble above her, her mouth moving on her lines and not Riff's, the pads
 right under it) and Tango's
 rushing / dragging coaching, "Follow me" counted in time until order is
 restored (and the encouragement when they stop),
-Riff on bass (his ladder, his voice, a half note let go early and held through,
+Riff on bass (his ladder, his voice, a half note let go early a gold "hold"
+reminder that still earns the star, held through,
 the band won so far, his picker and part), Riff on keys (whole notes held
 four beats, the full band), the wrong pad (not clean, the line, the right pad lit; one big pad and Space
 as the setting), the square blocks, all
