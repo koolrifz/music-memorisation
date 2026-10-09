@@ -1073,6 +1073,18 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 @keyframes bsmash-pop { 0% { transform: scale(0.3); } 60% { transform: scale(1.6); text-shadow: 0 0 12px var(--accent-gold); } 100% { transform: scale(1); } }
 #beat-studio-guide { margin-bottom: 8px; }
 
+/* THE MUSICIAN ON SCREEN (Rob, 2026-10-10: "the music down very low...
+   just above where the buttons are... then above that could be Riff on the
+   bass. And each time we add another row of notation, Riff gets smaller").
+   In a musician's steps their picture sits under the desk; the music drops
+   to just above the pads; the space between is where the WAIT sign and the
+   count-in go. bsmashPlaceCoach() sizes the picture to the room left. */
+.bsmash-coach { flex: 0 0 auto; display: flex; justify-content: center; margin: 0 auto; pointer-events: none; }
+.bsmash-coach[hidden] { display: none; }
+.bsmash-coach img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+#beat-screen-studio.coached .bsmash-reading { margin-top: auto; }
+#beat-screen-studio.coached .krpads { margin-top: 0; }
+
 /* The mixing desk: a channel lights as each part is recorded (§9). */
 .bsmash-desk { display: flex; gap: 6px; width: 100%; max-width: 420px; margin: 0 auto 8px; }
 .bsmash-channel { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; padding: 4px; border-radius: 8px; background: #1b2530; border: 2px solid #2c3a49; color: #56677a; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; transition: all 0.4s; }
@@ -1278,6 +1290,35 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-kit.drumming .tango-arm-r { animation: tango-groove-r var(--beat, 0.6s) linear; }
 @keyframes tango-groove-l { 0% { transform: none; animation-timing-function: ease-out; } 50% { transform: rotate(16deg); animation-timing-function: ease-in; } 100% { transform: none; } }
 @keyframes tango-groove-r { 0% { transform: none; animation-timing-function: ease-out; } 50% { transform: rotate(-16deg); animation-timing-function: ease-in; } 100% { transform: none; } }
+/* ROB'S PICTURE OF THE KIT (2026-10-10). With his art in (bsmashKitArt), the
+   drawing above is hidden and his picture shows instead, in three frames:
+   sticks up, halfway and down, one at a time (data-frame). The light lies
+   over his kick drum's head, where his own Kool Riffs logo is printed, so
+   the light keeps no cream head, hoop or name of its own: the colours wash
+   over his logo, clipped to the head, and the glow is round the rim. While a
+   number is counted, a pale disc sits under it so it can be read. */
+.bsmash-kit-art { display: none; }
+.bsmash-kit.art .bsmash-kit-art { display: block; position: absolute; inset: 0; pointer-events: none; }
+.bsmash-kit-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; visibility: hidden; }
+.bsmash-kit.art[data-frame="up"] img[data-frame="up"],
+.bsmash-kit.art[data-frame="mid"] img[data-frame="mid"],
+.bsmash-kit.art[data-frame="down"] img[data-frame="down"] { visibility: visible; }
+.bsmash-kit.art > svg { display: none; }
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-ring { background: transparent; box-shadow: none; overflow: hidden; mix-blend-mode: multiply; }
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-fill { mix-blend-mode: normal; }
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-ring::before,
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-logo { display: none; }
+#beat-screen-studio.jam .bsmash-light[data-state] #beat-kit.art .bsmash-light-fill { opacity: 0; }
+#beat-screen-studio.jam .bsmash-light[data-state="on"] #beat-kit.art .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="early"] #beat-kit.art .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="late"] #beat-kit.art .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="way-early"] #beat-kit.art .bsmash-light-fill,
+#beat-screen-studio.jam .bsmash-light[data-state="way-late"] #beat-kit.art .bsmash-light-fill { opacity: 0.7; }
+#beat-screen-studio.jam .bsmash-light[data-state="on"] #beat-kit.art .bsmash-light-ring { box-shadow: 0 0 calc(10px + 40px * var(--run)) calc(4px * var(--run)) rgba(88,204,2, calc(0.45 + 0.5 * var(--run))); }
+#beat-screen-studio.jam .bsmash-light.countin #beat-kit.art .bsmash-light-ring,
+#beat-screen-studio.jam .bsmash-light.counting #beat-kit.art .bsmash-light-ring { mix-blend-mode: normal; }
+#beat-screen-studio.jam .bsmash-light.countin #beat-kit.art .bsmash-light-ring { background: rgba(251,247,238,0.9); box-shadow: 0 0 34px 8px rgba(255,75,75,0.55); }
+#beat-screen-studio.jam .bsmash-light.counting #beat-kit.art .bsmash-light-ring { background: rgba(251,247,238,0.9); box-shadow: 0 0 34px 8px rgba(255,200,0,0.55); }
 /* Her box is her speech bubble: in the warm-up it sits right above her head,
    under the band's desk, with its tail pointing at her. */
 #beat-screen-studio.jam:has(#beat-light:not([hidden])) > * { order: 2; }

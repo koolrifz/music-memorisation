@@ -441,8 +441,9 @@ def test_warmup_guide(page):
           and sorted(set(l[1] for l in guide_lit)) == [0, 1, 2, 3], guide_lit[:8])
     check('...and held bars before the shaker win nothing yet', page.evaluate('Object.keys(bsmashBand.parts)') == ['metro'],
           page.evaluate('Object.keys(bsmashBand.parts)'))
-    check('...and before the shaker Tango\'s arms keep still between taps',
-          not page.evaluate("document.getElementById('beat-kit').classList.contains('drumming')"))
+    check('...and before the shaker Tango\'s sticks rest halfway between taps',
+          not page.evaluate("document.getElementById('beat-kit').classList.contains('drumming')")
+          and page.evaluate("document.getElementById('beat-kit').dataset.frame") == 'mid')
     # Keep tapping through bars 3 and 4, or the band (and the story) stops;
     # the last beat before the shaker left quiet, so Tango has room to name it.
     for k in range(7):
@@ -453,10 +454,18 @@ def test_warmup_guide(page):
           and page.evaluate('(bsmashBand.sources.shaker || []).length') > 0)
     check('...and Tango says so', 'shaker' in guide(page), guide(page))
     page.wait_for_timeout(700)
-    arms = page.evaluate("""(() => { const arm = getComputedStyle(document.querySelector('#beat-kit .tango-arm-l'));
-        return [document.getElementById('beat-kit').classList.contains('drumming'), arm.animationName, arm.animationDuration]; })()""")
-    check('...and Tango\'s arms play its quavers: down on the beat, up on the "and", a beat long (Rob, 2026-10-10)',
-          arms == [True, 'tango-groove-l', '0.6s'], arms)
+    # Rob's three pictures, sampled every frame for two beats: where in the
+    # beat each one shows.
+    frames = page.evaluate("""new Promise(done => { const out = [], kit = document.getElementById('beat-kit'), end = performance.now() + 1300;
+        const look = () => { out.push([(((bsmashHeardNow() - bsmashBand.start) / BSMASH_BEAT) % 1 + 1) % 1, kit.dataset.frame]);
+            if (performance.now() < end) requestAnimationFrame(look); else done(out); };
+        requestAnimationFrame(look); })""")
+    seen = sorted(set(f for _, f in frames))
+    down_ok = all(x < 0.22 or x > 0.96 for x, f in frames if f == 'down')
+    up_ok = all(0.3 < x < 0.76 for x, f in frames if f == 'up')
+    check('...and Tango\'s sticks play its quavers: down on the beat, up on the "and" (Rob, 2026-10-10; his three pictures)',
+          seen == ['down', 'mid', 'up'] and down_ok and up_ok and page.evaluate("document.getElementById('beat-kit').classList.contains('art')"),
+          [seen, down_ok, up_ok, frames[:12]])
     # Two bars held now: the drums, and the tick hands them the beat.
     for k in range(8):
         press_at(page, None, start + 5 * 2.4 + k * 0.6 + 0.04, index=k % 4)
@@ -596,14 +605,28 @@ def test_beat_light(page):
     check('Within 25 ms of their own beat: the pocket, the light beats twice (lub-dub) instead of once',
           pocket['dead'] == ['on', True, False] and pocket['early'] == ['on', True] and pocket['green'] == ['on', False, True]
           and pocket['count'] == 2, pocket)
+    page.wait_for_timeout(500)      # the pocket's beat over: the ring at rest
     size = page.evaluate("""(() => { const r = document.querySelector('#beat-light .bsmash-light-ring').getBoundingClientRect(),
-        k = document.getElementById('beat-kit').getBoundingClientRect(), head = document.getElementById('beat-tango-head').getBoundingClientRect(),
+        kit = document.getElementById('beat-kit'), k = kit.getBoundingClientRect(), head = KR.artPlaces['beat.kit.warmup'].head,
+        img = kit.querySelector('.bsmash-kit-art img[data-frame="' + kit.dataset.frame + '"]'),
         g = document.querySelector('#beat-studio-guide .kr-guide-text').getBoundingClientRect(),
         p = document.getElementById('beat-pads').getBoundingClientRect(); return { ring: r.width, kit: k.width, gap: p.top - k.bottom, width: innerWidth,
-        tangoAbove: head.bottom <= r.top + 0.3 * r.height, bubble: head.top - g.bottom }; })()""")
-    check('The light is the kick drum of a whole kit, Tango sitting behind it, the pads right under it (Rob: "get the rest of the drum kit there")',
-          size['kit'] >= 0.7 * size['width'] and 0.3 * size['kit'] <= size['ring'] <= 0.4 * size['kit'] and size['tangoAbove'] and 0 <= size['gap'] < 60, size)
+        art: kit.classList.contains('art'), shown: !!img && getComputedStyle(img).visibility === 'visible' && img.complete && img.naturalWidth > 0,
+        drawing: getComputedStyle(kit.querySelector('.bsmash-kit-back')).display,
+        onHead: Math.max(Math.abs(r.left - (k.left + head.left * k.width)), Math.abs(r.top - (k.top + head.top * k.height)), Math.abs(r.width - head.width * k.width)),
+        bubble: k.top - g.bottom }; })()""")
+    check('The light is the kick drum of Rob\'s picture of Tango at her kit, the pads right under it',
+          size['art'] and size['shown'] and size['drawing'] == 'none' and size['kit'] >= 0.7 * size['width']
+          and 0.3 * size['kit'] <= size['ring'] <= 0.4 * size['kit'] and 0 <= size['gap'] < 60, size)
+    check('...the light lying exactly over his kick drum\'s head (KR.artPlaces)', size['onHead'] < 2, size)
     check('...and her box is her speech bubble, right above her head', 0 <= size['bubble'] < 40, size)
+    # Asked of the frame picker directly: away from the shaker and the count-in.
+    frame = ("(bsmash.jam.shaker = false, document.getElementById('beat-light').classList.remove('countin'),"
+             " bsmashKitFrame(0), document.getElementById('beat-kit').dataset.frame)")
+    hit = [page.evaluate("bsmashJamLight(0.05, true); " + frame)]
+    page.wait_for_timeout(400)
+    hit.append(page.evaluate(frame))
+    check('A tap the light shows brings her sticks down, then back to halfway', hit == ['down', 'mid'], hit)
     talking = "document.getElementById('beat-screen-studio').classList.contains('talking')"
     page.evaluate("KR.say('beat.line.locked.1', { speaker: 'tango', silent: true })")
     page.wait_for_timeout(50)
@@ -959,8 +982,10 @@ def test_verdict_reasons(page):
     page.wait_for_timeout(150)
     ring = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
         const reading = document.getElementById('beat-reading').getBoundingClientRect();
-        const box = r.getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect();
-        return { shown: !r.hidden, n: r.firstChild.textContent, clear: box.top >= reading.bottom && box.bottom <= pads.top + 8,
+        const box = r.getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect(), coach = document.getElementById('beat-coach');
+        // Clear of the music (above it when the musician is on screen, below it when not), of the musician, and of the pads.
+        return { shown: !r.hidden, n: r.firstChild.textContent, clear: (box.bottom <= reading.top + 1 || box.top >= reading.bottom) && box.bottom <= pads.top + 8
+                     && (coach.hidden || box.top >= coach.getBoundingClientRect().bottom - 1),
                  pad: document.querySelectorAll('#beat-pads .krpad.countin').length }; })()""")
     check('The count-in: 1 2 3 4 in a red ring in the empty middle, clear of the music, the pad lit red',
           ring['shown'] and ring['n'] in '1234' and ring['clear'] and ring['pad'] == 1, ring)
@@ -2281,12 +2306,25 @@ def test_wait_for_count(page):
     sign = page.evaluate("""(() => { const r = document.getElementById('beat-countin');
         return { shown: !r.hidden, wait: r.classList.contains('wait'), word: r.innerText, dim: document.getElementById('beat-pads').classList.contains('waiting') }; })()""")
     check('Before the count: a WAIT sign in the middle, the pads dimmed', sign['shown'] and sign['wait'] and 'count' in sign['word'].lower() and sign['dim'], sign)
+    laid = page.evaluate("""(() => { const box = id => document.getElementById(id).getBoundingClientRect(), coach = document.getElementById('beat-coach');
+        return { coach: !coach.hidden, src: coach.querySelector('img').getAttribute('src'), coachBottom: box('beat-coach').bottom,
+                 sign: [box('beat-countin').top, box('beat-countin').bottom], reading: [box('beat-reading').top, box('beat-reading').bottom], pads: box('beat-pads').top,
+                 drawn: !document.getElementById('beat-tango-sign').hasAttribute('hidden') }; })()""")
+    check('Rob\'s Tango at her kit is on screen above the music; the sign stands alone between her and the music',
+          laid['coach'] and 'tango-kit-mid' in laid['src'] and laid['coachBottom'] <= laid['sign'][0] and laid['sign'][1] <= laid['reading'][0]
+          and not laid['drawn'], laid)
+    check('...and the music sits just above the pads (Rob: "so their eyes don\'t have to cover so much distance")',
+          0 <= laid['pads'] - laid['reading'][1] < 24, laid)
+    # The drawing, while there are no pictures: the drawn Tango holds it up.
+    page.evaluate("window.keptArt = Object.assign({}, KR.art); delete KR.art['beat.kit.warmup.mid']; delete KR.art['beat.coach.drums']; bsmashPlaceCoach(); bsmashWaitSign(2)")
+    page.wait_for_timeout(100)
     held = page.evaluate("""(() => { const t = document.getElementById('beat-tango-sign'), r = document.getElementById('beat-countin').getBoundingClientRect(),
         b = t.getBoundingClientRect(), paw = t.querySelector('.tango-sign-arm circle').getBoundingClientRect(), pads = document.getElementById('beat-pads').getBoundingClientRect();
         return { shown: !t.hasAttribute('hidden'), pawX: paw.left + paw.width / 2 - (r.left + r.width / 2), pawBelow: paw.top - r.bottom,
                  headBelow: t.querySelector('.tango-sign-head').getBoundingClientRect().top - r.bottom, clear: b.bottom <= pads.top + 8 }; })()""")
-    check('Tango holds the sign up: her paw on its stick, her head clear of it, above the pads (Rob: "She can whip out a white sign")',
+    check('With no pictures, the drawn Tango holds the sign up: her paw on its stick, her head clear of it, above the pads',
           held['shown'] and abs(held['pawX']) < 4 and 0 < held['pawBelow'] < 70 and held['headBelow'] >= 0 and held['clear'], held)
+    page.evaluate("KR.art = window.keptArt; bsmashPlaceCoach(); bsmashWaitSign(3)")
     take = wait_for_take(page)
     beat = take['beat']
     # Jump in on the count-in's first and third beats, as the class did.
@@ -2412,6 +2450,66 @@ def test_coach_briefing(page):
           early == [False, True] and page.is_visible('#beat-rules-go') and 'rules' in guide(page).lower(), [early, guide(page)])
 
 
+def test_coach_art(browser):
+    """Rob's pictures of the musicians (2026-10-10): in each musician's steps
+    their picture sits above the music, smaller as the bars grow, the music
+    just above the pads and the WAIT sign between; a song can have its own
+    picture; none in the studio. On a phone, a small phone, an iPad and a
+    Chromebook, with nothing to scroll."""
+    guest = ("localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true, song: 'c-1-4-1-5',"
+             " musicians: { drums: { plays: 1 }, bass: { plays: 1 }, keys: { plays: 1 } } }));")
+    measure = """(() => { const box = id => { const e = document.getElementById(id); return e.hidden ? null : e.getBoundingClientRect(); };
+        const s = document.getElementById('beat-screen-studio'), coach = document.getElementById('beat-coach'), img = coach.querySelector('img');
+        const c = box('beat-coach'), sign = box('beat-countin'), r = box('beat-reading'), p = box('beat-pads');
+        return { coach: c && [c.top, c.bottom], src: img.getAttribute('src'), loaded: img.complete && img.naturalWidth > 0,
+                 sign: sign && [sign.top, sign.bottom], reading: [r.top, r.bottom], pads: p.top, onPads: document.getElementById('beat-pads').getAttribute('data-wait') || '',
+                 scroll: s.scrollHeight - s.clientHeight }; })()"""
+
+    def step(page, who, n):
+        page.evaluate("startBeatMusician('%s', false, %d)" % (who, n))
+        page.wait_for_function("bsmash && (bsmash.phase === 'wait' || bsmash.phase === 'ready')", timeout=15000)
+        page.wait_for_timeout(500)
+        return page.evaluate(measure)
+
+    page = new_page(browser, PHONE)
+    fresh(page, guest)
+    page.click('.game-card.red')
+    page.wait_for_timeout(300)
+    seen = {who: step(page, who, 1) for who in ('drums', 'bass', 'keys')}
+    check('Each musician\'s own picture in their steps: Tango at her kit, Riff on the double bass, Riff at the keys',
+          'tango-kit-mid' in seen['drums']['src'] and 'riff-double-bass' in seen['bass']['src'] and 'riff-keys' in seen['keys']['src']
+          and all(v['coach'] and v['loaded'] for v in seen.values()), {k: v['src'] for k, v in seen.items()})
+    heights = [step(page, 'bass', n)['coach'] for n in (1, 2, 3)]
+    heights = [h and round(h[1] - h[0]) for h in heights]
+    check('...and the musician gets smaller as the bars grow (Rob: "each time we add another row of notation, Riff gets smaller")',
+          all(heights) and heights[0] > heights[1] > heights[2], heights)
+    page.evaluate("KR.art['beat.coach.bass.c-1-4-1-5'] = 'art/riff-keys.webp'")
+    own = step(page, 'bass', 1)
+    page.evaluate("delete KR.art['beat.coach.bass.c-1-4-1-5']")
+    check('A song can have its own picture (beat.coach.<musician>.<song>)', 'riff-keys' in own['src'], own['src'])
+    studio = step(page, 'drums', 5)
+    check('...and none in the studio: 32 bars need the room', studio['coach'] is None
+          and not page.evaluate("document.getElementById('beat-screen-studio').classList.contains('coached')"), studio)
+    page.close()
+
+    for size in (PHONE, {'width': 360, 'height': 640}, {'width': 820, 'height': 1180}, {'width': 1366, 'height': 657}):
+        page = new_page(browser, size)
+        fresh(page, guest)
+        page.click('.game-card.red')
+        page.wait_for_timeout(300)
+        for who, n in (('drums', 1), ('bass', 2), ('keys', 3)):
+            m = step(page, who, n)
+            if m['coach']:     # the picture, the WAIT, then the music just above the pads
+                stacked = (m['sign'] is None or m['coach'][1] <= m['sign'][0] + 1 and m['sign'][1] <= m['reading'][0] + 1) \
+                    and 0 <= m['pads'] - m['reading'][1] < 24
+            else:              # no room for the picture: the music, the WAIT, the pads, as before
+                stacked = m['sign'] is None or m['reading'][1] <= m['sign'][0] + 1 and m['sign'][1] <= m['pads'] + 9
+            check('%dx%d, %s %d: the picture if there is room, the WAIT, the music, the pads, nothing to scroll'
+                  % (size['width'], size['height'], who, n),
+                  m['scroll'] <= 1 and stacked and (m['sign'] or 'count' in m['onPads'].lower()), m)
+        page.close()
+
+
 def main():
     server = serve()
     with sync_playwright() as p:
@@ -2451,6 +2549,7 @@ def main():
         page.close()
         test_layout(browser)
         test_studio_layout(browser)
+        test_coach_art(browser)
         browser.close()
     server.shutdown()
     check('No script errors', not errors, errors[:3])
