@@ -1093,7 +1093,7 @@ function bsmashRenderReading() {
     reading.scrollTop = 0;
     bsmash.layout = [];
     const bars = bsmash.specs;
-    if (!bars || !bars.length) return;
+    if (!bars || !bars.length) return bsmashPlaceCoach();
     const width = Math.max(240, reading.clientWidth || 340);
     // Eighth notes in the picture need the room: one bar to a line on a phone.
     const roomy = bsmashPerBeat() > 1 && bsmash.mode === 'steps' && bsmashPictureStep();
@@ -1146,6 +1146,7 @@ function bsmashRenderReading() {
     const phoneLines = window.innerHeight < BSMASH_SHORT_SCREEN ? BSMASH_PAGE_LINES_SHORT : BSMASH_PAGE_LINES_PHONE;
     bsmash.page = { lines: lines, perLine: perLine, size: Math.min(lines.length, perLine === 2 ? phoneLines : BSMASH_PAGE_LINES_WIDE), at: -1 };
     bsmashTurnPage(0);
+    bsmashPlaceCoach();
 }
 
 /* A LONG TAKE TURNS ITS PAGES. Rob: "If we can make 12 or 16 bars I would be
@@ -1403,8 +1404,11 @@ function bsmashPlaceCountIn(ring, waiting) {
     // the studio's control room and transport (it sat on Pause and Stop).
     const above = [reading, bsmashEl('beat-take-stats'), bsmashEl('beat-control'), bsmashEl('beat-transport')]
         .filter(el => el && !el.hidden && el.offsetHeight);
-    const top = Math.max(...above.map(el => el.offsetTop + el.offsetHeight));
-    const bottom = bsmashEl('beat-pads').offsetTop + 8;
+    let top = Math.max(...above.map(el => el.offsetTop + el.offsetHeight));
+    let bottom = bsmashEl('beat-pads').offsetTop + 8;
+    // The musician on screen: the sign goes between the picture and the music.
+    const coach = bsmashEl('beat-coach');
+    if (coach && !coach.hidden) { top = coach.offsetTop + coach.offsetHeight; bottom = reading.offsetTop; }
     // The sign with Tango under it if they fit; else the sign alone; else
     // nothing here (the pads say it: bsmashWaitSign).
     const fit = withTango => {
@@ -1412,8 +1416,11 @@ function bsmashPlaceCountIn(ring, waiting) {
         const extra = withTango ? BSMASH_TANGO_SIGN_GRIP : 0;
         return { tall: tall, extra: extra, size: Math.min(BSMASH_COUNTIN_MAX, (bottom - top - 16 - extra) / tall) };
     };
-    let place = fit(!!waiting);
-    ring.noTango = !waiting;
+    // The drawn Tango holds the sign only while the drawing is all there is:
+    // with Rob's pictures in, the sign stands alone (his Tango is at her kit).
+    const drawn = !!waiting && !bsmashKitArtIn();
+    let place = fit(drawn);
+    ring.noTango = !drawn;
     if (waiting && place.size < BSMASH_COUNTIN_MIN) { place = fit(false); ring.noTango = true; }
     const { tall, extra, size } = place;
     ring.sized = size >= BSMASH_COUNTIN_MIN;
@@ -1643,6 +1650,7 @@ function bsmashFrame() {
     }
     if (bsmash.take && !bsmash.take.done) bsmashTakeFrame();
     if (bsmash.phase === 'playback') bsmashFollowPlayback();
+    if (bsmash.mode === 'jam') bsmashKitFrame(heard);
 }
 
 function bsmashOnBeat(beat) {
@@ -1742,6 +1750,8 @@ function startBeatJam() {
     bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-light').hidden = false;
     bsmashEl('beat-light').dataset.state = 'idle';
+    bsmashKitArt();
+    bsmashPlaceCoach();
     bsmashWatchTango();
     // The tick alone: the band's clock runs, and nobody is playing yet.
     bsmashBandStart({ metro: BSMASH_GUIDE_PARTS.metro });
@@ -2138,6 +2148,111 @@ function bsmashTangoGroove(on) {
     kit.classList.add('drumming');
 }
 
+/* ROB'S PICTURES OF TANGO AT THE KIT (2026-10-10: "The three Tango
+   positions for her entrance on Beat Smash... sticks up, sticks halfway
+   down, sticks down"). With all three in content/art.js, they take the
+   place of the drawing: bsmashKitArt() puts them in and lays the light over
+   his kick drum's head (KR.artPlaces says where it is in the picture), and
+   bsmashKitFrame() picks the frame every animation frame, from the beat as
+   it is heard. Once the shaker plays (and through the count-in) her sticks
+   come down on the beat and go up on the "and", as the drawing's arms did;
+   otherwise they rest halfway (she talks from there) and come down on every
+   tap the light shows, twice for the pocket. */
+const BSMASH_KIT_FRAMES = ['up', 'mid', 'down'];
+function bsmashKitArtIn() {
+    return !!(KR.artPlaces && KR.artPlaces['beat.kit.warmup']) && BSMASH_KIT_FRAMES.every(frame => KR.art['beat.kit.warmup.' + frame]);
+}
+
+function bsmashKitArt() {
+    const kit = bsmashEl('beat-kit');
+    const place = KR.artPlaces && KR.artPlaces['beat.kit.warmup'];
+    const on = bsmashKitArtIn();
+    kit.classList.toggle('art', on);
+    const ring = kit.querySelector('.bsmash-light-ring');
+    if (!on) { kit.style.aspectRatio = ring.style.left = ring.style.top = ring.style.width = ''; return; }
+    kit.querySelectorAll('.bsmash-kit-art > img').forEach(img => {
+        const src = KR.art['beat.kit.warmup.' + img.dataset.frame];
+        if (img.getAttribute('src') !== src) img.src = src;
+    });
+    kit.style.aspectRatio = String(place.aspect);
+    ring.style.left = (place.head.left * 100) + '%';
+    ring.style.top = (place.head.top * 100) + '%';
+    ring.style.width = (place.head.width * 100) + '%';
+    kit.dataset.frame = 'mid';
+}
+
+function bsmashKitFrame(heard) {
+    const kit = bsmashEl('beat-kit');
+    if (!kit || !kit.classList.contains('art')) return;
+    const jam = bsmash.jam;
+    let frame = 'mid';
+    if ((jam.shaker && !jam.stopped) || bsmashEl('beat-light').classList.contains('countin')) {
+        const f = ((((heard - bsmashBand.start) / BSMASH_BEAT) % 1) + 1) % 1;
+        frame = f < 0.16 ? 'down' : f < 0.36 ? 'mid' : f < 0.7 ? 'up' : 'mid';
+    } else if (jam.kitHit) {
+        // down, then halfway: a tap; down, halfway, down, halfway: the pocket
+        const since = performance.now() - jam.kitHit.at;
+        const steps = jam.kitHit.pocket ? [90, 150, 240, 320] : [140, 230];
+        const step = steps.findIndex(ms => since < ms);
+        frame = step >= 0 && step % 2 === 0 ? 'down' : 'mid';
+    }
+    if (kit.dataset.frame !== frame) kit.dataset.frame = frame;
+}
+
+/* THE MUSICIAN ON SCREEN (Rob, 2026-10-10: "During the bass and the keyboard
+   session, we should have Riff there... the music down very low, building
+   upward, starting just above where the buttons are... then above that could
+   be Riff on the bass. And each time we add another row of notation, Riff
+   gets smaller"). In a musician's steps (one to eight bars) their picture
+   sits under the desk and the music drops to just above the pads; the WAIT
+   sign and the count-in go in the space between. The picture is the song's
+   own if there is one ('beat.coach.<musician>.<song>'), else the musician's.
+   It takes at most BSMASH_COACH_SHARE of the screen's height, less as the
+   bars grow, and only what is left once the music and the sign have their
+   room; under BSMASH_COACH_MIN px it steps out. Not in the warm-up (Tango
+   is at her kit) and not in the studio (32 bars need the room). */
+const BSMASH_COACH_SHARE = { 1: 0.30, 2: 0.26, 4: 0.20, 8: 0.14 };
+const BSMASH_COACH_MIN = 90;                                   // px
+const BSMASH_COACH_SIGN_ROOM = BSMASH_COUNTIN_MIN + 44;         // px kept for the WAIT sign under the picture
+function bsmashCoachArt() {
+    if (!bsmash || bsmash.mode !== 'steps' || bsmash.step === BSMASH_STUDIO_STEP) return null;
+    const id = bsmash.musician.id;
+    return KR.art['beat.coach.' + id + '.' + bsmash.song] || KR.art['beat.coach.' + id] || null;
+}
+
+function bsmashPlaceCoach() {
+    const coach = bsmashEl('beat-coach');
+    const screen = bsmashEl('beat-screen-studio');
+    if (!coach) return;
+    // Sized again whenever the words, the music or the screen change size.
+    if (!coach.watched && window.ResizeObserver) {
+        coach.watched = true;
+        const watch = new ResizeObserver(() => { if (bsmash) bsmashPlaceCoach(); });
+        watch.observe(bsmashEl('beat-reading'));
+        watch.observe(bsmashEl('beat-studio-guide'));     // the coach's words, above
+        window.addEventListener('resize', () => { if (bsmash) bsmashPlaceCoach(); });
+    }
+    const art = bsmashCoachArt();
+    const img = coach.querySelector('img');
+    if (art && img.getAttribute('src') !== art) img.src = art;
+    // Measured with no picture: the music's own margin then holds all the
+    // room there is above it.
+    coach.style.height = '0px';
+    coach.hidden = !art;
+    screen.classList.toggle('coached', !!art);
+    if (!art) return;
+    const reading = bsmashEl('beat-reading');
+    const room = reading.offsetTop - coach.offsetTop - BSMASH_COACH_SIGN_ROOM;
+    const share = BSMASH_COACH_SHARE[Math.min(8, (bsmash.bars || [0]).length)] || BSMASH_COACH_SHARE[8];
+    const height = Math.floor(Math.min(room, window.innerHeight * share));
+    if (height < BSMASH_COACH_MIN) {
+        coach.hidden = true;
+        screen.classList.remove('coached');
+        return;
+    }
+    coach.style.height = height + 'px';
+}
+
 // Tango talks while a line of hers is new in the box, at her kit or under the
 // WAIT sign: her mouth moves for about as long as the line takes to say (Rob:
 // "she's sitting there with you looking at you and talking to you"). Riff's
@@ -2179,6 +2294,7 @@ function bsmashJamLight(d, onBeat) {
     // Green throbs once; in the pocket it beats twice, like a heart.
     const pocket = state === 'on' && Math.abs(d) <= BSMASH_LIGHT_POCKET_MS / 1000;
     if (pocket) jam.pockets++;
+    jam.kitHit = { at: performance.now(), pocket: pocket };
     light.classList.remove('hit', 'pocket');
     void light.offsetWidth;
     light.classList.add(pocket ? 'pocket' : 'hit');
