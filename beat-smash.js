@@ -1293,6 +1293,10 @@ function bsmashWaitNudge() {
     ring.classList.remove('nudge');
     void ring.offsetWidth;
     ring.classList.add('nudge');
+    const tango = bsmashEl('beat-tango-sign');
+    tango.classList.remove('nudge');
+    void tango.offsetWidth;
+    tango.classList.add('nudge');
     const pads = bsmashEl('beat-pads');
     pads.classList.remove('nudge');
     void pads.offsetWidth;
@@ -1310,15 +1314,17 @@ function bsmashWaitSign(left) {
     bsmashEl('beat-pads').classList.toggle('waiting', waiting);
     if (!waiting) {
         if (ring.classList.contains('wait')) { ring.classList.remove('wait'); ring.hidden = true; }
+        bsmashEl('beat-tango-sign').toggleAttribute('hidden', true);
         return;
     }
-    bsmashPlaceCountIn(ring);              // the music above it changes size between roll and take
+    bsmashPlaceCountIn(ring, true);        // the music above it changes size between roll and take
     if (!ring.classList.contains('wait')) {
         ring.classList.add('wait');
         ring.firstChild.textContent = KR.t('beat.wait.icon');
         ring.querySelector('.bsmash-countin-word').textContent = KR.t('beat.wait.sign');
     }
     ring.hidden = !ring.sized;
+    bsmashTangoSign(ring);
     const dots = ring.querySelector('.bsmash-countin-dots');
     dots.innerHTML = '';
     for (let i = 0; i < Math.min(4, Math.max(0, left)); i++) bsmashMake('span', 'bsmash-countin-dot', dots);
@@ -1327,7 +1333,7 @@ function bsmashWaitSign(left) {
 function bsmashCountIn(n) {
     const ring = bsmashEl('beat-countin');
     if (n === null) { if (!ring.classList.contains('wait')) ring.hidden = true; return; }
-    if (ring.classList.contains('wait')) { ring.classList.remove('wait'); bsmashEl('beat-pads').classList.remove('waiting'); }
+    if (ring.classList.contains('wait')) { ring.classList.remove('wait'); bsmashEl('beat-pads').classList.remove('waiting'); bsmashEl('beat-tango-sign').toggleAttribute('hidden', true); }
     if (n === 1) bsmashPlaceCountIn(ring);
     if (!ring.sized) return;
     ring.hidden = false;
@@ -1338,17 +1344,48 @@ function bsmashCountIn(n) {
 }
 
 // Centre the ring in the gap above the pads, as large as the gap allows.
-function bsmashPlaceCountIn(ring) {
+// While it is the WAIT sign, Tango stands under it holding it up, so the sign
+// and Tango together are what has to fit (BSMASH_TANGO_SIGN_* are her
+// drawing's proportions against the sign).
+function bsmashPlaceCountIn(ring, waiting) {
     const reading = bsmashEl('beat-reading');
     const above = [reading, bsmashEl('beat-take-stats')].filter(el => el && !el.hidden && el.offsetHeight);
     const top = Math.max(...above.map(el => el.offsetTop + el.offsetHeight));
     const bottom = bsmashEl('beat-pads').offsetTop + 8;
-    const size = Math.min(BSMASH_COUNTIN_MAX, bottom - top - 16);
+    const tall = waiting ? BSMASH_TANGO_SIGN_TALL : 1;
+    const extra = waiting ? BSMASH_TANGO_SIGN_GRIP : 0;
+    const size = Math.min(BSMASH_COUNTIN_MAX, (bottom - top - 16 - extra) / tall);
     ring.sized = size >= BSMASH_COUNTIN_MIN;
     if (!ring.sized) return;
-    ring.style.width = ring.style.height = size + 'px';
-    ring.style.top = Math.round(top + (bottom - top - size) / 2) + 'px';
+    ring.style.width = ring.style.height = Math.round(size) + 'px';
+    ring.style.top = Math.round(top + (bottom - top - size * tall - extra) / 2) + 'px';
     ring.style.fontSize = Math.round(size * 0.55) + 'px';
+}
+
+// Tango under the WAIT sign: her raised paw on its stick, BSMASH_TANGO_SIGN_GRIP
+// px below the sign, so her head clears it. Her drawing is 160 x 220 with the
+// paw at (16, 72), and she stands BSMASH_TANGO_SIGN_SCALE times as tall as
+// the sign is wide.
+const BSMASH_TANGO_SIGN_GRIP = 56;
+const BSMASH_TANGO_SIGN_SCALE = 1.3;
+const BSMASH_TANGO_SIGN_TALL = 1 + BSMASH_TANGO_SIGN_SCALE * (220 - 72) / 220;   // the sign, then her below the paw
+function bsmashTangoSign(ring) {
+    const tango = bsmashEl('beat-tango-sign');
+    tango.toggleAttribute('hidden', ring.hidden);   // an svg has no .hidden property: the attribute it is
+    if (ring.hidden) return;
+    const head = tango.querySelector('.tango-sign-head');
+    if (!head.firstChild) {
+        const copy = bsmashEl('beat-tango-head').cloneNode(true);
+        copy.removeAttribute('id');
+        copy.setAttribute('transform', 'translate(-112 -12)');
+        head.appendChild(copy);
+    }
+    const size = ring.offsetWidth, tall = size * BSMASH_TANGO_SIGN_SCALE, wide = tall * 160 / 220;
+    tango.style.width = wide + 'px';
+    tango.style.height = tall + 'px';
+    bsmashWatchTango();
+    tango.style.left = Math.round(ring.offsetLeft - wide * 16 / 160) + 'px';   // the ring's left is its centre: it is drawn at translateX(-50%)
+    tango.style.top = Math.round(ring.offsetTop + size + BSMASH_TANGO_SIGN_GRIP - tall * 72 / 220) + 'px';
 }
 
 function bsmashPictureCursor(takeBeat) {
@@ -1681,6 +1718,7 @@ function startBeatJam() {
     bsmashEl('beat-jam-coming').hidden = true;
     bsmashEl('beat-light').hidden = false;
     bsmashEl('beat-light').dataset.state = 'idle';
+    bsmashWatchTango();
     bsmashDiceHide();
     // The tick alone: the band's clock runs, and nobody is playing yet.
     bsmashBandStart({ metro: BSMASH_GUIDE_PARTS.metro });
@@ -2059,6 +2097,25 @@ function bsmashJamPress(p) {
 
 // The beat light for one tap. d: seconds from the student's own beat, minus
 // early. Returns the state: 'on', 'early', 'late', 'way-early', 'way-late'.
+// Tango talks while a line of hers is new in the box, at her kit or under the
+// WAIT sign: her mouth moves for about as long as the line takes to say (Rob:
+// "she's sitting there with you looking at you and talking to you"). Riff's
+// lines leave her quiet.
+let bsmashTalkTimer = null;
+function bsmashWatchTango() {
+    const text = document.querySelector('#beat-studio-guide .kr-guide-text');
+    if (!text || text.watched) return;
+    text.watched = true;
+    new MutationObserver(() => {
+        const screen = bsmashEl('beat-screen-studio');
+        const words = text.textContent.trim().split(/\s+/).filter(Boolean).length;
+        clearTimeout(bsmashTalkTimer);
+        if (!words || KR.lastSpeaker !== 'tango') return screen.classList.remove('talking');
+        screen.classList.add('talking');
+        bsmashTalkTimer = setTimeout(() => screen.classList.remove('talking'), Math.min(6000, 400 + words * 330));
+    }).observe(text, { childList: true, characterData: true, subtree: true });
+}
+
 function bsmashJamLight(d, onBeat) {
     const jam = bsmash.jam;
     const green = BSMASH_LIGHT_GREEN_MS[bsmashAge()] / 1000;

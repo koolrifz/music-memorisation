@@ -1683,6 +1683,12 @@ Smash's players list. Beat Smash adds an **age** to a player.
   once a roll (`beat.take.wait`). A press within the first note's grace is
   still that note, early: anticipating beat 1 is playing, not jumping in.
   Early taps are counted in `bsmash.jumped` (not yet in the teacher's report).
+  **Tango holds the sign up** (Rob, 2026-10-09: *"She can whip out a white
+  sign"*): she stands under it, her raised paw on its stick, like a lollipop
+  lady (`#beat-tango-sign`, `bsmashTangoSign()`; her head is a copy of the
+  one at her kit). The sign and Tango are sized to fit the gap together
+  (`BSMASH_TANGO_SIGN_*`); on a tap too soon the sign waves in her paw and
+  she hops. She puts it away at the count-in.
 - **EVERY PHRASE ENDS ON A DOUBLE BAR LINE, AND THE TAKE STOPS THERE** (Rob,
   2026-10-09: *"after tapping for minutes on just the beat... they will always
   tap more than the four beats. We need to put a double bar line, a final bar
@@ -2325,20 +2331,48 @@ because that makes the music go."*
 - **It fills the middle, and the pads sit right under it** (Rob, 2026-10-08:
   *"take that circle in the middle and open it right up... right in your face
   pulsing, pulsing, pulsing, and then those buttons aren't too far away from
-  it... It should all be very intimate"*). In the jam the ring is the width
-  less room for "early" and "late", 38% of the height, or 520 px, whichever is
-  smallest: 507 px on an iPad (it was 120), about 240 on a phone; the light,
-  the meter and the pads are one group, centred under the desk, about 20–30 px
-  apart. When "Show me what I played" or the stop menu shows, it shrinks to
-  28% of the height to make room (measured: nothing scrolls at 820×1180,
-  390×844, 360×640 or 1366×657, with or without them).
+  it... It should all be very intimate"*). The light, the meter and the pads
+  are one group, the pads about 20–30 px under it. Its size is now the kit's:
+  see "TANGO AT HER KIT" below.
 - **It is a BASS DRUM HEAD** (Rob chose it from the branding ideas,
-  2026-10-09): a cream head, a chrome hoop, sixteen tension lugs round the
-  rim, and "Kool Riffs" across it in red (`beat.drum.logo`), as on a kit's
-  front head. The green, yellow and red fill the head when a tap lands; the
-  logo hides while a number is counted on it. CSS only, on
+  2026-10-09): a cream head, a chrome hoop, eight tension lugs round the rim,
+  and "Kool Riffs" across it in red (`beat.drum.logo`), as on a kit's front
+  head. The green, yellow and red fill the head when a tap lands; the logo
+  hides while a number is counted on it. On
   `#beat-screen-studio.jam .bsmash-light-ring`; the reading steps' count-in
   ring is unchanged.
+- **TANGO AT HER KIT** (Rob, 2026-10-09: *"if you're going to have a kick
+  drum there... let's get the rest of the drum kit there and you could even
+  have Tango sitting behind the drum set and that's what she's giving
+  instructions... she's sitting there with you looking at you and talking to
+  you... just make the size of the orb smaller... that empty space is waiting
+  for something"*). The kick drum is the front of a whole kit: hi-hat, snare,
+  two rack toms, floor tom, crash and ride, and **Tango sitting behind it**,
+  looking straight at the student, sticks in hand (`#beat-kit`, two SVG
+  layers in `index.html` either side of the light: what is behind the kick
+  drum, then the light, then her arms and sticks in front).
+  - **The kit is drawn on a 400 × 330 grid** and the light is placed in the
+    same proportions (left 32%, top 52.4%, 36% wide), so it lands on the
+    drawing at every size. The kit is the screen's width less a gutter, 45%
+    of its height or 600 px, whichever is smallest (34% of the height when
+    "Show me what I played" or the stop menu needs room); the kick drum is
+    36% of that: about 130 px on a phone, 190 on an iPad. Measured: nothing
+    scrolls at 820×1180, 390×844, 360×640 or 1366×657.
+  - **Her box is her speech bubble.** In the warm-up the gold box moves under
+    the band's desk (CSS `order`), right above her head, with a tail pointing
+    at her.
+  - **She is alive, a little**: she blinks; her mouth moves while a line of
+    hers is new in the box (`bsmashWatchTango()`, as long as the line takes
+    to say; `KR.lastSpeaker` in `text.js` says whose line it is, so Riff's
+    lines leave her quiet) and while she counts in; and her sticks come down
+    and her head nods on every tap the light shows, twice for the pocket.
+  - **"Early" and "late"** sit on the floor under the snare and the floor tom,
+    and light up as before.
+  - **A placeholder drawing**, made from shapes to Rob's description (orange
+    cat, red mane, blue vest) until his redrawn art arrives
+    (`kool-riffs-docs/docs/riff-and-tango.md`). The animation hooks are class
+    names on the parts (`tango-head`, `tango-arm-l`, `tango-mouth-open`…), so
+    a new drawing keeps them.
 - **THE POCKET: a heartbeat when it's spot on** (Rob: *"when they're really
   spot on... it throbs, like a heartbeat... not a single pulse, maybe two quick
   ones milliseconds apart, and that's letting them know that that's the
@@ -2416,7 +2450,8 @@ buttons at each moment, under and at the pass mark, the control room, listen
 back and Stop, the same bars every take, Keep to the picker), the pages turning
 over 16 bars, the Permit when the band is complete, the studio's 32 bars on
 three screen sizes,
-waiting for the count (the WAIT sign, the pads dimmed, early taps not counted,
+waiting for the count (the WAIT sign held up by Tango, her paw on the stick
+and her head clear of it, the pads dimmed, early taps not counted,
 the sign shaking and Tango's line, a clean take after), the rules the first
 time (no take until I'm ready, the callout at the double bar, a tap past it
 costing the star, the thick final barline drawn), the verdict's reasons (early, late, rest, one too many, missed, the rest edge,
@@ -2456,7 +2491,9 @@ transposition, every pump rhythm, anticipation, variety, every bass style,
 level, two chords in a bar, the anticipation rule across every song),
 the jam's variations (the dots, the fill, the change on the barline, the drop),
 the beat light (green, early left, late right, way off, the glow, the pocket's
-double beat, big in the middle with the pads right under it) and Tango's
+double beat, the kick drum of Tango's kit with her behind it, her speech
+bubble above her, her mouth moving on her lines and not Riff's, the pads
+right under it) and Tango's
 rushing / dragging coaching, "Follow me" counted in time until order is
 restored (and the encouragement when they stop),
 Riff on bass (his ladder, his voice, a half note let go early and held through,

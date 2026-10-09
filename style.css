@@ -1165,8 +1165,8 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-light[data-state="on"] .bsmash-light-ring { border-color: #8ef04a; box-shadow: 0 0 calc(8px + 40px * var(--run)) calc(2px * var(--run)) rgba(88,204,2, calc(0.45 + 0.5 * var(--run))); }
 .bsmash-light[data-state="early"] .bsmash-light-fill, .bsmash-light[data-state="late"] .bsmash-light-fill { background: #ffc800; opacity: 1; }
 .bsmash-light[data-state="way-early"] .bsmash-light-fill, .bsmash-light[data-state="way-late"] .bsmash-light-fill { background: #ff4b4b; opacity: 1; }
-.bsmash-light[data-state="early"] .bsmash-light-word:first-child, .bsmash-light[data-state="late"] .bsmash-light-word:last-child { color: #ffc800; }
-.bsmash-light[data-state="way-early"] .bsmash-light-word:first-child, .bsmash-light[data-state="way-late"] .bsmash-light-word:last-child { color: #ff4b4b; }
+.bsmash-light[data-state="early"] .bsmash-light-word.early, .bsmash-light[data-state="late"] .bsmash-light-word.late { color: #ffc800; }
+.bsmash-light[data-state="way-early"] .bsmash-light-word.early, .bsmash-light[data-state="way-late"] .bsmash-light-word.late { color: #ff4b4b; }
 .bsmash-light-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 900; color: #ffc800; text-shadow: 0 2px 0 #10171f, 0 0 12px rgba(16,23,31,0.9); pointer-events: none; }
 .bsmash-light.counting .bsmash-light-ring { border-color: #ffc800; }
 /* The warm-up's count-in: red, as the reading steps' count-in is (the recording light). */
@@ -1198,7 +1198,6 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
    space under the desk. Its side is whatever is smallest: the width less
    room for "early" and "late", 38% of the height, or 520 px. */
 #beat-screen-studio.jam .bsmash-light { margin: auto auto 10px; }
-#beat-screen-studio.jam .bsmash-light-ring { width: min(calc(100vw - 190px), 38vh, 520px); height: auto; aspect-ratio: 1; border-width: 6px; container-type: inline-size; }
 /* THE BASS DRUM HEAD (Rob, 2026-10-09: "go with the bass drum head"). In the
    warm-up the big light is the front of Tango's kick drum: a cream head in a
    chrome hoop with its tension lugs, and the band's name printed across it,
@@ -1210,7 +1209,6 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
     border: 0;
     box-shadow: 0 0 0 7px #e6ebf0, 0 0 0 10px #8e9aa6, 0 0 0 13px #c9d2db, 0 10px 30px rgba(0,0,0,0.5);
     overflow: visible;
-    margin: 0 18px;                /* the hoop and its lugs reach 17 px outside: clear of "early" and "late" */
 }
 /* The tension lugs: eight, round the hoop. */
 #beat-screen-studio.jam .bsmash-light-ring::before {
@@ -1239,10 +1237,58 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #beat-screen-studio.jam .bsmash-light-count { color: #1a2634; text-shadow: none; }
 #beat-screen-studio.jam .bsmash-light.countin .bsmash-light-count { color: #d32f2f; }
 #beat-screen-studio.jam .bsmash-light[data-state="on"] .bsmash-light-ring { box-shadow: 0 0 0 7px #e6ebf0, 0 0 0 10px #8e9aa6, 0 0 0 13px #c9d2db, 0 0 calc(10px + 40px * var(--run)) calc(4px * var(--run)) rgba(88,204,2, calc(0.45 + 0.5 * var(--run))); }
-/* With "Show me what I played" or the stop menu on screen, it gives them room. */
-#beat-screen-studio.jam:has(#beat-jam-next:not([hidden]), #beat-jam-nav:not([hidden])) .bsmash-light-ring { width: min(calc(100vw - 190px), 28vh, 520px); }
 #beat-screen-studio.jam .bsmash-light-count { font-size: 56px; font-size: 42cqw; }
-#beat-screen-studio.jam .bsmash-light-word { font-size: 14px; }
+/* TANGO AT HER KIT (Rob, 2026-10-09: "Let's get the rest of the drum kit
+   there and you could even have Tango sitting behind the drum set... she's
+   sitting there with you looking at you and talking to you... just make the
+   size of the orb smaller"). The light is the kick drum of a whole kit, drawn
+   on a 400 x 330 grid: the kick drum's head sits at x 128-272, y 173-317, so
+   the light is placed in the same proportions (32%, 52.4%, 36% wide) and
+   lands exactly on the drawing. The kit is as wide as the screen allows, at
+   most 45% of its height and 600 px; less when "Show me what I played" or
+   the stop menu needs the room. */
+.bsmash-kit { position: relative; width: min(calc(100vw - 24px), 45vh, 600px); aspect-ratio: 40 / 33; container-type: inline-size; }
+#beat-screen-studio.jam:has(#beat-jam-next:not([hidden]), #beat-jam-nav:not([hidden])) .bsmash-kit { width: min(calc(100vw - 24px), 34vh, 600px); }
+.bsmash-kit > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+#beat-screen-studio.jam .bsmash-light-ring { position: absolute; left: 32%; top: 52.4%; width: 36%; height: auto; aspect-ratio: 1; margin: 0; container-type: inline-size; }
+.bsmash-light-word { position: absolute; bottom: 0; width: 26%; font-size: max(12px, 3.4cqw); }
+.bsmash-light-word.early { left: 0; }
+.bsmash-light-word.late { right: 0; }
+/* She blinks, she talks while a line is new in her box, and her sticks come
+   down with every tap the light shows: twice for the pocket. */
+.tango-eyes { transform-box: fill-box; transform-origin: center; animation: tango-blink 4.6s infinite; }
+@keyframes tango-blink { 0%, 93%, 100% { transform: none; } 96% { transform: scaleY(0.1); } }
+.tango-mouth-open { display: none; }
+.talking .tango-mouth, .bsmash-light.countin .tango-mouth { display: none; }
+.talking .tango-mouth-open, .bsmash-light.countin .tango-mouth-open { display: inline; transform-box: fill-box; transform-origin: center; animation: tango-talk 0.24s ease-in-out infinite alternate; }
+@keyframes tango-talk { from { transform: scaleY(0.3); } to { transform: scaleY(1.1); } }
+.tango-arm { transform-box: view-box; }
+.tango-arm-l { transform-origin: 170px 120px; }
+.tango-arm-r { transform-origin: 230px 120px; }
+.tango-head { transform-box: view-box; transform-origin: 200px 110px; }
+.bsmash-light.hit .tango-arm-l { animation: tango-hit-l 0.22s ease-out; }
+.bsmash-light.hit .tango-arm-r { animation: tango-hit-r 0.22s ease-out; }
+.bsmash-light.hit .tango-head { animation: tango-nod 0.22s ease-out; }
+.bsmash-light.pocket .tango-arm-l { animation: tango-hit-l 0.18s ease-out 2; }
+.bsmash-light.pocket .tango-arm-r { animation: tango-hit-r 0.18s ease-out 2; }
+.bsmash-light.pocket .tango-head { animation: tango-nod 0.18s ease-out 2; }
+@keyframes tango-hit-l { from { transform: rotate(14deg); } to { transform: none; } }
+@keyframes tango-hit-r { from { transform: rotate(-14deg); } to { transform: none; } }
+@keyframes tango-nod { from { transform: translateY(3px) rotate(-3deg); } to { transform: none; } }
+/* Her box is her speech bubble: in the warm-up it sits right above her head,
+   under the band's desk, with its tail pointing at her. */
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) > * { order: 2; }
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) > .bsmash-top,
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) > #beat-desk { order: 0; }
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) > #beat-studio-guide { order: 1; max-width: 520px; margin: auto auto 12px; }
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) .bsmash-light { margin: 0 auto 10px; padding: 0; }
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) #beat-studio-guide .kr-guide-text { position: relative; background: #35392c; }
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) #beat-studio-guide .kr-guide-text::before,
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) #beat-studio-guide .kr-guide-text::after {
+    content: ''; position: absolute; left: 50%; top: 100%; border-style: solid; border-color: transparent; border-bottom: 0;
+}
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) #beat-studio-guide .kr-guide-text::before { margin-left: -12px; border-width: 13px 12px 0; border-top-color: var(--accent-gold); }
+#beat-screen-studio.jam:has(#beat-light:not([hidden])) #beat-studio-guide .kr-guide-text::after { margin-left: -9px; margin-top: -1px; border-width: 10px 9px 0; border-top-color: #35392c; }
 .bsmash-jam-coming { display: flex; justify-content: center; gap: 10px; margin: 8px auto 0; }
 .bsmash-jam-coming[hidden] { display: none; }
 .bsmash-jam-coming span { width: 12px; height: 12px; border-radius: 50%; background: #1b2530; border: 2px solid #2c3a49; transition: background 0.3s, box-shadow 0.3s; }
@@ -1383,7 +1429,14 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-countin.wait .bsmash-countin-word { display: block; font-size: 0.16em; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; text-align: center; color: #d32f2f; line-height: 1.1; padding: 0 12%; }
 .bsmash-countin.wait .bsmash-countin-dots { display: flex; gap: 0.05em; font-size: 0.1em; min-height: 1em; }
 .bsmash-countin-dot { width: 1em; height: 1em; border-radius: 50%; background: #ff4b4b; }
-.bsmash-countin.nudge { animation: bsmash-wait-nudge 0.4s ease-out; }
+.bsmash-countin.wait::after { height: 66px; }
+.bsmash-countin.nudge { animation: bsmash-wait-nudge 0.4s ease-out; transform-origin: 50% calc(100% + 56px); }
+/* Tango under the WAIT sign, her paw on its stick (bsmashTangoSign). When a
+   tap comes too soon she waves the sign in that paw and gives a little hop. */
+.bsmash-tango-sign { position: absolute; z-index: 3; pointer-events: none; overflow: visible; }
+.bsmash-tango-sign[hidden] { display: none; }
+.bsmash-tango-sign.nudge { animation: tango-hop 0.4s ease-out; }
+@keyframes tango-hop { 30% { transform: translateY(-6px); } 60% { transform: translateY(1px); } }
 @keyframes bsmash-wait-nudge { 0%, 100% { transform: translateX(-50%) rotate(0); } 20% { transform: translateX(-50%) rotate(-12deg) scale(1.08); } 45% { transform: translateX(-50%) rotate(10deg); } 70% { transform: translateX(-50%) rotate(-5deg); } }
 #beat-pads.waiting .krpad { opacity: 0.45; filter: saturate(0.4); }
 #beat-pads.nudge { animation: bsmash-pads-nudge 0.3s ease-out; }
