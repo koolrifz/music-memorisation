@@ -1288,6 +1288,14 @@ function bsmashCoachTalking() {
     return !!(KR.speaking && KR.speaking());
 }
 
+// Do `fn` once the coach has finished the line being said, with a breath
+// after it if there was one: so one line is never cut off by the next.
+function bsmashAfterTalk(fn, waited) {
+    if (bsmashCoachTalking()) return bsmashLater(() => bsmashAfterTalk(fn, true), BSMASH_BRIEF_POLL_MS);
+    if (waited) return bsmashLater(fn, BSMASH_BRIEF_BREATH_MS);
+    fn();
+}
+
 // Is the coach still talking? Then wait, greyed, and do `then` once they have
 // finished. Returns true when it is waiting.
 function bsmashBriefing(then) {
@@ -3593,7 +3601,11 @@ function bsmashStarLands(then) {
         }
         (then || bsmashNewRoll)();
     };
-    bsmashLater(next, cleared ? 4200 : 2200);
+    // A step cleared: its congratulation is said in full before the next
+    // step's own words start (Rob, 2026-10-10, on eight bars into the studio:
+    // "that instruction doesn't butt up against the beginning instructions
+    // for the 32 bar").
+    bsmashLater(() => bsmashAfterTalk(next), cleared ? 4200 : 2200);
 }
 
 // The take, played back over the band from the same place in the song, so
