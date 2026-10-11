@@ -1828,3 +1828,9 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #view-game3 .card-wrapper { border: 4px solid var(--kr-gold-deep); box-shadow: inset 0 0 0 2px #fff6d6, 0 4px 0 var(--kr-wood-dark), 0 8px 18px rgba(0,0,0,.45); }
 #view-game3 .card-wrapper.timeout { border-color: var(--accent-red); }
 @media (max-width: 380px) { .kr-title { font-size: 26px; } .kr-hud-stats .tier-tracker { font-size: 12px; } .kr-badge { width: 64px; height: 64px; margin-left: -32px; } }
+
+/* The staff uses the card's height (Rob, 2026-10-11: easier to see for young
+   eyes). The older small-screen rule capped the picture at 78px, which shrank
+   the whole staff; the five lines are now spread in the drawing itself
+   (renderSmashCard's lineGap), so the picture may fill the card. */
+#view-game1 .smash-card.small-card svg, #view-game2 .smash-card.small-card svg { max-height: 130px; }

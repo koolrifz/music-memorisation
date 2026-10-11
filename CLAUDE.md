@@ -2697,6 +2697,7 @@ other change. **No word is baked into a picture.**
   Value Smash, Beat Smash, Rhythm Stomp Lab (own headers), the dashboard, the
   studio and the tools (the tools have their own, earlier Gemini restyle, `tl-`).
 - **Every element ID is unchanged**, so `script.js` was not touched.
+- **The staff is spread to use the card's height** (Rob, 2026-10-11: *"easier to see for young eyes"*). `renderSmashCard` draws the five lines `lineGap` (14px) apart instead of VexFlow's 10, centred on the canvas, and scales the notehead with `glyph_font_scale` so it still fills a space exactly. The old `max-height: 78px` on small cards shrank the whole drawing, so the frame block lifts it. Ledger lines still overflow the SVG (it is `overflow: visible`) into the card's spare margin.
 - **Staff Smash's title colour is a teaching device, not decoration:** JS makes
   LINE blue and SPACE gold so the mixed phase can be read by colour alone. The
   gold in the frame is only the default; do not hard-code it over the JS.
