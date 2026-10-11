@@ -269,8 +269,9 @@ function krStudioPickItem(item) {
 }
 
 function krStudioTool(tool) {
-    // Kool Beat and Kool Tuner live on the dashboard for now.
-    KR.event('studio.' + tool);
+    // Riff's metronome and tuner open full screen (tools.js).
+    KR.fromStudio = true;
+    enterTools(tool === 'tuner' ? 'tuner' : 'metronome');
 }
 
 /* ---------- Drawing the current state ---------- */

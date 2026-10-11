@@ -1645,3 +1645,58 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .st-bubble { width: auto; }
 .st-bubble .kr-guide-text, .st-say .kr-guide-text { background: #1d1440; font-size: 13px; line-height: 1.3; text-align: left; padding: 8px 10px; }
 .st-say { width: 100%; }
+
+/* =========================================
+   METRONOME AND TUNER (tools.js), full screen. Prefixed tl-.
+   ========================================= */
+#view-tools { padding: 0; justify-content: flex-start; }
+.tl-root { position: relative; width: 100%; max-width: 560px; margin: 0 auto; padding: 12px 14px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; }
+.tl-root [hidden] { display: none !important; }
+.tl-flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
+.tl-flash.go { animation: tl-flash .12s ease-out; }
+@keyframes tl-flash { 0% { opacity: .55; } 100% { opacity: 0; } }
+.tl-head { display: flex; align-items: center; gap: 10px; }
+.tl-back { min-height: 48px; min-width: 48px; border: 2px solid var(--accent-gold); border-radius: 12px; background: transparent; color: var(--accent-gold); font-weight: 900; font-size: 15px; padding: 0 12px; cursor: pointer; }
+.tl-tabs { flex: 1; display: flex; gap: 6px; }
+.tl-tab { flex: 1; min-height: 48px; border: 2px solid #324a64; border-radius: 12px; background: var(--bg-panel); color: var(--text-muted); font-weight: 900; font-size: 15px; cursor: pointer; }
+.tl-tab.on { border-color: var(--accent-gold); color: var(--accent-gold); }
+.tl-panel { display: flex; flex-direction: column; gap: 14px; }
+.tl-tempo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tl-bpm { text-align: center; }
+.tl-bpm strong { display: block; font-size: 72px; line-height: 1; color: #fff; }
+.tl-bpm small { color: var(--text-muted); font-weight: 900; letter-spacing: 2px; }
+.tl-round { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--accent-gold); background: var(--bg-panel); color: var(--accent-gold); font-size: 32px; font-weight: 900; cursor: pointer; padding: 0; }
+.tl-round.small { width: 48px; height: 48px; font-size: 24px; }
+.tl-slider { width: 100%; height: 44px; accent-color: var(--accent-gold); }
+.tl-lights { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.tl-dot { width: 48px; height: 48px; border-radius: 50%; border: 3px solid #324a64; background: #1b2a3c; cursor: pointer; padding: 0; }
+.tl-dot[data-level="2"] { border-color: var(--accent-gold); background: rgba(255,200,0,.28); }
+.tl-dot[data-level="1"] { border-color: #6f8aa8; }
+.tl-dot[data-level="0"] { border-style: dashed; opacity: .55; }
+.tl-dot.now { background: var(--accent-gold); box-shadow: 0 0 14px var(--accent-gold); }
+.tl-hint { margin: 0; text-align: center; color: var(--text-muted); font-size: 13px; font-weight: bold; }
+.tl-row { display: flex; gap: 10px; }
+.tl-go { flex: 1; min-height: 64px; border: 0; border-radius: 16px; background: var(--accent-green); color: #0e2a14; font-size: 22px; font-weight: 900; cursor: pointer; }
+.tl-go.on { background: var(--accent-red); color: #fff; }
+.tl-tap { min-width: 120px; min-height: 64px; border: 3px solid var(--accent-gold); border-radius: 16px; background: transparent; color: var(--accent-gold); font-size: 16px; font-weight: 900; cursor: pointer; }
+.tl-timer { text-align: center; color: var(--text-muted); font-weight: bold; font-size: 14px; }
+.tl-set { display: flex; align-items: center; gap: 10px; }
+.tl-set.wrap { flex-wrap: wrap; }
+.tl-label { color: var(--text-muted); font-weight: 900; font-size: 14px; flex: 1; white-space: nowrap; }
+.tl-set.wrap .tl-label { flex: 0 0 100%; }
+.tl-val { min-width: 48px; text-align: center; font-size: 22px; color: #fff; }
+.tl-chips, .tl-pipe { display: flex; flex-wrap: wrap; gap: 8px; }
+.tl-pipe { justify-content: center; }
+.tl-chip { min-height: 44px; min-width: 56px; padding: 0 14px; border: 2px solid #324a64; border-radius: 12px; background: var(--bg-panel); color: #fff; font-weight: 900; font-size: 15px; cursor: pointer; }
+.tl-chip.on { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(255,200,0,.12); }
+.tl-select { min-height: 44px; border-radius: 10px; font-size: 15px; padding: 0 8px; }
+.tl-note { text-align: center; font-size: 84px; font-weight: 900; color: var(--accent-blue); line-height: 1.1; min-height: 94px; }
+.tl-hz { text-align: center; color: var(--text-muted); font-weight: bold; min-height: 20px; }
+.tl-meter { position: relative; height: 34px; border-radius: 17px; background: #1b2a3c; border: 3px solid #324a64; }
+.tl-mid { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 3px; margin-left: -1px; background: var(--accent-green); }
+.tl-marker { position: absolute; top: -4px; width: 14px; height: 36px; margin-left: -7px; border-radius: 7px; background: #fff; left: 50%; transition: left .08s linear; }
+.tl-meter[data-state="in"] .tl-marker { background: var(--accent-green); }
+.tl-meter[data-state="low"] .tl-marker { background: var(--accent-gold); }
+.tl-meter[data-state="high"] .tl-marker { background: var(--accent-red); }
+.tl-verdict { text-align: center; font-weight: 900; min-height: 24px; color: var(--text-muted); }
+@media (prefers-reduced-motion: reduce) { .tl-flash.go { animation: none; } .tl-marker { transition: none; } }

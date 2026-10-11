@@ -33,8 +33,6 @@ KR.dialogue = {
         { on: 'studio.riff.notyet',   speaker: 'riff',  text: 'studio.riff.notyet', pose: 'studio.head.riff' },
         { on: 'studio.tango.notyet',  speaker: 'tango', text: 'studio.tango.notyet', pose: 'studio.head.tango' },
         { on: 'studio.help',          speaker: 'riff',  text: 'studio.help.line',   pose: 'studio.head.riff' },
-        { on: 'studio.tuner',         speaker: 'riff',  text: 'studio.tuner.line',  pose: 'studio.head.riff' },
-        { on: 'studio.beat',          speaker: 'riff',  text: 'studio.beat.line',   pose: 'studio.head.riff' },
         { on: 'studio.pick.piano',    speaker: 'riff',  text: 'studio.say.piano' },
         { on: 'studio.pick.drums',    speaker: 'tango', text: 'studio.say.drums' },
         { on: 'studio.pick.congas',   speaker: 'tango', text: 'studio.say.congas' },

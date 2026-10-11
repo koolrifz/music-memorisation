@@ -2651,10 +2651,38 @@ instrument is shut only because its area isn't built. Ask Rob before gating.
   ground so it reads over the room. Heads are POSE ids (`studio.head.riff`),
   never a bare `riff`, which would put a portrait beside every game's box.
 - Rob's words: the two intros and "Not yet, youngster..." (Riff). Tango's "Not
-  yet!" and the three panel lines are placeholders. Not built: Kool Beat and Kool
-  Tuner on Riff's piano (they only speak), the in-game HUD, the key
-  signature and interval areas. Idea file: `ideas/studio-hub.md`.
+  yet!" and the three panel lines are placeholders. Not built: the in-game HUD,
+  the key signature and interval areas. Idea file: `ideas/studio-hub.md`.
 - Test: `python tools/test-studio.py`, with `tools/check-text.py`.
+
+### THE METRONOME AND TUNER: one full-screen tool on Riff's piano (`tools.js`)
+Rob, 2026-10-11: the two pulsing dots on Riff's piano open **full screen**, and
+the tuner is reached from inside the metronome (two tabs, one screen). He wants
+it modelled on **Soundcorset** and said he will rearrange it later. `view-tools`,
+`tools.js`, a block at the end of `style.css`, words in `lang/` (`tools.*`).
+`enterTools('metronome' | 'tuner')`; Back is `launchGame('view-dashboard')`, so
+it returns to the studio when it was opened from there. Settings live in
+`koolRiffsTools` (tempo, beats, stress, subdivision, sound, flash, vibrate,
+instrument, A4).
+- **Honest note on the research:** this session could not open Soundcorset
+  itself (no outbound network from the shell), so its "internal workings" were
+  **not copied**. The feature list is Rob's own plus what any good metronome
+  has. Check it against the real app before calling it Soundcorset-like.
+- **Built:** tempo 20-300 (buttons, slider, tap tempo); beats per bar; a light
+  per beat, **tap it to cycle loud / soft / silent** (beat 1 loud); subdivisions
+  quarters, eighths, triplets, sixteenths, swing; four sounds (click, wood, beep,
+  hi-hat); flash the screen; vibrate; a practice timer. The clicks are **booked
+  ahead on the audio clock** (25 ms timer, 0.12 s lookahead), never by
+  `setInterval` alone, so the tempo does not wobble; the lights follow the
+  audio clock too.
+- **Tuner:** reuses `detectTunerPitch()` from script.js; concert / Bb / Eb / F
+  (+2, -3, +7 semitones, as the old tuner), A4 reference 415-466, a cents meter
+  (in tune within 10), and a **pitch pipe** that plays the written note at
+  concert pitch. Stopped when the tab or screen changes.
+- **Not built:** the **drum-set backing** Rob described (a groove under the
+  click), polyrhythm, tempo trainer / speed-up, setlists, black-screen mode, a
+  recorder. The old dashboard Kool Beat / Kool Tuner cards are unchanged.
+- Test: `python tools/test-tools.py`, with `tools/check-text.py`.
 
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that
