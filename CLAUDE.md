@@ -2698,6 +2698,7 @@ instrument, A4).
   (+2, -3, +7 semitones, as the old tuner), A4 reference 415-466, a cents meter
   (in tune within 10), and a **pitch pipe** that plays the written note at
   concert pitch. Stopped when the tab or screen changes.
+- **Restyled after Rob's Gemini mockup (2026-10-11), in CSS only:** a wooden beam over a foam wall, the **badge** centred on top (`.tl-logo`, from `logo.badge`), Back left, the tab in use as a gold tab under the badge and the other tab top right (a grid, `.tl-tabs{display:contents}`), gold round tempo buttons, ring-style small steppers, a glossy green Start, glowing beat lights, gold-outlined chips, a navy panel between wood sides. **No words are baked into pictures**: every label is still a lang ID. Textures (wood beam, foam, navy panel) can be swapped for Gemini pictures later by changing CSS backgrounds only.
 - **Not built:** the **drum-set backing** Rob described (a groove under the
   click), polyrhythm, tempo trainer / speed-up, setlists, black-screen mode, a
   recorder. The old dashboard Kool Beat / Kool Tuner cards are unchanged.
