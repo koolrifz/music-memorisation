@@ -10,6 +10,7 @@
                                  A missing id comes back as "[id]", so the gap
                                  shows up in testing instead of a blank.
      KR.applyText(root)          fill every [data-text] element under root
+     KR.applyArt(root)           fill every img[data-art] under root (also on page load)
      KR.noteName(valueId, opts)  a note name, following the names setting;
                                  { many: true } for the plural
      KR.setNames(mode)           'both' | 'us' | 'uk', remembered on this device
@@ -63,6 +64,18 @@ KR.applyText = function (root) {
         el.textContent = KR.t(el.getAttribute('data-text'));
     });
 };
+
+// Fill every <img data-art="some.id"> under root from content/art.js, and
+// show it. With no picture for the id, it stays hidden. (The shared game
+// frame's badge uses this: <img class="kr-badge" data-art="logo.badge" hidden>.)
+KR.applyArt = function (root) {
+    const art = KR.art || {};
+    (root || document).querySelectorAll('img[data-art]').forEach(img => {
+        const src = art[img.getAttribute('data-art')];
+        if (src) { img.src = src; img.hidden = false; }
+    });
+};
+document.addEventListener('DOMContentLoaded', () => KR.applyArt());
 
 /* ---------- Note names: US first, UK in brackets ----------
    valueId is a key of RSTOMP_VOCABULARY ('whole-note', 'half-rest', ...).
