@@ -43,6 +43,13 @@ KR.art = {
     'studio.riff':        'art/studio/riff-sit.webp',
     'studio.head.tango':  'art/studio/head-tango.webp',
     'studio.head.riff':   'art/studio/head-riff.webp',
+
+    // The Kool Riffs logo, three sizes (Rob's, 2026-10-11): the full one for
+    // big spaces (the studio's control-room window), the badge for a circle
+    // (Tango's kick drum head, headers), the mark for the smallest places.
+    'logo.full':          'art/logo/full.webp',
+    'logo.badge':         'art/logo/badge.webp',
+    'logo.mark':          'art/logo/mark.webp',
 };
 
 /* Where things are in a picture, as fractions of its width and height.

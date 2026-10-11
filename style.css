@@ -73,6 +73,7 @@ body {
 
 /* Dashboard UI */
 .header { text-align: center; margin-bottom: 20px; margin-top: 15px; }
+.home-logo { width: 44px; height: 44px; vertical-align: middle; margin-right: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
 .header h1 { font-size: 36px; margin: 0; color: var(--accent-gold); text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
 .header p { color: var(--text-muted); margin: 5px 0 0 0; font-size: 16px; font-weight: bold; }
 .menu-container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; }
@@ -1304,8 +1305,14 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .bsmash-kit.art[data-frame="mid"] img[data-frame="mid"],
 .bsmash-kit.art[data-frame="down"] img[data-frame="down"] { visibility: visible; }
 .bsmash-kit.art > svg { display: none; }
-#beat-screen-studio.jam #beat-kit.art .bsmash-light-ring { background: transparent; box-shadow: none; overflow: hidden; mix-blend-mode: multiply; }
-#beat-screen-studio.jam #beat-kit.art .bsmash-light-fill { mix-blend-mode: normal; }
+/* The Kool Riffs badge covers Rob's painted logo on the kick head; the light's
+   colour washes over the top of it (multiply keeps the lettering readable). */
+.bsmash-light-badge { display: none; }
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-badge { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#beat-screen-studio.jam .bsmash-light.countin #beat-kit.art .bsmash-light-badge,
+#beat-screen-studio.jam .bsmash-light.counting #beat-kit.art .bsmash-light-badge { opacity: 0; }
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-ring { background: transparent; box-shadow: none; overflow: hidden; }
+#beat-screen-studio.jam #beat-kit.art .bsmash-light-fill { mix-blend-mode: multiply; }
 #beat-screen-studio.jam #beat-kit.art .bsmash-light-ring::before,
 #beat-screen-studio.jam #beat-kit.art .bsmash-light-logo { display: none; }
 #beat-screen-studio.jam .bsmash-light[data-state] #beat-kit.art .bsmash-light-fill { opacity: 0; }
@@ -1606,6 +1613,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #studio-stage [hidden] { display: none !important; }
 .st-room { position: absolute; left: 0; top: 0; width: 412px; height: 738px; display: block; }
 .st-window { position: absolute; left: 122px; top: 246px; width: 170px; height: 150px; background: rgba(40,60,110,.28); pointer-events: none; }
+.st-window-logo { position: absolute; left: 122px; top: 246px; width: 170px; height: 150px; z-index: 1; pointer-events: none; object-fit: contain; padding: 6px 0; box-sizing: border-box; filter: drop-shadow(0 0 8px rgba(246,201,74,.35)); }
 .st-window-glass { position: absolute; left: 122px; top: 246px; width: 170px; height: 150px; z-index: 2; pointer-events: none; background: linear-gradient(120deg, rgba(255,255,255,.22) 0, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 62%, rgba(255,255,255,.10) 100%); }
 .st-decor { position: absolute; pointer-events: none; z-index: 1; }
 .st-decor img, .st-item img, .st-coach img { width: 100%; height: 100%; display: block; pointer-events: none; }

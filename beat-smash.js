@@ -2174,6 +2174,10 @@ function bsmashKitArt() {
         const src = KR.art['beat.kit.warmup.' + img.dataset.frame];
         if (img.getAttribute('src') !== src) img.src = src;
     });
+    // The Kool Riffs badge sits on the kick drum's head, over Rob's painted
+    // logo, and the light washes its colours over the top (2026-10-11).
+    const badge = ring.querySelector('.bsmash-light-badge');
+    if (badge && KR.art['logo.badge'] && badge.getAttribute('src') !== KR.art['logo.badge']) badge.src = KR.art['logo.badge'];
     kit.style.aspectRatio = String(place.aspect);
     ring.style.left = (place.head.left * 100) + '%';
     ring.style.top = (place.head.top * 100) + '%';

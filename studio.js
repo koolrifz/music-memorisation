@@ -117,6 +117,11 @@ function krStudioBuild() {
     room.alt = '';
 
     krStudioMake('div', 'st-window', stage);
+    // The control-room window shows the Kool Riffs logo (Rob, 2026-10-11),
+    // under the glass so the reflection runs across it.
+    const windowLogo = krStudioMake('img', 'st-window-logo', stage);
+    windowLogo.src = krStudioArt('logo.full');
+    windowLogo.alt = '';
     krStudioMake('div', 'st-window-glass', stage);
 
     KR_STUDIO_SPEAKERS.forEach(d => {
