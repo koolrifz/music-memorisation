@@ -2651,8 +2651,9 @@ instrument is shut only because its area isn't built. Ask Rob before gating.
   ground so it reads over the room. Heads are POSE ids (`studio.head.riff`),
   never a bare `riff`, which would put a portrait beside every game's box.
 - Rob's words: the two intros and "Not yet, youngster..." (Riff). Tango's "Not
-  yet!" and the three panel lines are placeholders. Not built: the in-game HUD,
-  the key signature and interval areas. Idea file: `ideas/studio-hub.md`.
+  yet!" and the three panel lines are placeholders. Not built: the key
+  signature and interval areas. (The in-game HUD for Staff, Note and Real Smash
+  is built: see "THE SHARED GAME FRAME".) Idea file: `ideas/studio-hub.md`.
 - Test: `python tools/test-studio.py`, with `tools/check-text.py`.
 
 ### THE KOOL RIFFS LOGO (Rob's, 2026-10-11)
@@ -2673,6 +2674,44 @@ in orange. Three sizes, cut out of Gemini's green screens (`art/logo/`, ids
 - Not done: the badge in every game's header; a higher-resolution full logo for a
   full-screen splash. The dashboard heading still reads "Kool Riffs" beside the mark.
 - The cutout was keyed from green with the spill removed; no green fringe measured.
+
+### THE SHARED GAME FRAME: one HUD for Staff, Note and Real Smash (Rob, 2026-10-11)
+Rob wants one look and feel across the games so he can release the strong ones
+first and the rest gradually: *"our HUD changes for each little game, but if we
+just leave the top space available for a bit more information in one game and
+less in another... our branding stays the same."* Modelled on his Gemini
+mockup. **All CSS** (the block at the end of `style.css`, "SHARED GAME FRAME"),
+so Gemini's wood and foam pictures can replace the backgrounds later with no
+other change. **No word is baked into a picture.**
+- **Frame:** `class="view kr-frame"` on `#view-game1/2/3`: wooden border, foam wall
+  behind the top, the badge top-centre (`<img class="kr-badge" data-art="logo.badge">`,
+  filled by `KR.applyArt()` in `text.js`), Back in gold on the left. It covers
+  the setup, pathway, game and summary screens of those three views.
+- **HUD template:** every playing screen opens with the same five slots:
+  `kr-hud-pause`, `kr-hud-timer`, `kr-hud-stats`, `kr-hud-title`, and an optional
+  `kr-hud-extras` row. A game that needs more (Note Smash's Helpers and watchlist,
+  Real Smash's Helpers, later key signatures) fills its slot or extras row and
+  the rows grow; nothing else moves. **To put another game on it:** copy the
+  `kr-hud` block from `#g1-screen-game` in `index.html`, keep the game's own IDs,
+  add `kr-frame` to its view and an `<img class="kr-badge">`. **Not on it yet:**
+  Value Smash, Beat Smash, Rhythm Stomp Lab (own headers), the dashboard, the
+  studio and the tools (the tools have their own, earlier Gemini restyle, `tl-`).
+- **Every element ID is unchanged**, so `script.js` was not touched.
+- **Staff Smash's title colour is a teaching device, not decoration:** JS makes
+  LINE blue and SPACE gold so the mixed phase can be read by colour alone. The
+  gold in the frame is only the default; do not hard-code it over the JS.
+- **Cards (Staff and Note Smash) are navy with a gold rim, drawn in white ink.**
+  VexFlow draws black-on-grey for a white page, so the card ink is recoloured in
+  CSS for those cards only (`path[stroke="#999999"]`, `path[fill="#000000"]`).
+  Helper sheets stay black on white. The mockup's own notes were black on navy,
+  which is unreadable on a phone, so they are white. Feedback colours (correct
+  green, wrong red) are now on the card face. Locked ghost rows keep their dashed look.
+- **Real Smash's one big card stays white paper**, with a gold rim.
+- **The mockup's font** (a chunky display face) is Lilita One from Google Fonts,
+  falling back to Trebuchet; the HUD uses it.
+- Note Smash's clef is a gold plaque above its grid (it was a white band).
+- Known and left alone: the Back button sits above the helper sheet (z-index 50),
+  as before.
 
 ### THE METRONOME AND TUNER: one full-screen tool on Riff's piano (`tools.js`)
 Rob, 2026-10-11: the two pulsing dots on Riff's piano open **full screen**, and

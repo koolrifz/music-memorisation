@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Lilita+One&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="48x48" href="art/logo/icon-48.png">
     <link rel="apple-touch-icon" href="art/logo/icon-192.png">
     <link rel="stylesheet" href="style.css">
@@ -84,10 +84,11 @@
 </div>
 
 <!-- GAME 1 VIEW (Staff Smash - SMASH Grid Rebuild) -->
-<div id="view-game1" class="view">
+<div id="view-game1" class="view kr-frame">
     <div class="game-nav">
-        <button class="btn-back" onclick="handleBackButton('game1')">⬅ Back</button>
+        <button class="btn-back" onclick="handleBackButton('game1')">‹ Back</button>
     </div>
+    <img class="kr-badge" data-art="logo.badge" alt="" hidden>
 
     <div id="g1-screen-pathway" class="screen active">
         <div class="pathway-card">
@@ -109,24 +110,20 @@
     </div>
 
     <div id="g1-screen-game" class="screen">
-        <div class="hud">
-            <button class="pause-btn" onclick="pauseCurrentGame('game1')">🛑 Pause</button>
-            <span class="timer-badge" id="g1-timer-badge">20s</span>
-        </div>
-        
-        <div class="game-header">
-            <div class="score-counter" style="align-items: flex-start; flex: 1;">
+        <!-- THE SHARED HUD (style.css "SHARED GAME FRAME"). Same slots in every game:
+             pause, timer, stats, title, extras. Put what a game needs in each slot. -->
+        <div class="kr-hud">
+            <div class="kr-hud-pause"><button class="pause-btn" onclick="pauseCurrentGame('game1')">Pause</button></div>
+            <div class="kr-hud-timer"><span class="timer-badge" id="g1-timer-badge">20s</span></div>
+            <div class="kr-hud-stats score-counter">
                 <div class="score-row">⭐ <span id="g1-score-text">0</span></div>
                 <div class="tier-tracker" id="g1-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
                 <div class="tier-tracker" id="g1-attempts-text">Attempts: 0</div>
             </div>
-            
-            <div style="display:flex; flex-direction:column; align-items:center; flex: 2;">
-                <div style="color: var(--accent-purple); font-weight: 900; font-size: 24px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g1-target-instruction-display">SMASH LINES</div>
-                <div class="flash-timer" id="g1-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g1-flash-timer-fill"></div></div>
+            <div class="kr-hud-title">
+                <div class="kr-title" id="g1-target-instruction-display">SMASH LINES</div>
+                <div class="flash-timer" id="g1-flash-timer-bar"><div class="flash-timer-fill" id="g1-flash-timer-fill"></div></div>
             </div>
-            
-              <div style="flex: 1;"></div>
         </div>
 
         <div id="g1-clef-display"></div>
@@ -163,10 +160,11 @@
 </div>
 
 <!-- GAME 2 VIEW (Note Smash) -->
-<div id="view-game2" class="view">
+<div id="view-game2" class="view kr-frame">
     <div class="game-nav">
-        <button class="btn-back" onclick="handleBackButton('game2')">⬅ Back</button>
+        <button class="btn-back" onclick="handleBackButton('game2')">‹ Back</button>
     </div>
+    <img class="kr-badge" data-art="logo.badge" alt="" hidden>
 
     <div id="g2-screen-pathway" class="screen active">
         <div class="pathway-card">
@@ -187,26 +185,21 @@
     </div>
 
     <div id="g2-screen-game" class="screen">
-        <div class="hud">
-            <button class="pause-btn" onclick="pauseCurrentGame('game2')">🛑 Pause</button>
-            <span class="timer-badge" id="g2-timer-badge">60s</span>
-        </div>
-        
-        <div class="game-header">
-            <div class="score-counter" style="align-items: flex-start; flex: 1;">
+        <div class="kr-hud">
+            <div class="kr-hud-pause"><button class="pause-btn" onclick="pauseCurrentGame('game2')">Pause</button></div>
+            <div class="kr-hud-timer"><span class="timer-badge" id="g2-timer-badge">60s</span></div>
+            <div class="kr-hud-stats score-counter">
                 <div class="score-row">⭐ <span id="g2-score-text">0</span></div>
                 <div class="tier-tracker" id="g2-tier-tracker-text">Grid: 1 | Streak: 0/3</div>
                 <div class="tier-tracker" id="g2-attempts-text">Attempts: 0</div>
             </div>
-            
-            <div style="display:flex; flex-direction:column; align-items:center; flex: 1;">
-                <div style="color: var(--accent-gold); font-weight: 900; font-size: 28px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" id="g2-target-note-display">C</div>
-                <div class="flash-timer" id="g2-flash-timer-bar" style="display:block; width: 100%; max-width: 180px;"><div class="flash-timer-fill" id="g2-flash-timer-fill"></div></div>
+            <div class="kr-hud-title">
+                <div class="kr-title" id="g2-target-note-display">C</div>
+                <div class="flash-timer" id="g2-flash-timer-bar"><div class="flash-timer-fill" id="g2-flash-timer-fill"></div></div>
             </div>
-            
-            <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex: 1;">
+            <div class="kr-hud-extras">
                 <button id="g2-helper-toggle" class="btn-helper-toggle" onclick="toggleG2HelperModal()">💡 Helpers</button>
-                <button class="btn-helper-toggle" style="background:var(--accent-red); box-shadow:0 4px 0 var(--accent-red-shadow);" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
+                <button class="btn-helper-toggle btn-watchlist" onclick="showG2Watchlist()">⚠️ <span id="g2-watchlist-count">0</span></button>
             </div>
         </div>
         
@@ -257,10 +250,11 @@
 </div>
 
 <!-- GAME 3 VIEW (Real Smash) -->
-<div id="view-game3" class="view">
+<div id="view-game3" class="view kr-frame">
     <div class="game-nav">
-        <button class="btn-back" onclick="handleBackButton('game3')">⬅ Back</button>
+        <button class="btn-back" onclick="handleBackButton('game3')">‹ Back</button>
     </div>
+    <img class="kr-badge" data-art="logo.badge" alt="" hidden>
     
     <div id="g3-screen-pathway" class="screen active">
         <div class="pathway-card">
@@ -277,21 +271,21 @@
     </div>
 
     <div id="g3-screen-game" class="screen">
-        <div class="hud">
-            <button class="pause-btn" onclick="pauseCurrentGame('game3')">🛑 Pause</button>
-            <span class="timer-badge" id="g3-timer-badge">60s</span>
-        </div>
-        
-        <div class="game-header">
-            <div class="progress-bar-container" style="flex:2;"><div class="progress-fill" id="progress-bar"></div></div>
-            <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleG3HelperModal()">💡 Helpers</button>
-            <div class="score-counter" style="flex:1;">
+        <div class="kr-hud">
+            <div class="kr-hud-pause"><button class="pause-btn" onclick="pauseCurrentGame('game3')">Pause</button></div>
+            <div class="kr-hud-timer"><span class="timer-badge" id="g3-timer-badge">60s</span></div>
+            <div class="kr-hud-stats score-counter">
                 <div class="score-row">⭐ <span id="score-text">0</span></div>
                 <div class="tier-tracker" id="tier-tracker-text">Drill Mode</div>
             </div>
+            <div class="kr-hud-title">
+                <div class="progress-bar-container"><div class="progress-fill" id="progress-bar"></div></div>
+                <div class="flash-timer" id="flash-timer-bar"><div class="flash-timer-fill" id="flash-timer-fill"></div></div>
+            </div>
+            <div class="kr-hud-extras">
+                <button class="btn-helper-toggle" id="helper-toggle-btn" onclick="toggleG3HelperModal()">💡 Helpers</button>
+            </div>
         </div>
-        
-        <div class="flash-timer" id="flash-timer-bar"><div class="flash-timer-fill" id="flash-timer-fill"></div></div>
 
         <div class="helper-modal" id="helper-sheet-modal">
             <button class="helper-close-button" onclick="toggleG3HelperModal()" aria-label="Close helpers">×</button>

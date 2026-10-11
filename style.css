@@ -1728,3 +1728,103 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .tl-verdict { text-align: center; font-weight: 900; font-size: 18px; min-height: 26px; color: #f3e9c8; }
 @media (max-width: 380px) { .tl-bpm strong { font-size: 68px; } .tl-round { width: 56px; height: 56px; } .tl-tab.on { min-width: 112px; padding: 0 18px; font-size: 17px; } .tl-chip { padding: 0 12px; } }
 @media (prefers-reduced-motion: reduce) { .tl-flash.go { animation: none; } .tl-marker { transition: none; } .tl-go:active, .tl-tap:active, .tl-round:active { transform: none; } }
+
+/* =========================================
+   SHARED GAME FRAME: Staff Smash, Note Smash, Real Smash (kr-frame, kr-hud)
+   =========================================
+   One look for the top of every game, from Rob's Gemini mockup (2026-10-11):
+   a wooden frame round the screen, foam wall behind the top, the badge on top
+   in the middle, Back left, a gold-ringed stats corner, the title in gold.
+   All CSS, so Gemini's pictures can replace the wood and foam later by
+   changing the backgrounds below and nothing else. No word is in a picture.
+
+   THE TEMPLATE. A game's playing screen opens with this, and the markup is the
+   same in every game (see index.html, #g1-screen-game):
+
+     <div class="kr-hud">
+       <div class="kr-hud-pause">   the Pause button                        </div>
+       <div class="kr-hud-timer">   the timer badge                         </div>
+       <div class="kr-hud-stats">   stars, tier and streak, attempts: any
+                                    number of lines, it grows downward      </div>
+       <div class="kr-hud-title">   the big gold prompt, and its bar        </div>
+       <div class="kr-hud-extras">  OPTIONAL full-width row for a game with
+                                    more to show (helpers, key signature...) </div>
+     </div>
+
+   The row heights follow the content, so a game with more in a slot simply
+   takes more room and the grid below moves down; the branding never moves.
+   The Back button and the badge are the view's own (class kr-frame on the
+   view, an <img class="kr-badge" data-art="logo.badge">). Value Smash, Beat
+   Smash and Rhythm Stomp Lab have their own headers and are not on this yet.
+   ========================================= */
+:root {
+    --kr-wood: #43362b; --kr-wood-hi: #75624b; --kr-wood-dark: #17120d;
+    --kr-gold: #f6c94a; --kr-gold-deep: #d99a14; --kr-gold-shadow: #7a5208;
+    --kr-navy: #1f1c55; --kr-navy-2: #2a2870; --kr-room: #14122f;
+    --kr-font: 'Lilita One', 'Trebuchet MS', system-ui, sans-serif;
+}
+
+/* The frame: wood all round, foam wall behind the top fading into the room. */
+.view.kr-frame { padding: 6px; border: 12px solid var(--kr-wood); background: linear-gradient(to bottom, rgba(20,18,47,0) 90px, var(--kr-room) 215px), conic-gradient(from 45deg at 50% 50%, #2b2750 0 25%, #1a1738 0 50%, #332f5e 0 75%, #221f45 0) 0 0 / 22px 22px, var(--kr-room); box-shadow: inset 0 0 0 3px var(--kr-wood-hi), inset 0 0 26px rgba(0,0,0,.7); font-family: var(--kr-font); }
+.view.kr-frame .screen { padding: 4px; }
+
+/* Back (the view's own) and the badge. */
+.kr-frame .game-nav { top: 8px; left: 8px; }
+.kr-frame .btn-back { min-height: 44px; min-width: 92px; justify-content: center; padding: 0 14px; border: 3px solid var(--kr-gold-deep); border-radius: 12px; background: linear-gradient(#6a5520, #3c3014); color: var(--kr-gold); font: 22px/1 var(--kr-font); box-shadow: 0 3px 0 var(--kr-wood-dark), 0 5px 8px rgba(0,0,0,.45); }
+.kr-frame .btn-back:active { transform: translateY(2px); background: linear-gradient(#5a4719, #33280f); }
+.kr-badge { position: absolute; top: 2px; left: 50%; width: 76px; height: 76px; margin-left: -38px; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); pointer-events: none; z-index: 5; }   /* under the screens, so a pause sheet or helper sheet covers it */
+.kr-badge[hidden] { display: none; }
+
+/* The HUD grid. */
+.kr-hud { width: 100%; max-width: 500px; margin-top: 54px; padding: 0 6px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-template-areas: "pause timer" "stats title" "extras extras"; column-gap: 10px; row-gap: 6px; align-items: start; }
+.kr-hud-pause { grid-area: pause; }
+.kr-hud-timer { grid-area: timer; justify-self: end; }
+.kr-hud-stats { grid-area: stats; min-width: 0; align-items: flex-start; }
+.kr-hud-title { grid-area: title; min-width: 0; text-align: center; }
+.kr-hud-extras { grid-area: extras; display: flex; justify-content: flex-end; gap: 8px; }
+.kr-hud .pause-btn { min-height: 44px; min-width: 92px; padding: 0 14px; border: 3px solid #7a1a14; border-radius: 12px; background: linear-gradient(#ff7a68, #d93a30); color: #fff; font: 22px/1 var(--kr-font); text-shadow: 0 2px 0 rgba(0,0,0,.35); box-shadow: 0 0 0 2px var(--kr-gold-deep), 0 4px 0 var(--kr-wood-dark); }
+.kr-hud .pause-btn:active { transform: translateY(3px); box-shadow: 0 0 0 2px var(--kr-gold-deep), 0 1px 0 var(--kr-wood-dark); }
+.kr-hud .timer-badge { display: inline-block; min-width: 72px; padding: 6px 12px; text-align: center; border: 3px solid #123a73; border-radius: 12px; background: linear-gradient(#3f86d6, #1f58a8); color: #fff; font: 22px/1.1 var(--kr-font); box-shadow: 0 0 0 2px var(--kr-gold-deep), 0 4px 0 var(--kr-wood-dark); }
+
+/* Stats: the star and score, then whatever lines the game gives it. */
+.kr-hud-stats { font-family: var(--kr-font); font-weight: 400; }
+.kr-hud-stats .score-row { font-size: 30px; line-height: 1; color: var(--kr-gold); text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.kr-hud-stats .tier-tracker { margin-top: 3px; font-size: 14px; font-weight: 400; line-height: 1.15; color: #f3e9c8; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.kr-hud .streak-dots { gap: 8px; margin-left: 2px; }
+.kr-hud .streak-dot { width: 17px; height: 17px; border: 3px solid var(--kr-gold); }
+.kr-hud .streak-dot.active { background: var(--kr-gold); box-shadow: 0 0 8px var(--kr-gold); }
+
+/* Title: the big gold prompt. A game may recolour it from JS (Staff Smash
+   makes LINE blue and SPACE gold on purpose), so the colour here is only the default. */
+.kr-title { font-family: var(--kr-font); font-size: clamp(26px, 9.4vw, 40px); line-height: .95; color: var(--kr-gold); text-transform: uppercase; overflow-wrap: anywhere; -webkit-text-stroke: 1.5px rgba(12,10,40,.9); paint-order: stroke fill; text-shadow: 0 3px 0 rgba(12,10,40,.75), 0 5px 10px rgba(0,0,0,.55); }
+.kr-hud .flash-timer { display: block; width: 100%; max-width: none; height: 12px; margin: 8px 0 0; border: 2px solid #0b0a22; border-radius: 8px; background: #2b3b6e; }
+.kr-hud .flash-timer-fill { border-radius: 0; }
+.kr-hud .progress-bar-container { height: 16px; border: 3px solid #0b0a22; background: #2b3b6e; }
+.kr-hud-extras .btn-helper-toggle { font: 15px/1 var(--kr-font); padding: 8px 12px; }
+.kr-hud-extras .btn-watchlist { background: var(--accent-red); box-shadow: 0 4px 0 var(--accent-red-shadow); }
+
+/* The cards (Staff Smash and Note Smash): navy face, gold rim, white ink.
+   Their staff pictures are drawn black and grey for a white page, so the ink
+   is recoloured here, for these cards only. Helper sheets stay black on white. */
+#view-game1 #g1-grid-container, #view-game2 #g2-grid-container { background: transparent; padding: 4px 4px 8px; border-radius: 0; }
+/* Staff Smash is rows in a column: they share the height left under the HUD, up to a limit. */
+#view-game1 #g1-grid-container { flex: 1 1 auto; min-height: 0; max-height: 660px; }
+#view-game1 .g1-row { flex: 1 1 92px; min-height: 92px; max-height: 150px; }
+/* Note Smash is one grid: fixed-height rows from the top. Its clef sits above as a gold plaque. */
+#view-game2 #g2-grid-container { align-content: start; grid-auto-rows: 132px; }
+#view-game2 #g2-clef-display { background: transparent; height: 56px; min-height: 56px; border-radius: 0; align-items: center; margin-bottom: 14px; }
+#view-game2 #g2-clef-display svg { height: 56px !important; }
+#view-game2 #g2-clef-display svg path[fill="#000000"] { fill: var(--kr-gold); }
+#view-game1 .smash-card, #view-game2 .smash-card { background: radial-gradient(ellipse at 50% 28%, #34409a 0, var(--kr-navy-2) 55%, #1b1a52 100%) !important; border: 3px solid var(--kr-gold-deep) !important; border-radius: 16px; box-shadow: inset 0 0 0 2px #0f0d33, inset 0 0 14px rgba(0,0,0,.55), 0 3px 0 var(--kr-wood-dark) !important; }
+#view-game1 .smash-card svg path[stroke="#999999"], #view-game2 .smash-card svg path[stroke="#999999"] { stroke: #f4f1ff; }
+#view-game1 .smash-card svg path[fill="#000000"], #view-game2 .smash-card svg path[fill="#000000"] { fill: #fff; }
+#view-game1 .g1-row.locked .smash-card { border-style: dashed !important; border-color: rgba(246,201,74,.45) !important; box-shadow: none !important; }
+#view-game1 .smash-card.correct, #view-game2 .smash-card.correct, #view-game1 .smash-card.dud-correct, #view-game2 .smash-card.dud-correct, #view-game1 .smash-card.screen-complete, #view-game2 .smash-card.screen-complete { border-color: var(--accent-green) !important; background: radial-gradient(ellipse at 50% 28%, #2f7d2a 0, #1f5a1d 100%) !important; box-shadow: 0 0 10px rgba(88,204,2,.6), inset 0 0 0 2px #0f0d33 !important; }
+#view-game1 .smash-card.incorrect, #view-game2 .smash-card.incorrect, #view-game1 .smash-card.flash-red, #view-game2 .smash-card.flash-red { border-color: var(--accent-red) !important; background: radial-gradient(ellipse at 50% 28%, #8a2430 0, #5a1420 100%) !important; }
+
+.kr-frame .pathway-card, .kr-frame .setup-card, .kr-frame .summary-card { margin-top: 78px; }   /* clear of the badge */
+
+/* Real Smash: its one big card stays white paper (the staff is drawn for it), in a gold rim. */
+#view-game3 .card-wrapper { border: 4px solid var(--kr-gold-deep); box-shadow: inset 0 0 0 2px #fff6d6, 0 4px 0 var(--kr-wood-dark), 0 8px 18px rgba(0,0,0,.45); }
+#view-game3 .card-wrapper.timeout { border-color: var(--accent-red); }
+@media (max-width: 380px) { .kr-title { font-size: 26px; } .kr-hud-stats .tier-tracker { font-size: 12px; } .kr-badge { width: 64px; height: 64px; margin-left: -32px; } }
