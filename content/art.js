@@ -24,6 +24,25 @@ KR.art = {
     'beat.coach.drums': 'art/tango-kit-mid.webp',
     'beat.coach.bass':  'art/riff-double-bass.webp',
     'beat.coach.keys':  'art/riff-keys.webp',
+
+    // The studio (studio.js): the empty room, each instrument as its own
+    // cut-out, the two coaches standing, and their heads for the gold box.
+    // 'studio.head.<who>' is a POSE id, so it only shows beside the gold box
+    // on lines that ask for it; a bare 'riff' or 'tango' would put a portrait
+    // beside every game's box.
+    'studio.room':        'art/studio/room.webp',
+    'studio.piano':       'art/studio/piano.webp',
+    'studio.drums':       'art/studio/drums.webp',
+    'studio.congas':      'art/studio/congas.webp',
+    'studio.bass':        'art/studio/bass.webp',
+    'studio.ebass':       'art/studio/ebass.webp',
+    'studio.vibes':       'art/studio/vibes.webp',
+    'studio.speaker':     'art/studio/speaker.webp',
+    'studio.goldrecord':  'art/studio/goldrecord.webp',
+    'studio.tango':       'art/studio/tango-stand.webp',
+    'studio.riff':        'art/studio/riff-sit.webp',
+    'studio.head.tango':  'art/studio/head-tango.webp',
+    'studio.head.riff':   'art/studio/head-riff.webp',
 };
 
 /* Where things are in a picture, as fractions of its width and height.

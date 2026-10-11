@@ -2635,6 +2635,55 @@ ways, the picker, replaying a step, the teacher codes, and layout at 390×844,
 360×640 and 1366×657. `KR_VEXFLOW` / `KR_CHROME` let it run with no network. `fresh()` marks the rules as seen unless a test asks otherwise (`rules_seen=False`), so every other test goes straight into its take. Run it with
 `tools/check-text.py` before every commit.
 
+## THE STUDIO: the front door (branch `idea/studio-hub`)
+Rob, 2026-10-11. A cartoon recording studio, `studio.js` and `view-studio`:
+Riff and Tango stand at the front; tapping one lights their instruments and
+dims the other's (still visible and tappable); a lit instrument hops onto the
+rug and its games appear in a panel; a shut one gets "Not yet, youngster."
+Designed on a 412 x 738 board scaled to fit; positions are in the file.
+**No gate was added**: every built game is open, as on the dashboard; an
+instrument is shut only because its area isn't built. Ask Rob before gating.
+- The dashboard stays and is one tap away (the gear). `studio.js` wraps
+  `launchGame` so a game opened from the studio returns to it; script.js is
+  unchanged. `KR_STUDIO_IS_HOME` (or `#studio` in the address) makes it the
+  first screen; it is `false` until Rob decides.
+- The coaches' speech is the gold guide box (`KR.event('studio.*')`), on a solid
+  ground so it reads over the room. Heads are POSE ids (`studio.head.riff`),
+  never a bare `riff`, which would put a portrait beside every game's box.
+- Rob's words: the two intros and "Not yet, youngster..." (Riff). Tango's "Not
+  yet!" and the three panel lines are placeholders. Not built: the in-game HUD,
+  the key signature and interval areas. Idea file: `ideas/studio-hub.md`.
+- Test: `python tools/test-studio.py`, with `tools/check-text.py`.
+
+### THE METRONOME AND TUNER: one full-screen tool on Riff's piano (`tools.js`)
+Rob, 2026-10-11: the two pulsing dots on Riff's piano open **full screen**, and
+the tuner is reached from inside the metronome (two tabs, one screen). He wants
+it modelled on **Soundcorset** and said he will rearrange it later. `view-tools`,
+`tools.js`, a block at the end of `style.css`, words in `lang/` (`tools.*`).
+`enterTools('metronome' | 'tuner')`; Back is `launchGame('view-dashboard')`, so
+it returns to the studio when it was opened from there. Settings live in
+`koolRiffsTools` (tempo, beats, stress, subdivision, sound, flash, vibrate,
+instrument, A4).
+- **Honest note on the research:** this session could not open Soundcorset
+  itself (no outbound network from the shell), so its "internal workings" were
+  **not copied**. The feature list is Rob's own plus what any good metronome
+  has. Check it against the real app before calling it Soundcorset-like.
+- **Built:** tempo 20-300 (buttons, slider, tap tempo); beats per bar; a light
+  per beat, **tap it to cycle loud / soft / silent** (beat 1 loud); subdivisions
+  quarters, eighths, triplets, sixteenths, swing; four sounds (click, wood, beep,
+  hi-hat); flash the screen; vibrate; a practice timer. The clicks are **booked
+  ahead on the audio clock** (25 ms timer, 0.12 s lookahead), never by
+  `setInterval` alone, so the tempo does not wobble; the lights follow the
+  audio clock too.
+- **Tuner:** reuses `detectTunerPitch()` from script.js; concert / Bb / Eb / F
+  (+2, -3, +7 semitones, as the old tuner), A4 reference 415-466, a cents meter
+  (in tune within 10), and a **pitch pipe** that plays the written note at
+  concert pitch. Stopped when the tab or screen changes.
+- **Not built:** the **drum-set backing** Rob described (a groove under the
+  click), polyrhythm, tempo trainer / speed-up, setlists, black-screen mode, a
+  recorder. The old dashboard Kool Beat / Kool Tuner cards are unchanged.
+- Test: `python tools/test-tools.py`, with `tools/check-text.py`.
+
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that
 outranks engagement", which said time at the instrument outranks time in the
