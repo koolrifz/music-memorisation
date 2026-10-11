@@ -353,6 +353,10 @@ function krToolsBuild() {
     e.flashLayer = krToolsMake('div', 'tl-flash', root);
 
     const head = krToolsMake('div', 'tl-head', root);
+    const logo = krToolsMake('img', 'tl-logo', head);
+    logo.alt = '';
+    logo.src = (KR.art && KR.art['logo.badge']) || '';
+    if (!logo.src) logo.hidden = true;
     const back = krToolsMake('button', 'tl-back', head);
     back.type = 'button';
     back.textContent = '‹ ' + KR.t('tools.back');

@@ -2655,6 +2655,25 @@ instrument is shut only because its area isn't built. Ask Rob before gating.
   the key signature and interval areas. Idea file: `ideas/studio-hub.md`.
 - Test: `python tools/test-studio.py`, with `tools/check-text.py`.
 
+### THE KOOL RIFFS LOGO (Rob's, 2026-10-11)
+Rob's logo: Riff in his beret and round sunglasses, a gold ring, "KOOL RIFFS"
+in orange. Three sizes, cut out of Gemini's green screens (`art/logo/`, ids
+`logo.full`, `logo.badge`, `logo.mark` in `content/art.js`). **Use the right size:**
+- **Full** (headphones, guitar-record, notes): big spaces only. It is in the
+  studio's **control-room window** (`.st-window-logo`, under the glass). Too
+  detailed below about 180 px; Claude's assessment was "slightly too busy" for
+  small uses, which is why the next two exist.
+- **Badge** (ring, lettering, Riff, record grooves): any circle. It is on **Tango's
+  kick drum head** in Beat Smash's warm-up (`.bsmash-light-badge`, shown only
+  when Rob's kit pictures are in), **over his painted logo**, with the beat
+  light's colour washing over the top (`multiply`). It hides while a number is
+  counted on the head, so the count can be read.
+- **Mark** (Riff's head in a circle): the smallest places. The dashboard heading,
+  the browser tab icon (`icon-48.png`) and the home-screen icon (`icon-192.png`).
+- Not done: the badge in every game's header; a higher-resolution full logo for a
+  full-screen splash. The dashboard heading still reads "Kool Riffs" beside the mark.
+- The cutout was keyed from green with the spill removed; no green fringe measured.
+
 ### THE METRONOME AND TUNER: one full-screen tool on Riff's piano (`tools.js`)
 Rob, 2026-10-11: the two pulsing dots on Riff's piano open **full screen**, and
 the tuner is reached from inside the metronome (two tabs, one screen). He wants
@@ -2679,6 +2698,7 @@ instrument, A4).
   (+2, -3, +7 semitones, as the old tuner), A4 reference 415-466, a cents meter
   (in tune within 10), and a **pitch pipe** that plays the written note at
   concert pitch. Stopped when the tab or screen changes.
+- **Restyled after Rob's Gemini mockup (2026-10-11), in CSS only:** a wooden beam over a foam wall, the **badge** centred on top (`.tl-logo`, from `logo.badge`), Back left, the tab in use as a gold tab under the badge and the other tab top right (a grid, `.tl-tabs{display:contents}`), gold round tempo buttons, ring-style small steppers, a glossy green Start, glowing beat lights, gold-outlined chips, a navy panel between wood sides. **No words are baked into pictures**: every label is still a lang ID. Textures (wood beam, foam, navy panel) can be swapped for Gemini pictures later by changing CSS backgrounds only.
 - **Not built:** the **drum-set backing** Rob described (a groove under the
   click), polyrhythm, tempo trainer / speed-up, setlists, black-screen mode, a
   recorder. The old dashboard Kool Beat / Kool Tuner cards are unchanged.

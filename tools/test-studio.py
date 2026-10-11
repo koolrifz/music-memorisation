@@ -50,6 +50,8 @@ def main():
         page.click('.studio-entry')
         page.wait_for_timeout(400)
         check('studio opens from the dashboard', active(page, 'view-studio'))
+        logo = page.eval_on_selector('.st-window-logo', "e => ({ shown: e.complete && e.naturalWidth > 0, box: e.getBoundingClientRect().width })")
+        check('the control-room window carries the Kool Riffs logo', logo['shown'] and logo['box'] > 60, logo)
         page.click('.st-coach[aria-label=Riff]')
         page.wait_for_timeout(500)
         glow = page.eval_on_selector('.st-item[aria-label=Piano]', 'e => e.style.filter')
