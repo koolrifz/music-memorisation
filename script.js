@@ -331,7 +331,13 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
     svg.style.overflow = 'visible';
 
     // Stave positioned precisely in the vertical middle of the card space
-    const stave = new VF.Stave(10, 18, 100);
+    // The five lines are spread out to use the card's height (Rob, 2026-10-11:
+    // easier to see for young eyes). VexFlow's default is 10px between lines;
+    // the notehead is scaled with it so it still fills a space exactly. The
+    // middle line sits at the vertical middle of the canvas, so ledger lines
+    // run out the same distance above and below.
+    const lineGap = 14;
+    const stave = new VF.Stave(10, canvasHeight / 2 - 6 * lineGap, 100, { spacing_between_lines_px: lineGap });
     stave.setBegBarType(VF.Barline.type.NONE);
     stave.setEndBarType(VF.Barline.type.NONE);
     
@@ -339,7 +345,7 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
         stave.setNoteStartX(stave.getX() + (stave.getWidth() / 2) - 5);
         stave.setContext(ctx).draw();
 
-        const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w" });
+        const note = new VF.StaveNote({ clef: clefName, keys: [pitchKey], duration: "w", glyph_font_scale: VF.DEFAULT_NOTATION_FONT_SCALE * lineGap / 10 });
         const voice = new VF.Voice({ num_beats: 4, beat_value: 4 }).addTickables([note]);
         
         new VF.Formatter().joinVoices([voice]).format([voice], 0);
