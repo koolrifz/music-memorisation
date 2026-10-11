@@ -2701,7 +2701,9 @@ other change. **No word is baked into a picture.**
 - **Staff Smash's title colour is a teaching device, not decoration:** JS makes
   LINE blue and SPACE gold so the mixed phase can be read by colour alone. The
   gold in the frame is only the default; do not hard-code it over the JS.
-- **Cards (Staff and Note Smash) are navy with a gold rim, drawn in white ink.**
+- **THE WORN LOOK: parchment, not navy** (Rob, 2026-10-11, seeing Riff's veteran look and ripped parchment in his Gemini mockup of Real Smash: *"a little dirtier, a little less pretty, a bit more real and used: the world of a veteran musician... site wide"*). **This REPLACES the navy-and-white-ink cards described next.** Staff and Note Smash cards are now scraps of old parchment (grain, tea stains, burnt edges, uneven corners) in dark ink, and Real Smash's one card is a torn scrap, ripped along the bottom (`clip-path`, so it casts no shadow). Done **in CSS only, no picture** (`--kr-parchment`, `--kr-grain` in the "THE WORN LOOK" block at the end of `style.css`), and the frame gets grain too. **The wear sits behind the notation, in the card's own background, never over it**: a site-wide grain overlay was deliberately not used (nothing decorative may sit on the notation). Correct and wrong are a green or red wash over the parchment. **Not yet worn:** the dashboard, studio, tools, pathway/setup/summary cards, Value Smash, Beat Smash and Stomp Lab. Rob's mockup also had the piano, a torn banner for the input toggle and Riff pointing at the keys: those are pictures, not built.
+- **The box above Real Smash's piano is the ANSWER SLOT** (`#inputs-container`, one cell per note): the letter you tap lands in it. Empty until you answer. It is not a hint.
+- *(Superseded by the worn look above.)* - Cards were navy with a gold rim, drawn in white ink.
   VexFlow draws black-on-grey for a white page, so the card ink is recoloured in
   CSS for those cards only (`path[stroke="#999999"]`, `path[fill="#000000"]`).
   Helper sheets stay black on white. The mockup's own notes were black on navy,
