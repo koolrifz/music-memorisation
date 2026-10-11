@@ -12,6 +12,11 @@
 </head>
 <body>
 
+<!-- THE STUDIO (studio.js): the two coaches in their studio, the front door to every game. -->
+<div id="view-studio" class="view">
+    <div class="studio-wrap"><div id="studio-stage"></div></div>
+</div>
+
 <!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
     <!-- Who is playing: the nickname, first thing on the dashboard (dashboard.js
@@ -25,6 +30,8 @@
 
     <!-- The games, in Rob's order, each with its pathway and numbers
          (dashboard.js renderDashboard). -->
+    <button type="button" class="studio-entry" onclick="enterStudio()" data-text="home.studio.enter"></button>
+
     <div class="menu-container" id="home-games"></div>
 
     <section class="practice-tools" aria-label="Kool Riffs practice tools">
@@ -1016,5 +1023,6 @@
 <script src="beat-pads.js"></script>
 <script src="beat-smash.js"></script>
 <script src="dashboard.js"></script>
+<script src="studio.js"></script>
 </body>
 </html>

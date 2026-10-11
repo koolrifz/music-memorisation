@@ -26,6 +26,19 @@ KR.dialogue = {
         narrator: {},
     },
     lines: [
+        /* ---------- The studio (studio.js) ----------
+           The two coaches in their control room. */
+        { on: 'studio.riff.focus',    speaker: 'riff',  text: 'studio.riff.intro',  pose: 'studio.head.riff' },
+        { on: 'studio.tango.focus',   speaker: 'tango', text: 'studio.tango.intro', pose: 'studio.head.tango' },
+        { on: 'studio.riff.notyet',   speaker: 'riff',  text: 'studio.riff.notyet', pose: 'studio.head.riff' },
+        { on: 'studio.tango.notyet',  speaker: 'tango', text: 'studio.tango.notyet', pose: 'studio.head.tango' },
+        { on: 'studio.help',          speaker: 'riff',  text: 'studio.help.line',   pose: 'studio.head.riff' },
+        { on: 'studio.tuner',         speaker: 'riff',  text: 'studio.tuner.line',  pose: 'studio.head.riff' },
+        { on: 'studio.beat',          speaker: 'riff',  text: 'studio.beat.line',   pose: 'studio.head.riff' },
+        { on: 'studio.pick.piano',    speaker: 'riff',  text: 'studio.say.piano' },
+        { on: 'studio.pick.drums',    speaker: 'tango', text: 'studio.say.drums' },
+        { on: 'studio.pick.congas',   speaker: 'tango', text: 'studio.say.congas' },
+
         /* ---------- Beat Smash (beat-smash.js) ----------
            Tango coaches the drums. Where an event has several lines they
            take turns. */

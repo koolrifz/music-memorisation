@@ -52,6 +52,53 @@ KR.lang('en-US', {
     'share.card.player':     'Played by {name}',
     'share.card.file':       'kool-riffs-{game}',
 
+    /* ---------- The studio (studio.js) ----------
+       Rob's words are the two intros, "Not yet" and the first piano line:
+       2026-10-11. The rest are placeholders for him to rewrite. */
+    'home.studio.enter':     'Open the studio',
+    'studio.hi':             'Hi, {name}!',
+    'studio.hi.guest':       'Hi there!',
+    'studio.prompt':         'Tap Riff or Tango to meet them!',
+    'studio.help.label':     'Help',
+    'studio.settings.label': 'Dashboard, settings and your name',
+    'studio.back':           'Studio',
+    'studio.back.label':     'Back to the studio',
+    'studio.records':        'The gold records are your high scores.',
+    'studio.coach.riff':     'Riff',
+    'studio.coach.tango':    'Tango',
+    'studio.on.carpet':      '{name} on the carpet',
+    'studio.tuner.label':    'Kool Tuner',
+    'studio.beat.label':     'Kool Beat metronome',
+    'studio.locked':         '{name} (not open yet)',
+
+    'studio.riff.intro':     "If you want to know how I can give you a hand, use my metronome or my tuner. If you want to learn about music notation and pitch, then let's grab my piano. That's the best place to start.",
+    'studio.tango.intro':    "I take care of all things rhythm! See the instruments I play if you want to know more about rhythm. Let's start with my drum set.",
+    'studio.riff.notyet':    'Not yet, youngster. We have a few things to do first before we get there.',
+    'studio.tango.notyet':   'Not yet! We have a few things to do first before we get there.',
+    'studio.help.line':      'Tap Riff or Tango to see which instruments they look after. Tap a lit-up instrument to play it.',
+    'studio.tuner.line':     'That is my tuner. Tap it any time to check your pitch.',
+    'studio.beat.line':      'That is my metronome. Tap it any time to keep time.',
+
+    // Each instrument: what it is called, and the area it opens.
+    'studio.instrument.piano':  'Piano',
+    'studio.instrument.drums':  'Drum kit',
+    'studio.instrument.congas': 'Congas',
+    'studio.instrument.bass':   'Double bass',
+    'studio.instrument.vibes':  'Vibraphone',
+    'studio.instrument.ebass':  'Electric bass',
+    'studio.instrument.gold':   'High scores',
+    'studio.area.piano':     'Notation',
+    'studio.area.drums':     'Beat Smash',
+    'studio.area.congas':    'Rhythm',
+    'studio.area.bass':      'Key Signatures',
+    'studio.area.vibes':     'Intervals',
+    'studio.area.ebass':     'Coming soon',
+
+    // What the coach says when an instrument lands on the rug.
+    'studio.say.piano':      'Lines, spaces, then the real thing. Three in a row and we move on.',
+    'studio.say.drums':      'Hit that kick on the beat!',
+    'studio.say.congas':     'Know what every note is worth, then count it and stomp it.',
+
     // One line of numbers under each card's pathway.
     'home.stats.new':        'Not played yet',
     'home.stats.cleared':    '{cleared} of {total} cleared',

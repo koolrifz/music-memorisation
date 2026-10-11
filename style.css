@@ -1593,3 +1593,55 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .home-bar { height: 10px; border-radius: 5px; background: #2b3e54; overflow: hidden; }
 .home-bar-fill { display: block; height: 100%; background: var(--home); border-radius: 5px; }
 .home-stats { color: var(--text-muted); font-size: 13px; font-weight: bold; }
+
+/* =========================================
+   THE STUDIO (studio.js)
+   A 412 x 738 board scaled to fit. Everything is prefixed st- so nothing
+   here touches another game.
+   ========================================= */
+#view-studio { padding: 0; background: #150e30; justify-content: center; overflow: hidden; }
+.studio-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+#studio-stage { position: relative; width: 412px; height: 738px; flex: none; overflow: hidden; background: #1e1640; transform-origin: 50% 50%; font-family: 'Trebuchet MS', system-ui, sans-serif; }
+#studio-stage * { box-sizing: border-box; }
+#studio-stage [hidden] { display: none !important; }
+.st-room { position: absolute; left: 0; top: 0; width: 412px; height: 738px; display: block; }
+.st-window { position: absolute; left: 122px; top: 246px; width: 170px; height: 150px; background: rgba(40,60,110,.28); pointer-events: none; }
+.st-window-glass { position: absolute; left: 122px; top: 246px; width: 170px; height: 150px; z-index: 2; pointer-events: none; background: linear-gradient(120deg, rgba(255,255,255,.22) 0, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 62%, rgba(255,255,255,.10) 100%); }
+.st-decor { position: absolute; pointer-events: none; z-index: 1; }
+.st-decor img, .st-item img, .st-coach img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.st-item { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transform-origin: 50% 50%; transition: transform .55s cubic-bezier(.34,1.56,.64,1), filter .4s; }
+.st-coach { position: absolute; z-index: 15; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transform-origin: 50% 100%; transition: transform .35s cubic-bezier(.34,1.56,.64,1), filter .35s, opacity .35s; }
+.st-shade { position: absolute; inset: 0; pointer-events: none; z-index: 8; opacity: 0; transition: opacity .5s; background: radial-gradient(ellipse 230px 150px at 206px 520px, rgba(10,6,25,0) 0, rgba(10,6,25,.5) 100%); }
+.st-light { position: absolute; inset: 0; pointer-events: none; z-index: 9; opacity: 0; transition: opacity .5s; background: radial-gradient(ellipse 190px 80px at 206px 530px, rgba(255,214,120,.38) 0, rgba(255,214,120,0) 100%); }
+.st-lock { position: absolute; z-index: 12; width: 30px; height: 30px; border-radius: 50%; background: rgba(21,14,48,.85); border: 2px solid #a99bd0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.st-mentor { position: absolute; left: 22px; top: 470px; width: 76px; height: 76px; border-radius: 50%; border: 3px solid #f6c94a; z-index: 25; box-shadow: 0 0 18px rgba(246,201,74,.8); }
+.st-hot { position: absolute; z-index: 30; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; }
+.st-pulse { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #f6c94a; animation: st-pl 1.8s infinite; }
+@keyframes st-pl { 0% { box-shadow: 0 0 0 0 rgba(246,201,74,.7); } 70% { box-shadow: 0 0 0 12px rgba(246,201,74,0); } 100% { box-shadow: 0 0 0 0 rgba(246,201,74,0); } }
+@keyframes st-bob { 0%, 100% { margin-top: 0; } 50% { margin-top: -4px; } }
+@keyframes st-shk { 0%, 100% { margin-left: 0; } 20% { margin-left: -6px; } 40% { margin-left: 6px; } 60% { margin-left: -4px; } 80% { margin-left: 4px; } }
+.st-bob-t { animation: st-bob 2.4s ease-in-out infinite; }
+.st-bob-r { animation: st-bob 2.9s ease-in-out infinite; }
+.st-shake { animation: st-shk .5s; }
+@media (prefers-reduced-motion: reduce) { .st-bob-t, .st-bob-r, .st-shake, .st-pulse { animation: none; } }
+.st-hi { position: absolute; left: 0; right: 0; top: 0; height: 60px; z-index: 40; display: flex; align-items: center; padding: 0 14px; color: #f6c94a; font: 800 15px 'Trebuchet MS', system-ui, sans-serif; pointer-events: none; background: linear-gradient(#150e30, rgba(21,14,48,0)); }
+.st-icon { position: absolute; top: 8px; z-index: 50; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 2px solid #f6c94a; background: rgba(21,14,48,.8); color: #f6c94a; font: 800 18px 'Trebuchet MS', system-ui, sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.st-help { right: 62px; }
+.st-gear { right: 10px; }
+.st-bubble { position: absolute; left: 10px; right: 10px; top: 60px; z-index: 45; display: flex; align-items: center; gap: 10px; font: 700 13px/1.3 'Trebuchet MS', system-ui, sans-serif; }
+.st-portrait { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 2px solid #2b1a4f; }
+.st-bubble .kr-guide-text { flex: 1; min-width: 0; }
+.st-panel { position: absolute; left: 0; right: 0; bottom: 0; height: 178px; z-index: 40; background: rgba(21,14,48,.86); border-top: 2px solid #f6c94a; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.st-panel-head { display: flex; align-items: center; gap: 10px; }
+.st-area { flex: 1; color: #f6c94a; font: 800 17px 'Trebuchet MS', system-ui, sans-serif; }
+.st-btn { min-height: 44px; min-width: 44px; border: 0; border-radius: 10px; background: #f6c94a; color: #2b1a4f; font: 800 13px 'Trebuchet MS', system-ui, sans-serif; padding: 0 12px; cursor: pointer; }
+.st-tiles { display: flex; gap: 8px; }
+.st-tile { flex: 1 1 0; min-width: 0; min-height: 44px; border: 2px solid #f6c94a; border-radius: 10px; background: #3a2268; color: #fff; font: 700 13px/1.15 'Trebuchet MS', system-ui, sans-serif; padding: 6px 4px; cursor: pointer; }
+.st-say { font: 700 13px/1.25 'Trebuchet MS', system-ui, sans-serif; }
+.st-toast { position: absolute; left: 24px; right: 24px; top: 70px; z-index: 60; background: #f6c94a; color: #2b1a4f; border-radius: 12px; padding: 12px; text-align: center; font: 800 14px/1.3 'Trebuchet MS', system-ui, sans-serif; }
+.studio-entry { width: 100%; max-width: 460px; min-height: 56px; margin: 0 0 14px; border: 3px solid #f6c94a; border-radius: 20px; background: #3a2268; color: #f6c94a; font: 800 18px 'Trebuchet MS', system-ui, sans-serif; cursor: pointer; }
+/* The gold guide box keeps its gold voice in the studio, on a solid ground so it reads over the room. */
+.st-bubble, .st-say { max-width: none; margin: 0; }
+.st-bubble { width: auto; }
+.st-bubble .kr-guide-text, .st-say .kr-guide-text { background: #1d1440; font-size: 13px; line-height: 1.3; text-align: left; padding: 8px 10px; }
+.st-say { width: 100%; }

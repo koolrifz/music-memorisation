@@ -2635,6 +2635,27 @@ ways, the picker, replaying a step, the teacher codes, and layout at 390×844,
 360×640 and 1366×657. `KR_VEXFLOW` / `KR_CHROME` let it run with no network. `fresh()` marks the rules as seen unless a test asks otherwise (`rules_seen=False`), so every other test goes straight into its take. Run it with
 `tools/check-text.py` before every commit.
 
+## THE STUDIO: the front door (branch `idea/studio-hub`)
+Rob, 2026-10-11. A cartoon recording studio, `studio.js` and `view-studio`:
+Riff and Tango stand at the front; tapping one lights their instruments and
+dims the other's (still visible and tappable); a lit instrument hops onto the
+rug and its games appear in a panel; a shut one gets "Not yet, youngster."
+Designed on a 412 x 738 board scaled to fit; positions are in the file.
+**No gate was added**: every built game is open, as on the dashboard; an
+instrument is shut only because its area isn't built. Ask Rob before gating.
+- The dashboard stays and is one tap away (the gear). `studio.js` wraps
+  `launchGame` so a game opened from the studio returns to it; script.js is
+  unchanged. `KR_STUDIO_IS_HOME` (or `#studio` in the address) makes it the
+  first screen; it is `false` until Rob decides.
+- The coaches' speech is the gold guide box (`KR.event('studio.*')`), on a solid
+  ground so it reads over the room. Heads are POSE ids (`studio.head.riff`),
+  never a bare `riff`, which would put a portrait beside every game's box.
+- Rob's words: the two intros and "Not yet, youngster..." (Riff). Tango's "Not
+  yet!" and the three panel lines are placeholders. Not built: Kool Beat and Kool
+  Tuner on Riff's piano (they only speak), the in-game HUD, the key
+  signature and interval areas. Idea file: `ideas/studio-hub.md`.
+- Test: `python tools/test-studio.py`, with `tools/check-text.py`.
+
 ## ADDICTIVE BY DESIGN: the whole app
 **This REVERSES the section that used to stand here** ("The constraint that
 outranks engagement", which said time at the instrument outranks time in the
