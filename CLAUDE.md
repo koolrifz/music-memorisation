@@ -2810,3 +2810,6 @@ Draft copy:
 
 ## Roadmap context
 Pillars: Notation (three games, done/near-done), **Value** (Value Smash, Part V1 built on `idea/value-smash`), Rhythm (Stomp Lab, in development), Key Signatures and Intervals (not started), organised into app-wide Levels (see "SILOS AND BRIDGES"). Rob's aim, since his days at Melbourne Grammar: the addictive early-learning companion nobody has built, and the flash-card "level one" of every area of music reading. Near-term goal is a clean prototype to hand to other developers or use for an app-store-style release; Game 3 structural cleanup (item 3 above) and the fixes above are the main blockers to calling the Notation pillar finished.
+
+### Celebration pages: same frame, and a link to the next game (Rob, 2026-10-13)
+The Staff, Note and Real Smash summary screens already sit inside `kr-frame`, so they share the wooden border, foam wall and badge. When a game's **whole pathway is graduated** (`isOfficialSmash` in `finishG1Game`, `isGraduation` in `finishG2Game`), the summary shows a button to the next game: Staff → Note Smash (`#g1-next-game-button`, `summary.next.note`), Note → Real Smash (`#g2-next-game-button`, `summary.next.real`). It calls `launchGame('view-game2' | 'view-game3')`. Real Smash is last, so it has none. Not yet restyled to Rob's mockup: the pause and Stage Complete screens.

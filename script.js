@@ -1342,6 +1342,9 @@ function finishG1Game(isOfficialSmash = false) {
     const nextStage = g1PathwayStages[selectedStageIndex + 1];
     nextStageButton.style.display = 'none';
     summaryCard.classList.toggle('g1-victory', isOfficialSmash);
+    const g1NextGame = document.getElementById('g1-next-game-button');
+    g1NextGame.innerText = KR.t('summary.next.note');
+    g1NextGame.style.display = isOfficialSmash ? 'block' : 'none';
     document.getElementById('g1-summary-title').innerText = isOfficialSmash ? '🏆 You Smashed the Staff!' : '🎉 You Smashed the Staff!';
     switchScreenState('game1', 'g1-screen-summary');
     if (isOfficialSmash) {
@@ -1809,6 +1812,9 @@ function finishG2Game(isGraduation) {
 
     const title = document.getElementById('g2-summary-title');
 
+    const g2NextGame = document.getElementById('g2-next-game-button');
+    g2NextGame.innerText = KR.t('summary.next.real');
+    g2NextGame.style.display = isGraduation ? 'block' : 'none';
     title.innerText = isGraduation ? '🏆 You Smashed All The Notes!' : '🎉 You Smashed the Notes!';
     if (!isGraduation && nextStage) {
         nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
