@@ -620,4 +620,7 @@ KR.lang('en-US', {
     'value.results.reached': 'You reached {cards} cards.',
     'value.results.again':   'Play again',
 
+    'summary.next.note':     'Next level: Note Smash! 🎼',
+    'summary.next.real':     'Ready? Take on Real Smash! ⚡',
+
 });
