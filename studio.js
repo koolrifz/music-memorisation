@@ -55,11 +55,11 @@ const KR_STUDIO_AREAS = {
    l, t, w: left, top and width in ROOM pixels; nw x nh: the picture's own
    size, which gives the height. z: stacking, front instruments higher. */
 const KR_STUDIO_ITEMS = [
-    { id: 'gold1', art: 'studio.goldrecord', l: 91,  t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
-    { id: 'gold2', art: 'studio.goldrecord', l: 185, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
-    { id: 'gold3', art: 'studio.goldrecord', l: 262, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
-    { id: 'gold4', art: 'studio.goldrecord', l: 343, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
-    { id: 'gold5', art: 'studio.goldrecord', l: 435, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
+    { id: 'gold1', pillar: 'notation', art: 'studio.goldrecord', l: 91,  t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
+    { id: 'gold2', pillar: 'value', art: 'studio.goldrecord', l: 185, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
+    { id: 'gold3', pillar: 'rhythm', art: 'studio.goldrecord', l: 262, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
+    { id: 'gold4', pillar: 'keys', art: 'studio.goldrecord', l: 343, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
+    { id: 'gold5', pillar: 'intervals', art: 'studio.goldrecord', l: 435, t: 238, w: 52,  nw: 113, nh: 132, z: 1 },
     { id: 'congas', art: 'studio.congas', l: 360, t: 490, w: 84,  nw: 143, nh: 176, z: 3 },
     { id: 'bass',   art: 'studio.bass',   l: 436, t: 372, w: 84,  nw: 106, nh: 267, z: 3 },
     { id: 'vibes',  art: 'studio.vibes',  l: 456, t: 548, w: 116, nw: 209, nh: 191, z: 3 },
@@ -67,6 +67,66 @@ const KR_STUDIO_ITEMS = [
     { id: 'piano',  art: 'studio.piano',  l: 2,   t: 440, w: 150, nw: 186, nh: 255, z: 4 },
     { id: 'drums',  art: 'studio.drums',  l: 178, t: 500, w: 215, nw: 240, nh: 178, z: 5 },
 ];
+/* ---------- The wall: one gold record per pillar ----------
+   Rob, 2026-10-13: the records on the wall are outlines. As a pillar's levels
+   turn gold the record fills gold from the bottom; when every level of a
+   pillar is gold it is lit. All five lit is the finale. A pillar not built yet
+   is an outline that says "Coming soon". Progress is read through each game's
+   own getter (the dashboard's), never a copy of its storage. */
+const KR_STUDIO_FINALE_KEY = 'koolRiffsWallFinale';
+
+function krStudioCount(entry) {
+    const stages = (entry && entry.stages) || [];
+    return { done: stages.filter(x => x === 'cleared').length, total: stages.length };
+}
+
+// { done, total, soon } for a pillar. Safe: a game that cannot be read counts as nothing.
+function krStudioPillar(pillar) {
+    const sum = list => {
+        let done = 0, total = 0;
+        list.forEach(fn => {
+            try { const c = krStudioCount(fn()); done += c.done; total += c.total; } catch (e) { /* unreadable: nothing cleared */ }
+        });
+        return { done: done, total: total, soon: false };
+    };
+    if (pillar === 'notation') return sum([
+        () => krHomeStages(getG1PathwayProgress(), g1PathwayStages.map(s => s.id)),
+        () => krHomeStages(getG2PathwayProgress(), g2PathwayStages.map(s => s.id)),
+        () => krHomeStages(getG3PathwayProgress(), g3PathwayStages.map(s => s.id)),
+    ]);
+    if (pillar === 'value') return sum([() => krHomeValue()]);
+    if (pillar === 'rhythm') return sum([
+        () => krHomeBeat(),
+        () => krHomeStages(getRhythmProgress(), RHYTHM_LEVELS.map(l => l.id)),
+        () => krHomeStages(getRstompProgress(), RSTOMP_LEVELS.map(l => l.id)),
+    ]);
+    return { done: 0, total: 0, soon: true };
+}
+
+function krStudioWallRefresh() {
+    const els = krStudio.els;
+    let lit = 0;
+    KR_STUDIO_ITEMS.filter(i => i.pillar).forEach(item => {
+        const b = els.items[item.id];
+        const pr = krStudioPillar(item.pillar);
+        const f = pr.total ? pr.done / pr.total : 0;
+        const full = f >= 1;
+        if (full) lit++;
+        b.classList.toggle('st-lit', full);
+        b.querySelector('.st-gold-fill').style.clipPath = 'inset(' + ((1 - f) * 100) + '% 0 0 0)';
+        b.dataset.done = pr.done;
+        b.dataset.total = pr.total;
+        b.dataset.soon = pr.soon ? '1' : '';
+    });
+    const all = lit === KR_STUDIO_ITEMS.filter(i => i.pillar).length;
+    els.stage.classList.toggle('st-finale', all);
+    if (all) {
+        let seen = false;
+        try { seen = localStorage.getItem(KR_STUDIO_FINALE_KEY) === '1'; localStorage.setItem(KR_STUDIO_FINALE_KEY, '1'); } catch (e) { /* no storage: it plays each visit */ }
+        if (!seen) KR.event('studio.finale');
+    }
+}
+
 const KR_STUDIO_SPEAKERS = [[52, 95, 68], [128, 105, 64], [382, 105, 64], [452, 92, 68]];
 const KR_STUDIO_COACHES = {
     tango: { left: 8,   top: 506, w: 148, h: 230, bob: 'st-bob-t' },
@@ -110,7 +170,7 @@ function krStudioPlayerName() {
 function krStudioBuild() {
     const stage = document.getElementById('studio-stage');
     stage.innerHTML = '';
-    const els = { items: {}, locks: {}, coaches: {} };
+    const els = { items: {}, locks: {}, coaches: {}, stage: stage };
 
     const room = krStudioMake('img', 'st-room', stage);
     room.src = krStudioArt('studio.room');
@@ -146,6 +206,14 @@ function krStudioBuild() {
         img.alt = '';
         b.onclick = () => krStudioPickItem(item);
         els.items[item.id] = b;
+        if (item.pillar) {
+            b.classList.add('st-pillar');
+            img.classList.add('st-gold-base');
+            const fill = krStudioMake('img', 'st-gold-fill', b);
+            fill.src = krStudioArt(item.art);
+            fill.alt = '';
+            b.setAttribute('aria-label', KR.t('studio.pillar.' + item.pillar));
+        }
         if (area && !area.open) {
             const lock = krStudioMake('div', 'st-lock', stage);
             lock.style.left = (item.l * KR_STUDIO_K + item.w * KR_STUDIO_K / 2 - 15) + 'px';
@@ -251,7 +319,13 @@ function krStudioPickCoach(who) {
 
 function krStudioPickItem(item) {
     const area = KR_STUDIO_AREAS[item.id];
-    if (!area) { krStudioToast(KR.t('studio.records')); return; }
+    if (!area) {
+        const b = krStudio.els.items[item.id];
+        const name = KR.t('studio.pillar.' + item.pillar);
+        krStudioToast(b.dataset.soon ? KR.t('studio.pillar.soon', { name: name })
+            : KR.t('studio.pillar.progress', { name: name, done: b.dataset.done, total: b.dataset.total }));
+        return;
+    }
     if (krStudio.focus !== area.who) {
         krStudio.focus = area.who;
         krStudio.sel = null;
@@ -373,6 +447,7 @@ function krStudioShow() {
     const name = krStudioPlayerName();
     krStudio.els.hi.textContent = name ? KR.t('studio.hi', { name: name }) : KR.t('studio.hi.guest');
     krStudioRender();
+    krStudioWallRefresh();
     krStudioFit();
 }
 

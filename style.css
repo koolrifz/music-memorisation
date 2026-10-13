@@ -1918,3 +1918,14 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .kr-panel .bsmash-steps, .kr-panel .bsmash-settings { padding: 8px; margin-top: 12px; }
 .kr-panel .bsmash-steps:empty, .kr-panel .bsmash-settings:empty { display: none; }
 .kr-panel .btn-secondary { margin-top: 10px; }
+
+/* THE STUDIO WALL: five pillar records, outlines until earned (Rob, 2026-10-13).
+   The base is a dark silhouette with a thin gold edge; the gold copy on top is
+   clipped from the top by studio.js, so it fills from the bottom as levels are won. */
+.st-pillar { overflow: visible; }
+.st-pillar .st-gold-base { filter: grayscale(1) brightness(.38) contrast(1.15); }
+.st-pillar .st-gold-fill { position: absolute; left: 0; top: 0; transition: clip-path .8s ease; }
+.st-pillar.st-lit .st-gold-fill { filter: drop-shadow(0 0 8px rgba(255,214,120,.95)); }
+.st-finale .st-pillar .st-gold-fill { animation: stFinale 1.6s ease-in-out infinite; }
+@keyframes stFinale { 0%, 100% { filter: drop-shadow(0 0 6px rgba(255,214,120,.8)); } 50% { filter: drop-shadow(0 0 18px rgba(255,236,160,1)) brightness(1.15); } }
+@media (prefers-reduced-motion: reduce) { .st-finale .st-pillar .st-gold-fill { animation: none; } }
