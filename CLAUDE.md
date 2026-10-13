@@ -2813,3 +2813,6 @@ Pillars: Notation (three games, done/near-done), **Value** (Value Smash, Part V1
 
 ### Celebration pages: same frame, and a link to the next game (Rob, 2026-10-13)
 The Staff, Note and Real Smash summary screens already sit inside `kr-frame`, so they share the wooden border, foam wall and badge. When a game's **whole pathway is graduated** (`isOfficialSmash` in `finishG1Game`, `isGraduation` in `finishG2Game`), the summary shows a button to the next game: Staff → Note Smash (`#g1-next-game-button`, `summary.next.note`), Note → Real Smash (`#g2-next-game-button`, `summary.next.real`). It calls `launchGame('view-game2' | 'view-game3')`. Real Smash is last, so it has none. Not yet restyled to Rob's mockup: the pause and Stage Complete screens.
+
+### Cache-busting: bump `?v=` in index.html when you ship
+GitHub Pages lets a phone keep an old `.js`/`.css` for minutes to hours while it fetches a new `index.html`, which shows raw `[ids]` and an empty screen (seen 2026-10-13 on Rob's Pixel). Every local script and `style.css` in `index.html` carries `?v=<date+letter>`; **change it (all of them) in any commit that changes those files** — e.g. `sed -i 's/?v=20261013a/?v=20261014a/g' index.html`.
