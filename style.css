@@ -1858,3 +1858,49 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 #view-game3 .card-wrapper.timeout { background: radial-gradient(ellipse at 50% 50%, rgba(255,75,75,.40), rgba(160,30,40,.5)), var(--kr-parchment) !important; }
 /* Used wood and a grubby wall: grain laid under the frame's own colours. */
 .view.kr-frame { background-image: var(--kr-grain), linear-gradient(to bottom, rgba(20,18,47,0) 90px, var(--kr-room) 215px), conic-gradient(from 45deg at 50% 50%, #2b2750 0 25%, #1a1738 0 50%, #332f5e 0 75%, #221f45 0); background-size: 220px 220px, auto, 22px 22px; background-repeat: repeat, no-repeat, repeat; }
+
+
+/* =========================================
+   THE SHARED TEMPLATE PIECES (Rob, 2026-10-13: "bring it all under one template")
+   Frame, badge and HUD are above. These are the rest, used by every screen as
+   it is converted: the parchment PANEL, the BUTTONS, the pop-up WINDOW, and
+   the SHELF (shelf.js) that picks a level.
+   Colours come from the --kr-* tokens, so tuning the look is one place.
+   ========================================= */
+
+/* The parchment panel: replaces .pathway-card, .setup-card and friends. */
+.kr-panel { position: relative; z-index: 20; width: 100%; max-width: 620px; margin-top: 78px; padding: 22px 16px 18px; text-align: center; color: var(--kr-ink); background: var(--kr-parchment); border: 3px solid var(--kr-paper-dark); border-radius: 9px 17px 11px 15px / 15px 10px 17px 11px; box-shadow: inset 0 0 18px rgba(110,70,20,.45), 0 4px 0 var(--kr-wood-dark), 0 8px 14px rgba(0,0,0,.5); font-family: var(--kr-font); }
+.kr-panel h1 { margin: 0; font: 400 clamp(28px, 8vw, 38px)/1 var(--kr-font); color: var(--kr-ink); text-transform: uppercase; letter-spacing: .5px; }
+.kr-panel-sub { margin: 6px 0 16px; font-size: 18px; color: var(--kr-ink-soft); }
+.kr-panel .rstomp-walkthrough { background: rgba(255,255,255,.35); border-color: var(--kr-paper-dark); color: var(--kr-ink); font-family: 'Patrick Hand', var(--kr-font); font-size: 17px; }
+
+/* Buttons: the green go button and the quiet text button. */
+.kr-btn { display: block; width: 100%; min-height: 52px; margin: 12px 0 0; padding: 10px 14px; font: 400 22px/1.1 var(--kr-font); text-transform: uppercase; letter-spacing: .5px; cursor: pointer; touch-action: manipulation; border-radius: 14px; }
+.kr-btn-go { color: #fff; border: 3px solid #1d5a14; background: linear-gradient(#7bd957, #3f9b2a); text-shadow: 0 2px 0 rgba(0,0,0,.35); box-shadow: 0 0 0 2px var(--kr-gold-deep), 0 5px 0 var(--kr-wood-dark); }
+.kr-btn-go:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 2px var(--kr-gold-deep), 0 1px 0 var(--kr-wood-dark); }
+.kr-btn-go:disabled { filter: grayscale(.8) brightness(.8); cursor: default; }
+.kr-btn-quiet { min-height: 40px; font-size: 17px; background: none; border: 0; color: var(--kr-ink-soft); text-decoration: underline; text-transform: none; }
+
+/* The pop-up window (modals): same parchment, same buttons, over a dim room. */
+.kr-modal { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8,6,28,.72); }
+.kr-modal[hidden] { display: none; }
+.kr-modal .kr-panel { margin-top: 0; max-height: 90vh; overflow: auto; }
+
+/* The shelf: a crate of album sleeves, and the open album's tracks. */
+.kr-crate { display: flex; gap: 10px; overflow-x: auto; padding: 4px 4px 12px; margin: 0 -6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.kr-sleeve { position: relative; flex: 0 0 104px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px 8px; font: 400 15px/1.05 var(--kr-font); color: #f3e9c8; background: linear-gradient(#3b3a86, #25235f); border: 3px solid var(--kr-wood-hi); border-radius: 6px; box-shadow: 0 4px 0 var(--kr-wood-dark); cursor: pointer; }
+.kr-sleeve.selected { border-color: var(--kr-gold); transform: translateY(-3px); box-shadow: 0 7px 0 var(--kr-wood-dark), 0 0 12px rgba(246,201,74,.55); }
+.kr-sleeve.gold { background: linear-gradient(#f6d869, #c8901a); color: #3a2604; border-color: var(--kr-gold-shadow); }
+.kr-sleeve.locked { opacity: .55; filter: saturate(.5); }
+.kr-sleeve-disc { width: 58px; height: 58px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #c33 0 14%, #111 15% 17%, #1b1b1b 18% 38%, #111 39% 41%, #222 42% 62%, #0c0c0c 63% 100%); box-shadow: 0 2px 4px rgba(0,0,0,.6); }
+.kr-sleeve.gold .kr-sleeve-disc { background: radial-gradient(circle at 50% 50%, #7a1a14 0 14%, #7a5208 15% 17%, #e0a726 18% 38%, #b9810f 39% 41%, #f2c24d 42% 62%, #a8730b 63% 100%); }
+.kr-sleeve-title { min-height: 2.1em; display: flex; align-items: center; text-align: center; }
+.kr-sleeve-count { font-size: 12px; opacity: .85; text-align: center; }
+.kr-tracks { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.kr-track { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; text-align: left; font: 400 19px/1.1 var(--kr-font); color: var(--kr-ink); background: rgba(255,255,255,.4); border: 2px solid var(--kr-paper-dark); border-radius: 12px; cursor: pointer; }
+.kr-track.recommended { border-color: var(--kr-gold-deep); background: rgba(246,201,74,.45); box-shadow: 0 0 0 3px rgba(217,154,20,.4); }
+.kr-track.cleared .kr-disc { background: radial-gradient(circle at 50% 50%, #fff 0 10%, transparent 11%), #2f7d2a; }
+.kr-track.locked { opacity: .5; cursor: default; }
+.kr-disc { flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: #f3e9c8; font-size: 16px; background: radial-gradient(circle at 50% 50%, #7a1a14 0 30%, #111 31% 100%); box-shadow: 0 2px 3px rgba(0,0,0,.5); }
+.kr-track-name { flex: 1 1 auto; min-width: 0; }
+.kr-track-pts { flex: 0 0 auto; font-size: 14px; color: var(--kr-ink-soft); }
