@@ -21,7 +21,7 @@ A recording can't change, so these lines are marked below. For now, record them
 without the braced part, and the game will need a small change to play the braced
 part after them; or leave them to the browser's voice.
 
-## Tango (81 lines)
+## Tango (85 lines)
 
 **Voice:** the drummer, an orange cat with a red mane and a blue vest. She handles rhythm. Bright and warm, encouraging, never hyper: Rob's classes found the old high, quick voice annoying (2026-10-08). A drummer counting a band in: steady, on the beat, a smile in it.
 
@@ -146,7 +146,16 @@ part after them; or leave them to the browser's voice.
 |---|---|---|
 | `tango.license.1` | (missing: tango.license.1) | `value.license.awarded` |
 
-## Riff (36 lines)
+### Other
+
+| ID (the file name) | Line | Heard when |
+|---|---|---|
+| `studio.tango.intro` | I take care of all things rhythm! See the instruments I play if you want to know more about rhythm. Let's start with my drum set. | `studio.tango.focus` |
+| `studio.tango.notyet` | Not yet! We have a few things to do first before we get there. | `studio.tango.notyet` |
+| `studio.say.drums` | Hit that kick on the beat! | `studio.pick.drums` |
+| `studio.say.congas` | Know what every note is worth, then count it and stomp it. | `studio.pick.congas` |
+
+## Riff (41 lines)
 
 **Voice:** the jazz Scottie dog in a red beret and green vest. Rob: hip and cool, a New York jazz man who knows all the secrets of memorising and of making beautiful music and melody. Relaxed, unhurried, warm; he calls people "cat".
 
@@ -205,3 +214,13 @@ part after them; or leave them to the browser's voice.
 | `beat.riff.heard.hop` | Hop. Deep and bouncy. | `beat.picker.heard.hop.riff` |
 | `beat.won.keys.1` | Oh, that gives me an idea for the keys! | `beat.part.won.keys` |
 | `beat.locked.keys.1` | {style} keys, locked in. That's the full band! **(filled in: {style})** | `beat.part.locked.keys` |
+
+### Other
+
+| ID (the file name) | Line | Heard when |
+|---|---|---|
+| `studio.riff.intro` | If you want to know how I can give you a hand, use my metronome or my tuner. If you want to learn about music notation and pitch, then let's grab my piano. That's the best place to start. | `studio.riff.focus` |
+| `studio.riff.notyet` | Not yet, youngster. We have a few things to do first before we get there. | `studio.riff.notyet` |
+| `studio.finale.line` | Look at that wall, cat. Every record gold. That's the whole album. You did it. | `studio.finale` |
+| `studio.help.line` | Tap Riff or Tango to see which instruments they look after. Tap a lit-up instrument to play it. | `studio.help` |
+| `studio.say.piano` | Lines, spaces, then the real thing. Three in a row and we move on. | `studio.pick.piano` |
