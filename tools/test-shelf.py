@@ -39,7 +39,7 @@ def main():
         page.wait_for_timeout(300)
         n = page.eval_on_selector_all('#rstomp-shelf .kr-sleeve', 'e => e.length')
         check('eight albums on the shelf', n == 8, n)
-        check('nothing is gold on a fresh device', page.eval_on_selector_all('.kr-sleeve.gold', 'e => e.length') == 0)
+        check('nothing is gold on a fresh device', page.eval_on_selector_all('.kr-track.cleared, .kr-sleeve.complete', 'e => e.length') == 0)
         check('seven albums dimmed', page.eval_on_selector_all('.kr-sleeve.locked', 'e => e.length') == 7)
         check('first album selected', page.eval_on_selector_all('.kr-sleeve.selected', 'e => e.length') == 1)
         tracks = page.eval_on_selector_all('.kr-track', 'e => e.length')
@@ -53,7 +53,8 @@ def main():
         check('teacher can jump to the last album', page.eval_on_selector_all('.kr-track:not(:disabled)', 'e => e.length') == 4)
         page.evaluate("""() => { const p = getRstompProgress(); localStorage.removeItem('koolRiffsOpenAll');
             localStorage.setItem('koolRiffsRhythmLabProgress', JSON.stringify({unlockedStages:['1','2','3','4'], stageProgress:{'1':{cleared:true},'2':{cleared:true},'3':{cleared:true},'4':{cleared:true}}, lastPosition:'4'})); renderRstompPathway(); }""")
-        check('a finished album is gold', page.eval_on_selector_all('.kr-sleeve.gold', 'e => e.length') == 1)
+        page.click('.kr-sleeve:nth-child(1)')
+        check('cleared tracks are gold and the finished album is marked', page.eval_on_selector_all('.kr-track.cleared', 'e => e.length') == 4 and page.eval_on_selector_all('.kr-sleeve.complete', 'e => e.length') == 1)
         check('no script errors', not errors, errors)
         browser.close()
     server.shutdown()

@@ -682,7 +682,7 @@ KR.lang('en-US', {
     /* ---------- The shelf (shelf.js), used by every game's level screen ---------- */
     'shelf.album.count':     '{done} of {total} tracks',
     'shelf.album.locked':    'Not yet, youngster',
-    'shelf.album.gold':      'Gold record',
+    'shelf.album.done':      'All gold',
     'shelf.track.locked':    'Not open yet',
     'shelf.track.pts':       '{n} pts',
     'shelf.tracks.of':       '{album}',
