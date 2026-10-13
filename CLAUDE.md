@@ -2816,3 +2816,9 @@ The Staff, Note and Real Smash summary screens already sit inside `kr-frame`, so
 
 ### Cache-busting: bump `?v=` in index.html when you ship
 GitHub Pages lets a phone keep an old `.js`/`.css` for minutes to hours while it fetches a new `index.html`, which shows raw `[ids]` and an empty screen (seen 2026-10-13 on Rob's Pixel). Every local script and `style.css` in `index.html` carries `?v=<date+letter>`; **change it (all of them) in any commit that changes those files** — e.g. `sed -i 's/?v=20261013a/?v=20261014a/g' index.html`.
+
+### THE RECORD LADDER: the app's one metaphor (Rob, 2026-10-13)
+Rob chose it: *"The topics are no longer tiles. They become black records, and once that level's been achieved it's gold. When we finish a pillar you get a platinum album, and with all pillars completed you win the diamond album."*
+- **Every level, in every game, is a record**: black (vinyl/acetate) until achieved, then **gold**. Gold is earned, never default (the old idea in `ideas/gold-records.md`). **Platinum** = a whole pillar done. **Diamond** = every pillar done (the ultimate award; it replaces the open "name the award" question under "SILOS AND BRIDGES").
+- **Built:** the shared shelf (`shelf.js`) with tracks as records, black then gold. Rhythm Stomp Lab is on it. Albums are only groups of a few tracks to keep the list short; a finished album is marked *complete*, not given a metal. **Not built:** platinum and diamond, and the other games' tiles (Staff, Note, Real Smash, Rhythm, Value, Beat Smash): each moves onto the shelf in turn. Riff and Tango teach the record industry as they go.
+- **Songs the student makes are carried and developed** (Beat Smash's bands today). Rob's direction: many interchangeable riffs written by him and his musician friends, four-bar loops that all work together, in categories; each level won unlocks more variety. Parked until the level screens are all on the shelf.

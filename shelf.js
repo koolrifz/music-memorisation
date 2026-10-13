@@ -15,7 +15,11 @@
      });
 
    Rules (Rob, 2026-10-13):
-     - An album is GOLD only when every track in it is cleared. Earned, never default.
+     - THE RECORD LADDER (Rob, 2026-10-13): a track is a black record; CLEARED it
+       turns GOLD. Gold is earned, never default. (Platinum = a whole pillar,
+       diamond = every pillar: not built, see CLAUDE.md "THE RECORD LADDER".)
+     - An album here is only a handful of tracks; when all are gold it is marked
+       complete, not given a metal of its own.
      - An album nothing in it is open yet is dimmed, with the "not yet" line.
      - Locked tracks still show their name, dimmed (a student can see what is coming).
      - With the teacher's OPEN code on, everything is unlocked, so a teacher can jump anywhere.
@@ -52,14 +56,14 @@ KR.shelf = (function () {
         crate.setAttribute('role', 'tablist');
         cfg.albums.forEach(album => {
             const st = albumState(album, cfg);
-            const sleeve = el('button', 'kr-sleeve' + (st.gold ? ' gold' : '') + (st.open ? '' : ' locked') + (album.id === selected ? ' selected' : ''));
+            const sleeve = el('button', 'kr-sleeve' + (st.gold ? ' complete' : '') + (st.open ? '' : ' locked') + (album.id === selected ? ' selected' : ''));
             sleeve.type = 'button';
             sleeve.setAttribute('role', 'tab');
             sleeve.setAttribute('aria-selected', album.id === selected ? 'true' : 'false');
             sleeve.appendChild(el('span', 'kr-sleeve-disc'));
             sleeve.appendChild(el('span', 'kr-sleeve-title', KR.t(album.titleId)));
             sleeve.appendChild(el('span', 'kr-sleeve-count', st.open
-                ? (st.gold ? KR.t('shelf.album.gold') : KR.t('shelf.album.count', { done: st.done, total: st.total }))
+                ? (st.gold ? KR.t('shelf.album.done') : KR.t('shelf.album.count', { done: st.done, total: st.total }))
                 : KR.t('shelf.album.locked')));
             sleeve.onclick = () => { openAlbum[key] = album.id; render(host, cfg); };
             crate.appendChild(sleeve);
