@@ -4549,55 +4549,45 @@ function renderBeatPathway() {
     chip.hidden = !player;
     chip.textContent = player ? KR.t('beat.player.playingAs', { name: player.name }) : '';
     const track = bsmashEl('beat-pathway-track');
-    track.innerHTML = '';
-    bsmashSelected = null;
-    // The warm-up, first on the left: always open.
-    const warm = bsmashMake('button', 'pathway-node unlocked', track); // text-ok: class names
-    warm.dataset.id = 'jam';
-    if (progress.jamDone) warm.classList.add('cleared');
-    bsmashMake('span', 'pathway-node-icon', warm).textContent = KR.t('beat.warmup.icon');
-    bsmashMake('span', 'pathway-node-label', warm).textContent = KR.t('beat.step.jam');
-    warm.onclick = () => selectBeatMusician('jam');
-    bsmashSelected = 'jam';
-    // The song, second: chosen after the warm-up, and the band is built on it.
+    // The five squares, now five records on the shelf: the warm-up, the song,
+    // then the musicians in order. What is open and what is chosen is decided
+    // first, exactly as before, then the shelf draws it.
     const song = bsmashSongOf(progress);
     const songOpen = !!progress.jamDone || KR.openAll();
-    const songNode = bsmashMake('button', 'pathway-node', track);
-    songNode.dataset.id = 'song';
-    songNode.classList.add(songOpen ? 'unlocked' : 'locked');
-    if (song) songNode.classList.add('cleared');
-    songNode.disabled = !songOpen;
-    bsmashMake('span', 'pathway-node-icon', songNode).textContent = song ? KR.t('song.' + song + '.icon') : KR.t('beat.song.icon');
-    bsmashMake('span', 'pathway-node-label', songNode).textContent = song ? bsmashSongName(song) : KR.t('beat.song.node');
+    const open = new Set(['jam']);
+    const records = { jam: { cleared: !!progress.jamDone }, song: { cleared: !!song } };
+    bsmashSelected = 'jam';
     if (songOpen) {
-        songNode.onclick = () => selectBeatMusician('song');
+        open.add('song');
         if (!song) bsmashSelected = 'song';
     }
     BSMASH_MUSICIANS.forEach((musician, index) => {
-        const open = bsmashUnlocked(index, progress);
+        const isOpen = bsmashUnlocked(index, progress);
         const record = progress.musicians[musician.id];
-        const node = bsmashMake('button', 'pathway-node', track);
-        node.dataset.id = musician.id;
-        node.classList.add(open ? 'unlocked' : 'locked');
-        if (record.won) node.classList.add('cleared');
-        node.disabled = !open;
-        const icon = bsmashMake('span', 'pathway-node-icon', node);
-        icon.textContent = KR.t('beat.musician.' + musician.id + '.icon');
-        // Locked musicians show who they are too, dimmed: the band still to win.
-        const label = bsmashMake('span', 'pathway-node-label', node);
-        label.textContent = KR.t('beat.musician.' + musician.id);
-        if (open) {
-            if (record.won) {
-                const won = bsmashMake('small', null, node);
-                won.textContent = KR.t('beat.style.' + record.part);
-            }
-            node.onclick = () => selectBeatMusician(musician.id);
+        records[musician.id] = { cleared: !!record.won };
+        if (isOpen) {
+            open.add(musician.id);
             if (!record.won || bsmashSelected === 'jam') bsmashSelected = musician.id;
         }
     });
     // The band complete: the next thing is another song (Rob: "I want to make
     // another song and go through the whole process again").
     if (song && BSMASH_MUSICIANS.every(m => progress.musicians[m.id].won)) bsmashSelected = 'song';
+    KR.shelf.render(track, {
+        albums: [{ id: 'band', titleId: 'shelf.album.all', levelIds: ['jam', 'song'].concat(BSMASH_MUSICIANS.map(m => m.id)) }],
+        levelName: id => id === 'jam' ? KR.t('beat.step.jam')
+            : id === 'song' ? (song ? bsmashSongName(song) : KR.t('beat.song.node'))
+            : KR.t('beat.musician.' + id),
+        discLabel: id => id === 'jam' ? KR.t('beat.warmup.icon')
+            : id === 'song' ? (song ? KR.t('song.' + song + '.icon') : KR.t('beat.song.icon'))
+            : KR.t('beat.musician.' + id + '.icon'),
+        unlocked: open,
+        records,
+        current: bsmashSelected,
+        // A won musician shows the part chosen, as the old square did.
+        note: id => (id !== 'jam' && id !== 'song' && progress.musicians[id].won) ? KR.t('beat.style.' + progress.musicians[id].part) : '',
+        onPick: id => selectBeatMusician(id),
+    });
     selectBeatMusician(bsmashSelected);
     bsmashRenderStats();
     const won = id => progress.musicians[id].won;
@@ -4619,7 +4609,7 @@ function renderBeatPathway() {
 
 function selectBeatMusician(id) {
     bsmashSelected = id;
-    document.querySelectorAll('#beat-pathway-track .pathway-node').forEach(node =>
+    document.querySelectorAll('#beat-pathway-track .kr-track').forEach(node =>
         node.classList.toggle('recommended', node.dataset.id === id));
     const progress = bsmashLoad();
     if (id === 'jam') bsmashSelectedStep = 'jam';

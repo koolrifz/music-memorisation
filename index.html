@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Lilita+One&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="48x48" href="art/logo/icon-48.png">
     <link rel="apple-touch-icon" href="art/logo/icon-192.png">
-    <link rel="stylesheet" href="style.css?v=20261013b">
+    <link rel="stylesheet" href="style.css?v=20261013c">
 </head>
 <body>
 
@@ -91,12 +91,12 @@
     <img class="kr-badge" data-art="logo.badge" alt="" hidden>
 
     <div id="g1-screen-pathway" class="screen active">
-        <div class="pathway-card">
-            <h1>Staff Smash</h1>
-            <p class="pathway-subtitle">5 lines + 4 spaces. Pick your next smash mission.</p>
-            <div class="pathway-track" id="g1-pathway-track"></div>
-            <button class="btn btn-start" id="g1-pathway-start" onclick="startSelectedG1Stage()" disabled>Choose your mission</button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        <div class="kr-panel">
+            <h1 data-text="g1.title"></h1>
+            <p class="kr-panel-sub" data-text="g1.subtitle"></p>
+            <div id="g1-pathway-track"></div>
+            <button class="kr-btn kr-btn-go" id="g1-pathway-start" onclick="startSelectedG1Stage()" disabled data-text="shelf.choose"></button>
+            <button class="kr-btn kr-btn-quiet" onclick="launchGame('view-dashboard')" data-text="shelf.back.dashboard"></button>
         </div>
     </div>
 
@@ -168,20 +168,20 @@
     <img class="kr-badge" data-art="logo.badge" alt="" hidden>
 
     <div id="g2-screen-pathway" class="screen active">
-        <div class="pathway-card">
+        <div class="kr-panel">
             <div class="clef-picker">
                 <button class="clef-picker-btn" data-clef="treble" onclick="selectClef('treble')" title="Treble Clef">𝄞</button>
                 <button class="clef-picker-btn" data-clef="bass" onclick="selectClef('bass')" title="Bass Clef">𝄢</button>
             </div>
-            <h1>Note Smash</h1>
-            <p class="pathway-subtitle" id="g2-pathway-subtitle">Learn the notes, then smash the staff.</p>
+            <h1 data-text="g2.title"></h1>
+            <p class="kr-panel-sub" id="g2-pathway-subtitle" data-text="g2.subtitle"></p>
             <div class="pathway-handoff" id="g2-pathway-handoff" hidden>
-                <span>You Have Smashed All The Notes!</span>
-                <span>Next Stop: Real Smash - The Ultimate Note Reading Sprint</span>
+                <span data-text="g2.handoff.1"></span>
+                <span data-text="g2.handoff.2"></span>
             </div>
-            <div class="pathway-track" id="g2-pathway-track"></div>
-            <button class="btn btn-start" id="g2-pathway-start" onclick="startSelectedG2Stage()" disabled>Choose your mission</button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+            <div id="g2-pathway-track"></div>
+            <button class="kr-btn kr-btn-go" id="g2-pathway-start" onclick="startSelectedG2Stage()" disabled data-text="shelf.choose"></button>
+            <button class="kr-btn kr-btn-quiet" onclick="launchGame('view-dashboard')" data-text="shelf.back.dashboard"></button>
         </div>
     </div>
 
@@ -259,16 +259,16 @@
     <img class="kr-badge" data-art="logo.badge" alt="" hidden>
     
     <div id="g3-screen-pathway" class="screen active">
-        <div class="pathway-card">
+        <div class="kr-panel">
             <div class="clef-picker">
                 <button class="clef-picker-btn" data-clef="treble" onclick="selectClef('treble')" title="Treble Clef">𝄞</button>
                 <button class="clef-picker-btn" data-clef="bass" onclick="selectClef('bass')" title="Bass Clef">𝄢</button>
             </div>
-            <h1>Real Smash</h1>
-            <p class="pathway-subtitle" id="g3-pathway-subtitle">Build note-reading confidence, one mission at a time.</p>
-            <div class="pathway-track" id="g3-pathway-track"></div>
-            <button class="btn btn-start" id="g3-pathway-start" onclick="startSelectedG3Stage()" disabled>Choose your mission</button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+            <h1 data-text="g3.title"></h1>
+            <p class="kr-panel-sub" id="g3-pathway-subtitle" data-text="g3.subtitle"></p>
+            <div id="g3-pathway-track"></div>
+            <button class="kr-btn kr-btn-go" id="g3-pathway-start" onclick="startSelectedG3Stage()" disabled data-text="shelf.choose"></button>
+            <button class="kr-btn kr-btn-quiet" onclick="launchGame('view-dashboard')" data-text="shelf.back.dashboard"></button>
         </div>
     </div>
 
@@ -370,12 +370,12 @@
     </div>
 
     <div id="rhythm-screen-pathway" class="screen active">
-        <div class="pathway-card">
-            <h1>Rhythm Stomp</h1>
-            <p class="pathway-subtitle" id="rhythm-pathway-subtitle">Count when the next note starts, before you play it.</p>
-            <div class="pathway-track" id="rhythm-pathway-track"></div>
-            <button class="btn btn-start" id="rhythm-pathway-start" onclick="startSelectedRhythmLevel()" disabled>Choose your mission</button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')">Back to Dashboard</button>
+        <div class="kr-panel">
+            <h1 data-text="rhythm.title"></h1>
+            <p class="kr-panel-sub" id="rhythm-pathway-subtitle" data-text="rhythm.subtitle"></p>
+            <div id="rhythm-pathway-track"></div>
+            <button class="kr-btn kr-btn-go" id="rhythm-pathway-start" onclick="startSelectedRhythmLevel()" disabled data-text="shelf.choose"></button>
+            <button class="kr-btn kr-btn-quiet" onclick="launchGame('view-dashboard')" data-text="shelf.back.dashboard"></button>
         </div>
     </div>
 
@@ -550,7 +550,7 @@
 
 <!-- VALUE SMASH (the Value silo) - value-smash.js. No words here: every
      element carries data-text="some.id", filled from lang/en-US.js. -->
-<div id="view-value" class="view">
+<div id="view-value" class="view kr-room">
     <div class="game-nav">
         <button class="btn-back" onclick="handleValueBackButton()" data-text="value.back"></button>
     </div>
@@ -563,7 +563,7 @@
     <!-- Who is playing. Asked the first time; the "Playing as" control on
          the pathway comes back here to switch or add a player. -->
     <div id="value-screen-player" class="screen">
-        <div class="pathway-card">
+        <div class="kr-panel">
             <h1 data-text="value.title"></h1>
             <div class="kr-guide" id="value-player-guide">
                 <img class="kr-guide-portrait" hidden alt="">
@@ -571,18 +571,18 @@
             </div>
             <div class="vsmash-player-list" id="value-player-list"></div>
             <input class="vsmash-name-input" id="value-name-input" type="text" maxlength="20" autocomplete="off">
-            <button class="btn btn-start" onclick="addValuePlayer()" data-text="value.player.add"></button>
+            <button class="kr-btn kr-btn-go" onclick="addValuePlayer()" data-text="value.player.add"></button>
         </div>
     </div>
 
     <div id="value-screen-pathway" class="screen">
-        <div class="pathway-card">
+        <div class="kr-panel">
             <h1 data-text="value.title"></h1>
             <button class="vsmash-player-chip" id="value-player-chip" onclick="showValuePlayers()"></button>
-            <p class="pathway-subtitle" data-text="value.subtitle"></p>
-            <div class="pathway-track" id="value-pathway-track"></div>
-            <button class="btn btn-start" id="value-pathway-start" onclick="startSelectedValueFloor()" disabled data-text="value.choose"></button>
-            <button class="btn btn-text" onclick="launchGame('view-dashboard')" data-text="value.toDashboard"></button>
+            <p class="kr-panel-sub" data-text="value.subtitle"></p>
+            <div id="value-pathway-track"></div>
+            <button class="kr-btn kr-btn-go" id="value-pathway-start" onclick="startSelectedValueFloor()" disabled data-text="value.choose"></button>
+            <button class="kr-btn kr-btn-quiet" onclick="launchGame('view-dashboard')" data-text="value.toDashboard"></button>
         </div>
     </div>
 
@@ -660,7 +660,7 @@
 
 <!-- BEAT SMASH (beat-smash.js) - the first rhythm game, in the studio.
      Every word comes from lang/en-US.js by ID. -->
-<div id="view-beat" class="view">
+<div id="view-beat" class="view kr-room">
     <div class="game-nav">
         <button class="btn-back" onclick="handleBeatBackButton()" data-text="beat.back"></button>
     </div>
@@ -683,20 +683,20 @@
     </div>
 
     <div id="beat-screen-pathway" class="screen">
-        <div class="pathway-card">
+        <div class="kr-panel">
             <h1 data-text="beat.title"></h1>
             <button class="vsmash-player-chip" id="beat-player-chip" hidden onclick="showBeatPlayers(false, true)"></button>
             <div class="kr-guide" id="beat-pathway-guide">
                 <img class="kr-guide-portrait" hidden alt="">
                 <div class="kr-guide-text"></div>
             </div>
-            <div class="pathway-track" id="beat-pathway-track"></div>
+            <div id="beat-pathway-track"></div>
             <div class="bsmash-steps" id="beat-steps"></div>
-            <button class="btn btn-start" id="beat-pathway-start" onclick="startSelectedBeat()" disabled data-text="beat.start"></button>
+            <button class="kr-btn kr-btn-go" id="beat-pathway-start" onclick="startSelectedBeat()" disabled data-text="beat.start"></button>
             <div class="bsmash-settings" id="beat-settings"></div>
             <button class="btn btn-secondary" onclick="retuneBeatTiming()" data-text="beat.retune"></button>
             <p class="bsmash-stats" id="beat-stats" hidden></p>
-            <button class="btn btn-text" onclick="leaveBeatSmash()" data-text="beat.toDashboard"></button>
+            <button class="kr-btn kr-btn-quiet" onclick="leaveBeatSmash()" data-text="beat.toDashboard"></button>
         </div>
     </div>
 
@@ -1010,25 +1010,25 @@
 </div>
 
 <!-- Words, dialogue, pictures and sounds by ID - loaded first, see docs/language-files-plan.md -->
-<script src="text.js?v=20261013b"></script>
-<script src="lang/en-US.js?v=20261013b"></script>
-<script src="lang/en-GB.js?v=20261013b"></script>
-<script src="teacher-codes.js?v=20261013b"></script>
-<script src="content/dialogue.js?v=20261013b"></script>
-<script src="content/art.js?v=20261013b"></script>
-<script src="content/audio.js?v=20261013b"></script>
-<script src="content/songs.js?v=20261013b"></script>
-<script src="shelf.js?v=20261013b"></script>
-<script src="script.js?v=20261013b"></script>
-<script src="rhythm.js?v=20261013b"></script>
-<script src="rhythm-audio.js?v=20261013b"></script>
-<script src="rhythm-stomp-lab.js?v=20261013b"></script>
-<script src="value-smash.js?v=20261013b"></script>
-<script src="beat-smash-band.js?v=20261013b"></script>
-<script src="beat-pads.js?v=20261013b"></script>
-<script src="beat-smash.js?v=20261013b"></script>
-<script src="dashboard.js?v=20261013b"></script>
-<script src="studio.js?v=20261013b"></script>
-<script src="tools.js?v=20261013b"></script>
+<script src="text.js?v=20261013c"></script>
+<script src="lang/en-US.js?v=20261013c"></script>
+<script src="lang/en-GB.js?v=20261013c"></script>
+<script src="teacher-codes.js?v=20261013c"></script>
+<script src="content/dialogue.js?v=20261013c"></script>
+<script src="content/art.js?v=20261013c"></script>
+<script src="content/audio.js?v=20261013c"></script>
+<script src="content/songs.js?v=20261013c"></script>
+<script src="shelf.js?v=20261013c"></script>
+<script src="script.js?v=20261013c"></script>
+<script src="rhythm.js?v=20261013c"></script>
+<script src="rhythm-audio.js?v=20261013c"></script>
+<script src="rhythm-stomp-lab.js?v=20261013c"></script>
+<script src="value-smash.js?v=20261013c"></script>
+<script src="beat-smash-band.js?v=20261013c"></script>
+<script src="beat-pads.js?v=20261013c"></script>
+<script src="beat-smash.js?v=20261013c"></script>
+<script src="dashboard.js?v=20261013c"></script>
+<script src="studio.js?v=20261013c"></script>
+<script src="tools.js?v=20261013c"></script>
 </body>
 </html>
