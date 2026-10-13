@@ -1011,6 +1011,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .vsmash-player-chip { min-height: 56px; }
 #modal-value-tree .btn-close { min-height: 56px; min-width: 150px; }
 #view-value .btn-secondary, .vsmash-license-card .btn-secondary, .vsmash-gate-card .btn-secondary { min-height: 56px; }
+#view-value .kr-btn, #view-value .btn, .vsmash-license-card .btn, .vsmash-gate-card .btn { min-height: 56px; }
 
 /* A crowded HUD wraps whole items onto a second line, never mid-word. */
 .vsmash-hud { flex-wrap: wrap; row-gap: 4px; }
