@@ -600,17 +600,14 @@ function renderG1Pathway() {
     let recommended = progress.lastPosition || 'lines';
     if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
     g1SelectedStage = recommended;
-    g1PathwayStages.forEach(stage => {
-        const isUnlocked = unlocked.has(stage.id);
-        const record = progress.stageProgress?.[stage.id];
-        const node = document.createElement('button');
-        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
-        node.disabled = !isUnlocked;
-        // Locked stages show their name too, dimmed (CLAUDE.md "Pathway screen
-        // pattern"): the student can see what is still to come.
-        node.innerHTML = `<span class="pathway-node-icon">${stage.phase === null ? '★' : stage.phase + 1}</span><span class="pathway-node-label">${stage.label}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
-        if (isUnlocked) node.onclick = () => selectG1Stage(stage.id);
-        track.appendChild(node);
+    KR.shelf.render(track, {
+        albums: [{ id: 'all', titleId: 'shelf.album.all', levelIds: g1PathwayStages.map(stage => stage.id) }],
+        levelName: id => KR.t('g1.stage.' + id),
+        discLabel: id => { const s = g1PathwayStages.find(x => x.id === id); return s.phase === null ? '★' : String(s.phase + 1); },
+        unlocked,
+        records: progress.stageProgress || {},
+        current: g1SelectedStage,
+        onPick: id => selectG1Stage(id),
     });
     selectG1Stage(g1SelectedStage, false);
 }
@@ -625,7 +622,7 @@ function selectG1Stage(stageId, rerender = true) {
     const startButton = document.getElementById('g1-pathway-start');
     if (startButton) {
         startButton.disabled = false;
-        startButton.innerText = stageId === 'ledger' ? 'Start Ledger Bonus' : `Start ${g1PathwayStages.find(stage => stage.id === stageId).label}`;
+        startButton.innerText = KR.t('shelf.start', { name: KR.t('g1.stage.' + stageId) });
     }
 }
 
@@ -1446,15 +1443,14 @@ function renderG2Pathway() {
     let recommended = progress.lastPosition || 'lines';
     if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
     g2SelectedStage = recommended;
-    g2PathwayStages.forEach(stage => {
-        const isUnlocked = unlocked.has(stage.id);
-        const record = progress.stageProgress?.[stage.id];
-        const node = document.createElement('button');
-        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
-        node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${stage.phase + 1}</span><span class="pathway-node-label">${stage.label}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
-        if (isUnlocked) node.onclick = () => selectG2Stage(stage.id);
-        track.appendChild(node);
+    KR.shelf.render(track, {
+        albums: [{ id: 'all', titleId: 'shelf.album.all', levelIds: g2PathwayStages.map(stage => stage.id) }],
+        levelName: id => KR.t('g2.stage.' + id),
+        discLabel: id => String(g2PathwayStages.findIndex(x => x.id === id) + 1),
+        unlocked,
+        records: progress.stageProgress || {},
+        current: g2SelectedStage,
+        onPick: id => selectG2Stage(id),
     });
     selectG2Stage(g2SelectedStage, false);
 }
@@ -1469,7 +1465,7 @@ function selectG2Stage(stageId, rerender = true) {
     const startButton = document.getElementById('g2-pathway-start');
     if (startButton) {
         startButton.disabled = false;
-        startButton.innerText = `Start ${g2PathwayStages.find(stage => stage.id === stageId).label}`;
+        startButton.innerText = KR.t('shelf.start', { name: KR.t('g2.stage.' + stageId) });
     }
 }
 
@@ -1875,21 +1871,20 @@ function renderG3Pathway() {
     if (!track) return;
     const subtitle = document.getElementById('g3-pathway-subtitle');
     if (subtitle) subtitle.innerText = g3PathwayStages.every(stage => unlocked.has(stage.id))
-        ? 'Core note reading complete. Real Staff Smash is ready.'
-        : 'Build note-reading confidence, one mission at a time.';
+        ? KR.t('g3.subtitle.done')
+        : KR.t('g3.subtitle');
     track.innerHTML = '';
     let recommended = progress.lastPosition || 'lines';
     if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
     g3SelectedStage = recommended;
-    g3PathwayStages.forEach((stage, index) => {
-        const isUnlocked = unlocked.has(stage.id);
-        const record = progress.stageProgress?.[stage.id];
-        const node = document.createElement('button');
-        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${stage.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
-        node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${index + 1}</span><span class="pathway-node-label">${stage.label}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
-        if (isUnlocked) node.onclick = () => selectG3Stage(stage.id);
-        track.appendChild(node);
+    KR.shelf.render(track, {
+        albums: [{ id: 'all', titleId: 'shelf.album.all', levelIds: g3PathwayStages.map(stage => stage.id) }],
+        levelName: id => KR.t('g3.stage.' + id),
+        discLabel: id => String(g3PathwayStages.findIndex(x => x.id === id) + 1),
+        unlocked,
+        records: progress.stageProgress || {},
+        current: g3SelectedStage,
+        onPick: id => selectG3Stage(id),
     });
     selectG3Stage(g3SelectedStage, false);
 }
@@ -1904,7 +1899,7 @@ function selectG3Stage(stageId, rerender = true) {
     const startButton = document.getElementById('g3-pathway-start');
     if (startButton) {
         startButton.disabled = false;
-        startButton.innerText = `Start ${g3PathwayStages.find(stage => stage.id === stageId).label}`;
+        startButton.innerText = KR.t('shelf.start', { name: KR.t('g3.stage.' + stageId) });
     }
 }
 

@@ -1011,6 +1011,7 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .vsmash-player-chip { min-height: 56px; }
 #modal-value-tree .btn-close { min-height: 56px; min-width: 150px; }
 #view-value .btn-secondary, .vsmash-license-card .btn-secondary, .vsmash-gate-card .btn-secondary { min-height: 56px; }
+#view-value .kr-btn, #view-value .btn, .vsmash-license-card .btn, .vsmash-gate-card .btn { min-height: 56px; }
 
 /* A crowded HUD wraps whole items onto a second line, never mid-word. */
 .vsmash-hud { flex-wrap: wrap; row-gap: 4px; }
@@ -1903,3 +1904,17 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 .kr-disc { flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: #f3e9c8; font-size: 16px; background: radial-gradient(circle at 50% 50%, #7a1a14 0 30%, #111 31% 100%); box-shadow: 0 2px 3px rgba(0,0,0,.5); }
 .kr-track-name { flex: 1 1 auto; min-width: 0; }
 .kr-track-pts { flex: 0 0 auto; font-size: 14px; color: var(--kr-ink-soft); }
+
+/* The room without the frame: Value Smash and Beat Smash have layouts tuned to
+   the pixel (measured at 390x844, 360x640 and 1366x657), so they take the
+   studio's wall and the gold Back button but not the wood border, which would
+   cost every screen 36px. They move onto the full frame once re-measured. */
+.view.kr-room { background-image: var(--kr-grain), linear-gradient(to bottom, rgba(20,18,47,0) 90px, var(--kr-room) 215px), conic-gradient(from 45deg at 50% 50%, #2b2750 0 25%, #1a1738 0 50%, #332f5e 0 75%, #221f45 0); background-size: 220px 220px, auto, 22px 22px; background-color: var(--kr-room); font-family: var(--kr-font); }
+.kr-room .btn-back { border: 3px solid var(--kr-gold-deep); border-radius: 12px; background: linear-gradient(#6a5520, #3c3014); color: var(--kr-gold); font-family: var(--kr-font); }
+.kr-room .kr-panel { margin-top: 60px; }
+
+/* Pieces built for the old dark cards sit on a small navy plate inside the parchment panel, so their light and gold text stays readable. */
+.kr-panel .kr-guide, .kr-panel .vsmash-player-chip, .kr-panel .bsmash-steps, .kr-panel .bsmash-settings, .kr-panel .bsmash-stats { background: var(--kr-navy); border-radius: 12px; }
+.kr-panel .bsmash-steps, .kr-panel .bsmash-settings { padding: 8px; margin-top: 12px; }
+.kr-panel .bsmash-steps:empty, .kr-panel .bsmash-settings:empty { display: none; }
+.kr-panel .btn-secondary { margin-top: 10px; }

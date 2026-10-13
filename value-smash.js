@@ -239,34 +239,15 @@ function renderValuePathway() {
     vsmashSelectedFloor = recommended;
 
     const track = document.getElementById('value-pathway-track');
-    track.innerHTML = '';
-    VSMASH_FLOORS.forEach((floor, index) => {
-        const isUnlocked = unlocked.has(floor.id);
-        const record = progress.floors[floor.id];
-        const node = document.createElement('button');
-        node.className = 'pathway-node' + (isUnlocked ? ' unlocked' : ' locked')
-            + (floor.id === recommended ? ' recommended' : '')
-            + (record && record.cleared ? ' cleared' : '');
-        node.disabled = !isUnlocked;
-
-        const icon = document.createElement('span');
-        icon.className = 'pathway-node-icon';
-        icon.textContent = String(index + 1);
-        node.appendChild(icon);
-        const label = document.createElement('span');
-        label.className = 'pathway-node-label';
-        label.textContent = vsmashFloorName(floor.id);
-        node.appendChild(label);
-        if (isUnlocked) {
-            if (record && record.cleared) {
-                const stars = document.createElement('small');
-                stars.className = 'vsmash-stars';
-                stars.textContent = vsmashStars(record.stars || 0);
-                node.appendChild(stars);
-            }
-            node.onclick = () => selectValueFloor(floor.id);
-        }
-        track.appendChild(node);
+    KR.shelf.render(track, {
+        albums: [{ id: 'all', titleId: 'shelf.album.all', levelIds: VSMASH_FLOORS.map(floor => floor.id) }],
+        levelName: vsmashFloorName,
+        discLabel: id => String(VSMASH_FLOORS.findIndex(floor => floor.id === id) + 1),
+        unlocked,
+        records: progress.floors,
+        current: recommended,
+        note: id => (progress.floors[id] && progress.floors[id].cleared) ? vsmashStars(progress.floors[id].stars || 0) : '',
+        onPick: id => selectValueFloor(id),
     });
     if (recommended) selectValueFloor(recommended, false);
 }

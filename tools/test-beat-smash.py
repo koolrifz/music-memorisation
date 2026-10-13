@@ -903,7 +903,7 @@ def test_picker(page):
     check('Riff is next, and open now Tango is won', not page.evaluate(
         "document.querySelector('#beat-pathway-track [data-id=bass]').disabled"))
     check('Five squares: the warm-up, the song, then Tango, Riff on bass, Riff on keys', page.evaluate(
-        "[...document.querySelectorAll('#beat-pathway-track .pathway-node')].map(n => n.dataset.id).join()") == 'jam,song,drums,bass,keys')
+        "[...document.querySelectorAll('#beat-pathway-track .kr-track')].map(n => n.dataset.id).join()") == 'jam,song,drums,bass,keys')
     page.click('#beat-pathway-track [data-id=drums]')
     page.wait_for_timeout(200)
     check('Leaving the studio stops the band', page.evaluate('bsmashBand === null'))
@@ -1188,7 +1188,7 @@ def test_riff_keys(page):
     page.wait_for_timeout(200)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
     check('Back on the pathway: the warm-up, the song and three musicians, no booth, and the Permit can be seen again',
-          page.locator('#beat-pathway-track .pathway-node').count() == 5 and 'My Permit' in chips, chips)
+          page.locator('#beat-pathway-track .kr-track').count() == 5 and 'My Permit' in chips, chips)
 
 
 def test_picker_leave(page):
@@ -1560,7 +1560,7 @@ def test_song_choice(page):
                 "localStorage.setItem('koolRiffsBeatProgress', JSON.stringify({players:{p1:{jamDone:true}}}));")
     page.click('.game-card.red')
     page.wait_for_timeout(500)
-    nodes = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .pathway-node')].map(n => n.dataset.id + (n.disabled ? '-' : '+')).join()")
+    nodes = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .kr-track')].map(n => n.dataset.id + (n.disabled ? '-' : '+')).join()")
     check('The pathway: warm-up, the song, then the musicians, locked until a song is chosen',
           nodes == 'jam+,song+,drums-,bass-,keys-' and page.evaluate('bsmashSelected') == 'song', nodes)
     page.click('#beat-pathway-start')
@@ -2099,7 +2099,7 @@ def test_teacher_codes(page):
         launchGame('view-game2'); out.note = document.querySelectorAll('#g2-pathway-track .locked').length;
         launchGame('view-game3'); out.real = document.querySelectorAll('#g3-pathway-track .locked').length;
         launchGame('view-rhythm'); out.rhythm = document.querySelectorAll('#rhythm-pathway-track .locked').length;
-        launchGame('view-rhythm-lab'); out.lab = document.querySelectorAll('#rstomp-pathway-track .locked').length;
+        launchGame('view-rhythm-lab'); out.lab = document.querySelectorAll('#rstomp-shelf .locked').length;
         out.gate = document.getElementById('modal-value-gate').classList.contains('show');
         out.value = vsmashLoad().unlocked.length === VSMASH_FLOORS.length;
         return out;
@@ -2115,7 +2115,7 @@ def test_teacher_codes(page):
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
     check('...Beat Smash: every step open (the one being worked on with its stars)',
           chips == ['One bar ☆☆☆', 'Two bars', 'Four bars', 'Eight bars', 'The studio'], chips)
-    closed = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .pathway-node')].filter(n => n.disabled).length")
+    closed = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .kr-track')].filter(n => n.disabled).length")
     check('...and every musician', closed == 0, closed)
     stats = page.inner_text('#beat-stats')
     check('...and the teacher sees the last beat test', '92% on the beat' in stats and '35 ms early' in stats, stats)
@@ -2228,7 +2228,7 @@ def test_notation_helpers_and_share(page):
     fresh(page)
     for clef in ['treble', 'bass', 'alto', 'tenor']:
         page.evaluate("localStorage.setItem('koolRiffsClefPreference', '%s'); launchGame('view-game3');"
-                      "document.querySelector('#g3-pathway-track .pathway-node:not(.locked)').click();"
+                      "document.querySelector('#g3-pathway-track .kr-track:not(.locked)').click();"
                       "document.getElementById('g3-pathway-start').click()" % clef)
         page.wait_for_timeout(800)
         page.evaluate("toggleG3HelperModal()")
@@ -2367,14 +2367,14 @@ def test_rest_of_app(page):
                 "localStorage.setItem('koolRiffsRhythmLabProgress', JSON.stringify({unlockedStages:['1'], totalPlays:1}));")
     named = page.evaluate("""(() => {
         const out = {};
-        const look = (name, enter, track) => { enter(); const nodes = [...document.querySelectorAll(track + ' .pathway-node.locked')];
-            out[name] = nodes.length > 0 && nodes.every(n => n.disabled && n.querySelector('.pathway-node-label')
-                && n.querySelector('.pathway-node-label').textContent.trim() && !n.querySelector('small')); };
+        const look = (name, enter, track) => { enter(); const nodes = [...document.querySelectorAll(track + ' .kr-track.locked')];
+            out[name] = nodes.length > 0 && nodes.every(n => n.disabled && n.querySelector('.kr-track-name')
+                && n.querySelector('.kr-track-name').textContent.trim() && !/pts|★/.test(n.querySelector('.kr-track-pts').textContent)); };
         look('staff', () => launchGame('view-game1'), '#g1-pathway-track');
         look('note', () => launchGame('view-game2'), '#g2-pathway-track');
         look('real', () => launchGame('view-game3'), '#g3-pathway-track');
         look('rhythm', () => launchGame('view-rhythm'), '#rhythm-pathway-track');
-        look('lab', () => enterRhythmLab(), '#rstomp-pathway-track');
+        look('lab', () => enterRhythmLab(), '#rstomp-shelf');
         look('value', () => enterValueSmash(), '#value-pathway-track');
         look('beat', () => enterBeatSmash(), '#beat-pathway-track');
         return out;

@@ -79,7 +79,7 @@ def guide(page):
 def start_floor(page, index):
     page.click('.game-card.orange')
     page.wait_for_timeout(400)
-    page.click('#value-pathway-track .pathway-node:nth-child(%d)' % index)
+    page.click('#value-pathway-track li:nth-child(%d) .kr-track' % index)
     page.click('#value-pathway-start')
     page.wait_for_timeout(500)
 
@@ -154,7 +154,7 @@ def test_older_games(page):
         page.wait_for_timeout(200)
         page.click('#view-dashboard .game-card[onclick*="%s\'"]' % view_id)
         page.wait_for_timeout(500)
-        node = page.query_selector('#%s .pathway-node.unlocked' % view_id)
+        node = page.query_selector('#%s .kr-track.unlocked' % view_id)
         if node:
             node.click()
             page.wait_for_timeout(200)
@@ -186,12 +186,12 @@ def test_players(page):
     page.press('#value-name-input', 'Enter')
     page.wait_for_timeout(400)
     check('a name opens the pathway', screens(page) == ['value-screen-pathway'])
-    nodes = page.evaluate("[...document.querySelectorAll('#value-pathway-track .pathway-node')].map(n => n.className)")
+    nodes = page.evaluate("[...document.querySelectorAll('#value-pathway-track .kr-track')].map(n => n.className)")
     check('only the Tree is open', 'unlocked' in nodes[0] and all('locked' in n and 'unlocked' not in n for n in nodes[1:]), nodes)
     page.click('#value-player-chip')
     page.wait_for_timeout(300)
     page.fill('#value-name-input', 'Alex')
-    page.click('#value-screen-player .btn-start')
+    page.click('#value-screen-player .kr-btn-go')
     page.wait_for_timeout(300)
     page.evaluate("const p = vsmashLoad(); p.unlocked.push('v1-smash'); vsmashSave(p)")
     page.click('#value-player-chip')
@@ -399,7 +399,7 @@ def test_sprint_and_license(page):
 
     page.evaluate('__ev = []; enterValueSmash()')
     page.wait_for_timeout(400)
-    page.click('#value-pathway-track .pathway-node:nth-child(3)')
+    page.click('#value-pathway-track li:nth-child(3) .kr-track')
     page.click('#value-pathway-start')
     page.wait_for_timeout(500)
     while smash(page) and smash(page)['best'] < 1:
@@ -439,6 +439,8 @@ def test_layout(browser):
     print('\n== Layout on a phone, a small phone and a Chromebook')
     for size in [(390, 844), (360, 640), (1366, 657)]:
         page = browser.new_page(viewport={'width': size[0], 'height': size[1]})
+        if os.environ.get('KR_VEXFLOW'):
+            page.route('**/vexflow*', lambda route: route.fulfill(path=os.environ['KR_VEXFLOW'], content_type='application/javascript'))
         page.goto(URL)
         page.wait_for_timeout(400)
         fresh(page, "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Samantha-Jane'}],current:'p1'}));"
@@ -480,6 +482,9 @@ def main():
         page.on('console', lambda m: m.type == 'error' and 'favicon' not in (m.location or {}).get('url', '')
                 and errors.append(m.text))
         page.on('pageerror', lambda e: errors.append(str(e)))
+        local = os.environ.get('KR_VEXFLOW')       # no network: answer the CDN from a local copy
+        if local:
+            page.route('**/vexflow*', lambda route: route.fulfill(path=local, content_type='application/javascript'))
         page.goto(URL)
         page.wait_for_timeout(500)
         for test in (test_older_games, test_language, test_players, test_tree, test_cards, test_smash,

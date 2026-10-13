@@ -8,6 +8,8 @@
      KR.shelf.render(host, {
          albums:   [{ id, titleId, levelIds: ['1','2',...] }],
          levelName: (levelId) => 'words',      // from lang/, never the code
+         note:      (levelId) => 'stars',      // optional: words shown on the right of an open track
+         discLabel: (levelId) => '1',          // optional: what is printed on the record (default: the id)
          unlocked: Set of levelIds the student may play,
          records:  { levelId: { cleared, bestScore } },
          current:  levelId now selected,
@@ -52,6 +54,7 @@ KR.shelf = (function () {
         host.innerHTML = '';
         host.classList.add('kr-shelf');
 
+        // A game with one short list of levels needs no crate: just its tracks.
         const crate = el('div', 'kr-crate');
         crate.setAttribute('role', 'tablist');
         cfg.albums.forEach(album => {
@@ -68,7 +71,7 @@ KR.shelf = (function () {
             sleeve.onclick = () => { openAlbum[key] = album.id; render(host, cfg); };
             crate.appendChild(sleeve);
         });
-        host.appendChild(crate);
+        if (cfg.albums.length > 1) host.appendChild(crate);
 
         const album = cfg.albums.find(a => a.id === selected);
         const list = el('ol', 'kr-tracks');
@@ -78,12 +81,15 @@ KR.shelf = (function () {
             const li = document.createElement('li');
             const row = el('button', 'kr-track' + (isOpen ? ' unlocked' : ' locked') + (id === cfg.current ? ' recommended' : '') + (rec && rec.cleared ? ' cleared' : ''));
             row.type = 'button';
+            row.dataset.id = id;
             row.disabled = !isOpen;
-            row.appendChild(el('span', 'kr-disc', id));
+            row.appendChild(el('span', 'kr-disc', cfg.discLabel ? cfg.discLabel(id) : id));
             row.appendChild(el('span', 'kr-track-name', cfg.levelName(id)));
-            row.appendChild(el('span', 'kr-track-pts', isOpen && rec && rec.bestScore != null
+            // On the right: the game's own note (stars, the part won), else the best score.
+            const own = isOpen && cfg.note ? cfg.note(id) : '';
+            row.appendChild(el('span', 'kr-track-pts', own || (isOpen && rec && rec.bestScore != null
                 ? KR.t('shelf.track.pts', { n: Math.round(rec.bestScore) })
-                : (isOpen ? '' : KR.t('shelf.track.locked'))));
+                : (isOpen ? '' : KR.t('shelf.track.locked')))));
             if (isOpen) row.onclick = () => cfg.onPick(id);
             li.appendChild(row);
             list.appendChild(li);

@@ -175,15 +175,14 @@ function renderRhythmPathway() {
     let recommended = progress.lastPosition || '1';
     if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
     rhythmSelectedLevel = recommended;
-    RHYTHM_LEVELS.forEach((level, index) => {
-        const isUnlocked = unlocked.has(level.id);
-        const record = progress.stageProgress?.[level.id];
-        const node = document.createElement('button');
-        node.className = `pathway-node${isUnlocked ? ' unlocked' : ' locked'}${level.id === recommended ? ' recommended' : ''}${record?.cleared ? ' cleared' : ''}`;
-        node.disabled = !isUnlocked;
-        node.innerHTML = `<span class="pathway-node-icon">${index + 1}</span><span class="pathway-node-label">${level.shortLabel}</span>${isUnlocked && record?.bestScore != null ? `<small>${Math.round(record.bestScore)} pts</small>` : ''}`;
-        if (isUnlocked) node.onclick = () => selectRhythmLevel(level.id);
-        track.appendChild(node);
+    KR.shelf.render(track, {
+        albums: [{ id: 'all', titleId: 'shelf.album.all', levelIds: RHYTHM_LEVELS.map(level => level.id) }],
+        levelName: id => KR.t('rhythm.level.' + id),
+        discLabel: id => String(RHYTHM_LEVELS.findIndex(level => level.id === id) + 1),
+        unlocked,
+        records: progress.stageProgress || {},
+        current: rhythmSelectedLevel,
+        onPick: id => selectRhythmLevel(id),
     });
     selectRhythmLevel(rhythmSelectedLevel, false);
 }
@@ -198,7 +197,7 @@ function selectRhythmLevel(levelId, rerender = true) {
     const startButton = document.getElementById('rhythm-pathway-start');
     if (startButton) {
         startButton.disabled = false;
-        startButton.innerText = `Start ${RHYTHM_LEVELS.find(level => level.id === levelId).shortLabel}`;
+        startButton.innerText = KR.t('shelf.start', { name: KR.t('rhythm.level.' + levelId) });
     }
 }
 
