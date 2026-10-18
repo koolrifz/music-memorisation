@@ -398,11 +398,16 @@ const vsmashDrawCache = {};
 // scale < 1 draws smaller notation that still fills `width`: VexFlow draws
 // at width / scale and the SVG is shrunk to fit, so the staff line runs the
 // whole way across. Used by the Tree on short screens.
-function vsmashDrawNotes(el, specs, width, scale) {
+// centre: true puts a single note or rest in the MIDDLE of the width instead
+// of at the start of the bar. The Tree uses it: a tile there is one value
+// standing alone in its box, so it should read as a diagram, not as the
+// first note of a bar.
+function vsmashDrawNotes(el, specs, width, scale, centre) {
     scale = scale || 1;
+    centre = !!centre && specs.length === 1;
     const shown = Math.max(40, Math.round(width));
     width = Math.round(shown / scale);
-    const key = width + '|' + scale + '|' + specs.map(s => s.value + (s.isRest ? 'r' : '')).join(',');
+    const key = width + '|' + scale + '|' + (centre ? 'c|' : '') + specs.map(s => s.value + (s.isRest ? 'r' : '')).join(',');
     if (!(key in vsmashDrawCache)) {
         const VF = Vex.Flow;
         const scratch = document.createElement('div');
@@ -441,8 +446,28 @@ function vsmashDrawNotes(el, specs, width, scale) {
             tick.setX(tick.getX() + (inset + beat / VSMASH_BAR_BEATS * span) - note.getAbsoluteX());
             beat += rstompSlotsFor(specs[i].value, 'q');
         });
+        // The scratch div has to be in the page while it is drawn so the
+        // browser can measure the ink; it is off-screen and removed again.
+        if (centre) {
+            scratch.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;';
+            document.body.appendChild(scratch);
+        }
         voice.draw(context, stave);
         const svg = scratch.querySelector('svg');
+        if (centre) {
+            // Measure what was actually drawn rather than trusting VexFlow's
+            // own note positions: its numbers do not match the glyph's ink.
+            // Centre the notehead (or the rest), not the whole note - a
+            // stem is a hairline beside the head and would pull it off-centre.
+            const group = svg.querySelector('.vf-stavenote');
+            const head = svg.querySelector('.vf-stavenote .vf-notehead') || group;
+            const box = head.getBBox();
+            if (box.width > 0) {
+                const dx = width / 2 - (box.x + box.width / 2);
+                group.setAttribute('transform', 'translate(' + dx.toFixed(2) + ' 0)');
+            }
+            scratch.remove();
+        }
         svg.setAttribute('viewBox', '0 ' + VSMASH_CROP_TOP + ' ' + width + ' ' + VSMASH_CROP_HEIGHT);
         svg.setAttribute('width', shown);
         svg.setAttribute('height', Math.round(VSMASH_CROP_HEIGHT * scale));
@@ -543,7 +568,7 @@ function vsmashTile(valueId, width, tag) {
     const notes = document.createElement('div');
     notes.className = 'vsmash-tile-notes';
     tile.appendChild(notes);
-    vsmashDrawNotes(notes, [vsmashSpec(valueId)], width - 6, vsmashTreeScale());
+    vsmashDrawNotes(notes, [vsmashSpec(valueId)], width - 6, vsmashTreeScale(), true);
     return tile;
 }
 
