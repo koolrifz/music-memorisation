@@ -982,6 +982,21 @@ button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36
 @keyframes vsmashShard3 { to { transform: translate(6px, 7px) rotate(-9deg); opacity: 0; } }
 .vsmash-nothing { max-width: 640px; min-height: 56px; margin-top: 14px; }
 
+/* The target: how many beats to smash, shown big and bright the whole time
+   beside the beat key, and bigger still while the coach says it (the cards
+   and both clocks wait). One row, so it costs a phone almost no height. */
+.vsmash-targetrow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 8px; }
+.vsmash-targetrow[hidden] { display: none; }
+.vsmash-targetrow .vsmash-beatkey { margin: 0; }
+.vsmash-target { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px; box-sizing: border-box; border-radius: 14px; background: rgba(255,210,63,0.16); border: 3px solid var(--accent-gold); transition: transform 0.2s; }
+.vsmash-target-n { font-size: 34px; font-weight: 900; line-height: 1; color: #ffffff; text-shadow: 0 0 12px rgba(255,210,63,0.8); }
+.vsmash-target-dots { display: flex; gap: 6px; }
+.vsmash-target-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent-gold); box-shadow: 0 0 8px rgba(255,210,63,0.8); }
+#value-screen-game.announcing .vsmash-target { transform: scale(1.8); position: relative; z-index: 5; animation: vsmashTargetPulse 0.6s ease-in-out infinite alternate; }
+#value-screen-game.announcing .vsmash-targetrow .vsmash-beatkey { display: none; }
+@keyframes vsmashTargetPulse { to { box-shadow: 0 0 26px rgba(255,210,63,0.9); } }
+#value-screen-game.announcing .vsmash-stage, #value-screen-game.announcing .vsmash-nothing { opacity: 0.12; pointer-events: none; }
+
 
 /* ---------- The Sprint ---------- */
 .vsmash-medal { font-size: 14px; color: var(--accent-gold); }

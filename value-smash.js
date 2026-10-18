@@ -36,6 +36,8 @@ const VSMASH_SPRINT_SECONDS = 60;            // the Sprint's length
 const VSMASH_WRONG_TAP_SECONDS = 2;          // what a wrong tap costs once the clock is running
 const VSMASH_WATCH_SCREENS = 3;              // a missed target comes back more often for this many clears
 const VSMASH_WATCH_CHANCE = 0.5;             // ...picked this often while it is on the watchlist
+const VSMASH_ANNOUNCE_MIN_MS = 700;          // the target is held up at least this long, even with the sound off
+const VSMASH_ANNOUNCE_MAX_MS = 1500;         // ...and never waited on longer than this
 
 const VSMASH_PLAYERS_KEY = 'koolRiffsPlayers';
 const VSMASH_PROGRESS_KEY = 'koolRiffsValueProgress';
@@ -55,6 +57,8 @@ function vsmashEvery(fn, ms) {
 function vsmashStopTimers() {
     vsmashTimers.forEach(id => { clearTimeout(id); clearInterval(id); });
     vsmashTimers = [];
+    const screen = document.getElementById('value-screen-game');
+    if (screen) screen.classList.remove('announcing');   // an announcement cut short must not leave the cards dimmed
 }
 
 /* ---------- Players ----------
@@ -281,7 +285,7 @@ function startSelectedValueFloor() {
     vsmashRefreshTreeButton();
     document.getElementById('value-floor-label').textContent = vsmashFloorName(floor.id);
     document.getElementById('value-stage').innerHTML = '';
-    ['value-hud', 'value-beatkey', 'value-flash', 'value-nothing'].forEach(id => {
+    ['value-hud', 'value-targetrow', 'value-flash', 'value-nothing'].forEach(id => {
         document.getElementById(id).hidden = true;
     });
     KR.event('value.floor.start', { floor: floor.id });
@@ -806,7 +810,7 @@ const VSMASH_UNITS = ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'qua
 const VSMASH_COMBO_STEPS = 8;       // the crack stops rising after this many
 
 // What a tier asks, and what its cards may hold.
-//   beats:  "Smash everything worth N beats"      (tiers 1-2)
+//   beats:  "N beats!"                            (tiers 1-2)
 //   equals: "Smash everything that equals a ..."  (tiers 3-4)
 // units: how many notes and rests a card may hold, [fewest, most].
 // The Sprint asks every kind at every tier.
@@ -958,16 +962,61 @@ function loadValueSmashScreen() {
     // The target is SPOKEN only when it changes (Note Smash's re-announcing
     // is CLAUDE.md open item 4 - not to be copied). It is always SHOWN.
     const words = vsmashQuestionWords(question);
-    KR.say(words.id, { box: vsmashGuide(), vars: words.vars, silent: question.key === s.lastAnnounced });
+    const spoken = question.key !== s.lastAnnounced;
+    KR.say(words.id, { box: vsmashGuide(), vars: words.vars, silent: !spoken });
     s.lastAnnounced = question.key;
 
     document.getElementById('value-floor-label').textContent = KR.t('value.smash.header', {
         floor: vsmashFloorName(s.floor.id), cards: cardCount });
-    document.getElementById('value-beatkey').hidden = question.kind !== 'beats';
     document.getElementById('value-flash').hidden = s.flashTotal === null;
     document.getElementById('value-nothing').hidden = s.tier !== 0;
     renderValueSmashGrid();
     vsmashUpdateHud();
+    vsmashShowTarget(question);
+    if (spoken) vsmashAnnounce();
+}
+
+// How many beats to smash, as a big number and that many dots, so the answer
+// is a picture as well as a word. Shown for the whole screen. "Equals" screens
+// name a note instead, so they have no number to show.
+function vsmashShowTarget(question) {
+    const row = document.getElementById('value-targetrow');
+    row.hidden = question.kind !== 'beats';
+    if (row.hidden) return;
+    document.getElementById('value-target-n').textContent = KR.t('value.smash.target', { n: question.total });
+    const dots = document.getElementById('value-target-dots');
+    dots.textContent = '';
+    for (let i = 0; i < question.total; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'vsmash-target-dot';
+        dots.appendChild(dot);
+    }
+}
+
+// The coach says the target BEFORE anything counts down. Rob, 2026-10-18: the
+// timer was half gone before the student knew how many beats to smash. While
+// the line is spoken the cards are dimmed and untappable, the target is
+// enlarged, and neither clock runs (the tick skips a busy screen). Held at
+// least VSMASH_ANNOUNCE_MIN_MS so the number registers with the sound off,
+// and never waited on longer than VSMASH_ANNOUNCE_MAX_MS. Only called when the
+// line is spoken: a target that repeats is not announced again.
+function vsmashAnnounce() {
+    const s = vsmashSmash;
+    const screen = document.getElementById('value-screen-game');
+    s.busy = true;
+    screen.classList.add('announcing');
+    const started = performance.now();
+    const token = s.announce = (s.announce || 0) + 1;   // a newer announcement takes over from an older one
+    const check = () => {
+        if (vsmashSmash !== s || s.announce !== token) return;
+        const waited = performance.now() - started;
+        if (waited < VSMASH_ANNOUNCE_MIN_MS || (KR.speaking() && waited < VSMASH_ANNOUNCE_MAX_MS)) {
+            return vsmashLater(check, 50);
+        }
+        s.busy = false;
+        screen.classList.remove('announcing');
+    };
+    vsmashLater(check, 50);
 }
 
 function renderValueSmashGrid() {

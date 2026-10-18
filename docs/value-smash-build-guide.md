@@ -296,7 +296,7 @@ Match their behaviour; don't import from them.
 
 | Tier | Target type | Target | Cards contain |
 |---|---|---|---|
-| 1–2 | "Smash everything worth **N beats**" | N = 1, 2 or 4 | tier 1: single notes and rests; tier 2: also groups of 2–3 notes and rests |
+| 1–2 | "**N beats!**" (said before the clocks run) | N = 1, 2 or 4 | tier 1: single notes and rests; tier 2: also groups of 2–3 notes and rests |
 | 3–4 | "Smash everything that **equals a** half note / whole note" | a card's total must equal it | groups of 1–4 notes and rests |
 
 Groups must still be real notation, so no group may be longer than 4 beats.

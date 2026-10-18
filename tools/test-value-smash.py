@@ -455,6 +455,8 @@ def test_layout(browser):
                              " vsmashSmash.tier = 3; vsmashSmash.clock = 60; loadValueSmashScreen()"),
             ('sprint', "vsmashSelectedFloor = 'v1-sprint'; startSelectedValueFloor(); vsmashSmash.best = 3;"
                        " vsmashSmash.joker = true; vsmashSmash.tier = 3; loadValueSmashScreen()"),
+            ('sprint, a beats question', "vsmashPickQuestion = () => vsmashTierQuestions(3, true).find(q => q.kind === 'beats');"
+                                         " vsmashSmash.lastAnnounced = null; loadValueSmashScreen()"),
             ('license', "const s = vsmashSmash; vsmashSmash = null; vsmashStopTimers();"
                         " vsmashFloorCleared(s.floor, { seconds: 60, wrong: 0, score: 99, untimed: true, medal: 'gold', stars: 3 })"),
             ('results', 'closeValueLicense()'),
@@ -474,6 +476,49 @@ def test_layout(browser):
         page.close()
 
 
+def test_announce(page):
+    print('\n== The target is said before anything counts down')
+    fresh(page, PLAYER + value_progress(unlocked=['v1-tree', 'v1-smash'], floors={'v1-tree': {'cleared': True}}))
+    start_floor(page, 2)
+    # Tier 2 asks "N beats" and has both clocks, so it shows everything at once.
+    page.evaluate("vsmashSmash.tier = 1; vsmashSmash.clock = 60; vsmashSmash.lastAnnounced = null;"
+                  " vsmashPickQuestion = () => vsmashTierQuestions(1, false)[1]; loadValueSmashScreen()")
+    page.wait_for_timeout(150)
+    s = page.evaluate("({ busy: vsmashSmash.busy, announcing: document.getElementById('value-screen-game').classList.contains('announcing'),"
+                      " total: vsmashSmash.question.total })")
+    check('a new target holds the screen while it is said', s['busy'] and s['announcing'], s)
+    page.wait_for_timeout(350)
+    held = page.evaluate("({ clock: vsmashSmash.clock, flash: vsmashSmash.flash, total: vsmashSmash.flashTotal,"
+                         " taps: getComputedStyle(document.querySelector('.vsmash-stage')).pointerEvents })")
+    check('neither clock runs while it is said, and the cards cannot be tapped',
+          held['clock'] == 60 and held['flash'] == held['total'] and held['taps'] == 'none', held)
+    page.wait_for_function("!vsmashSmash.busy", timeout=3000)
+    check('the cards come back when the voice is done',
+          not page.evaluate("document.getElementById('value-screen-game').classList.contains('announcing')"))
+    page.wait_for_timeout(600)
+    check('then the clock runs', page.evaluate('vsmashSmash.clock') < 60)
+
+    shown = page.evaluate("({ row: !document.getElementById('value-targetrow').hidden,"
+                          " n: document.getElementById('value-target-n').textContent,"
+                          " dots: document.querySelectorAll('#value-target-dots .vsmash-target-dot').length,"
+                          " total: vsmashSmash.question.total, words: document.getElementById('value-game-guide').innerText })")
+    check('the target is a big number and that many dots', shown['row'] and shown['n'] == str(shown['total'])
+          and shown['dots'] == shown['total'], shown)
+    check('the line itself is short, with no "smash everything"', 'everything' not in shown['words'].lower()
+          and len(shown['words'].split()) <= 3, shown['words'])
+
+    page.evaluate("loadValueSmashScreen()")      # the same target again: shown, not said again
+    page.wait_for_timeout(150)
+    check('a repeated target does not hold the screen',
+          not page.evaluate('vsmashSmash.busy') and not page.evaluate("document.getElementById('value-targetrow').hidden"))
+
+    page.evaluate("vsmashSmash.tier = 2; vsmashSmash.lastAnnounced = null;"
+                  " vsmashPickQuestion = () => vsmashTierQuestions(2, false)[0]; loadValueSmashScreen()")
+    page.wait_for_timeout(150)
+    check('a note-name question has no number to show', page.evaluate("document.getElementById('value-targetrow').hidden"))
+    page.wait_for_function("!vsmashSmash.busy", timeout=3000)
+
+
 def main():
     server = serve()
     with sync_playwright() as p:
@@ -488,7 +533,7 @@ def main():
         page.goto(URL)
         page.wait_for_timeout(500)
         for test in (test_older_games, test_language, test_players, test_tree, test_cards, test_smash,
-                     test_sprint_and_license):
+                     test_announce, test_sprint_and_license):
             try:
                 test(page)
             except Exception as e:      # a test that crashes is a failed test, not the end of the run

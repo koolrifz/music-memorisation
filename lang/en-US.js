@@ -575,8 +575,9 @@ KR.lang('en-US', {
     /* ---------- Value Smash: Smash ---------- */
     'value.beatKey':             'C · ♩ = 1 beat',
     'value.smash.header':        '{floor} · {cards} cards',
-    'value.smash.beats.one':     'Smash everything worth 1 beat.',
-    'value.smash.beats':         'Smash everything worth {n} beats.',
+    'value.smash.beats.one':     '1 beat!',
+    'value.smash.beats':         '{n} beats!',
+    'value.smash.target':        '{n}',
     'value.smash.equals':        'Smash everything that equals a {note}.',
     'value.smash.nothing':       'Nothing here',
     'value.smash.dud':           'Nothing to smash. Well spotted! That earns a joker.',

@@ -1413,6 +1413,21 @@ their lengths from `rstompSlotsFor()`, never copied.
     card clears tier 1, and a hook that pays off guessing is a bug.
   - A dud earns a joker and time, **no points** (Note Smash gives one): only
     correct taps score.
+  - **The target is said first, short, and the clocks wait** (Rob, 2026-10-18:
+    the timer was half gone before the student knew how many beats to smash).
+    A new target is spoken as **"2 beats!"**, not "Smash everything worth 2
+    beats": everything on a card can only be a note or a rest, which the
+    student has already been told. While Tango says it
+    (`vsmashAnnounce()`) the cards are dimmed and untappable, the target is
+    enlarged, and **neither the Smash clock nor the flash timer runs**; held at
+    least 0.7 s so the number registers with the sound off, and never waited on
+    longer than 1.5 s. The target is **also a picture, for the whole screen**:
+    a big numeral and that many dots (`#value-target`), on one row with the
+    beat key so it costs a phone almost no height. A target that repeats is
+    shown but not said again, as before. "Equals a half note" screens have no
+    number to show, so they keep the spoken line and freeze the clocks only.
+    Test: `test_announce` in `tools/test-value-smash.py`; the layout test now
+    also forces a beats question at tier 4, the tightest screen.
   - The combo is per screen: taps score 1, 2, 3…; the crack climbs a whole tone
     a step. Gold card triple. Missed targets are outlined after a miss.
 - **The Sprint** — the Smash engine in sprint mode: 60 s from tier 2, every
