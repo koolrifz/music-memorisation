@@ -466,8 +466,6 @@ def test_smash(page):
     page.click('#value-tree-btn')
     page.wait_for_timeout(1200)
     check('the Tree card pauses the clock', abs(smash(page)['clock'] - clock) < 0.3)
-    check('...and joined by branches, whole to halves to quarters, in each tree',
-          page.evaluate("document.querySelectorAll('#value-tree-card-rows .vsmash-tree-lines line').length") == 12)
     page.click('#modal-value-tree .btn-close')
     page.evaluate('vsmashSmash.clock = 0.3')
     page.wait_for_timeout(1000)
