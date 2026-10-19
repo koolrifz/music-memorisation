@@ -632,6 +632,10 @@ KR.lang('en-US', {
     'value.results.timeUp':  "Time's up!",
     'value.results.reached': 'You reached {cards} cards.',
     'value.results.again':   'Play again',
+    'value.results.next':    'Next: {floor}',
+    'value.results.stomp':   'Next: Rhythm Stomp Lab',
+    'value.results.dashboard': 'Back to Dashboard',
+    'value.results.done':    "That's all of Value Smash for now. You know your note values!",
 
     'summary.next.note':     'Next level: Note Smash! 🎼',
     'summary.next.real':     'Ready? Take on Real Smash! ⚡',

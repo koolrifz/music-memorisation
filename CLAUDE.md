@@ -1507,6 +1507,20 @@ their lengths from `rstompSlotsFor()`, never copied.
     no finishing time to beat. A no-medal run still records a personal best.
   - The first medal awards the **Artistic License**, with its ceremony, once.
 
+**Where a results screen leads (Rob, 2026-10-19).** *"When you've cleared the
+tree it should automatically move you or give you the option to move to the
+next level. They shouldn't always have to go back to whatever the floor is...
+They can go back to the dashboard, which is home for the whole game. They can
+go back to the beginning of [Value Smash]. Or they can go to the next level.
+When they've completed the sprint then there's a celebration screen and
+suggestions of where they go next."* `vsmashResultsActions()` builds the
+buttons: a **cleared floor** gets one green **Next: <floor>**, then Play again,
+Back to the floors, Back to Dashboard; **after the Sprint** (no next floor) the
+green one is **Next: Rhythm Stomp Lab**, with a "that's all of Value Smash"
+line; a floor **not cleared** (time up, no medal) gets Play again green. Enter
+presses the green one (`keyboard.js`). The Stomp Lab suggestion is the only
+one so far: what else the celebration should suggest is open for Rob.
+
 **Cards are real notation, and drawn on the beat.** Every card is one of the
 **55** runs of 1–4 notes and rests that pass `vsmashGroupIsReal()` (half rest
 only from beat 1 or 3; a bar of silence is one whole rest; beat 3 hidden only by

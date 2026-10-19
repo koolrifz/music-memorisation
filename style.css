@@ -1963,3 +1963,10 @@ button.vsmash-tile:active { transform: translateY(2px); }
 .st-finale .st-pillar .st-gold-fill { animation: stFinale 1.6s ease-in-out infinite; }
 @keyframes stFinale { 0%, 100% { filter: drop-shadow(0 0 6px rgba(255,214,120,.8)); } 50% { filter: drop-shadow(0 0 18px rgba(255,236,160,1)) brightness(1.15); } }
 @media (prefers-reduced-motion: reduce) { .st-finale .st-pillar .st-gold-fill { animation: none; } }
+
+/* Value Smash results: the green button on its own line, the other ways out in a row beneath it,
+   so four choices still fit a 360x640 phone with every button 56px or more. */
+#value-results-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#value-results-actions .btn { margin: 0; min-height: 56px; }
+#value-results-actions .btn-start { flex: 1 1 100%; }
+#value-results-actions .btn-secondary { flex: 1 1 30%; min-width: 0; padding: 6px 8px; font-size: 14px; line-height: 1.15; }
