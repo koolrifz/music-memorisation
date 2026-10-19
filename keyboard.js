@@ -167,6 +167,9 @@
     function stompKeys(key) {
         if (!isActive('rhythm-lab-screen-game')) return false;
         if (document.querySelector('.modal-overlay.show')) return false;
+        // The stomp round owns the keyboard (Space is its pad): the counting
+        // keys must not fire behind it.
+        if (typeof rstompRoundActive !== 'undefined' && rstompRoundActive) return false;
         const twoButton = document.getElementById('rstomp-controls-twobutton');
         const keypad = document.getElementById('rstomp-controls-keypad');
         const onTwo = !!(twoButton && !twoButton.hidden);

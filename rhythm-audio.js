@@ -150,6 +150,14 @@ function rstompAudioSchedule(events, onStop, timing) {
 // through slot 5. Negative during the count-in and past the end once the
 // phrase has run out; null when nothing is playing. The caller decides what
 // to do at the edges - this only reports the clock.
+// The clock the round grades against: where slot 0 of the phrase sits on the
+// audio clock (count-in already added), and how long a slot lasts. null when
+// nothing is playing. The only way out for raudioTiming, which stays private.
+function rstompAudioClock() {
+    if (!raudioTimer || !raudioTiming) return null;
+    return { slot0: raudioTiming.start + raudioTiming.offset, slotSec: raudioTiming.slotSec };
+}
+
 function rstompAudioPlayhead() {
     if (!raudioTimer || !raudioTiming || !raudioCtx) return null;
     return (raudioCtx.currentTime - raudioTiming.start - raudioTiming.offset) / raudioTiming.slotSec;
@@ -450,6 +458,11 @@ function rstompAudioPhraseEvents(options) {
     if (opt.loop)
         raudioLoopEvents(bars, rstompSlotsPerBar, rstompSlotsPerBeat, slotSec, opt.loopStyle)
             .forEach(e => events.push({ at: offset + e.at, play: e.play }));
+
+    // A silent last event `tail` seconds after the phrase ends, so the
+    // scheduler (which stops 0.4 s after its last event) stays alive until the
+    // performance round's final window has closed.
+    if (opt.tail) events.push({ at: offset + bars * rstompSlotsPerBar * slotSec + opt.tail, play: () => {} });
 
     return events;
 }

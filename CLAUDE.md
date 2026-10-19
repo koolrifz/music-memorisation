@@ -680,6 +680,49 @@ joins a bracket when there is an open bracketed group to join.
   principle as making an overlapping token visible: finding your own mistake is
   the skill.
 
+### THE STOMP ROUND: counted right, now PLAY it (Rob, 2026-10-19)
+Rob: once they have counted a phrase right, *"whatever they count they get to
+play. They have to play it."* Built as an **engine first**: scoring is
+deliberately plain, and the Beat Stomp meta-game, unlocks and interface are not
+part of it.
+- **Files.** `stomp-round.js` is PURE (no DOM, no audio; Node-testable as
+  `tools/test-stomp-round.js`, global `KRStomp` in the browser). The glue is the
+  "THE STOMP ROUND" block in `rhythm-stomp-lab.js`, after `handleRstompSuccess()`.
+  `rstompAudioClock()` (slot 0 on the audio clock) and the `tail` option of
+  `rstompAudioPhraseEvents` (a silent last event so the scheduler's 0.4 s
+  auto-stop can't end the round before the last window closes) are in
+  `rhythm-audio.js`. Browser test: `tools/test-stomp-round.py`.
+- **Rhythm-agnostic.** The grader knows *onsets* (`{id, bar, t}`), not phrases.
+  `KRStomp.deriveOnsets()` takes them from `rstompPhrase`'s `'play'` slots; a
+  hand-authored cowbell / cascara / palito / bongo / conga pattern plugs in by
+  handing `createMatcher()` its own list.
+- **Flow.** After EVERY correct counting (the third included), the counting
+  controls hide, a one-bar click count-in plays, then the click and loop, and the
+  student taps the big pad (`KRPads`, count 1: Space works too). Result: a strip
+  of bars (green clean / red not) and "N of M bars clean". **Try again** replays
+  in place; **Next** goes on (new phrase, or Level Mastered after the third). The
+  round does NOT touch the streak or the score: it is the performance, not the gate.
+- **The rules.** Window per side = min(0.170 s, half the gap to the neighbouring
+  onset), so 16ths at 60 bpm are +/-125 ms. A tap takes the nearest UNMATCHED
+  onset in its window and uses it up; a tap that matches nothing is a STRAY (a tap
+  in a hold, a rest, or a double tap) and faults its bar. A miss is called only
+  after the window closes. Taps before the first window are the count-in and are
+  ignored. **A bar is clean = no miss and no stray.** No adaptive windows, no age
+  tables in v1. A bar of rests is clean by default.
+- **Timing.** Taps are on the audio clock via the event's own time stamp (lag
+  taken back off), less the device delay: the saved Beat Smash jam delay
+  (`koolRiffsBeatDelay`) if there is one, else `outputLatency`. **Every tap is
+  logged** in `window.rstompRoundLog` with expected time, raw time, delay applied
+  and its source, signed error, result, bar and onset id.
+- **Keyboard.** `rstompRoundActive` makes `stompKeys` return false, so Space is
+  the pad and cannot also press PLAY behind it.
+- **Open, for Rob / playtests:** mandatory *to pass* or just to play (today every
+  round must be played but any score continues); a click under the drum loop;
+  the 170 ms window; whether a hold's release should be graded (not at all now);
+  an unlock rule (one clean round vs three); coaching lines per miss type (the
+  log has the reasons); and measuring the delay in Stomp Lab itself only if
+  playtests show a lean. Words: `stomp.round.*` in `lang/en-US.js`.
+
 ### Restart, not sixteen undos
 Rob, hunting a wrong bar on Level 7: *"In order to find them I need to undo… I
 guess we have to back through the whole thing, one undo button at a time, or we

@@ -2979,11 +2979,139 @@ function handleRstompSuccess() {
     rstompStreak++;
     updateRstompStreakDots();
     showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
-    if (rstompStreak >= 3) {
-        setTimeout(showRstompLevelComplete, 800);
-    } else {
-        setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 1000);
+    // Counted right, so now PLAY it. This runs after every correct counting,
+    // the third included, and the round decides nothing about the streak:
+    // it is the performance, not the gate (see "THE STOMP ROUND" in CLAUDE.md).
+    setTimeout(() => startRstompRound(() => {
+        if (rstompStreak >= 3) {
+            setTimeout(showRstompLevelComplete, 300);
+        } else {
+            rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase();
+        }
+    }), 900);
+}
+
+/* ---------- THE STOMP ROUND ----------
+   Rob: once they have counted a phrase right, "they should have a chance to
+   play it... whatever they count they get to play. They have to play it."
+   The grading is stomp-round.js (pure, tested in Node); this is the glue:
+   the audio, the pad, and what is on screen. Rhythm-agnostic: it plays
+   whatever rstompPhrase holds, so hand-authored patterns can plug in later by
+   handing KRStomp their own onsets.
+
+   Taps are read on the audio clock (the event's own time stamp, so a busy
+   phone's handler lag is taken back off), less the device delay: the saved
+   Beat Smash jam delay if there is one, else the browser's outputLatency.
+   Which one was used is logged with every tap. */
+const RSTOMP_ROUND_WINDOW = 0.170;      // seconds each side, before the half-gap cap
+let rstompRoundActive = false;
+let rstompRoundState = null;
+let rstompRoundPads = null;
+let rstompRoundDone = null;
+window.rstompRoundLog = [];             // the last round's rows, for the teacher / console
+
+function rstompRoundDelay() {
+    let saved = 0;
+    try {
+        const d = JSON.parse(localStorage.getItem('koolRiffsBeatDelay'));
+        if (d && typeof d.delay === 'number') saved = d.delay;
+    } catch (e) { /* no storage: fall back */ }
+    if (saved) return { delay: saved, source: 'jam' };
+    const ctx = typeof rstompAudio === 'function' ? rstompAudio() : null;
+    return { delay: (ctx && ctx.outputLatency) || 0, source: 'outputLatency' };
+}
+
+function rstompRoundEventTime(e) {
+    const ctx = rstompAudio();
+    const now = ctx ? ctx.currentTime : 0;
+    if (!e || !e.timeStamp || typeof performance === 'undefined') return now;
+    const lag = (performance.now() - e.timeStamp) / 1000;
+    return lag > 0 && lag < 0.5 ? now - lag : now;
+}
+
+function rstompRoundShowControls(show) {
+    ['rstomp-controls-twobutton', 'rstomp-controls-keypad', 'rstomp-submit-button'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (show) { el.style.display = ''; } else { el.style.display = 'none'; }
+    });
+}
+
+function startRstompRound(done) {
+    if (typeof KRStomp === 'undefined' || typeof KRPads === 'undefined' || !rstompPhrase.length) { done(); return; }
+    rstompRoundDone = done;
+    rstompRoundActive = true;
+    if (typeof rstompAudioStop === 'function') rstompAudioStop();
+    const box = document.getElementById('rstomp-round');
+    document.getElementById('rstomp-round-title').textContent = KR.t('stomp.round.title') + ' ' + KR.t('stomp.round.go');
+    document.getElementById('rstomp-round-result').hidden = true;
+    document.getElementById('rstomp-round-again').onclick = () => runRstompRound();
+    document.getElementById('rstomp-round-next').onclick = finishRstompRound;
+    hideRstompFeedback();
+    rstompRoundShowControls(false);
+    box.hidden = false;
+    if (!rstompRoundPads) {
+        rstompRoundPads = KRPads.create({
+            container: document.getElementById('rstomp-round-pad'),
+            count: 1,
+            now: rstompRoundEventTime,
+            delay: () => (rstompRoundState ? rstompRoundState.delay.delay : 0),
+            label: () => KR.t('stomp.round.pad'),
+            onPress: press => {
+                if (!rstompRoundState || rstompRoundState.over) return;
+                const clock = rstompAudioClock();
+                if (!clock) return;
+                if (typeof rstompAudioTap === 'function') rstompAudioTap('play');
+                const st = rstompRoundState;
+                st.matcher.tap({ raw: press.raw - clock.slot0, delay: st.delay.delay, t: press.time - clock.slot0 });
+            },
+        });
     }
+    runRstompRound();
+}
+
+function runRstompRound() {
+    document.getElementById('rstomp-round-result').hidden = true;
+    const bpm = rstompBaseBpm();
+    const slotSec = 60 / bpm / rstompSlotsPerBeat;
+    const onsets = KRStomp.deriveOnsets(rstompPhrase, slotSec);
+    const bars = rstompPhrase.length;
+    const matcher = KRStomp.createMatcher(onsets, { bars, barSec: slotSec * rstompSlotsPerBar, windowSec: RSTOMP_ROUND_WINDOW });
+    rstompRoundState = { matcher, bars, delay: rstompRoundDelay(), over: false };
+    const tail = matcher.closesAt() - bars * rstompSlotsPerBar * slotSec + 0.05;
+    const started = rstompAudioPlayPhrase({ bpm, counting: false, snare: false, click: true, loop: true,
+                                            tail: Math.max(0.2, tail), onStop: () => endRstompRound() });
+    if (!started) { rstompRoundState.over = true; finishRstompRound(); }
+}
+
+function endRstompRound() {
+    const st = rstompRoundState;
+    if (!st || st.over) return;
+    st.over = true;
+    const r = st.matcher.result(Infinity);
+    window.rstompRoundLog = r.log.map(e => Object.assign({ delaySource: st.delay.source }, e));
+    const barsEl = document.getElementById('rstomp-round-bars');
+    barsEl.innerHTML = '';
+    r.clean.forEach((ok, i) => {
+        const b = document.createElement('div');
+        b.className = 'rstomp-round-bar' + (ok ? ' clean' : '');
+        b.textContent = KR.t('stomp.round.bar', { bar: i + 1 });
+        barsEl.appendChild(b);
+    });
+    document.getElementById('rstomp-round-score').textContent = r.cleanBars === r.bars
+        ? KR.t('stomp.round.perfect') : KR.t('stomp.round.result', { clean: r.cleanBars, bars: r.bars });
+    document.getElementById('rstomp-round-result').hidden = false;
+    playSound(r.cleanBars === r.bars ? 'correct' : 'wrong');
+}
+
+function finishRstompRound() {
+    if (typeof rstompAudioStop === 'function') rstompAudioStop();
+    if (rstompRoundState) rstompRoundState.over = true;
+    rstompRoundActive = false;
+    document.getElementById('rstomp-round').hidden = true;
+    rstompRoundShowControls(true);
+    const done = rstompRoundDone; rstompRoundDone = null;
+    if (done) done();
 }
 
 // Finding your own mistake is the skill, so the first strike says only HOW
