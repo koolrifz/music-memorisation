@@ -350,6 +350,56 @@ function vsmashRecordScore(record, score) {
     return true;
 }
 
+/* ---------- Where to go from a results screen ----------
+   Rob, 2026-10-19: clearing a floor should offer the NEXT floor, not leave the
+   student to climb back out to the floor list. Always on offer: the floors
+   (the start of Value Smash) and the dashboard (home for the whole app). The
+   one green button is what happens next, and Enter presses it (keyboard.js).
+   Buttons are [{ id, words, vars, run, primary }]. */
+function vsmashResultsActions(buttons) {
+    const holder = document.getElementById('value-results-actions');
+    holder.innerHTML = '';
+    buttons.forEach(b => {
+        const el = document.createElement('button');
+        el.id = 'value-results-' + b.id;
+        el.className = 'btn ' + (b.primary ? 'btn-start' : 'btn-secondary');
+        el.textContent = KR.t(b.words, b.vars);
+        el.onclick = b.run;
+        holder.appendChild(el);
+    });
+}
+
+function vsmashGoToFloor(floorId) {
+    vsmashSelectedFloor = floorId;
+    startSelectedValueFloor();
+}
+
+function vsmashGoToDashboard() {
+    launchGame('view-dashboard');
+}
+
+// What follows a cleared floor: the floor it opened, or - after the last one -
+// the way on to the next game.
+function vsmashClearedActions(floor) {
+    const next = VSMASH_FLOORS.find(f => f.unlock === floor.id);
+    const again = { id: 'again', words: 'value.results.again', run: () => vsmashGoToFloor(floor.id) };
+    const floors = { id: 'floors', words: 'value.floor.back', run: showValuePathway };
+    const home = { id: 'home', words: 'value.results.dashboard', run: vsmashGoToDashboard };
+    if (next) {
+        return [{ id: 'next', words: 'value.results.next', vars: { floor: vsmashFloorName(next.id) },
+            primary: true, run: () => vsmashGoToFloor(next.id) }, again, floors, home];
+    }
+    return [{ id: 'stomp', words: 'value.results.stomp', primary: true, run: () => launchGame('view-rhythm-lab') },
+        again, floors, home];
+}
+
+// A floor not cleared: another go is the next step.
+function vsmashRetryActions(floor) {
+    return [{ id: 'again', words: 'value.results.again', primary: true, run: () => vsmashGoToFloor(floor.id) },
+        { id: 'floors', words: 'value.floor.back', run: showValuePathway },
+        { id: 'home', words: 'value.results.dashboard', run: vsmashGoToDashboard }];
+}
+
 function vsmashResultsBody() {
     vsmashStopTimers();
     switchScreenState('value', 'value-screen-results');
@@ -380,12 +430,15 @@ function showValueResults(floor, stars, result, opened) {
     else line('vsmash-result-line', KR.t('value.results.time', { seconds: Math.round(result.seconds) }));
     vsmashScoreLines(line, floor.id, result);
     opened.forEach(f => line('vsmash-result-open', KR.t('value.results.opened', { floor: vsmashFloorName(f.id) })));
+    if (!VSMASH_FLOORS.some(f => f.unlock === floor.id)) line('vsmash-result-open', KR.t('value.results.done'));
+    vsmashResultsActions(vsmashClearedActions(floor));
     playSound('complete');
 }
 
 // The clock ran out before the floor was cleared. Nothing is lost.
-function showValueTimeUp(result) {
+function showValueTimeUp(result, floor) {
     const line = vsmashResultsBody();
+    vsmashResultsActions(vsmashRetryActions(floor));
     line('vsmash-result-title', KR.t('value.results.timeUp'));
     line('vsmash-result-line', KR.t('value.results.reached', { cards: result.cards }));
     line('vsmash-result-line', KR.t('value.results.score', { n: result.score }));
@@ -1509,7 +1562,7 @@ function vsmashSmashTimeUp() {
     const s = vsmashSmash;
     vsmashSmash = null;
     if (s.sprint) return vsmashSprintEnd(s);
-    showValueTimeUp({ cards: VSMASH_TIERS[s.tier], score: s.score });
+    showValueTimeUp({ cards: VSMASH_TIERS[s.tier], score: s.score }, s.floor);
 }
 
 /* =========================================
@@ -1544,6 +1597,7 @@ function vsmashSprintEnd(s) {
     vsmashSave(progress);
     const line = vsmashResultsBody();
     line('vsmash-result-title', KR.t('value.results.timeUp'));
+    vsmashResultsActions(vsmashRetryActions(s.floor));
     line('vsmash-result-line', KR.t('value.sprint.needBronze', { cards: VSMASH_TIERS[1] }));
     vsmashScoreLines(line, s.floor.id, result);
     playSound('timeout');

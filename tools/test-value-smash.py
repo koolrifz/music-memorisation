@@ -365,6 +365,12 @@ def test_tree(page):
     check('clearing the Tree shows results', screens(page) == ['value-screen-results'])
     check('...records it cleared, with stars', progress['floors']['v1-tree'].get('cleared') and progress['floors']['v1-tree'].get('stars', 0) >= 1)
     check('...and opens Smash', 'v1-smash' in progress['unlocked'])
+    check('clearing the Tree offers the next floor, the floors and the dashboard',
+          page.evaluate("[...document.querySelectorAll('#value-results-actions button')].map(b => b.id).join()") == 'value-results-next,value-results-again,value-results-floors,value-results-home'
+          and 'next: smash' in page.inner_text('#value-results-next').lower())
+    check('Enter does what the green button does: starts Smash',
+          (page.keyboard.press('Enter'), page.wait_for_timeout(500), page.evaluate("vsmashSmash && vsmashSmash.floor.id") == 'v1-smash')[2])
+    page.evaluate("vsmashStopTimers(); vsmashSmash = null; showValuePathway()")
     check('the Tree button appears', not page.evaluate("document.getElementById('value-tree-btn').hidden"))
     page.click('#value-tree-btn')
     page.wait_for_timeout(300)
@@ -457,7 +463,11 @@ def test_smash(page):
     check('...records a score', progress['floors']['v1-smash'].get('bestScore', 0) > 0)
     check('...and opens the Sprint', 'v1-sprint' in progress['unlocked'])
 
-    page.click('#value-screen-results .btn-start')
+    check('a cleared floor offers the next one, the floors and the dashboard',
+          page.evaluate("[...document.querySelectorAll('#value-results-actions button')].map(b => b.id).join()")
+          == 'value-results-next,value-results-again,value-results-floors,value-results-home'
+          and 'next: sprint' in page.inner_text('#value-results-next').lower())
+    page.click('#value-results-again')
     page.wait_for_timeout(500)
     while smash(page) and smash(page)['tier'] == 0:
         smash_clear(page)
@@ -533,12 +543,20 @@ def test_sprint_and_license(page):
     page.evaluate('vsmashSmash.clock = 0.3')
     page.wait_for_timeout(1200)
     check('a second medal brings no second ceremony', page.evaluate('__ev') == ['value.sprint.medal'])
+    check('after the Sprint: a celebration that suggests Stomp Lab, with the floors and the dashboard',
+          page.evaluate("[...document.querySelectorAll('#value-results-actions button')].map(b => b.id).join()") == 'value-results-stomp,value-results-again,value-results-floors,value-results-home'
+          and 'all of value smash' in page.inner_text('#value-results-body').lower(), page.inner_text('#value-results-body'))
+    page.click('#value-results-home')
+    page.wait_for_timeout(300)
+    check('the dashboard button goes home', view(page) == 'view-dashboard', view(page))
 
     fresh(page, PLAYER + value_progress(unlocked=['v1-tree', 'v1-smash', 'v1-sprint']))
     start_floor(page, 3)
     page.evaluate('vsmashSmash.clock = 0.3')
     page.wait_for_timeout(1200)
     progress = page.evaluate('vsmashLoad()')
+    check('a floor not cleared offers another go, the floors and the dashboard',
+          page.evaluate("[...document.querySelectorAll('#value-results-actions button')].map(b => b.id).join()") == 'value-results-again,value-results-floors,value-results-home')
     check('no medal: not cleared, no License', not progress['floors'].get('v1-sprint', {}).get('cleared') and not progress['license'])
 
 

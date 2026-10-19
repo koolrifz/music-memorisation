@@ -33,7 +33,8 @@
                                    tempo (Shift: by 5), T taps the tempo, Esc goes back.
      Every game                    Esc or P pauses, and resumes. Enter or Space
                                    answers a message box (Continue) and on a
-                                   results screen goes on to what is next.
+                                   results screen goes on to what is next (Value
+                                   Smash too: its green button).
 
    The keys do nothing while a text box has the focus, so a nickname can still
    be typed. Nothing is drawn on the screen for them: there are no new words.
@@ -78,7 +79,8 @@
     const RESULTS = [
         { screen: 'g1-screen-summary', picks: ['g1-next-stage-button', 'g1-next-game-button', null] },
         { screen: 'g2-screen-summary', picks: ['g2-next-stage-button', 'g2-next-game-button', null] },
-        { screen: 'g3-screen-summary', picks: ['g3-next-stage-button', null] }
+        { screen: 'g3-screen-summary', picks: ['g3-next-stage-button', null] },
+        { screen: 'value-screen-results', picks: [null] }   // Value Smash: the one green button
     ];
     function answerResults(key) {
         if (key !== 'Enter') return false;
