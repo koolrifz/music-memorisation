@@ -31,8 +31,10 @@ const KR_HOME_GAMES = [
       progress: () => krHomeStages(getG2PathwayProgress(), g2PathwayStages.map(s => s.id)) },
     { id: 'real', colour: 'green', onclick: "launchGame('view-game3')",
       progress: () => krHomeStages(getG3PathwayProgress(), g3PathwayStages.map(s => s.id)) },
-    { id: 'rhythm', colour: 'gold', onclick: "launchGame('view-rhythm')",
-      progress: () => krHomeStages(getRhythmProgress(), RHYTHM_LEVELS.map(l => l.id)) },
+    // Rhythm Stomp (id 'rhythm', view-rhythm, rhythm.js) is RETIRED, not deleted:
+    // Rob, 2026-10-19, Rhythm Stomp Lab is the one counting game. To bring the card
+    // back, restore: { id: 'rhythm', colour: 'gold', onclick: "launchGame('view-rhythm')",
+    //   progress: () => krHomeStages(getRhythmProgress(), RHYTHM_LEVELS.map(l => l.id)) },
     { id: 'lab', colour: 'teal', onclick: "launchGame('view-rhythm-lab')",
       progress: () => krHomeStages(getRstompProgress(), RSTOMP_LEVELS.map(l => l.id)) },
 ];

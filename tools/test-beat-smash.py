@@ -2158,9 +2158,9 @@ def test_dashboard(page):
         id: c.dataset.game, n: c.querySelector('.game-icon').textContent, title: c.querySelector('h2').textContent,
         dots: c.querySelectorAll('.home-dot').length, bar: !!c.querySelector('.home-bar'),
         stats: c.querySelector('.home-stats') && c.querySelector('.home-stats').textContent }))""")
-    check('The dashboard lists the games in Rob\'s order, numbered 1 to 7 in the coloured square',
-          [c['title'] for c in cards] == ['Beat Smash', 'Staff Smash', 'Value Smash', 'Note Smash', 'Real Smash', 'Rhythm Stomp', 'Rhythm Stomp Lab']
-          and [c['n'] for c in cards] == [str(n) for n in range(1, 8)], cards)
+    check('The dashboard lists the games in Rob\'s order, numbered 1 to 6 in the coloured square (Rhythm Stomp is retired)',
+          [c['title'] for c in cards] == ['Beat Smash', 'Staff Smash', 'Value Smash', 'Note Smash', 'Real Smash', 'Rhythm Stomp Lab']
+          and [c['n'] for c in cards] == [str(n) for n in range(1, 7)], cards)
     check('...each with its pathway (dots, or a bar for a long one) and a line of numbers',
           all((c['dots'] or c['bar']) and c['stats'] for c in cards) and cards[0]['dots'] == 5 and cards[1]['dots'] == 5, cards)
     check('...a fresh device: nothing played yet', all(c['stats'] == 'Not played yet' for c in cards), [c['stats'] for c in cards])
