@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Lilita+One&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="48x48" href="art/logo/icon-48.png">
     <link rel="apple-touch-icon" href="art/logo/icon-192.png">
-    <link rel="stylesheet" href="style.css?v=20261019e">
+    <link rel="stylesheet" href="style.css?v=20261019f">
 </head>
 <body>
 
@@ -524,6 +524,22 @@
         </div>
 
         <button class="btn btn-start" id="rstomp-submit-button" onclick="submitRstompPhrase()" disabled>Check My Answer</button>
+
+        <!-- THE STOMP ROUND: after the counting is right, tap it back in time.
+             Hidden until startRstompRound() runs; the counting controls are
+             hidden while it is up. Words come from lang IDs (stomp.round.*). -->
+        <div class="rstomp-round" id="rstomp-round" hidden>
+            <div class="rstomp-round-title" id="rstomp-round-title"></div>
+            <div class="rstomp-round-pad" id="rstomp-round-pad"></div>
+            <div class="rstomp-round-result" id="rstomp-round-result" hidden>
+                <div class="rstomp-round-bars" id="rstomp-round-bars"></div>
+                <div class="rstomp-round-score" id="rstomp-round-score"></div>
+                <div class="rstomp-round-buttons">
+                    <button class="btn" id="rstomp-round-again" data-text="stomp.round.again"></button>
+                    <button class="btn btn-start" id="rstomp-round-next" data-text="stomp.round.next"></button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1012,26 +1028,27 @@
 </div>
 
 <!-- Words, dialogue, pictures and sounds by ID - loaded first, see docs/language-files-plan.md -->
-<script src="text.js?v=20261019e"></script>
-<script src="lang/en-US.js?v=20261019e"></script>
-<script src="lang/en-GB.js?v=20261019e"></script>
-<script src="teacher-codes.js?v=20261019e"></script>
-<script src="content/dialogue.js?v=20261019e"></script>
-<script src="content/art.js?v=20261019e"></script>
-<script src="content/audio.js?v=20261019e"></script>
-<script src="content/songs.js?v=20261019e"></script>
-<script src="shelf.js?v=20261019e"></script>
-<script src="script.js?v=20261019e"></script>
-<script src="rhythm.js?v=20261019e"></script>
-<script src="rhythm-audio.js?v=20261019e"></script>
-<script src="rhythm-stomp-lab.js?v=20261019e"></script>
-<script src="value-smash.js?v=20261019e"></script>
-<script src="beat-smash-band.js?v=20261019e"></script>
-<script src="beat-pads.js?v=20261019e"></script>
-<script src="beat-smash.js?v=20261019e"></script>
-<script src="dashboard.js?v=20261019e"></script>
-<script src="studio.js?v=20261019e"></script>
-<script src="tools.js?v=20261019e"></script>
-<script src="keyboard.js?v=20261019e"></script>
+<script src="text.js?v=20261019f"></script>
+<script src="lang/en-US.js?v=20261019f"></script>
+<script src="lang/en-GB.js?v=20261019f"></script>
+<script src="teacher-codes.js?v=20261019f"></script>
+<script src="content/dialogue.js?v=20261019f"></script>
+<script src="content/art.js?v=20261019f"></script>
+<script src="content/audio.js?v=20261019f"></script>
+<script src="content/songs.js?v=20261019f"></script>
+<script src="shelf.js?v=20261019f"></script>
+<script src="script.js?v=20261019f"></script>
+<script src="rhythm.js?v=20261019f"></script>
+<script src="rhythm-audio.js?v=20261019f"></script>
+<script src="stomp-round.js?v=20261019f"></script>
+<script src="rhythm-stomp-lab.js?v=20261019f"></script>
+<script src="value-smash.js?v=20261019f"></script>
+<script src="beat-smash-band.js?v=20261019f"></script>
+<script src="beat-pads.js?v=20261019f"></script>
+<script src="beat-smash.js?v=20261019f"></script>
+<script src="dashboard.js?v=20261019f"></script>
+<script src="studio.js?v=20261019f"></script>
+<script src="tools.js?v=20261019f"></script>
+<script src="keyboard.js?v=20261019f"></script>
 </body>
 </html>

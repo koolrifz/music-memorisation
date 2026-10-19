@@ -686,6 +686,16 @@ KR.lang('en-US', {
     'stomp.intro.hold.what': 'nothing new — still ringing, or silence',
     'stomp.intro.line2':     'Tap one, and it\'s written under the music straight away. Fill all 4 bars, then check your answer. Three phrases right in a row and you\'ve mastered the level.',
     'stomp.intro.start':     'Start Level 1',
+    // The stomp round: after the counting is right, play it back.
+    'stomp.round.title':     'Now play it!',
+    'stomp.round.go':        'Tap the pad once for every note. Count-in first.',
+    'stomp.round.playing':   'Playing...',
+    'stomp.round.pad':       'TAP',
+    'stomp.round.result':    '{clean} of {bars} bars clean',
+    'stomp.round.perfect':   'Every bar clean!',
+    'stomp.round.again':     'Try again',
+    'stomp.round.next':      'Next',
+    'stomp.round.bar':       'Bar {bar}',
 
     'stomp.album.beat':      'The Beat',
     'stomp.album.ties':      'Ties and Syncopation',
