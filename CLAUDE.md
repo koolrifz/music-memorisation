@@ -1406,13 +1406,37 @@ their lengths from `rstompSlotsFor()`, never copied.
     it at the top, because it is the largest note we have."* The tap version
     sent each tile to the highest row with room, so the student only ever chose
     a tile to fit a row the app had already picked, and could guess by position.
-  - **The tray holds ONE of each value, and one correct drop FILLS the row**:
-    one half note dropped on the half row and two half notes appear, tile by
-    tile, then the row plays back. That is where the student *finds* how many
-    fit, which is the whole lesson, instead of having to know to drag it twice.
-    (Rob did not say this in so many words; it follows from "they just see one
-    of each". One drop per tile, with the tray tile staying put, is the other
-    reading, and `vsmashTreeDrop` is the one place to change.)
+  - **BUILD IT YOURSELF — Rob's ruling, 2026-10-19 (later the same day),
+    REVERSING "one correct drop fills the row".** *"When they drag one crotchet
+    or a minim up it should only put one of them on the page. They need to drag
+    the second one up or the other three up to complete. Don't do it for them. I
+    would prefer that there is nothing up there. It's vacant and they have to
+    build the whole tree. I also would like to see less background behind each
+    note. I don't even need to see the line through the note or a pretend staff.
+    I just need the note sitting there, and then the lines going from the whole
+    note: two lines under it pointing at two half notes, then two lines under
+    each half pointing at two quarter notes. Make sure the changes go through
+    all of the levels and not just the first."* So:
+    - **The tray holds ONE of each value; one drop puts down ONE tile**
+      (`vsmashTreeDrop` pushes one). The row plays back, and is explained, only
+      when it is full. A half way row says so (`value.tree.placed`), never
+      the count. The tray tile stays put, so the student drags it again.
+    - **Every round starts VACANT, in all three** (`VSMASH_TREE_ROUNDS`; the
+      `given` row is gone, and a rebuilt round starts empty too). Round 2 would
+      now be round 1 again, so it **shuffles the tray** (a call of mine, so
+      position can't be learnt); `shuffle: true` on the round is the switch.
+      The keyboard's `1`-`6` follow the tray as drawn.
+    - **Bare notation** (`vsmashDrawNotes(..., bare)`): no staff line, no card.
+      The note is drawn in light ink (`VSMASH_BARE_INK`) straight on the
+      background; rows are a faint dashed zone (the drop target) and tray tiles
+      a soft outline so they still read as things to pick up. The Smash cards
+      keep their staff: this is the Tree only.
+    - **Branches** (`vsmashTreeLines()`): an SVG over the rows, a line from each
+      note to the two it is worth. **A line is drawn only when both ends are on
+      the page**, so the tree grows as it is built and the *count* (two halves,
+      four quarters) is never shown before the student finds it. Row r has 2^r
+      slots; slot k hangs from slot k>>1 above. The help card draws the same
+      branches. Re-drawn on every render, so a resize keeps them.
   - **The student chooses the row; the Tree never marks where a tile goes.**
     Rows can be filled in any order. The only gold is the row a dragged tile is
     hovering over (`.over`); the old gold "next row" outline is gone because it
@@ -1445,9 +1469,8 @@ their lengths from `rstompSlotsFor()`, never copied.
     a rest row is refused: sound is not silence.
   - A rest row plays back with the **brush**, not the snare: a snare on a
     silence says the opposite of what the row means (and matches Stomp Lab).
-  - The Tree card (the help menu) shows every row of each round passed,
-    *including the given row* — otherwise the whole rest, always given, would
-    never appear.
+  - The Tree card (the help menu) shows the full tree, with its branches, of each
+    round passed.
 - **Smash** — Note Smash's grid, matched not imported.
   - **Duds: Rob's call, 2026-09-24.** Tier 1 has no clock at all, so a dud there
     is answered with a **Nothing here** button; from tier 2 each screen has Note
@@ -1499,6 +1522,7 @@ own stretch of the duration bar.
 | VexFlow's own spacing on cards | Rests ran into noteheads at card width. |
 | A beat grid to the card's very edge | Beat 4's glyph was clipped. The grid stops `VSMASH_GLYPH_ROOM` short. |
 | Shrinking the Tree's notation with CSS on short screens | The staff line stopped at 80% of the tile. The notation is *drawn* at 80% instead (`vsmashTreeScale()`). |
+| One drop fills the whole row; a given row; white cards with a pretend staff in the Tree | Rob, 2026-10-19: the student must drag every tile and build the whole tree; bare notes and branches. |
 | Showing the License ceremony after a short delay | Leaving in that moment awarded the License with no ceremony, ever. It shows at once. |
 | Waiting out a dud on tier 1 | There is no clock to wait out — hence the button. |
 

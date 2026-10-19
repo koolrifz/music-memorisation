@@ -249,9 +249,9 @@ on. The pathway screen follows the pathway pattern in `CLAUDE.md`:
 - When a row is full, it **plays back**: one `raudioTapSnare()` per note,
   0.5 s per beat. Then fire the event `value.tree.row`.
 - **The three rounds:**
-  1. The whole note is given; build down.
-  2. A randomly chosen row is given (the halves or the quarters); build up and
-     down.
+  1. Nothing is given; build the whole tree (changed 2026-10-19: Rob wants it
+     vacant, one tile per drop, bare notes and branches. See CLAUDE.md).
+  2. The same again, with the tray shuffled.
   3. The rest tree (whole rest, half rests, quarter rests).
 - **Passing:**
   - Complete all three rounds.

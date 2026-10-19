@@ -560,8 +560,9 @@ KR.lang('en-US', {
     /* ---------- Value Smash: The Tree ----------
        {row} {tile} {top}: a note name.  {rows}: its plural.  {n}: a number. */
     'value.tree.header':         '{floor} · Round {n} of {total}',
-    'value.tree.start':          'The {row} row is done. Drag a tile up to fill each of the other rows.',
-    'value.tree.startRests':     'Rests! The {row} row is done. Drag a tile to each other row.',   // short: any longer wraps to a 4th line and pushes the tray off a 360x640 phone
+    'value.tree.start':          'Build the tree: drag the notes up, one at a time.',
+    'value.tree.startRests':     'Rests! Build the tree the same way.',   // short: any longer wraps to a 4th line and pushes the tray off a 360x640 phone
+    'value.tree.placed':         'One {tile} down. Drag the next one.',
     'value.tree.full':           'The {rows} row is already full.',
     'value.tree.hint.top':       "Stuck? Drag the {tile} to the top row. It's the longest one we have.",
     'value.tree.hint.middle':    "Stuck? Drag the {tile} to the middle row. It's the next longest.",
