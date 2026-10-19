@@ -560,8 +560,12 @@ KR.lang('en-US', {
     /* ---------- Value Smash: The Tree ----------
        {row} {tile} {top}: a note name.  {rows}: its plural.  {n}: a number. */
     'value.tree.header':         '{floor} · Round {n} of {total}',
-    'value.tree.start':          'The {row} row is done. Tap the tiles to fill the other rows.',
-    'value.tree.startRests':     'Now the rests. The {row} row is done. Fill the other rows.',
+    'value.tree.start':          'The {row} row is done. Drag a tile up to fill each of the other rows.',
+    'value.tree.startRests':     'Rests! The {row} row is done. Drag a tile to each other row.',   // short: any longer wraps to a 4th line and pushes the tray off a 360x640 phone
+    'value.tree.full':           'The {rows} row is already full.',
+    'value.tree.hint.top':       "Stuck? Drag the {tile} to the top row. It's the longest one we have.",
+    'value.tree.hint.middle':    "Stuck? Drag the {tile} to the middle row. It's the next longest.",
+    'value.tree.hint.bottom':    "Stuck? Drag the {tile} to the bottom row. It's the shortest.",
     'value.tree.refuse.longer':  "That row is {rows}. A {tile} is as long as {n} {rows}. It won't fit.",
     'value.tree.refuse.half':    'That row is {rows}. A {tile} is only half a {row}.',
     'value.tree.refuse.quarter': 'That row is {rows}. A {tile} is only a quarter of a {row}.',

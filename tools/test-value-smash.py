@@ -87,12 +87,32 @@ def start_floor(page, index):
 # The Tree
 def tree(page):
     return page.evaluate("vsmashTree && { round: vsmashTree.round, busy: vsmashTree.busy, target: vsmashTreeTarget(),"
-                         " values: vsmashTree.values, refusals: vsmashTree.refusals }")
+                         " values: vsmashTree.values, refusals: vsmashTree.refusals, misses: vsmashTree.misses,"
+                         " picked: vsmashTree.picked, lengths: vsmashTree.rows.map(r => r.length) }")
 
 
-def tree_tap(page, value):
-    i = page.evaluate('vsmashTree.tray.indexOf(%s)' % json.dumps(value))
-    page.click('.vsmash-tray button:nth-child(%d)' % (i + 1))
+def centre(box):
+    return box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
+
+
+def tray_tile(page, value):
+    return page.locator('.vsmash-tray .vsmash-tile[data-value="%s"]' % value)
+
+
+def tree_row(page, row):
+    return page.locator('#value-stage .vsmash-tree-row').nth(row)
+
+
+def tree_drag(page, value, row, release=True):
+    """What a student does: press a tile in the tray, drag it onto a row, let go."""
+    x, y = centre(tray_tile(page, value).bounding_box())
+    tx, ty = centre(tree_row(page, row).bounding_box())
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(tx, ty, steps=8)
+    if release:
+        page.mouse.up()
+        page.wait_for_timeout(60)
 
 
 def tree_tap_right(page):
@@ -101,8 +121,7 @@ def tree_tap_right(page):
     if not t or t['target'] < 0:
         page.wait_for_timeout(200)
         return
-    tree_tap(page, t['values'][t['target']])
-    page.wait_for_timeout(60)
+    tree_drag(page, t['values'][t['target']], t['target'])
 
 
 # Smash and the Sprint
@@ -215,27 +234,106 @@ def test_tree(page):
     fresh(page, PLAYER + value_progress())
     start_floor(page, 1)
     t = tree(page)
-    check('round 1 gives the whole note and targets the half-note row', t['round'] == 0 and t['target'] == 1)
-    tree_tap(page, 'quarter-note')
+    check('round 1 gives the whole note, and the half row is the next one empty', t['round'] == 0 and t['target'] == 1)
+    check('the guide says to drag', 'Drag' in guide(page), guide(page))
+    check('the tray holds one tile of each value',
+          page.evaluate("[...document.querySelectorAll('.vsmash-tray .vsmash-tile')].map(t => t.dataset.value).join()")
+          == 'whole-note,half-note,quarter-note')
+    check('nothing marks where a tile goes', page.evaluate("document.querySelectorAll('.vsmash-tree-row.over').length") == 0)
+
+    # In the air: a ghost follows the pointer, the row under it lights, the tray tile dims.
+    x, y = centre(tray_tile(page, 'half-note').bounding_box())
+    tx, ty = centre(tree_row(page, 2).bounding_box())
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(tx, ty, steps=6)
+    air = page.evaluate("({ ghosts: document.querySelectorAll('.vsmash-ghost').length,"
+                        " over: [...document.querySelectorAll('#value-stage .vsmash-tree-row')].map(r => r.classList.contains('over')),"
+                        " dim: document.querySelector('.vsmash-tray .vsmash-tile[data-value=\"half-note\"]').classList.contains('dragging') })")
+    check('a dragged tile is a ghost; the row under it lights; its tray tile dims',
+          air['ghosts'] == 1 and air['over'] == [False, False, True] and air['dim'], air)
+    page.mouse.move(200, 800, steps=4)          # empty ground, below everything
+    page.mouse.up()
+    page.wait_for_timeout(350)
+    t = tree(page)
+    check('dropped on no row: the tile goes home and nothing is counted',
+          page.evaluate("document.querySelectorAll('.vsmash-ghost').length") == 0
+          and t['refusals'] == 0 and t['lengths'] == [1, 0, 0], t)
+
+    tree_drag(page, 'quarter-note', 1)
     page.wait_for_timeout(150)
     check('a wrong tile is refused, with the reason', 'only half a half note' in guide(page), guide(page))
-    tree_tap(page, 'whole-note')
+    page.wait_for_timeout(500)
+    check('the red flash goes: no row or tile is left marked wrong',
+          page.evaluate("document.querySelectorAll('.vsmash-tree-row.refused, .vsmash-tile.shake').length") == 0)
+    tree_drag(page, 'whole-note', 1)
     page.wait_for_timeout(150)
-    check('a longer tile gets its own reason', 'as long as 2 half notes' in guide(page), guide(page))
+    check('two wrong drops in a row: the guide names the tile and the row, and the tile pulses',
+          'Stuck?' in guide(page) and 'middle row' in guide(page) and 'half note' in guide(page)
+          and page.evaluate("document.querySelector('.vsmash-tray .vsmash-tile[data-value=\"half-note\"]').classList.contains('hint')"),
+          guide(page))
+    tree_drag(page, 'whole-note', 0)
+    page.wait_for_timeout(150)
+    t = tree(page)
+    check('the right tile on a row already full says so, and costs nothing',
+          'already full' in guide(page) and t['refusals'] == 2, (guide(page), t))
+    tree_drag(page, 'half-note', 1)
+    t = tree(page)
+    check('one drop fills the row: one half note in, two on the row', t['lengths'] == [1, 2, 0] and t['misses'] == 0, t)
+    check('the explanation is up while the row plays, so the hint is not left hanging',
+          'Stuck?' not in guide(page) and 'last as long as one whole note' in guide(page), guide(page))
+    page.wait_for_function('!vsmashTree.busy', timeout=15000)
+    check('the filled row is explained', 'last as long as one whole note' in guide(page), guide(page))
+    tree_drag(page, 'whole-note', 2)
+    page.wait_for_timeout(150)
+    check('after a right drop the first miss is a reason again, and a longer tile gets its own',
+          'as long as 4 quarter notes' in guide(page), guide(page))
     while tree(page) and tree(page)['round'] == 0 and tree(page)['target'] >= 0:
         tree_tap_right(page)
     page.wait_for_timeout(6000)
     t = tree(page)
-    check('two refusals: the round is built again', t['round'] == 0 and t['refusals'] == 0, t)
+    check('three refusals: the round is built again', t['round'] == 0 and t['refusals'] == 0, t)
     for round_index in (0, 1):
         while tree(page) and tree(page)['round'] == round_index:
             tree_tap_right(page)
         page.wait_for_function('!vsmashTree || !vsmashTree.busy', timeout=15000)
         page.wait_for_timeout(2400)
     check('round 3 is the rest tree', tree(page)['values'][0] == 'whole-rest')
-    tree_tap(page, 'half-note')
+
+    # Under a fingertip the tile rides above the finger (touch events, made by hand).
+    lift = page.evaluate("""() => {
+        const tile = document.querySelector('.vsmash-tray .vsmash-tile[data-value="half-rest"]');
+        const r = tile.getBoundingClientRect();
+        const fire = (type, x, y) => tile.dispatchEvent(new PointerEvent(type, { pointerId: 9, pointerType: 'touch',
+            clientX: x, clientY: y, button: 0, bubbles: true, cancelable: true }));
+        const x = r.left + r.width / 2, y = r.top + r.height / 2;
+        fire('pointerdown', x, y);
+        fire('pointermove', x, y - 120);
+        const g = document.querySelector('.vsmash-ghost').getBoundingClientRect();
+        const gap = (y - 120) - (g.top + g.height / 2);
+        fire('pointercancel', x, y - 120);
+        return { gap: gap };
+    }""")
+    page.wait_for_timeout(350)
+    check('a finger drags from below: the tile rides 56px above it', abs(lift['gap'] - 56) < 2, lift)
+
+    tree_drag(page, 'half-note', 1)
     page.wait_for_timeout(150)
     check('a note on a rest row is refused: sound is not silence', 'is a sound' in guide(page), guide(page))
+    # No dragging: tap a tile to pick it up, tap a row to put it down.
+    tray_tile(page, 'half-rest').click()
+    t = tree(page)
+    check('a tap picks a tile up', t['picked'] == 'half-rest'
+          and page.evaluate("document.querySelector('.vsmash-tray .vsmash-tile[data-value=\"half-rest\"]').classList.contains('picked')"), t)
+    tree_row(page, 1).click()
+    t = tree(page)
+    check('...and a tap on its row puts it down', t['lengths'][1] == 2 and t['picked'] is None, t)
+    page.wait_for_function('!vsmashTree.busy', timeout=15000)
+    # Keys: 6 picks up the sixth tile (the quarter rest), Z drops it on the bottom row.
+    page.keyboard.press('6')
+    check('a key picks a tile up', tree(page)['picked'] == 'quarter-rest', tree(page))
+    page.keyboard.press('z')
+    check('...and Q, A or Z drops it on the top, middle or bottom row', tree(page)['lengths'][2] == 4, tree(page))
     while tree(page):
         tree_tap_right(page)
     page.wait_for_timeout(1500)

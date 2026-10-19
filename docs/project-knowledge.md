@@ -5,7 +5,7 @@ Drop this straight into a Claude Project's knowledge base.
 
 - **Live app:** https://koolrifz.github.io/music-memorisation/
 - **Repo:** https://github.com/koolrifz/music-memorisation
-- **Generated:** 2026-10-18 — by `tools/build-project-knowledge.py`
+- **Generated:** 2026-10-19 — by `tools/build-project-knowledge.py`
 
 **This file is generated.** Edit the sources in the repo and re-run the script;
 do not edit this copy, the next run overwrites it.
@@ -1423,9 +1423,55 @@ their lengths from `rstompSlotsFor()`, never copied.
 **How each floor plays, and the calls made on it:**
 
 - **The Tree** — three equal rows (each lasts the same time), tiles as wide as
-  their value, a tile drops into the highest row with room or is refused with
-  the reason told as a *relationship*, never in beats. A full row plays back at
-  0.5 s a beat.
+  their value, **dragged from the tray onto a row**. A row takes only its own
+  value; the wrong one is refused with the reason told as a *relationship*,
+  never in beats. A full row plays back at 0.5 s a beat.
+  - **DRAG, NOT TAP — Rob's ruling, 2026-10-19, reversing the tap-to-fill Tree.**
+    *"The interaction of expecting them to fill in a box by tapping the right
+    notation forces them into some mistakes or misunderstandings… They don't
+    know that there's four quarter notes and two half notes in one whole note
+    sitting there. They just see one of each. If they try to drag a quarter
+    note up into the whole note spot… it'll just get rejected. Ditto with a
+    half note. And you can't put a whole note where a quarter note should go.
+    If they're very confused we can prompt them: take the whole note and drag
+    it at the top, because it is the largest note we have."* The tap version
+    sent each tile to the highest row with room, so the student only ever chose
+    a tile to fit a row the app had already picked, and could guess by position.
+  - **The tray holds ONE of each value, and one correct drop FILLS the row**:
+    one half note dropped on the half row and two half notes appear, tile by
+    tile, then the row plays back. That is where the student *finds* how many
+    fit, which is the whole lesson, instead of having to know to drag it twice.
+    (Rob did not say this in so many words; it follows from "they just see one
+    of each". One drop per tile, with the tray tile staying put, is the other
+    reading, and `vsmashTreeDrop` is the one place to change.)
+  - **The student chooses the row; the Tree never marks where a tile goes.**
+    Rows can be filled in any order. The only gold is the row a dragged tile is
+    hovering over (`.over`); the old gold "next row" outline is gone because it
+    gave the answer away. A drop on no row costs nothing; the tile glides home.
+    The right value on a row that is already full says so (`value.tree.full`)
+    and costs nothing.
+  - **The hint.** `VSMASH_TREE_HINT_AFTER` (2) wrong drops in a row and the
+    guide stops giving reasons and says which tile goes in the **longest row
+    still empty**, top / middle / bottom (`value.tree.hint.*`), and that tray
+    tile pulses gold. A right drop starts the count again. The refusal count
+    (`VSMASH_TREE_REFUSALS_ALLOWED`) is unchanged, but a student who chooses the
+    row has more ways to be wrong than one who was told it, so **watch whether a
+    round now gets rebuilt too often**; that constant is the lever.
+  - **How it is built.** Pointer events, so a finger, a mouse and a stylus share
+    one path. A press that travels `VSMASH_TREE_DRAG_SLOP` lifts a ghost copy of
+    the tile; the row under the ghost's *centre* is the one aimed at, and a
+    fingertip rides `VSMASH_TREE_TOUCH_LIFT` (56 px) below the ghost so the finger
+    never hides the tile (a mouse has no lift). Tray tiles are
+    `touch-action: none`, or the page scrolls instead of the tile moving.
+  - **Tap-to-pick is kept as the other way in**, and it is what the keyboard
+    uses: tap a tile to pick it up (again to put it down), then tap a row.
+    `keyboard.js`: `1`-`6` pick up a tile, `Q` `A` `Z` drop it on the top, middle
+    or bottom row. It is not the old behaviour: the student still names the row.
+  - The red flash on a refused row and tile **clears after 450 ms**. A red that
+    stayed would say "this row is wrong", when it only refused *that* tile.
+  - The explanation of a row that has just filled is **on screen while the row
+    plays** and spoken after it, so a refusal's line or a hint is never left
+    hanging over the playback.
   - Round 3's tray holds the **notes as well as the rests**, so a note offered to
     a rest row is refused: sound is not silence.
   - A rest row plays back with the **brush**, not the snare: a snare on a
@@ -2874,7 +2920,7 @@ Rob simplified the metal ladder: **no platinum or diamond.** The five framed gol
 
 ### THE KEYBOARD: every game plays from a computer keyboard (Rob, 2026-10-14)
 *"Map the games to the computer keyboard like we did with Real Smash... if there is not a computer keyboard mapped, create one."* Three games already had keys and are untouched: **Real Smash** A-G (`script.js`), **Rhythm Stomp** 1-9, Space, Z X C, Backspace, Enter (`rhythm.js`), **Beat Smash** 1 2 3 4 for the four pads and Space for the one big pad (`beat-pads.js`). The rest are in `keyboard.js`, which **presses the real button** (`.click()`), so a key can never do what a tap can't and no game's logic is copied.
-- **Staff, Note and Value Smash:** the cards are three across, so the keys are too, under the left hand: `1 2 3 / Q W E / A S D / Z X C`. Row one of the keys is row one of the cards. (A locked Staff row's key does nothing.) Value Smash: Space or N is "Nothing here"; the Tree's tray is 1 2 3 4 5 6, left to right.
+- **Staff, Note and Value Smash:** the cards are three across, so the keys are too, under the left hand: `1 2 3 / Q W E / A S D / Z X C`. Row one of the keys is row one of the cards. (A locked Staff row's key does nothing.) Value Smash: Space or N is "Nothing here"; the Tree is dragged on a screen, so on keys `1`-`6` pick up a tile from the tray (left to right) and `Q` `A` `Z` drop it on the top, middle or bottom row.
 - **Rhythm Stomp Lab:** Z or Space = PLAY, X = NOTHING NEW (two-button); on the keypad each key is its own label (1-6, `+`, `e`, `a`, `(` `)`); Backspace undoes (two-button) or erases (keypad), R restarts, H hears it, Enter checks the answer.
 - **Metronome and tuner:** Space start/stop, Up/Down tempo (Shift: 5), T tap tempo, Esc back.
 - **Every game:** Esc or P pauses and resumes (Staff, Note, Real Smash); Enter or Space answers a message box (Continue); Enter on a results screen goes to the next stage, else the next game, else another go.
@@ -3664,8 +3710,13 @@ on. The pathway screen follows the pathway pattern in `CLAUDE.md`:
 
 **Play:**
 
-- The student taps a tray tile. It goes into the **highest row that still has
-  room**.
+- **Changed 2026-10-19 (Rob): the student DRAGS a tray tile onto a row; it is no
+  longer a tap that goes to the next row with room.** The tray holds one of each
+  value, and a correct drop fills the row (one half note in, two appear). CLAUDE.md,
+  "VALUE SMASH", "The Tree", has the ruling and the reasons; it outranks the next
+  four lines, which describe the first build.
+- *(First build.)* The student taps a tray tile. It goes into the **highest row
+  that still has room**.
   - If the tile is the value that row holds, it drops in.
   - If it isn't, it is **refused**: a clunk sound, the tile shakes, and the
     guide box says why. For example, `value.tree.refuse` could read *"That row
