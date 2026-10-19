@@ -29,7 +29,9 @@ const VSMASH_FLOORS = [
 const VSMASH_TREE_REFUSALS_ALLOWED = 1;      // a Tree round counts only with at most this many refused tiles
 const VSMASH_TREE_BEAT_SECONDS = 0.5;        // snare timing when a finished Tree row plays back
 const VSMASH_TREE_HINT_AFTER = 2;            // wrong drops in a row before the guide says which tile goes where
-const VSMASH_TREE_FILL_MS = 110;             // a row fills tile by tile, this far apart
+const VSMASH_LINE_FROM = 0.7;                // a branch leaves a note this far down its row (fraction of the row's height)
+const VSMASH_LINE_TO = 4;                    // and reaches this far into the row below
+const VSMASH_BARE_INK = '#f4efe2';            // notes drawn straight on the background (the Tree)
 const VSMASH_TREE_DRAG_SLOP = 8;             // px a press must travel to count as a drag; less is a tap
 const VSMASH_TREE_TOUCH_LIFT = 56;           // px a tile rides above a fingertip, so the finger doesn't hide it
 const VSMASH_STAR_TIME = { tree: 60, smash: 120 };   // seconds to beat for the second star
@@ -410,12 +412,16 @@ const vsmashDrawCache = {};
 // of at the start of the bar. The Tree uses it: a tile there is one value
 // standing alone in its box, so it should read as a diagram, not as the
 // first note of a bar.
-function vsmashDrawNotes(el, specs, width, scale, centre) {
+// bare: true draws the notation alone in light ink - no staff line - for the
+// Tree, whose notes sit straight on the background (Rob, 2026-10-19: "I don't
+// even need to see the line through the note or a pretend staff").
+function vsmashDrawNotes(el, specs, width, scale, centre, bare) {
     scale = scale || 1;
+    bare = !!bare;
     centre = !!centre && specs.length === 1;
     const shown = Math.max(40, Math.round(width));
     width = Math.round(shown / scale);
-    const key = width + '|' + scale + '|' + (centre ? 'c|' : '') + specs.map(s => s.value + (s.isRest ? 'r' : '')).join(',');
+    const key = width + '|' + scale + '|' + (centre ? 'c|' : '') + (bare ? 'b|' : '') + specs.map(s => s.value + (s.isRest ? 'r' : '')).join(',');
     if (!(key in vsmashDrawCache)) {
         const VF = Vex.Flow;
         const scratch = document.createElement('div');
@@ -429,7 +435,8 @@ function vsmashDrawNotes(el, specs, width, scale, centre) {
         stave.setBegBarType(VF.Barline.type.NONE);
         stave.setEndBarType(VF.Barline.type.NONE);
         stave.setStyle({ strokeStyle: '#000000' });
-        stave.setContext(context).draw();
+        stave.setContext(context);
+        if (!bare) stave.draw();     // the voice still needs the stave to place its notes
         const notes = specs.map(spec => {
             const note = new VF.StaveNote({ clef: 'treble', keys: ['b/4'], stem_direction: 1,
                 duration: spec.isRest ? spec.value + 'r' : spec.value });
@@ -481,7 +488,7 @@ function vsmashDrawNotes(el, specs, width, scale, centre) {
         svg.setAttribute('height', Math.round(VSMASH_CROP_HEIGHT * scale));
         svg.style.width = shown + 'px';
         svg.style.height = Math.round(VSMASH_CROP_HEIGHT * scale) + 'px';
-        vsmashDrawCache[key] = scratch.innerHTML;
+        vsmashDrawCache[key] = bare ? scratch.innerHTML.replace(/#000000|#000\b|black/gi, VSMASH_BARE_INK) : scratch.innerHTML;
     }
     el.innerHTML = vsmashDrawCache[key];
 }
@@ -529,37 +536,42 @@ function vsmashBeats(valueId) {
    plays the brush: a snare on a silence would say the opposite of what the
    row means.)
 
-   Round 1: the whole note is given; build down.
-   Round 2: the half or the quarter row is given; build up and down.
+   Every round starts VACANT and one drop puts down ONE tile (Rob,
+   2026-10-19: "Don't do it for them... they have to build the whole tree").
+   Notes are drawn bare, with branches joining each note to the two it is
+   worth; a branch appears only when both ends are on the page.
+   Round 1: the note tree.  Round 2: the same, tray shuffled.
    Round 3: the rest tree. The tray holds the notes as well, so a note
             offered to a rest row is refused - sound is not silence.
    A round counts only with at most VSMASH_TREE_REFUSALS_ALLOWED refusals;
-   otherwise it is built again from a new random start.
+   otherwise it is built again from empty.
    ========================================= */
 const VSMASH_TREES = {
     notes: ['whole-note', 'half-note', 'quarter-note'],
     rests: ['whole-rest', 'half-rest', 'quarter-rest'],
 };
+// Every round starts VACANT: nothing is given. Rob, 2026-10-19: "I would
+// prefer that there is nothing up there. It's vacant and they have to build
+// the whole tree." Round 2 only shuffles the tray, so position can't be learnt.
 const VSMASH_TREE_ROUNDS = [
-    { tree: 'notes', given: () => 0 },
-    { tree: 'notes', given: () => 1 + Math.floor(Math.random() * 2) },
-    { tree: 'rests', given: () => 0 },
+    { tree: 'notes', shuffle: false },
+    { tree: 'notes', shuffle: true },
+    { tree: 'rests', shuffle: false },
 ];
 
 let vsmashTree = null;   // the Tree floor in play, or null
 
 function startValueTree(floor) {
     vsmashTree = { floor: floor, round: 0, started: Date.now(), wrong: 0 };
-    vsmashTreeRound(VSMASH_TREE_ROUNDS[0].given());
+    vsmashTreeRound();
 }
 
-// Lay out one round: `given` is the row that starts full.
-function vsmashTreeRound(given) {
+// Lay out one round: every row empty.
+function vsmashTreeRound() {
     const round = VSMASH_TREE_ROUNDS[vsmashTree.round];
     const values = VSMASH_TREES[round.tree];
     vsmashTree.values = values;
-    vsmashTree.rows = values.map((v, i) => i === given
-        ? Array(VSMASH_BAR_BEATS / vsmashBeats(v)).fill(v) : []);
+    vsmashTree.rows = values.map(() => []);
     vsmashTree.refusals = 0;
     vsmashTree.misses = 0;       // wrong drops in a row; a right one starts it again
     vsmashTree.picked = null;    // a tile picked up by a tap or a key, waiting for a row
@@ -567,13 +579,13 @@ function vsmashTreeRound(given) {
     vsmashTree.tray = round.tree === 'rests'
         ? ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest']
         : VSMASH_TREES.notes.slice();
+    if (round.shuffle) vsmashTree.tray.sort(() => Math.random() - 0.5);
 
     document.getElementById('value-floor-label').textContent = KR.t('value.tree.header', {
         floor: vsmashFloorName(vsmashTree.floor.id),
         n: vsmashTree.round + 1, total: VSMASH_TREE_ROUNDS.length });
     renderValueTree();
-    KR.say(round.tree === 'rests' ? 'value.tree.startRests' : 'value.tree.start',
-        { box: vsmashGuide(), vars: { row: KR.noteName(values[given]) } });
+    KR.say(round.tree === 'rests' ? 'value.tree.startRests' : 'value.tree.start', { box: vsmashGuide() });
 }
 
 function vsmashTreeRowBeats(row) {
@@ -593,7 +605,7 @@ function vsmashTile(valueId, width, tag) {
     const notes = document.createElement('div');
     notes.className = 'vsmash-tile-notes';
     tile.appendChild(notes);
-    vsmashDrawNotes(notes, [vsmashSpec(valueId)], width - 6, vsmashTreeScale(), true);
+    vsmashDrawNotes(notes, [vsmashSpec(valueId)], width - 6, vsmashTreeScale(), true, true);
     return tile;
 }
 
@@ -612,8 +624,40 @@ function vsmashRowWidth(container) {
     return Math.floor(container.clientWidth) - 6;   // less the row's border
 }
 
-// `filled` is the row just dropped into: its tiles appear one after another.
-function renderValueTree(filled) {
+// The branches: one line from each note down to the two notes it is worth, so
+// the tree grows as it is built. A line is drawn only when BOTH ends are on the
+// page - the structure is never shown before the student has built it. Row r
+// holds 2^r slots; slot k hangs from slot floor(k/2) of the row above.
+function vsmashTreeLines(container, counts) {
+    const rowEls = container.querySelectorAll('.vsmash-tree-row');
+    const base = container.getBoundingClientRect();
+    const NS = 'http://www.w3.org/2000/svg';   // text-ok: an XML namespace
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'vsmash-tree-lines');
+    svg.setAttribute('width', base.width);
+    svg.setAttribute('height', base.height);
+    const slotX = (el, k, cap) => {
+        const r = el.getBoundingClientRect();
+        return r.left - base.left + 3 + (r.width - 6) * (k + 0.5) / cap;
+    };
+    for (let r = 1; r < rowEls.length; r++) {
+        const upper = rowEls[r - 1].getBoundingClientRect(), lower = rowEls[r].getBoundingClientRect();
+        for (let k = 0; k < counts[r]; k++) {
+            const parent = k >> 1;
+            if (parent >= counts[r - 1]) continue;
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', slotX(rowEls[r - 1], parent, 1 << (r - 1)));
+            line.setAttribute('y1', upper.top - base.top + upper.height * VSMASH_LINE_FROM);
+            line.setAttribute('x2', slotX(rowEls[r], k, 1 << r));
+            line.setAttribute('y2', lower.top - base.top + VSMASH_LINE_TO);
+            svg.appendChild(line);
+        }
+    }
+    container.appendChild(svg);
+}
+
+// `fresh` is {row, at}: the one tile just dropped, which drops into place.
+function renderValueTree(fresh) {
     vsmashTreeEndDrag();
     const stage = document.getElementById('value-stage');
     stage.innerHTML = '';
@@ -627,15 +671,13 @@ function renderValueTree(filled) {
         el.onclick = () => vsmashTreeRowTap(index);
         row.forEach((v, i) => {
             const tile = vsmashTile(v, vsmashTileWidth(v, rowWidth));
-            if (index === filled) {
-                tile.classList.add('fill');
-                tile.style.animationDelay = (i * VSMASH_TREE_FILL_MS) + 'ms';
-            }
+            if (fresh && fresh.row === index && fresh.at === i) tile.classList.add('fill');
             el.appendChild(tile);
         });
         rows.appendChild(el);
     });
     stage.appendChild(rows);
+    vsmashTreeLines(rows, vsmashTree.rows.map(r => r.length));
 
     // The tray's tiles are the width they will take up in a row, less the
     // gap between them, so a half note and a half rest fit on one line.
@@ -786,7 +828,7 @@ function vsmashTreeRowTap(index) {
     vsmashTreeDrop(valueId, index, document.querySelector('.vsmash-tray .vsmash-tile[data-value="' + valueId + '"]'));
 }
 
-// A tile is dropped on a row. Returns 'ok' (the row filled), 'refused' (wrong
+// A tile is dropped on a row. Returns 'ok' (one tile added), 'refused' (wrong
 // value), 'full' (right value, but that row is already done) or 'none'.
 function vsmashTreeDrop(valueId, index, tile) {
     if (!vsmashTree || vsmashTree.busy) return 'none';
@@ -799,9 +841,15 @@ function vsmashTreeDrop(valueId, index, tile) {
             return 'full';
         }
         vsmashTree.misses = 0;
-        vsmashTree.rows[index] = Array(VSMASH_BAR_BEATS / vsmashBeats(valueId)).fill(valueId);
+        // ONE tile per drop. The row is never filled for the student: the
+        // second half note, or the other three quarters, are theirs to drag.
+        vsmashTree.rows[index].push(valueId);
         vsmashTapSound(valueId);
-        renderValueTree(index);
+        renderValueTree({ row: index, at: vsmashTree.rows[index].length - 1 });
+        if (vsmashTreeRowBeats(vsmashTree.rows[index]) < VSMASH_BAR_BEATS) {
+            KR.say('value.tree.placed', { box: vsmashGuide(), vars: { tile: KR.noteName(valueId) } });
+            return 'ok';
+        }
         // The explanation is on screen while the row plays, so a miss's line
         // or a hint is not left hanging there; it is SPOKEN after the playback.
         const line = vsmashTreeRowLine(index);
@@ -879,9 +927,7 @@ function vsmashTreeRowFull(index) {
     vsmashTree.busy = true;
     const row = vsmashTree.rows[index];
     const tiles = document.querySelectorAll('.vsmash-tree-row')[index].children;
-    // Let the row finish filling, tile by tile, and the drop's own sound die
-    // away, before it plays back.
-    let at = Math.max(400, (row.length - 1) * VSMASH_TREE_FILL_MS + 370);
+        let at = 400;   // the drop's own sound dies away before the row plays back
     row.forEach((v, i) => {
         const length = vsmashBeats(v) * VSMASH_TREE_BEAT_SECONDS * 1000;
         vsmashLater(() => {
@@ -917,8 +963,7 @@ function vsmashTreeRoundDone() {
         KR.say('value.tree.again', { box: vsmashGuide(), vars: { n: vsmashTree.refusals } });
         vsmashTree.busy = true;
         vsmashLater(() => {
-            const round = VSMASH_TREE_ROUNDS[vsmashTree.round];
-            vsmashTreeRound(Math.floor(Math.random() * VSMASH_TREES[round.tree].length));
+            vsmashTreeRound();
         }, 2600);
         return;
     }
@@ -940,7 +985,7 @@ function vsmashTreeRoundDone() {
     }
     KR.say('value.tree.roundDone', { box: vsmashGuide(), vars: { n: vsmashTree.round } });
     vsmashTree.busy = true;
-    vsmashLater(() => vsmashTreeRound(VSMASH_TREE_ROUNDS[vsmashTree.round].given()), 2200);
+    vsmashLater(() => vsmashTreeRound(), 2200);
 }
 
 // A phone turned sideways changes the width, so the tree or grid is redrawn.
@@ -973,14 +1018,20 @@ function openValueTreeCard() {
     holder.innerHTML = '';
     const rowWidth = vsmashRowWidth(holder);
     Object.keys(VSMASH_TREES).forEach(tree => {
-        VSMASH_TREES[tree].filter(v => built.includes(v)).forEach(v => {
+        const rows = document.createElement('div');
+        rows.className = 'vsmash-tree-rows';
+        const counts = [];
+        VSMASH_TREES[tree].forEach(v => {
             const row = document.createElement('div');
             row.className = 'vsmash-tree-row';
-            for (let i = 0; i < VSMASH_BAR_BEATS / vsmashBeats(v); i++) {
-                row.appendChild(vsmashTile(v, vsmashTileWidth(v, rowWidth)));
-            }
-            holder.appendChild(row);
+            const n = built.includes(v) ? VSMASH_BAR_BEATS / vsmashBeats(v) : 0;
+            for (let i = 0; i < n; i++) row.appendChild(vsmashTile(v, vsmashTileWidth(v, rowWidth)));
+            counts.push(n);
+            rows.appendChild(row);
         });
+        if (!counts.some(n => n)) return;
+        holder.appendChild(rows);
+        vsmashTreeLines(rows, counts);
     });
 }
 
