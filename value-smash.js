@@ -28,6 +28,10 @@ const VSMASH_FLOORS = [
    Build guide §5. All in one place so they're easy to find and change. */
 const VSMASH_TREE_REFUSALS_ALLOWED = 1;      // a Tree round counts only with at most this many refused tiles
 const VSMASH_TREE_BEAT_SECONDS = 0.5;        // snare timing when a finished Tree row plays back
+const VSMASH_TREE_HINT_AFTER = 2;            // wrong drops in a row before the guide says which tile goes where
+const VSMASH_TREE_FILL_MS = 110;             // a row fills tile by tile, this far apart
+const VSMASH_TREE_DRAG_SLOP = 8;             // px a press must travel to count as a drag; less is a tap
+const VSMASH_TREE_TOUCH_LIFT = 56;           // px a tile rides above a fingertip, so the finger doesn't hide it
 const VSMASH_STAR_TIME = { tree: 60, smash: 120 };   // seconds to beat for the second star
 const VSMASH_DUD_RATE = 0.15;                // share of Smash screens with nothing to smash
 const VSMASH_GOLD_RATE = 1 / 12;             // share of Smash screens with a gold (triple) card
@@ -504,11 +508,26 @@ function vsmashBeats(valueId) {
    width, because each row lasts the same time: whole notes, half notes,
    quarter notes. A tile's width is its value - a half note is half a row.
 
-   Tap a tile in the tray and it goes into the HIGHEST ROW THAT STILL HAS
-   ROOM. The right value drops in; the wrong one is refused - a clunk, a
-   shake, and the guide box says why. A full row plays back, one snare per
-   note at 0.5 s a beat. (A rest row plays the brush: a snare on a silence
-   would say the opposite of what the row means.)
+   DRAG a tile from the tray onto a row. The tray holds ONE of each value, so
+   nothing on screen says how many fit: drop the right value on its row and
+   the row FILLS ITSELF - one half note in, two half notes appear - and the
+   student finds the equivalence out instead of being told it. A row takes
+   only its own value; the wrong one is refused - a clunk, a shake, the tile
+   glides back, and the guide box says why. Wrong drops in a row
+   (VSMASH_TREE_HINT_AFTER) and the guide points at the longest row still
+   empty and the tile that belongs there, and that tile pulses.
+   Rob, 2026-10-19: "expecting them to fill in a box by tapping the right
+   notation forces them into some mistakes or misunderstandings... They don't
+   know that there's four quarter notes and two half notes in one whole note
+   sitting there. They just see one of each."
+   The rows can be filled in any order: the student chooses the row, and the
+   Tree never highlights where a tile goes (that would give the answer away).
+   Dropped on no row, nothing happens and nothing is counted.
+   The same move without dragging: tap a tile to pick it up, then tap a row
+   (keyboard.js: 1-6 picks, Q A Z drops on the top, middle, bottom row).
+   A full row plays back, one snare per note at 0.5 s a beat. (A rest row
+   plays the brush: a snare on a silence would say the opposite of what the
+   row means.)
 
    Round 1: the whole note is given; build down.
    Round 2: the half or the quarter row is given; build up and down.
@@ -542,6 +561,8 @@ function vsmashTreeRound(given) {
     vsmashTree.rows = values.map((v, i) => i === given
         ? Array(VSMASH_BAR_BEATS / vsmashBeats(v)).fill(v) : []);
     vsmashTree.refusals = 0;
+    vsmashTree.misses = 0;       // wrong drops in a row; a right one starts it again
+    vsmashTree.picked = null;    // a tile picked up by a tap or a key, waiting for a row
     vsmashTree.busy = false;
     vsmashTree.tray = round.tree === 'rests'
         ? ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'quarter-note', 'quarter-rest']
@@ -591,18 +612,27 @@ function vsmashRowWidth(container) {
     return Math.floor(container.clientWidth) - 6;   // less the row's border
 }
 
-function renderValueTree() {
+// `filled` is the row just dropped into: its tiles appear one after another.
+function renderValueTree(filled) {
+    vsmashTreeEndDrag();
     const stage = document.getElementById('value-stage');
     stage.innerHTML = '';
     const rowWidth = vsmashRowWidth(stage);
-    const target = vsmashTreeTarget();
 
     const rows = document.createElement('div');
     rows.className = 'vsmash-tree-rows';
     vsmashTree.rows.forEach((row, index) => {
         const el = document.createElement('div');
-        el.className = 'vsmash-tree-row' + (index === target ? ' target' : '');
-        row.forEach(v => el.appendChild(vsmashTile(v, vsmashTileWidth(v, rowWidth))));
+        el.className = 'vsmash-tree-row';
+        el.onclick = () => vsmashTreeRowTap(index);
+        row.forEach((v, i) => {
+            const tile = vsmashTile(v, vsmashTileWidth(v, rowWidth));
+            if (index === filled) {
+                tile.classList.add('fill');
+                tile.style.animationDelay = (i * VSMASH_TREE_FILL_MS) + 'ms';
+            }
+            el.appendChild(tile);
+        });
         rows.appendChild(el);
     });
     stage.appendChild(rows);
@@ -613,37 +643,212 @@ function renderValueTree() {
     tray.className = 'vsmash-tray';
     vsmashTree.tray.forEach(v => {
         const tile = vsmashTile(v, vsmashTileWidth(v, rowWidth) - 8, 'button');
-        tile.onclick = () => tapValueTreeTile(v, tile);
+        tile.type = 'button';
+        tile.dataset.value = v;
+        if (vsmashTree.picked === v) tile.classList.add('picked');
+        vsmashTreeBindTile(tile, v);
         tray.appendChild(tile);
     });
     stage.appendChild(tray);
 }
 
-function tapValueTreeTile(valueId, tile) {
-    if (!vsmashTree || vsmashTree.busy) return;
-    const target = vsmashTreeTarget();
-    if (target < 0) return;
-    const rowValue = vsmashTree.values[target];
+/* ---------- Dragging a tile into a row ----------
+   Pointer events, so one code path serves a finger, a mouse and a stylus. A
+   press on a tray tile that travels VSMASH_TREE_DRAG_SLOP lifts a copy of the
+   tile (the ghost) that follows the pointer; the row under the ghost's
+   CENTRE is the one aimed at (a finger rides VSMASH_TREE_TOUCH_LIFT below
+   the ghost, so it never hides the tile it is aiming). Let go over a row and
+   that is the drop; let go anywhere else and the ghost glides home, free.
+   A press that never travels is a tap, and a tap picks the tile up. */
+let vsmashTreeDragging = null;   // { tile, valueId, id, x, y, lift, ghost, w, h }
 
-    if (valueId !== rowValue) {
-        vsmashTree.refusals++;
-        vsmashTree.wrong++;
-        playSound('wrong');
-        tile.classList.remove('shake');
-        void tile.offsetWidth;            // restart the shake on a second tap
-        tile.classList.add('shake');
-        KR.event('value.tree.refuse', { tile: valueId, row: rowValue });
-        const why = vsmashTreeRefusal(valueId, rowValue);
-        KR.say(why.id, { box: vsmashGuide(), vars: why.vars });
+function vsmashTreeBindTile(tile, valueId) {
+    tile.addEventListener('contextmenu', e => e.preventDefault());
+    tile.addEventListener('pointerdown', e => {
+        if (!vsmashTree || vsmashTree.busy || vsmashTreeDragging) return;
+        if (e.button !== undefined && e.button !== 0) return;
+        vsmashTreeDragging = { tile: tile, valueId: valueId, id: e.pointerId, x: e.clientX, y: e.clientY,
+            lift: e.pointerType === 'touch' ? VSMASH_TREE_TOUCH_LIFT : 0, ghost: null };
+        try { tile.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    tile.addEventListener('pointermove', e => {
+        const d = vsmashTreeDragging;
+        if (!d || d.tile !== tile || d.id !== e.pointerId) return;
+        if (!d.ghost) {
+            if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < VSMASH_TREE_DRAG_SLOP) return;
+            vsmashTreeLift(d);
+        }
+        e.preventDefault();
+        vsmashTreeCarry(d, e.clientX, e.clientY);
+    });
+    tile.addEventListener('pointerup', e => vsmashTreeLetGo(e, tile, true));
+    tile.addEventListener('pointercancel', e => vsmashTreeLetGo(e, tile, false));
+    tile.addEventListener('lostpointercapture', e => vsmashTreeLetGo(e, tile, false));
+    // A click with no pointer behind it is a key press on the focused tile (or
+    // keyboard.js): it picks the tile up. A pointer's own click is ignored,
+    // because its press and release were handled above.
+    tile.addEventListener('click', e => { if (e.detail === 0) vsmashTreePick(valueId); });
+}
+
+function vsmashTreeLift(d) {
+    const box = d.tile.getBoundingClientRect();
+    const ghost = d.tile.cloneNode(true);
+    ghost.classList.remove('picked', 'hint', 'shake');
+    ghost.classList.add('vsmash-ghost');
+    ghost.removeAttribute('data-value');     // only the real tile answers to its value
+    ghost.tabIndex = -1;
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.width = box.width + 'px';
+    ghost.style.height = box.height + 'px';
+    document.body.appendChild(ghost);
+    d.ghost = ghost;
+    d.w = box.width;
+    d.h = box.height;
+    d.tile.classList.add('dragging');
+    vsmashTree.picked = null;
+    vsmashTreeMarkPicked();
+}
+
+function vsmashTreeCarry(d, x, y) {
+    const cx = x, cy = y - d.lift;
+    d.ghost.style.transform = 'translate(' + (cx - d.w / 2) + 'px,' + (cy - d.h / 2) + 'px)';
+    const at = vsmashTreeRowAt(cx, cy);
+    document.querySelectorAll('#value-stage .vsmash-tree-row').forEach((el, i) => el.classList.toggle('over', i === at));
+}
+
+// The row under a point, or -1. A few px of slack either side, never enough
+// to overlap the next row.
+function vsmashTreeRowAt(x, y) {
+    const rows = document.querySelectorAll('#value-stage .vsmash-tree-row');
+    for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (x >= r.left - 12 && x <= r.right + 12 && y >= r.top - 3 && y <= r.bottom + 3) return i;
+    }
+    return -1;
+}
+
+function vsmashTreeLetGo(e, tile, released) {
+    const d = vsmashTreeDragging;
+    if (!d || d.tile !== tile || d.id !== e.pointerId) return;
+    vsmashTreeDragging = null;
+    try { tile.releasePointerCapture(d.id); } catch (err) {}
+    document.querySelectorAll('.vsmash-tree-row.over').forEach(r => r.classList.remove('over'));
+    if (!d.ghost) {                          // it never travelled: a tap picks the tile up
+        if (released) vsmashTreePick(d.valueId);
         return;
     }
+    tile.classList.remove('dragging');
+    const at = released && vsmashTree ? vsmashTreeRowAt(e.clientX, e.clientY - d.lift) : -1;
+    const result = at >= 0 ? vsmashTreeDrop(d.valueId, at, tile) : 'none';
+    if (result === 'ok') d.ghost.remove();
+    else vsmashTreeGoHome(d);
+}
 
-    vsmashTree.rows[target].push(valueId);
-    vsmashTapSound(valueId);
-    renderValueTree();
-    const dropped = document.querySelectorAll('.vsmash-tree-row')[target].lastElementChild;
-    if (dropped) dropped.classList.add('drop');
-    if (vsmashTreeRowBeats(vsmashTree.rows[target]) === VSMASH_BAR_BEATS) vsmashTreeRowFull(target);
+// A tile that found no home glides back to the tray, then is gone.
+function vsmashTreeGoHome(d) {
+    const ghost = d.ghost;
+    const home = d.tile.isConnected ? d.tile.getBoundingClientRect() : null;
+    if (!home) { ghost.remove(); return; }
+    ghost.classList.add('home');
+    ghost.style.transform = 'translate(' + home.left + 'px,' + home.top + 'px)';
+    setTimeout(() => ghost.remove(), 220);
+}
+
+// Stop any press in progress and clear what it put on screen.
+function vsmashTreeEndDrag() {
+    const d = vsmashTreeDragging;
+    vsmashTreeDragging = null;
+    if (d) {
+        try { d.tile.releasePointerCapture(d.id); } catch (err) {}
+        d.tile.classList.remove('dragging');
+    }
+    document.querySelectorAll('.vsmash-ghost').forEach(g => g.remove());
+    document.querySelectorAll('.vsmash-tree-row.over').forEach(r => r.classList.remove('over'));
+}
+
+// Tap or key: pick a tile up (again to put it down), then name its row.
+function vsmashTreePick(valueId) {
+    if (!vsmashTree || vsmashTree.busy) return;
+    vsmashTree.picked = vsmashTree.picked === valueId ? null : valueId;
+    vsmashTreeMarkPicked();
+}
+
+function vsmashTreeMarkPicked() {
+    document.querySelectorAll('.vsmash-tray .vsmash-tile').forEach(t =>
+        t.classList.toggle('picked', !!vsmashTree && t.dataset.value === vsmashTree.picked));
+}
+
+function vsmashTreeRowTap(index) {
+    if (!vsmashTree || vsmashTree.busy || !vsmashTree.picked) return;
+    const valueId = vsmashTree.picked;
+    vsmashTree.picked = null;
+    vsmashTreeMarkPicked();
+    vsmashTreeDrop(valueId, index, document.querySelector('.vsmash-tray .vsmash-tile[data-value="' + valueId + '"]'));
+}
+
+// A tile is dropped on a row. Returns 'ok' (the row filled), 'refused' (wrong
+// value), 'full' (right value, but that row is already done) or 'none'.
+function vsmashTreeDrop(valueId, index, tile) {
+    if (!vsmashTree || vsmashTree.busy) return 'none';
+    const rowValue = vsmashTree.values[index];
+
+    if (valueId === rowValue) {
+        if (vsmashTreeRowBeats(vsmashTree.rows[index]) >= VSMASH_BAR_BEATS) {
+            // Nothing wrong, nothing to add: say so, and cost nothing.
+            KR.say('value.tree.full', { box: vsmashGuide(), vars: { rows: KR.noteName(rowValue, { many: true }) } });
+            return 'full';
+        }
+        vsmashTree.misses = 0;
+        vsmashTree.rows[index] = Array(VSMASH_BAR_BEATS / vsmashBeats(valueId)).fill(valueId);
+        vsmashTapSound(valueId);
+        renderValueTree(index);
+        // The explanation is on screen while the row plays, so a miss's line
+        // or a hint is not left hanging there; it is SPOKEN after the playback.
+        const line = vsmashTreeRowLine(index);
+        KR.say(line.id, { box: vsmashGuide(), vars: line.vars, silent: true });
+        vsmashTreeRowFull(index);
+        return 'ok';
+    }
+
+    vsmashTree.refusals++;
+    vsmashTree.wrong++;
+    vsmashTree.misses++;
+    playSound('wrong');
+    const rowEl = document.querySelectorAll('#value-stage .vsmash-tree-row')[index];
+    // The tile and the row flash red and shake, then go back to normal: a red
+    // that stayed would say "this row is wrong", and it only refused THIS tile.
+    [[tile, 'shake'], [rowEl, 'refused']].forEach(pair => {
+        const el = pair[0];
+        if (!el) return;
+        clearTimeout(el.vsmashFlash);
+        el.classList.remove(pair[1]);
+        void el.offsetWidth;                 // restart the shake on a second miss
+        el.classList.add(pair[1]);
+        el.vsmashFlash = setTimeout(() => el.classList.remove(pair[1]), 450);
+    });
+    KR.event('value.tree.refuse', { tile: valueId, row: rowValue });
+    if (vsmashTree.misses >= VSMASH_TREE_HINT_AFTER) {
+        vsmashTreeHint();
+    } else {
+        const why = vsmashTreeRefusal(valueId, rowValue);
+        KR.say(why.id, { box: vsmashGuide(), vars: why.vars });
+    }
+    return 'refused';
+}
+
+// Lost: say which tile goes in the longest row still empty, and why that one,
+// and make that tile pulse. Rob: "take the whole note and drag it at the top
+// cuz it is the largest note we have."
+function vsmashTreeHint() {
+    const at = vsmashTreeTarget();
+    if (at < 0) return;
+    const value = vsmashTree.values[at];
+    KR.say('value.tree.hint.' + ['top', 'middle', 'bottom'][at], { box: vsmashGuide(), vars: { tile: KR.noteName(value) } });
+    const home = vsmashTree.tray.indexOf(value);
+    document.querySelectorAll('.vsmash-tray .vsmash-tile').forEach((t, i) => {
+        t.classList.remove('hint');
+        if (i === home) { t.classList.remove('shake'); t.classList.add('hint'); }
+    });
 }
 
 // A note sounds as the snare; a rest as the brush (CLAUDE.md "The two
@@ -674,7 +879,9 @@ function vsmashTreeRowFull(index) {
     vsmashTree.busy = true;
     const row = vsmashTree.rows[index];
     const tiles = document.querySelectorAll('.vsmash-tree-row')[index].children;
-    let at = 400;   // let the last tap's own sound finish first
+    // Let the row finish filling, tile by tile, and the drop's own sound die
+    // away, before it plays back.
+    let at = Math.max(400, (row.length - 1) * VSMASH_TREE_FILL_MS + 370);
     row.forEach((v, i) => {
         const length = vsmashBeats(v) * VSMASH_TREE_BEAT_SECONDS * 1000;
         vsmashLater(() => {
@@ -688,16 +895,19 @@ function vsmashTreeRowFull(index) {
         KR.event('value.tree.row', { row: vsmashTree.values[index] });
         vsmashTree.busy = false;
         if (vsmashTreeTarget() < 0) return vsmashTreeRoundDone();
-        const top = vsmashTree.values[0];
-        if (index === 0) {
-            KR.say('value.tree.rowDoneTop', { box: vsmashGuide(), vars: { row: KR.noteName(top) } });
-        } else {
-            KR.say('value.tree.rowDone', { box: vsmashGuide(), vars: {
-                n: row.length, rows: KR.noteName(vsmashTree.values[index], { many: true }),
-                top: KR.noteName(top) } });
-        }
+        const line = vsmashTreeRowLine(index);
+        KR.say(line.id, { box: vsmashGuide(), vars: line.vars });
         renderValueTree();
     }, at);
+}
+
+// What the guide says about a row that has just filled.
+function vsmashTreeRowLine(index) {
+    const top = vsmashTree.values[0];
+    if (index === 0) return { id: 'value.tree.rowDoneTop', vars: { row: KR.noteName(top) } };
+    return { id: 'value.tree.rowDone', vars: {
+        n: vsmashTree.rows[index].length, rows: KR.noteName(vsmashTree.values[index], { many: true }),
+        top: KR.noteName(top) } };
 }
 
 function vsmashTreeRoundDone() {

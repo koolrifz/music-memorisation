@@ -20,8 +20,11 @@
                                         A S D
                                         Z X C
                                    Row one of the keys is row one of the cards.
-     Value Smash                   Space or N is "Nothing here". The Tree's tray
-                                   is 1 2 3 4 5 6, left to right.
+     Value Smash                   Space or N is "Nothing here". The Tree is
+                                   dragged on a screen; on keys, 1 2 3 4 5 6 pick
+                                   up a tile from the tray, left to right, and
+                                   Q, A or Z drops it on the top, middle or
+                                   bottom row.
      Rhythm Stomp Lab              Z or Space = PLAY, X = NOTHING NEW; the keypad
                                    takes its own labels (1-6, +, e, a, ( and ));
                                    Backspace undoes (or erases), R restarts,
@@ -40,6 +43,7 @@
 
     const GRID_KEYS = ['1', '2', '3', 'q', 'w', 'e', 'a', 's', 'd', 'z', 'x', 'c'];
     const TRAY_KEYS = ['1', '2', '3', '4', '5', '6'];
+    const TREE_ROW_KEYS = ['q', 'a', 'z'];   // the Tree's top, middle and bottom row: the left of the keys, top to bottom
 
     function isActive(id) {
         const el = document.getElementById(id);
@@ -142,10 +146,16 @@
     function valueKeys(key) {
         if (!isActive('value-screen-game')) return false;
         if (key === ' ' || key === 'n') return press(document.getElementById('value-nothing'));
+        // The Tree: a tile is picked up from the tray, then dropped on a row.
         const tray = TRAY_KEYS.indexOf(key);
         if (tray >= 0) {
             const tile = document.querySelectorAll('.vsmash-tray .vsmash-tile')[tray];
             if (tile) { tile.click(); return true; }
+        }
+        const drop = TREE_ROW_KEYS.indexOf(key);
+        if (drop >= 0) {
+            const row = document.querySelectorAll('#value-stage .vsmash-tree-row')[drop];
+            if (row) { row.click(); return true; }
         }
         return gridPress(key, 'value-screen-game', '.vsmash-grid', '.vsmash-card', null);
     }

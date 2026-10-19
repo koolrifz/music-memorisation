@@ -234,8 +234,13 @@ on. The pathway screen follows the pathway pattern in `CLAUDE.md`:
 
 **Play:**
 
-- The student taps a tray tile. It goes into the **highest row that still has
-  room**.
+- **Changed 2026-10-19 (Rob): the student DRAGS a tray tile onto a row; it is no
+  longer a tap that goes to the next row with room.** The tray holds one of each
+  value, and a correct drop fills the row (one half note in, two appear). CLAUDE.md,
+  "VALUE SMASH", "The Tree", has the ruling and the reasons; it outranks the next
+  four lines, which describe the first build.
+- *(First build.)* The student taps a tray tile. It goes into the **highest row
+  that still has room**.
   - If the tile is the value that row holds, it drops in.
   - If it isn't, it is **refused**: a clunk sound, the tile shakes, and the
     guide box says why. For example, `value.tree.refuse` could read *"That row

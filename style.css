@@ -909,7 +909,10 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
    nothing is drawn on top of it: highlights are the tile's own border. */
 .vsmash-tree-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
 .vsmash-tree-row { display: flex; height: 71px; border: 3px dashed #526b85; border-radius: 10px; background: rgba(255,255,255,0.04); overflow: hidden; }
-.vsmash-tree-row.target { border-color: var(--accent-gold); border-style: solid; box-shadow: 0 0 0 3px rgba(255,200,0,0.18); }
+/* .over is the row a dragged tile is hovering above: the only gold the Tree
+   shows. Nothing marks where a tile belongs - that is the student's to find. */
+.vsmash-tree-row.over { border-color: var(--accent-gold); border-style: solid; box-shadow: 0 0 0 3px rgba(255,200,0,0.18); }
+.vsmash-tree-row.refused { border-color: var(--accent-red); animation: vsmashShake 0.4s; }
 .vsmash-tile { box-sizing: border-box; flex: 0 0 auto; height: 71px; padding: 0; background: #ffffff; border: 3px solid #324a64; border-radius: 8px; overflow: hidden; display: flex; align-items: center; }
 .vsmash-tree-row .vsmash-tile { height: 65px; border-width: 0 1px; border-radius: 0; border-color: #c9d3de; }
 .vsmash-tile-notes { line-height: 0; }
@@ -917,8 +920,19 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .vsmash-tile.drop { animation: vsmashDrop 0.22s ease-out; }
 @keyframes vsmashDrop { from { transform: translateY(-14px); opacity: 0.3; } to { transform: translateY(0); opacity: 1; } }
 .vsmash-tray { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
-button.vsmash-tile { cursor: pointer; border-color: var(--accent-orange); box-shadow: 0 4px 0 #b36a00; touch-action: manipulation; }
+/* touch-action: none, so a finger dragging a tile never scrolls the page. */
+button.vsmash-tile { cursor: grab; border-color: var(--accent-orange); box-shadow: 0 4px 0 #b36a00; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button.vsmash-tile:active { transform: translateY(3px); box-shadow: 0 1px 0 #b36a00; }
+.vsmash-tile.dragging { opacity: 0.35; }
+.vsmash-tile.picked { border-color: var(--accent-gold); transform: translateY(-4px); box-shadow: 0 8px 0 #b36a00; }
+.vsmash-tile.fill { animation: vsmashFill 0.22s ease-out backwards; }
+@keyframes vsmashFill { from { transform: translateY(-14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* The tile being dragged: a copy that follows the pointer (value-smash.js). */
+.vsmash-tile.vsmash-ghost { position: fixed; left: 0; top: 0; margin: 0; z-index: 3000; pointer-events: none; cursor: grabbing; opacity: 0.96; box-shadow: 0 12px 24px rgba(0,0,0,0.55); }
+.vsmash-tile.vsmash-ghost.home { transition: transform 0.2s ease-out; }
+/* The hint: the tile that belongs in the longest empty row pulses. */
+.vsmash-tile.hint { animation: vsmashHint 0.9s ease-in-out infinite; }
+@keyframes vsmashHint { 0%, 100% { box-shadow: 0 4px 0 #b36a00, 0 0 0 0 rgba(255,200,0,0); } 50% { box-shadow: 0 4px 0 #b36a00, 0 0 0 7px rgba(255,200,0,0.6); } }
 .vsmash-tile.shake { animation: vsmashShake 0.4s; border-color: var(--accent-red); }
 @keyframes vsmashShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
 
