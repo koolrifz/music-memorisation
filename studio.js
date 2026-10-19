@@ -43,7 +43,6 @@ const KR_STUDIO_AREAS = {
     ] },
     congas: { who: 'tango', open: true, levels: [
         { name: 'home.value.title',  go: () => enterValueSmash() },
-        { name: 'home.rhythm.title', go: () => launchGame('view-rhythm') },
         { name: 'home.lab.title',    go: () => launchGame('view-rhythm-lab') },
     ] },
     bass:   { who: 'riff',  open: false, levels: [] },
@@ -97,7 +96,6 @@ function krStudioPillar(pillar) {
     if (pillar === 'value') return sum([() => krHomeValue()]);
     if (pillar === 'rhythm') return sum([
         () => krHomeBeat(),
-        () => krHomeStages(getRhythmProgress(), RHYTHM_LEVELS.map(l => l.id)),
         () => krHomeStages(getRstompProgress(), RSTOMP_LEVELS.map(l => l.id)),
     ]);
     return { done: 0, total: 0, soon: true };

@@ -1153,7 +1153,12 @@ reads every game.
 
 - **The order is Rob's, and the number in each coloured square is it:**
   1 Beat Smash · 2 Staff Smash · 3 Value Smash · 4 Note Smash · 5 Real Smash ·
-  6 Rhythm Stomp · 7 Rhythm Stomp Lab. `KR_HOME_GAMES` is the list; the cards
+  6 Rhythm Stomp Lab. **Rhythm Stomp (the older game, `rhythm.js`) is RETIRED,
+  not deleted** (Rob, 2026-10-19: Stomp Lab is the one counting game; its
+  Play / Hold / Rest buttons cut against the counting convention). Its card,
+  its studio entry and its share of the Rhythm pillar are gone; `rhythm.js`,
+  `#view-rhythm` and its lang strings stay in the repo, so putting it back is
+  restoring the commented entry in `KR_HOME_GAMES` and the two studio.js lines. `KR_HOME_GAMES` is the list; the cards
   are built from it (`renderDashboard()`), so index.html holds only
   `#home-games`. Each card keeps its old `onclick`, which the tests find
   cards by. Titles and blurbs are `home.<id>.title/blurb`.
@@ -1176,7 +1181,6 @@ reads every game.
   device**, not per player (only Value Smash and Beat Smash are per player
   yet): their cards are the same for every nickname until "Playing as" reaches
   every game.
-- Rob will rework **Rhythm Stomp** later; its card is the old one, numbered.
 
 ## TEACHER CODES: reset everything, or open everything
 Rob: *"I should have two codes: one to reset all of my levels of all the games
@@ -2923,7 +2927,7 @@ Rob chose it: *"The topics are no longer tiles. They become black records, and o
 - **Songs the student makes are carried and developed** (Beat Smash's bands today). Rob's direction: many interchangeable riffs written by him and his musician friends, four-bar loops that all work together, in categories; each level won unlocks more variety. Parked until the level screens are all on the shelf.
 
 ### THE STUDIO WALL: five pillar records (Rob, 2026-10-13)
-Rob simplified the metal ladder: **no platinum or diamond.** The five framed gold records already on the studio wall (`gold1`..`gold5` in `KR_STUDIO_ITEMS`) are the five pillars: Notation (Staff, Note, Real Smash), Value, Rhythm (Beat Smash, Rhythm Stomp, Stomp Lab), Key Signatures and Intervals (both "coming soon"). Each is a black record until earned and **fills gold from the bottom** as its levels go gold; every level gold = lit. All five lit = the finale (a pulse and one line from Riff, `studio.finale`, once per device). Progress is read through the dashboard's own helpers (`krHomeStages`, `krHomeValue`, `krHomeBeat`) in `krStudioPillar()`, so the teacher's Open code and per-game getters apply. Tapping a record says the count or "coming soon". A new pillar = one `pillar` id on an item and one case in `krStudioPillar()`. Test: `tools/test-studio.py`.
+Rob simplified the metal ladder: **no platinum or diamond.** The five framed gold records already on the studio wall (`gold1`..`gold5` in `KR_STUDIO_ITEMS`) are the five pillars: Notation (Staff, Note, Real Smash), Value, Rhythm (Beat Smash, Stomp Lab), Key Signatures and Intervals (both "coming soon"). Each is a black record until earned and **fills gold from the bottom** as its levels go gold; every level gold = lit. All five lit = the finale (a pulse and one line from Riff, `studio.finale`, once per device). Progress is read through the dashboard's own helpers (`krHomeStages`, `krHomeValue`, `krHomeBeat`) in `krStudioPillar()`, so the teacher's Open code and per-game getters apply. Tapping a record says the count or "coming soon". A new pillar = one `pillar` id on an item and one case in `krStudioPillar()`. Test: `tools/test-studio.py`.
 
 ### THE KEYBOARD: every game plays from a computer keyboard (Rob, 2026-10-14)
 *"Map the games to the computer keyboard like we did with Real Smash... if there is not a computer keyboard mapped, create one."* Three games already had keys and are untouched: **Real Smash** A-G (`script.js`), **Rhythm Stomp** 1-9, Space, Z X C, Backspace, Enter (`rhythm.js`), **Beat Smash** 1 2 3 4 for the four pads and Space for the one big pad (`beat-pads.js`). The rest are in `keyboard.js`, which **presses the real button** (`.click()`), so a key can never do what a tap can't and no game's logic is copied.
