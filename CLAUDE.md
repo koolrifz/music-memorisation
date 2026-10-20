@@ -723,6 +723,17 @@ part of it.
   log has the reasons); and measuring the delay in Stomp Lab itself only if
   playtests show a lean. Words: `stomp.round.*` in `lang/en-US.js`.
 
+### Restart asks twice, and a wrong keypad answer can be diagnosed (2026-10-20)
+Rob's bug hunt on Level 17: counting wiped back to count 1 with no Check
+pressed. His video showed a fresh level, typing to count 10, then a smooth
+scroll back to 1 about 1.5 s later: only Restart (or `r`) can do that unlocked,
+and on a phone Restart sits ~30 px under Erase. **Restart now needs a second
+tap** (`stomp.restart.confirm`, disarms after 3 s; an almost-empty phrase
+restarts at once). Not proven to be the trigger: if it recurs, the cause is
+elsewhere. **Diagnostics for "it marked me wrong":** with the teacher Open code
+on, a wrong keypad answer shows "You wrote / Expected", and the last 10 wrong
+answers are in `localStorage.koolRiffsStompLog`.
+
 ### Restart, not sixteen undos
 Rob, hunting a wrong bar on Level 7: *"In order to find them I need to undo… I
 guess we have to back through the whole thing, one undo button at a time, or we

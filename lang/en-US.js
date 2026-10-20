@@ -696,6 +696,7 @@ KR.lang('en-US', {
     'stomp.round.again':     'Try again',
     'stomp.round.next':      'Next',
     'stomp.round.bar':       'Bar {bar}',
+    'stomp.restart.confirm': 'Tap again to restart',
     'stomp.debug.wrote':     'You wrote: {wrote}',
     'stomp.debug.expected':  'Expected: {expected}',
 
