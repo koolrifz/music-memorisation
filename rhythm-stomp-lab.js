@@ -1772,6 +1772,7 @@ function rstompPressErase() {
 // One entry point for every key, so each press re-renders and re-scrolls the
 // same way. Writing resumes the follow, the way typing does in an editor.
 function rstompKey(key) {
+    rstompDisarmRestart();
     if (rstompLocked || !rstompScribe || !rstompWriting) return;
     if (key === '(') rstompPressOpen();
     else if (key === ')') rstompPressClose();
@@ -1867,6 +1868,7 @@ function startRstompLevel() {
 }
 
 function startNewRstompPhrase() {
+    rstompDisarmRestart();
     const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
     const grid = rstompGridFor(level);
     rstompLabels = grid.labels;
@@ -2119,8 +2121,30 @@ function rstompWalkHint(position) {
 // It is deliberately NOT a new phrase and NOT a free pass: the attempt ladder,
 // the streak and the tutorial's miss count all stand, because the phrase in
 // front of them is the one they got wrong.
+// RESTART ASKS TWICE. It threw away a whole bar of counting on one tap, and on a
+// phone it sits right under Erase, the key being hammered while writing - Rob
+// watched his work glide back to count 1 with no Check pressed. The first tap
+// arms it ("Tap again to restart"), the second does it, and it disarms itself
+// after 3 s. An empty phrase has nothing to lose, so it restarts at once.
+let rstompRestartArmed = null;
+function rstompDisarmRestart() {
+    if (!rstompRestartArmed) return;
+    clearTimeout(rstompRestartArmed.timer);
+    rstompRestartArmed.btn.textContent = rstompRestartArmed.label;
+    rstompRestartArmed = null;
+}
 function restartRstompPhrase() {
     if (rstompLocked) return;
+    const btn = document.getElementById(rstompScribe ? 'rstomp-scribe-restart-btn' : 'rstomp-restart-btn');
+    const hasWork = rstompScribe ? rstompWriting && rstompWriting.groups.length > 1 : rstompUndoStack.length > 1;
+    if (btn && hasWork && !(rstompRestartArmed && rstompRestartArmed.btn === btn)) {
+        rstompDisarmRestart();
+        rstompRestartArmed = { btn, label: btn.textContent,
+            timer: setTimeout(rstompDisarmRestart, 3000) };
+        btn.textContent = KR.t('stomp.restart.confirm');
+        return;
+    }
+    rstompDisarmRestart();
     rstompEntries = new Array(rstompPositions.length).fill(null);
     rstompUndoStack = [];
     rstompCursor = 0;

@@ -138,6 +138,17 @@ def main():
         check('counting controls back',
               page.evaluate("document.getElementById('rstomp-controls-twobutton').style.display") == '')
         check('a new phrase starts', page.evaluate('rstompCursor') == 0)
+        # 6. Restart asks twice (a lone tap under Erase wiped Rob's counting)
+        page.evaluate("rstompSelectedLevel = '17'; startRstompLevel(); rstompLocked = false; ['1','(','2'].forEach(rstompKey)")
+        n = lambda: page.evaluate('rstompWriting.groups.length')
+        page.click('#rstomp-scribe-restart-btn')
+        check('one tap on Restart keeps the counting and asks again',
+              n() == 2 and 'again' in page.inner_text('#rstomp-scribe-restart-btn'), n())
+        page.click('#rstomp-scribe-restart-btn')
+        check('the second tap restarts', n() == 0)
+        page.evaluate("['1','(','2'].forEach(rstompKey)")
+        page.click('#rstomp-scribe-restart-btn'); page.wait_for_timeout(3200)
+        check('Restart disarms itself', n() == 2 and 'again' not in page.inner_text('#rstomp-scribe-restart-btn'))
         check('no script errors', not errors, errors)
         browser.close()
     server.shutdown()
