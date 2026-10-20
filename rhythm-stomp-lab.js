@@ -1883,6 +1883,7 @@ function startNewRstompPhrase() {
     rstompWalkMisses = new Array(rstompPositions.length).fill(0);
     rstompWriting = { groups: [], inside: false };
     rstompRevealed = null;
+    rstompDiagnosis = '';
     rstompWrongBars = [];
     rstompUndoStack = [];
     rstompCursor = 0;
@@ -2938,9 +2939,30 @@ function updateRstompStreakDots() {
     document.getElementById('rstomp-streak-dots').innerHTML = dots;
 }
 
+// What the grader compared on the last wrong keypad answer: what was written
+// and what it expected. Kept in localStorage (last 10) always, and shown under
+// the feedback with the teacher's Open code on, so a "you marked my right
+// answer wrong" report can be settled by looking (Rob, Level 17, 2026-10-20).
+let rstompDiagnosis = '';
+
+function rstompRecordDiagnosis(wrongBars) {
+    const wrote = rstompWriting.groups.map(rstompGroupText).join(' ');
+    const expected = rstompTargetGroups().map(rstompGroupText).join(' ');
+    rstompDiagnosis = KR.t('stomp.debug.wrote', { wrote }) + '  ·  ' + KR.t('stomp.debug.expected', { expected });
+    try {
+        const log = JSON.parse(localStorage.getItem('koolRiffsStompLog') || '[]');
+        log.push({ at: new Date().toISOString(), level: rstompSelectedLevel, wrote, expected,
+                   wrongBars: wrongBars.map(b => b + 1),
+                   specs: rstompSpecBars.map(bar => bar.map(sp => (sp.isRest ? 'r' : 'n') + sp.slots + (sp.tied ? 't' : '')).join(' ')) });
+        localStorage.setItem('koolRiffsStompLog', JSON.stringify(log.slice(-10)));
+    } catch (e) { /* no storage: the on-screen line still works */ }
+}
+
 function showRstompFeedback(kind, text) {
     const el = document.getElementById('rstomp-feedback');
-    el.textContent = text;
+    const diagnose = kind === 'wrong' && rstompDiagnosis && KR.openAll && KR.openAll();
+    el.textContent = diagnose ? text + '\n' + rstompDiagnosis : text;
+    el.style.whiteSpace = diagnose ? 'pre-line' : '';
     el.className = `rstomp-feedback ${kind}`;
     el.hidden = false;
 }
@@ -3121,6 +3143,7 @@ function finishRstompRound() {
 // task, which is the scaffolding this interface exists to remove.
 function handleRstompScribeFailure(wrongBars) {
     playSound('wrong');
+    rstompRecordDiagnosis(wrongBars);
     const names = wrongBars.map(index => index + 1);
 
     if (rstompAttempt === 1) {
@@ -3180,6 +3203,7 @@ function handleRstompScribeFailure(wrongBars) {
 // "make them actually prove it").
 function handleRstompWalkMisses(missed) {
     playSound('wrong');
+    rstompDiagnosis = '';
     rstompStreak = 0;
     updateRstompStreakDots();
     showRstompFeedback('wrong', rstompPrompt('walk-missed', { n: missed }));

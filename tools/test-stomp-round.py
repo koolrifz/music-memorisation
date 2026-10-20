@@ -121,6 +121,17 @@ def main():
         check('a tap where nothing starts costs its bar' if extra else 'phrase had no free slot',
               (not extra) or 'of' in score and 'Every' not in score, score)
 
+        # 4b. a wrong keypad answer in teacher mode shows what was written and what was expected, and logs it
+        page.click('#rstomp-round-next')
+        page.evaluate("rstompSelectedLevel = '17'; startRstompLevel(); rstompLocked = false; rstompKey('4'); rstompKey('4'); "
+                      "for (let i = rstompWrittenBeats(); i < rstompPositions.length; i++) rstompKey('1'); submitRstompPhrase();")
+        page.wait_for_selector('#rstomp-feedback:not([hidden])', timeout=3000)
+        fb = page.inner_text('#rstomp-feedback')
+        check('teacher mode shows You wrote / Expected on a wrong answer', 'You wrote:' in fb and 'Expected:' in fb, fb)
+        check('the wrong answer is logged', page.evaluate("JSON.parse(localStorage.getItem('koolRiffsStompLog')).length") >= 1)
+        page.evaluate("rstompSelectedLevel = '1'; startRstompLevel(); rstompLocked = true; handleRstompSuccess();")
+        page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
+
         # 5. Next goes on to the next phrase with the counting controls back
         page.click('#rstomp-round-next')
         check('round closes', page.is_hidden('#rstomp-round'))
