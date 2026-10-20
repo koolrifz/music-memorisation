@@ -734,6 +734,13 @@ elsewhere. **Diagnostics for "it marked me wrong":** with the teacher Open code
 on, a wrong keypad answer shows "You wrote / Expected", and the last 10 wrong
 answers are in `localStorage.koolRiffsStompLog`.
 
+**Rob's follow-up (2026-10-20): "it's probably my thumbs".** Restart moved UP
+into the strip's status row (`#rstomp-restart-btn`, one button for both
+interfaces), away from the keypad, so Check My Answer is also fully on screen
+on a Pixel. And **the music pops back to bar 1 the moment the counting is
+right, then scrolls with the playhead during the stomp round** (the "Hear it"
+playhead, `startRstompPlayhead()`, run on the audio clock).
+
 ### Restart, not sixteen undos
 Rob, hunting a wrong bar on Level 7: *"In order to find them I need to undo… I
 guess we have to back through the whole thing, one undo button at a time, or we

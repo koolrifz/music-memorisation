@@ -182,7 +182,7 @@
             return press(document.getElementById(onKeypad ? 'rstomp-key-erase' : 'rstomp-undo-btn'));
         }
         if (key === 'r') {
-            return press(document.getElementById(onKeypad ? 'rstomp-scribe-restart-btn' : 'rstomp-restart-btn'));
+            return press(document.getElementById('rstomp-restart-btn'));
         }
         if (key === 'h') return press(document.getElementById('rstomp-listen-btn'));
         if (key === 'Enter') return press(document.getElementById('rstomp-submit-button'));

@@ -2135,7 +2135,7 @@ function rstompDisarmRestart() {
 }
 function restartRstompPhrase() {
     if (rstompLocked) return;
-    const btn = document.getElementById(rstompScribe ? 'rstomp-scribe-restart-btn' : 'rstomp-restart-btn');
+    const btn = document.getElementById('rstomp-restart-btn');
     const hasWork = rstompScribe ? rstompWriting && rstompWriting.groups.length > 1 : rstompUndoStack.length > 1;
     if (btn && hasWork && !(rstompRestartArmed && rstompRestartArmed.btn === btn)) {
         rstompDisarmRestart();
@@ -2219,7 +2219,7 @@ function updateRstompButtonStates() {
         if (open) open.disabled = rstompLocked || full || rstompWriting.inside;
         if (close) close.disabled = rstompLocked || !rstompWriting.inside;
         if (erase) erase.disabled = rstompLocked || !rstompWriting.groups.length;
-        const restart = document.getElementById('rstomp-scribe-restart-btn');
+        const restart = document.getElementById('rstomp-restart-btn');
         if (restart) restart.disabled = rstompLocked || !rstompWriting.groups.length;
         // Submit is live as soon as every bar is accounted for, even
         // with a bracket left hanging open. Refusing to submit would hide
@@ -3025,6 +3025,7 @@ function handleRstompSuccess() {
     rstompStreak++;
     updateRstompStreakDots();
     showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
+    rstompScrollToStart(true);
     // Counted right, so now PLAY it. This runs after every correct counting,
     // the third included, and the round decides nothing about the streak:
     // it is the performance, not the gate (see "THE STOMP ROUND" in CLAUDE.md).
@@ -3083,6 +3084,18 @@ function rstompRoundShowControls(show) {
     });
 }
 
+// Back to bar 1 of the music. Counted right, the student is about to PLAY it,
+// and they read it from the top: the strip pops back at once (Rob, 2026-10-20),
+// then follows the playhead as the click runs (see runRstompRound).
+function rstompScrollToStart(smooth) {
+    const strip = document.getElementById('rstomp-strip');
+    if (!strip) return;
+    rstompProgrammaticScroll = true;
+    strip.scrollTo({ left: 0, behavior: smooth ? 'smooth' : 'auto' });
+    clearTimeout(rstompPlayheadScrollTimer);
+    rstompPlayheadScrollTimer = setTimeout(() => { rstompProgrammaticScroll = false; }, 450);
+}
+
 function startRstompRound(done) {
     if (typeof KRStomp === 'undefined' || typeof KRPads === 'undefined' || !rstompPhrase.length) { done(); return; }
     rstompRoundDone = done;
@@ -3127,13 +3140,16 @@ function runRstompRound() {
     const tail = matcher.closesAt() - bars * rstompSlotsPerBar * slotSec + 0.05;
     const started = rstompAudioPlayPhrase({ bpm, counting: false, snare: false, click: true, loop: true,
                                             tail: Math.max(0.2, tail), onStop: () => endRstompRound() });
-    if (!started) { rstompRoundState.over = true; finishRstompRound(); }
+    if (!started) { rstompRoundState.over = true; finishRstompRound(); return; }
+    rstompScrollToStart(false);
+    startRstompPlayhead();      // the music scrolls with the click and the taps
 }
 
 function endRstompRound() {
     const st = rstompRoundState;
     if (!st || st.over) return;
     st.over = true;
+    stopRstompPlayhead();
     const r = st.matcher.result(Infinity);
     window.rstompRoundLog = r.log.map(e => Object.assign({ delaySource: st.delay.source }, e));
     const barsEl = document.getElementById('rstomp-round-bars');
@@ -3153,6 +3169,7 @@ function endRstompRound() {
 function finishRstompRound() {
     if (typeof rstompAudioStop === 'function') rstompAudioStop();
     if (rstompRoundState) rstompRoundState.over = true;
+    stopRstompPlayhead();
     rstompRoundActive = false;
     document.getElementById('rstomp-round').hidden = true;
     rstompRoundShowControls(true);
