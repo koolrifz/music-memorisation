@@ -845,6 +845,12 @@ select { width: 100%; padding: 14px; margin-bottom: 14px; background: #1a2634; c
 .rstomp-feedback.wrong { background: rgba(255,75,75,0.18); color: var(--accent-red); }
 
 /* The listen button sits with the strip status, next to Full view. */
+.rstomp-restart-chip {
+    background: none; color: var(--text-muted); border: 1px solid #526b85;
+    border-radius: 20px; padding: 5px 12px; font-family: inherit;
+    font-size: 12px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.rstomp-restart-chip:disabled { opacity: 0.35; cursor: default; }
 .rstomp-listen-btn {
     background: rgba(45, 212, 191, 0.14);
     border: 1px solid rgba(45, 212, 191, 0.5);

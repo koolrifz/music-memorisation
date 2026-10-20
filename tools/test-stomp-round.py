@@ -141,14 +141,28 @@ def main():
         # 6. Restart asks twice (a lone tap under Erase wiped Rob's counting)
         page.evaluate("rstompSelectedLevel = '17'; startRstompLevel(); rstompLocked = false; ['1','(','2'].forEach(rstompKey)")
         n = lambda: page.evaluate('rstompWriting.groups.length')
-        page.click('#rstomp-scribe-restart-btn')
+        page.click('#rstomp-restart-btn')
         check('one tap on Restart keeps the counting and asks again',
-              n() == 2 and 'again' in page.inner_text('#rstomp-scribe-restart-btn'), n())
-        page.click('#rstomp-scribe-restart-btn')
+              n() == 2 and 'again' in page.inner_text('#rstomp-restart-btn'), n())
+        page.click('#rstomp-restart-btn')
         check('the second tap restarts', n() == 0)
         page.evaluate("['1','(','2'].forEach(rstompKey)")
-        page.click('#rstomp-scribe-restart-btn'); page.wait_for_timeout(3200)
-        check('Restart disarms itself', n() == 2 and 'again' not in page.inner_text('#rstomp-scribe-restart-btn'))
+        page.click('#rstomp-restart-btn'); page.wait_for_timeout(3200)
+        check('Restart disarms itself', n() == 2 and 'again' not in page.inner_text('#rstomp-restart-btn'))
+        # 7. the strip pops back to bar 1 when the counting is right, then follows the playhead
+        page.evaluate("rstompSelectedLevel = '4'; startRstompLevel(); rstompLocked = true;"
+                      "document.getElementById('rstomp-strip').scrollLeft = 9999; handleRstompSuccess();")
+        page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
+        page.wait_for_timeout(700)
+        check('strip is back at the start for the round',
+              page.evaluate("document.getElementById('rstomp-strip').scrollLeft") < 2,
+              page.evaluate("document.getElementById('rstomp-strip').scrollLeft"))
+        wide = page.evaluate("(() => { const s = document.getElementById('rstomp-strip'); return s.scrollWidth > s.clientWidth + 20; })()")
+        moved = False
+        for _ in range(60):
+            if page.evaluate("document.getElementById('rstomp-strip').scrollLeft") > 20: moved = True; break
+            page.wait_for_timeout(250)
+        check('the strip scrolls along with the round', moved or not wide, 'wide=%s' % wide)
         check('no script errors', not errors, errors)
         browser.close()
     server.shutdown()
