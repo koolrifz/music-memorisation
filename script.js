@@ -573,6 +573,13 @@ let g1LedgerBonusRound = 0;
 let g1LedgerBonusTarget = null;
 let g1LedgerBonusClean = true;
 const g1LedgerBonusProximity = [Infinity, 4, 2];
+// Staff Numbers is nine questions, not a streak (staff-numbers.js has the rules):
+// right first time and it is learned; wrong and it is owed three right answers,
+// which need not come one after another. null until the stage starts.
+let g1NumDeck = null;
+let g1NumCurrent = null;   // the question on screen: 'Line 3', 'Space 1'...
+const G1_NUMBERS_PHASE = 3;
+function g1IsNumbers() { return g1Level === 'level2' && !g1IsLedgerBonus && g1Level2Phase === G1_NUMBERS_PHASE; }
 const g1PathwayStages = [
     { id: 'lines', label: 'Lines', phase: 0 },
     { id: 'spaces', label: 'Spaces', phase: 1 },
@@ -769,6 +776,7 @@ function startG1Game() {
     g1Level = 'level2';
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
     g1CurrentPromptLabel = '';
+    g1NumDeck = null; g1NumCurrent = null;
     g1Level2Phase = g1PathwayStages.find(stage => stage.id === g1SelectedStage)?.phase ?? 0;
     g1SecondsLeft = 30; g1IsTransitioning = false; g1RoundStartedAt = 0; g1LastScreenWasDud = false; g1PendingStageAdvance = false; g1CarriedStageTime = 0;
     updateG1TrackerUI();
@@ -785,8 +793,13 @@ function updateG1TrackerUI() {
     const activeCardsCount = g1Tiers[g1TierIndex];
     const rowCount = activeCardsCount / 3;
     
+        // Staff Numbers fills these dots from the question on screen, not from
+        // a streak: they count the right answers an owed question has so far,
+        // and are hidden (not removed, so nothing shifts) for a fresh one.
+        const numbersOwed = g1IsNumbers() && g1NumDeck && g1NumCurrent ? g1NumDeck.progress(g1NumCurrent) : null;
+        const dotsFilled = g1IsNumbers() ? (numbersOwed || 0) : g1Streak;
         const streakDots = [0, 1, 2].map(index =>
-            `<span class="streak-dot${index < g1Streak ? ' active' : ''}" aria-hidden="true"></span>`
+            `<span class="streak-dot${index < dotsFilled ? ' active' : ''}" aria-hidden="true"></span>`
         ).join('');
 
         const roundLabel = g1IsLedgerBonus
@@ -794,7 +807,13 @@ function updateG1TrackerUI() {
             : g1Level === 'level2'
             ? `${g1Level2PhaseNames[g1Level2Phase]} | Grid: ${activeCardsCount}`
             : `Rows: ${rowCount}/4`;
-        document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
+        if (g1IsNumbers() && g1NumDeck) {
+            const learned = KR.t('g1.numbers.learned', { n: g1NumDeck.learned(), total: g1NumDeck.total });
+            const hidden = numbersOwed === null ? ' style="visibility:hidden"' : '';
+            document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> ${learned} <span class="streak-divider">|</span> <span${hidden}>${KR.t('g1.numbers.lockin')} <span class="streak-dots">${streakDots}</span></span>`;
+        } else {
+            document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
+        }
     document.getElementById('g1-score-text').innerText = g1Score;
     document.getElementById('g1-attempts-text').innerText = `Attempts: ${g1TotalAttempts}`;
 }
@@ -900,6 +919,9 @@ function markG1DudSuccess() {
     g1BonusDuds++;
     const dudTimeRefund = g1Tiers[g1TierIndex] / 3 + 2;
     triggerG1TimeBonus(dudTimeRefund + 0.5);
+    // A dud asks nobody anything: in Staff Numbers it earns its time and
+    // leaves every question exactly where it was.
+    if (g1IsNumbers()) return false;
     g1Streak++;
     return advanceG1Streak();
 }
@@ -914,16 +936,33 @@ function resolveG1Screen(cleared) {
     if (cleared) {
         g1LastScreenWasDud = false;
         if (g1TargetsPresent > 0) {
-            g1Streak++;
-            triggerG1TimeBonus(0.5);
-            awardG1RoundBonuses();
-            finished = advanceG1Streak();
+            if (g1IsNumbers()) {
+                // Right means right with no wrong tap: finding it after a
+                // wrong tap is not knowing it.
+                const right = g1WrongTapsThisScreen === 0;
+                g1NumDeck.answer(g1NumCurrent, right);
+                triggerG1TimeBonus(0.5);
+                awardG1RoundBonuses();
+                finished = g1NumDeck.allDone();
+                const newTier = KRStaffNumbers.tierFor(g1NumDeck.learned());
+                if (!finished && newTier > g1TierIndex) {
+                    awardG1TierBonus(g1Tiers[g1TierIndex]);
+                    g1TierIndex = newTier;
+                }
+            } else {
+                g1Streak++;
+                triggerG1TimeBonus(0.5);
+                awardG1RoundBonuses();
+                finished = advanceG1Streak();
+            }
         } else {
             finished = markG1DudSuccess();
         }
     } else {
         let missed = g1TargetsPresent - g1TargetsFound;
         if (missed > 0 || g1TargetsPresent > 0) {
+            // Time ran out with the target still on screen.
+            if (g1IsNumbers() && g1TargetsPresent > 0) g1NumDeck.answer(g1NumCurrent, false);
             g1Streak = 0; g1DudStreak = 0;
         } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen > 0) {
             g1DudStreak = 0;
@@ -1067,7 +1106,14 @@ function loadG1Grid() {
         const targetPool = targetType
             ? allStaffPositions.filter(position => position.type === targetType)
             : orientationPositions;
-        orientationTarget = targetPool[Math.floor(Math.random() * targetPool.length)];
+        if (numberedPhase) {
+            // Nine questions, not a random draw: the deck says which is next.
+            if (!g1NumDeck) g1NumDeck = KRStaffNumbers.create(orientationPositions.map(position => position.label));
+            g1NumCurrent = g1NumDeck.pick();
+            orientationTarget = orientationPositions.find(position => position.label === g1NumCurrent);
+        } else {
+            orientationTarget = targetPool[Math.floor(Math.random() * targetPool.length)];
+        }
         orientationTargets = numberedPhase ? [orientationTarget] : targetPool;
         const distractorTargets = orientationTargets.length > 0 ? orientationTargets : [orientationTarget];
         orientationDistractors = distractorTargets.flatMap(target => getG1OrientationDistractors(target, allStaffPositions));
@@ -1080,7 +1126,11 @@ function loadG1Grid() {
             .sort(() => Math.random() - 0.5);
         orientationDistractors.push(...randomFill);
         const prompt = numberedPhase ? `SMASH ${orientationTarget.label}` : `SMASH A ${targetType.toUpperCase()}`;
-        const shouldSpeakPrompt = g1CurrentPromptLabel !== prompt;
+        // Staff Numbers says its question every time, even the same one twice
+        // running: the old "only when it changes" rule left a repeat silent,
+        // and a student circling back to a missed question needs to hear it.
+        // The other stages still announce only a change.
+        const shouldSpeakPrompt = numberedPhase || g1CurrentPromptLabel !== prompt;
         g1CurrentPromptLabel = prompt;
         const instructionDisplay = document.getElementById('g1-target-instruction-display');
         instructionDisplay.innerText = prompt.toUpperCase();
@@ -1372,10 +1422,25 @@ function finishG1Game(isOfficialSmash = false) {
         document.getElementById('g1-final-tier').innerText = `${g1Tiers[g1TierIndex] / 3} Rows (${g1Tiers[g1TierIndex]} Cards)`;
     }
     document.getElementById('g1-final-bonus').innerText = g1BonusDuds;
+    renderG1NumbersWatch();
     if (isOfficialSmash && nextStage) {
         nextStageButton.innerText = `Next: Smash ${nextStage.label}!`;
         nextStageButton.style.display = 'block';
     }
+}
+
+// The Staff Numbers watch list: which questions were missed and how far each
+// has got. For the teacher only (the Open code), as Rob asked: the student
+// found no use for it, so they never see it.
+function renderG1NumbersWatch() {
+    const box = document.getElementById('g1-numbers-watch');
+    if (!box) return;
+    const watch = g1IsNumbers() && g1NumDeck && KR.openAll() ? g1NumDeck.watch() : [];
+    box.hidden = !watch.length;
+    if (!watch.length) return;
+    box.textContent = KR.t('g1.numbers.watch', {
+        list: watch.map(item => KR.t('g1.numbers.watch.item', { label: item.label, misses: item.misses, got: item.got, required: item.required })).join(', ')
+    });
 }
 
 function startNextG1Stage() {
