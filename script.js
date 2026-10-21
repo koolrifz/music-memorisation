@@ -373,6 +373,7 @@ let g2PausedFlashRemainingMs = null;
 let g3FlashDeadline = 0;
 let g3PausedFlashRemainingMs = null;
 let g1BonusCountdownTimer;
+let g1RunId = 0;   // bumps on every new game, so a timeout left from the last one can tell it is stale
 let g1SecondsLeft = 30, g2SecondsLeft = 60, secondsLeft = 60;
 
 function stopAllGames() {
@@ -738,6 +739,9 @@ function getG1LedgerBonusPositions(config) {
 
 function startG1LedgerBonus() {
     initAudio();
+    if (g1BonusCountdownTimer) { clearInterval(g1BonusCountdownTimer); g1BonusCountdownTimer = null; }
+    if (g1FlashTimer) clearTimeout(g1FlashTimer);
+    g1RunId++;
     g1IsLedgerBonus = true;
     g1SelectedStage = 'ledger';
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 3; g1Streak = 0; g1BonusDuds = 0;
@@ -762,23 +766,31 @@ function beginG1LedgerBonusRound() {
     modal.classList.add('show');
     speakLetter(prompt);
 
+    // Only ever one countdown running. A second start while one was counting
+    // used to orphan the first interval, which then reloaded the grid every
+    // 0.7 s for the rest of the game (Rob, 2026-10-21: "it keeps resetting").
+    if (g1BonusCountdownTimer) clearInterval(g1BonusCountdownTimer);
     let countdown = 3;
-    g1BonusCountdownTimer = setInterval(() => {
+    const countdownHandle = setInterval(() => {
         countdown--;
         document.getElementById('g1-ledger-bonus-countdown').innerText = countdown > 0 ? countdown : 'Go!';
         if (countdown <= 0) {
-            clearInterval(g1BonusCountdownTimer);
-            g1BonusCountdownTimer = null;
+            clearInterval(countdownHandle);
+            if (g1BonusCountdownTimer === countdownHandle) g1BonusCountdownTimer = null;
             modal.classList.remove('show');
             g1IsTransitioning = false;
             document.getElementById('g1-target-instruction-display').innerText = 'LEDGER BONUS';
             loadG1Grid();
         }
     }, 700);
+    g1BonusCountdownTimer = countdownHandle;
 }
 
 function startG1Game() {
     initAudio();
+    if (g1BonusCountdownTimer) { clearInterval(g1BonusCountdownTimer); g1BonusCountdownTimer = null; }
+    if (g1FlashTimer) clearTimeout(g1FlashTimer);
+    g1RunId++;
     g1IsLedgerBonus = false;
     g1Level = 'level2';
     g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
@@ -841,15 +853,16 @@ function startG1FlashTimer() {
     const flashSeconds = g1Tiers[g1TierIndex] / 3 + 2;
     setTimeout(() => { flashFill.style.transition = `width ${flashSeconds}s linear`; flashFill.style.width = '0%'; }, 50);
 
+    const runId = g1RunId;
     g1FlashTimer = setTimeout(() => {
-        if (g1SecondsLeft > 0) {
+        if (g1SecondsLeft > 0 && runId === g1RunId) {
             g1IsTransitioning = true;
             document.querySelectorAll('#g1-grid-container .smash-card').forEach(c => {
                 if (c.closest('.g1-row') && !c.closest('.g1-row').classList.contains('locked')) {
                     c.classList.add('flash-red');
                 }
             });
-            setTimeout(() => { g1IsTransitioning = false; resolveG1Screen(false); }, 300);
+            setTimeout(() => { if (runId !== g1RunId) return; g1IsTransitioning = false; resolveG1Screen(false); }, 300);
         }
     }, flashSeconds * 1000);
 }
