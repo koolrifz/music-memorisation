@@ -311,12 +311,16 @@ function normalizeUnlockedStages(progress, stages) {
    headroom above and below the staff that up to 2 ledger lines each side
    never get clipped.
    ========================================= */
-function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
+function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true, fit = null) {
     const VF = Vex.Flow;
     containerEl.innerHTML = '';
     
     const canvasWidth = 120;
-    const canvasHeight = 110;
+    // `fit` is for cards whose notes sit two ledger lines out (the Ledger
+    // Bonus): at the usual 14px gap the notehead and ledger lines run off the
+    // top and bottom of the card, into the next row, which paints over them.
+    // A smaller gap and a taller canvas keep every note inside its own card.
+    const canvasHeight = fit ? fit.canvasHeight : 110;
 
     const renderer = new VF.Renderer(containerEl, VF.Renderer.Backends.SVG);
     renderer.resize(canvasWidth, canvasHeight);
@@ -336,7 +340,7 @@ function renderSmashCard(containerEl, clefName, pitchKey, drawNote = true) {
     // the notehead is scaled with it so it still fills a space exactly. The
     // middle line sits at the vertical middle of the canvas, so ledger lines
     // run out the same distance above and below.
-    const lineGap = 14;
+    const lineGap = fit ? fit.lineGap : 14;
     const stave = new VF.Stave(10, canvasHeight / 2 - 6 * lineGap, 100, { spacing_between_lines_px: lineGap });
     stave.setBegBarType(VF.Barline.type.NONE);
     stave.setEndBarType(VF.Barline.type.NONE);
@@ -573,6 +577,7 @@ let g1LedgerBonusRound = 0;
 let g1LedgerBonusTarget = null;
 let g1LedgerBonusClean = true;
 const g1LedgerBonusProximity = [Infinity, 4, 2];
+const G1_LEDGER_FIT = { lineGap: 11, canvasHeight: 116 };   // room for two ledger lines and the space beyond, each side
 // Staff Numbers is nine questions, not a streak (staff-numbers.js has the rules):
 // right first time and it is learned; wrong and it is owed three right answers,
 // which need not come one after another. null until the stage starts.
@@ -666,13 +671,16 @@ function getG1OrientationPositions(config) {
     const positions = [];
     config.staffLines.forEach((note, index) => positions.push(makePosition(note, 'line', index, `Line ${index + 1}`, index * 2 + 8)));
     config.staffSpaces.forEach((note, index) => positions.push(makePosition(note, 'space', index, `Space ${index + 1}`, index * 2 + 9)));
+    // Rob's ten Ledger Bonus positions (2026-10-21): the space beside the
+    // staff, then one and two ledger lines and the space beyond each. Heights
+    // continue the staff's own (bottom line 8, top line 16, a space is odd).
     const ledgerPositions = [
-        ['space', 'E', 'e/3', 'Ledger Space 3 Below', 1], ['line', 'F', 'f/3', 'Ledger Line 3 Below', 2],
-        ['space', 'G', 'g/3', 'Ledger Space 2 Below', 3], ['line', 'A', 'a/3', 'Ledger Line 2 Below', 4],
-        ['space', 'B', 'b/3', 'Ledger Space 1 Below', 5], ['line', 'C', 'c/4', 'Ledger Line 1 Below', 6],
-        ['line', 'A', 'a/5', 'Ledger Line 1 Above', 10], ['space', 'B', 'b/5', 'Ledger Space 1 Above', 11],
-        ['line', 'C', 'c/6', 'Ledger Line 2 Above', 12], ['space', 'D', 'd/6', 'Ledger Space 2 Above', 13],
-        ['line', 'E', 'e/6', 'Ledger Line 3 Above', 14], ['space', 'F', 'f/6', 'Ledger Space 3 Above', 15]
+        ['space', 'D', 'd/4', 'Ledger Space Below', 7],
+        ['line', 'C', 'c/4', 'Ledger Line 1 Below', 6], ['space', 'B', 'b/3', 'Ledger Space 1 Below', 5],
+        ['line', 'A', 'a/3', 'Ledger Line 2 Below', 4], ['space', 'G', 'g/3', 'Ledger Space 2 Below', 3],
+        ['space', 'G', 'g/5', 'Ledger Space Above', 17],
+        ['line', 'A', 'a/5', 'Ledger Line 1 Above', 18], ['space', 'B', 'b/5', 'Ledger Space 1 Above', 19],
+        ['line', 'C', 'c/6', 'Ledger Line 2 Above', 20], ['space', 'D', 'd/6', 'Ledger Space 2 Above', 21]
     ];
     ledgerPositions.forEach(([type, name, key, label, height], index) => {
         positions.push(makePosition([name, key], type, index, label, height));
@@ -718,11 +726,10 @@ function getG1OrientationDistractors(target, positions, proximity = Infinity, in
         .sort((a, b) => Math.abs(a.height - target.height) - Math.abs(b.height - target.height));
 }
 
+// What Tango says and the box shows, by position. Rob's own short wording
+// (g1.ledger.say.* in lang/): no "the staff" twice, no counting spaces.
 function getG1LedgerBonusPrompt(target) {
-    const side = target.height < 8 ? 'below' : 'above';
-    const ordinal = target.type === 'line' ? 'line' : 'space';
-    const distance = Math.ceil(Math.abs(target.height - (side === 'above' ? 9 : 7)) / 2);
-    return `${ordinal[0].toUpperCase()}${ordinal.slice(1)} ${side} ${distance} ledger ${ordinal}${distance === 1 ? '' : 's'} ${side} the staff`;
+    return KR.t('g1.ledger.say.' + target.label.toLowerCase().replace(/ /g, '-'));
 }
 
 function getG1LedgerBonusPositions(config) {
@@ -1251,7 +1258,7 @@ function loadG1Grid() {
             card.appendChild(innerDiv);
             rowEl.appendChild(card);
             
-            renderSmashCard(innerDiv, clefName, item.note[1], isRowActive);
+            renderSmashCard(innerDiv, clefName, item.note[1], isRowActive, g1IsLedgerBonus ? G1_LEDGER_FIT : null);
         });
 
         container.appendChild(rowEl);

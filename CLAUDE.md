@@ -3013,6 +3013,11 @@ Mixed; **only the Staff Numbers stage (`g1IsNumbers()`, phase 3) uses this.**
 - **Open, for Rob:** the thresholds (`TIER_AT`), the one-or-two gap, and whether
   Note Smash's mixed stage should work the same way.
 
+### THE LEDGER BONUS: ten positions, Rob's wording, notes kept inside the card (2026-10-21)
+Rob's video showed the ledger notes out of sight. Cause: at the usual 14px line gap a note two or three ledger lines out runs past the card's edge into the next row, and the next row's card paints over it. The Ledger Bonus now draws its cards with `G1_LEDGER_FIT` (`lineGap` 11, canvas 116) through the `fit` argument of `renderSmashCard()`; measured, all ten positions sit inside the canvas. Other grids keep 14.
+- **The ten positions** (`getG1OrientationPositions`), five a side: the space beside the staff, one ledger line and the space beyond it, two ledger lines and the space beyond. **No third ledger line any more** (the old pool had one; Rob's list does not). Heights now continue the staff's own (above was wrongly 10-15).
+- **The words are Rob's** (`g1.ledger.say.*`, spoken and shown): "Space above the staff", "One ledger line above", "Space above the first ledger line", "Two ledger lines above", "Space above the second ledger line"; below: "Space below the staff", "One ledger line below", "Space below one ledger line", "Two ledger lines below", "Space below two ledger lines". Two changes of Claude's to his draft, for him to rule on: "Two ledger lines above the staff" lost "the staff" to match the rest; "Space below. One ledger line" became "Space below one ledger line".
+
 ### Celebration pages: same frame, and a link to the next game (Rob, 2026-10-13)
 The Staff, Note and Real Smash summary screens already sit inside `kr-frame`, so they share the wooden border, foam wall and badge. When a game's **whole pathway is graduated** (`isOfficialSmash` in `finishG1Game`, `isGraduation` in `finishG2Game`), the summary shows a button to the next game: Staff → Note Smash (`#g1-next-game-button`, `summary.next.note`), Note → Real Smash (`#g2-next-game-button`, `summary.next.real`). It calls `launchGame('view-game2' | 'view-game3')`. Real Smash is last, so it has none. Not yet restyled to Rob's mockup: the pause and Stage Complete screens.
 
