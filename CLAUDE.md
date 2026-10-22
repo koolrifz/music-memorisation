@@ -3013,6 +3013,14 @@ Mixed; **only the Staff Numbers stage (`g1IsNumbers()`, phase 3) uses this.**
 - **Open, for Rob:** the thresholds (`TIER_AT`), the one-or-two gap, and whether
   Note Smash's mixed stage should work the same way.
 
+### LINES, SPACES, MIXED: one clean screen promotes, and the stages flow (Rob, 2026-10-22)
+Rob, from a video: *"rule of 3 only applies to missed answers. A single pass-through with the correct answer promotes to the next mini level... why can't we just go straight from lines to promote them into spaces and then the next round is mixed. Instead of jumping back to the dashboard every time."*
+- **A tier clears on ONE clean screen** (no wrong tap, targets all found). A wrong tap (even if the target is then found) or a timeout sets `g1Owed`: that tier then needs **three clean screens in a row** (a miss resets the count), after which `g1Owed` clears. The streak dots show only while owed.
+- **A dud proves nothing**: it pays its time and leaves the tier alone, unless the tier is owed, when it counts as one of the three.
+- **Lines -> Spaces -> Mixed chain** through the Stage Complete modal (`advanceG1Streak` -> `recordG1PathwayResult(true)` -> `showG1StageComplete`), each stage recorded and the next unlocked as it goes. Mixed and Staff Numbers end on the summary. `g1StageScoreBase` keeps each stage's best score its own.
+- **Lines and Spaces speak their target on EVERY screen**, repeats included (as Staff Numbers does). **Mixed still stays silent on purpose** (see "Open items" 4); Rob to confirm that still holds.
+- **Open, for Rob:** whether Mixed should chain on into Staff Numbers and the Ledger Bonus, and whether three-in-a-row after a miss should instead be "not necessarily consecutive" as in Staff Numbers.
+
 ### THE LEDGER BONUS: ten positions, Rob's wording, notes kept inside the card (2026-10-21)
 Rob's video showed the ledger notes out of sight. Cause: at the usual 14px line gap a note two or three ledger lines out runs past the card's edge into the next row, and the next row's card paints over it. The Ledger Bonus now draws its cards with `G1_LEDGER_FIT` (`lineGap` 11, canvas 116) through the `fit` argument of `renderSmashCard()`; measured, all ten positions sit inside the canvas. Other grids keep 14.
 - **The ten positions** (`getG1OrientationPositions`), five a side: the space beside the staff, one ledger line and the space beyond it, two ledger lines and the space beyond. **No third ledger line any more** (the old pool had one; Rob's list does not). Heights now continue the staff's own (above was wrongly 10-15).
