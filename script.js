@@ -572,7 +572,8 @@ let g1TierMin = 1;
 let g1TierMax = 2;
 let g1RoundStartedAt = 0;
 let g1SelectedStage = 'lines';
-let g1StageOnly = true;
+let g1Owed = false;          // a miss on this tier: three clean screens to clear it
+let g1StageScoreBase = 0;
 let g1IsLedgerBonus = false;
 let g1LedgerBonusRound = 0;
 let g1LedgerBonusTarget = null;
@@ -649,7 +650,7 @@ function recordG1PathwayResult(isOfficialSmash) {
     const stage = progress.stageProgress[g1SelectedStage] || { bestScore: 0, bestTimeSec: null, timesPlayed: 0, cleared: false };
     stage.timesPlayed++;
     stage.lastPlayed = new Date().toISOString().slice(0, 10);
-    stage.bestScore = Math.max(stage.bestScore || 0, Math.round(g1Score));
+    stage.bestScore = Math.max(stage.bestScore || 0, Math.round(g1Score - g1StageScoreBase));
     stage.cleared = stage.cleared || isOfficialSmash;
     progress.stageProgress[g1SelectedStage] = stage;
     progress.totalPlays = (progress.totalPlays || 0) + 1;
@@ -793,7 +794,7 @@ function startG1Game() {
     g1RunId++;
     g1IsLedgerBonus = false;
     g1Level = 'level2';
-    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0;
+    g1Score = 0; g1TotalAttempts = 0; g1TierIndex = 0; g1OrientationRoundIndex = 0; g1AnchoredPositions = []; g1Streak = 0; g1DudStreak = 0; g1BonusDuds = 0; g1Owed = false; g1StageScoreBase = 0;
     g1CurrentPromptLabel = '';
     g1NumDeck = null; g1NumCurrent = null;
     g1Level2Phase = g1PathwayStages.find(stage => stage.id === g1SelectedStage)?.phase ?? 0;
@@ -817,6 +818,7 @@ function updateG1TrackerUI() {
         // and are hidden (not removed, so nothing shifts) for a fresh one.
         const numbersOwed = g1IsNumbers() && g1NumDeck && g1NumCurrent ? g1NumDeck.progress(g1NumCurrent) : null;
         const dotsFilled = g1IsNumbers() ? (numbersOwed || 0) : g1Streak;
+        const streakHidden = g1Level === 'level2' && !g1IsLedgerBonus && !g1IsNumbers() && !g1Owed;
         const streakDots = [0, 1, 2].map(index =>
             `<span class="streak-dot${index < dotsFilled ? ' active' : ''}" aria-hidden="true"></span>`
         ).join('');
@@ -831,7 +833,7 @@ function updateG1TrackerUI() {
             const hidden = numbersOwed === null ? ' style="visibility:hidden"' : '';
             document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> ${learned} <span class="streak-divider">|</span> <span${hidden}>${KR.t('g1.numbers.lockin')} <span class="streak-dots">${streakDots}</span></span>`;
         } else {
-            document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> Streak: <span class="streak-dots">${streakDots}</span>`;
+            document.getElementById('g1-tier-tracker-text').innerHTML = `${roundLabel} <span class="streak-divider">|</span> Streak: <span class="streak-dots"${streakHidden ? ' style="visibility:hidden"' : ''}>${streakDots}</span>`;
         }
     document.getElementById('g1-score-text').innerText = g1Score;
     document.getElementById('g1-attempts-text').innerText = `Attempts: ${g1TotalAttempts}`;
@@ -895,21 +897,25 @@ function awardG1TierBonus(completedCards) {
 
 function advanceG1Streak() {
     if (g1Level === 'level2') {
-        if (g1Streak < 3) return false;
-        g1Streak = 0;
+        // Rob, 2026-10-22: one clean screen promotes; the rule of three is
+        // only for a tier that has been missed.
+        if (g1Streak < (g1Owed ? 3 : 1)) return false;
+        g1Streak = 0; g1Owed = false;
         awardG1TierBonus(g1Tiers[g1TierIndex]);
         if (g1TierIndex < g1Tiers.length - 1) {
             g1TierIndex++;
             return false;
         }
-        if (g1StageOnly) return true;
-        if (g1Level2Phase < 3) {
-            g1Level2Phase++;
-            g1TierIndex = 0;
-            showG1StageComplete();
-            return false;
-        }
-        return true;
+        // Lines flows into Spaces, Spaces into Mixed, with no trip to the
+        // dashboard. Mixed and Staff Numbers end on the summary.
+        if (g1Level2Phase >= 2) return true;
+        recordG1PathwayResult(true);
+        g1Level2Phase++;
+        g1SelectedStage = g1PathwayStages[g1Level2Phase].id;
+        g1StageScoreBase = g1Score;
+        g1TierIndex = 0;
+        showG1StageComplete();
+        return false;
     }
     if (g1Streak < 3) return false;
 
@@ -942,6 +948,9 @@ function markG1DudSuccess() {
     // A dud asks nobody anything: in Staff Numbers it earns its time and
     // leaves every question exactly where it was.
     if (g1IsNumbers()) return false;
+    // A dud is a free pass for time, but proves nothing: it only counts
+    // towards the three owed after a miss.
+    if (!g1Owed) return false;
     g1Streak++;
     return advanceG1Streak();
 }
@@ -970,10 +979,15 @@ function resolveG1Screen(cleared) {
                     g1TierIndex = newTier;
                 }
             } else {
-                g1Streak++;
                 triggerG1TimeBonus(0.5);
                 awardG1RoundBonuses();
-                finished = advanceG1Streak();
+                if (g1WrongTapsThisScreen > 0) {
+                    // Found it, but only after a wrong tap: that is a miss.
+                    g1Owed = true; g1Streak = 0;
+                } else {
+                    g1Streak++;
+                    finished = advanceG1Streak();
+                }
             }
         } else {
             finished = markG1DudSuccess();
@@ -983,7 +997,7 @@ function resolveG1Screen(cleared) {
         if (missed > 0 || g1TargetsPresent > 0) {
             // Time ran out with the target still on screen.
             if (g1IsNumbers() && g1TargetsPresent > 0) g1NumDeck.answer(g1NumCurrent, false);
-            g1Streak = 0; g1DudStreak = 0;
+            g1Streak = 0; g1DudStreak = 0; g1Owed = true;
         } else if (g1TargetsPresent === 0 && g1WrongTapsThisScreen > 0) {
             g1DudStreak = 0;
         } else if (g1TargetsPresent === 0) {
@@ -1150,7 +1164,7 @@ function loadG1Grid() {
         // running: the old "only when it changes" rule left a repeat silent,
         // and a student circling back to a missed question needs to hear it.
         // The other stages still announce only a change.
-        const shouldSpeakPrompt = numberedPhase || g1CurrentPromptLabel !== prompt;
+        const shouldSpeakPrompt = true;   // every screen, Rob 2026-10-22
         g1CurrentPromptLabel = prompt;
         const instructionDisplay = document.getElementById('g1-target-instruction-display');
         instructionDisplay.innerText = prompt.toUpperCase();
