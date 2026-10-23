@@ -705,6 +705,32 @@ function ssongMarkTake(g) {
     if (g.first && ssong.page.lines.length > ssong.page.size) ssongTurnPage(ssong.layout[Math.min(p.bars - 1, g.first.bar)].lineIndex);
 }
 
+// Where a cleared hurdle leads (Rob, 2026-10-23: "I got a silver then a gold
+// record. But I can't go any further"). In order: the record's next session
+// (silver, then gold), the round's next hurdle, the next round's first hurdle,
+// and past the last of them, the run, which climbs on through Stomp Lab.
+function ssongNextStep() {
+    const song = ssong.song, open = KR.openAll();
+    const first = (ri, hi) => {
+        const h = song.rounds[ri].hurdles[hi];
+        return () => ssongOpenHurdle(ri, hi, h.record ? h.sessions[0].id : null);
+    };
+    if (ssong.hurdle.record && ssong.session) {
+        const list = ssong.hurdle.sessions, at = list.findIndex(s => s.id === ssong.session);
+        if (at >= 0 && list[at + 1]) {
+            const ri = ssong.ri, hi = ssong.hi, id = list[at + 1].id;
+            return { textId: 'ssong.next.session', fn: () => ssongOpenHurdle(ri, hi, id) };
+        }
+    }
+    if (ssong.round.hurdles[ssong.hi + 1] && KRStompSong.hurdleOpen(ssong.progress, song, ssong.ri, ssong.hi + 1, open)) {
+        return { textId: 'ssong.next', fn: first(ssong.ri, ssong.hi + 1) };
+    }
+    if (song.rounds[ssong.ri + 1] && KRStompSong.hurdleOpen(ssong.progress, song, ssong.ri + 1, 0, open)) {
+        return { textId: 'ssong.next.round', fn: first(ssong.ri + 1, 0) };
+    }
+    return { textId: 'ssong.next.run', fn: () => ssongOpenRun() };
+}
+
 function ssongShowResult(g, passed, applied) {
     const box = ssongEl('ssong-result');
     box.hidden = false;
@@ -733,10 +759,9 @@ function ssongShowResult(g, passed, applied) {
         const b = ssongMake('button', 'btn ' + cls, actions);
         b.type = 'button'; b.textContent = KR.t(textId); b.onclick = fn; return b;
     };
-    const nextIndex = ssong.hi + 1;
-    const nextHurdle = ssong.round.hurdles[nextIndex];
-    if (applied.cleared && nextHurdle && KRStompSong.hurdleOpen(ssong.progress, ssong.song, ssong.ri, nextIndex, KR.openAll())) {
-        button('btn-start', 'ssong.next', () => ssongOpenHurdle(ssong.ri, nextIndex, nextHurdle.record ? nextHurdle.sessions[0].id : null));
+    const next = applied.cleared ? ssongNextStep() : null;
+    if (next) {
+        button('btn-start', next.textId, next.fn);
         button('btn-secondary', 'ssong.again', () => ssongPrepareAttempt());
     } else {
         button(applied.cleared ? 'btn-secondary' : 'btn-start', 'ssong.again', () => ssongPrepareAttempt());
