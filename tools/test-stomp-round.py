@@ -167,7 +167,10 @@ def main():
         #    after a miss (the answer shown) it takes three in a row.
         page.click('#rstomp-round-next')
         page.evaluate("rstompSelectedLevel = '2'; startRstompLevel(); rstompLocked = true; handleRstompSuccess();")
-        page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
+        cel = page.evaluate("[document.getElementById('kr-celebrate').classList.contains('show'), document.querySelector('.kr-celebrate-title').textContent, document.getElementById('rstomp-round').hidden]")
+        check('first take: the celebration screen, and the stomp round waits for it (Rob, 2026-10-24)',
+              cel[0] and cel[1] == 'First take!' and cel[2], cel)
+        page.wait_for_selector('#rstomp-round:not([hidden])', timeout=5000)
         page.click('#rstomp-round-next')
         page.wait_for_selector('#modal-rstomp-level-complete.show', timeout=4000)
         check('one clean phrase, nothing missed: the level is mastered', page.is_visible('#modal-rstomp-level-complete'))
