@@ -1565,7 +1565,7 @@ def test_song_choice(page):
           nodes == 'jam+,song+,drums-,bass-,keys-' and page.evaluate('bsmashSelected') == 'song', nodes)
     page.click('#beat-pathway-start')
     page.wait_for_timeout(500)
-    names = page.evaluate("[...document.querySelectorAll('#beat-song-cards .bsmash-song-card')].map(c => c.textContent)")
+    names = page.evaluate("[...document.querySelectorAll('#beat-song-cards .bsmash-song-card:not(.ssong-tile)')].map(c => c.textContent)")
     check('Seven songs to choose from, by name, and a click running', len(names) == 7 and 'Sunrise' in names[0]
           and page.evaluate('JSON.stringify(bsmashBand.parts)') == '{"click":"click"}', names)
     page.click('.bsmash-song-card[data-song="c-2-5-1"]')
