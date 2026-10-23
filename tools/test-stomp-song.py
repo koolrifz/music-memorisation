@@ -77,10 +77,25 @@ def main():
         check('the notation is drawn', page.locator('#ssong-reading svg').count() >= 1)
         check('no raw ids on the take screen', '[ssong' not in page.inner_text('#ssong-screen-play'))
         page.click('#ssong-go')
+        page.wait_for_function("ssong.state === 'lead'", timeout=10000)
+        vis = page.evaluate("""() => ['ssong-go','ssong-stop','ssong-guide','ssong-wait'].filter(id => document.getElementById(id).offsetParent !== null)""")
+        check('while the lead plays: only Stop and the WAIT sign, no Roll tape', vis == ['ssong-stop', 'ssong-wait'], vis)
+        page.evaluate("document.querySelector('#ssong-pad .krpad').dispatchEvent(new PointerEvent('pointerdown', {pointerId: 3, bubbles: true})); document.querySelector('#ssong-pad .krpad').dispatchEvent(new PointerEvent('pointerup', {pointerId: 3, bubbles: true}))")
+        check('a tap before the count is not on the record', page.evaluate('ssong.taps.length') == 0)
         page.evaluate(TAP, {'shift': 0.02})
         page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
         g = page.evaluate('window.ssongLast')
         check('a good take passes', g['passed'] and g['grade']['hits'] == 4, (g['grade']['hits'], g['grade']['leanMs']))
+        vis = page.evaluate("""() => ['ssong-go','ssong-stop','ssong-guide','ssong-wait'].filter(id => document.getElementById(id).offsetParent !== null)""")
+        check('after the take: none of the rolling buttons, only the result', vis == [], vis)
+        # the dots sit under the noteheads' centres
+        gap = page.evaluate("""() => {
+            const heads = [...document.querySelectorAll('#ssong-reading .vf-notehead')].map(h => { const r = h.getBoundingClientRect(); return r.left + r.width / 2; });
+            const dots = [...document.querySelectorAll('#ssong-reading .ssong-dot')].map(d => { const r = d.getBoundingClientRect(); return r.left + r.width / 2; });
+            if (heads.length !== dots.length || !heads.length) return [heads.length, dots.length];
+            return Math.max(...heads.map((h, i) => Math.abs(h - dots[i])));
+        }""")
+        check('the dots are under the noteheads (within 2 px)', isinstance(gap, (int, float)) and gap <= 2, gap)
         check('and earns a star', page.evaluate("KRStompSong.hurdleState(ssong.progress, 'crotchets', '1').stars") == 1)
         page.reload()
 

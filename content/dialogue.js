@@ -75,6 +75,7 @@ KR.dialogue = {
         { on: 'ssong.record.silver', speaker: 'tango', text: 'ssong.line.record.silver' },
         { on: 'ssong.record.gold', speaker: 'tango', text: 'ssong.line.record.gold' },
         { on: 'ssong.noaudio', speaker: 'tango', text: 'ssong.line.noaudio' },
+        { on: 'ssong.wait', speaker: 'tango', text: 'ssong.line.wait' },
         { on: 'ssong.free.done', speaker: 'tango', text: 'ssong.line.free.done' },
         { on: 'beat.jam.layer.drums',  speaker: 'tango', text: 'beat.line.layer.drums' },
         { on: 'beat.jam.layer.bass',   speaker: 'tango', text: 'beat.line.layer.bass' },

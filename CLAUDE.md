@@ -3069,3 +3069,12 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   because `rstompAudioStop()` fades that.
 - Tests: `node tools/test-stomp-song.js`, `python tools/test-stomp-song.py`.
 - Rejected: regenerating a kick-free song; changing Beat Smash's step engine.
+- **Rob's first phone play (2026-10-23), fixed:** the result dots and the
+  playhead sit at each notehead's CENTRE (`SSONG_HEAD_HALF` over the drawn
+  note's inset), not at the grid slot's left edge, which read as "late" though
+  the taps were in the pocket. A hidden button is really gone (`.kr-btn`'s
+  `display:block` beat `[hidden]`, so Roll tape showed beside the result's
+  buttons and did nothing). **WAIT FOR THE COUNT** as in Beat Smash: a sign
+  from Roll tape until the count, a dot per bar to go, then a red 1 2 3 4; a
+  tap before beat 1 (less `SSONG_ANTICIPATE`) does nothing to the take, shakes
+  the sign and Tango says so once. Back goes up one level at a time.

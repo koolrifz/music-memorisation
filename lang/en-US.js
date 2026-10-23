@@ -803,6 +803,8 @@ KR.lang('en-US', {
     'ssong.free.stop':       'Finish',
     'ssong.free.label':      'Free play',
     'ssong.pad':             'STOMP',
+    'ssong.wait.sign':       'Wait for the count',
+    'ssong.line.wait':       "Hands still! Wait for my count, then come in on one.",
     'ssong.next':            'Next hurdle',
     'ssong.again':           'Another take',
     'ssong.result.clean':    'Clean take!',

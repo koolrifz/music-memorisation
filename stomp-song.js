@@ -38,6 +38,8 @@ const SSONG_PAGE_LINES_WIDE = 2;
 const SSONG_SONG_GAIN = 0.95;
 const SSONG_GUIDE_GAIN = 0.5;        // the guide: soft and round, under the band
 const SSONG_STUDENT_GAIN = 1.0;      // the student's kick: bright, on top
+const SSONG_HEAD_HALF = 6;           // half a notehead, px: a beat is drawn at its notehead's centre
+const SSONG_ANTICIPATE = 0.25;       // beats before the punch-in a tap is beat 1, early; sooner is too soon
 
 let ssong = null;                    // what the screen in front of the student is doing
 const ssongBuffers = {};             // audio id -> AudioBuffer
@@ -417,10 +419,13 @@ function ssongRenderReading() {
         const playhead = ssongMake('div', 'ssong-playhead', paper);
         playhead.hidden = true;
         drawn.forEach((layout, i) => {
-            const mark = ssongMake('div', 'bsmash-mark', marks);
-            mark.style.left = (4 + i * perBar) + 'px';
+            // A beat's x is the CENTRE of its notehead: the grid's slot, plus
+            // the inset every note is drawn at, plus half a notehead. The dots
+            // and the playhead ride this, so they sit under the notes (Rob,
+            // 2026-10-23: the dots were left of the crotchets).
+            const inset = ssongWithGrid(() => layout.noteX[0] - layout.pulseX(0));
             ssong.layout[first + i] = {
-                x: beat => ssongWithGrid(() => layout.pulseX(beat)),
+                x: beat => ssongWithGrid(() => layout.pulseX(beat)) + inset + SSONG_HEAD_HALF,
                 paper, under, playhead, line, lineIndex: lines.length - 1,
             };
         });
@@ -458,11 +463,13 @@ function ssongSetState(state) {
     const stop = ssongEl('ssong-stop');
     const free = ssong.mode === 'free';
     go.hidden = state !== 'ready';
+    // Nothing but the pad while the tape rolls, nothing but the result's own
+    // buttons after it (Rob: "there's not many choices").
     go.textContent = KR.t(free ? 'ssong.free.go' : 'ssong.go');
     stop.hidden = !(state === 'lead' || state === 'rec' || state === 'playing');
     stop.textContent = KR.t(free ? 'ssong.free.stop' : 'ssong.stop');
-    ssongEl('ssong-guide').hidden = state !== 'ready' && !free;
-    ssongEl('ssong-reading').classList.toggle('briefing', state === 'ready' && false);
+    ssongEl('ssong-guide').hidden = !(state === 'ready' || (free && state === 'playing'));
+    ssongShowWait(state === 'lead');
 }
 
 function ssongRoll() {
@@ -507,6 +514,9 @@ function ssongStartAttempt() {
     if (ssong.guided) p.onsets.forEach(o => ssongKick(clockOf(p.punchAt + o.t), true));
     for (let k = p.endBeat; k < p.endBeat + 4; k++) ssongKick(clockOf(KRStompSong.beatTime(beats, k)), true);
     ssong.lastBeat = -1;
+    ssong.toldWait = false;
+    ssongEl('ssong-wait-sign').hidden = false;
+    ssongEl('ssong-wait-dots').textContent = '●'.repeat(Math.max(1, (p.punchBeat - p.cueBeat) / 4 - 1));
     ssongSetState('lead');
     ssong.frame = requestAnimationFrame(ssongFrame);
 }
@@ -520,12 +530,35 @@ function ssongPress(press) {
         if (ssong.state === 'ready' && ssongBuffers[ssong.song.kick]) ssongKick(ctx.currentTime + 0.005, false);
         return;
     }
+    if (ssong.mode !== 'free' && ssong.state === 'lead' && ssongTooSoon(press)) return;
     ssongKick(ctx.currentTime + 0.003, false);
     if (ssong.mode === 'free') {
         ssong.taps.push({ t: press.time - ssong.freeStart });
         return;
     }
     ssong.taps.push({ raw: press.raw - ssong.punchClock, delay: ssong.delay.delay, t: press.time - ssong.punchClock });
+}
+
+// WAIT FOR THE COUNT (Rob, 2026-10-23, as in Beat Smash: "They get nervous...
+// make it very clear it's to wait. We will count you in"). Until the count
+// ends a tap does nothing to the take: no kick, the sign shakes, and the coach
+// says so once a take. Within SSONG_ANTICIPATE of beat 1 it is beat 1, early.
+function ssongTooSoon(press) {
+    const p = ssong.plan;
+    const beatPos = KRStompSong.beatAt(ssong.beats, p.punchAt + (press.time - ssong.punchClock)) - p.punchBeat;
+    if (beatPos >= -SSONG_ANTICIPATE) return false;
+    const wait = ssongEl('ssong-wait');
+    wait.classList.remove('shake'); void wait.offsetWidth; wait.classList.add('shake');
+    if (!ssong.toldWait) { ssong.toldWait = true; ssongEvent('ssong.wait'); }
+    return true;
+}
+
+// The sign: up from Roll tape until the count starts, with a dot for each bar
+// still to go; then the count itself, big and red, 1 2 3 4.
+function ssongShowWait(on) {
+    ssongEl('ssong-wait').hidden = !on;
+    ssongEl('ssong-pad').classList.toggle('ssong-waiting', on);
+    if (!on) ssongEl('ssong-count').textContent = '';
 }
 
 // What is HEARD now on the audio clock: less the output delay the browser reports.
@@ -554,8 +587,11 @@ function ssongFrame() {
     if (whole !== ssong.lastBeat) {
         ssong.lastBeat = whole;
         const count = ssongEl('ssong-count');
-        if (whole >= -4 && whole < 0) count.textContent = String(whole + 5);
-        else count.textContent = '';
+        const sign = ssongEl('ssong-wait-sign');
+        const counting = whole >= -4 && whole < 0;
+        count.textContent = counting ? String(whole + 5) : '';
+        sign.hidden = counting;
+        if (!counting && whole < 0) ssongEl('ssong-wait-dots').textContent = '●'.repeat(Math.max(1, Math.ceil(-whole / 4) - 1));
         if (ssong.pads && whole >= -((p.punchBeat - p.cueBeat)) && whole < p.bars * 4 && (whole < 0 || ssong.guided)) ssong.pads.glow(0, whole < 0 ? 'countin' : 'beat', 160);
     }
     // The playhead and the page.
