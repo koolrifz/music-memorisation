@@ -1582,10 +1582,29 @@ function bsmashSoundKind() {
     return musician.sounds.indexOf(kind) !== -1 ? kind : musician.sounds[0];
 }
 
+// HOW MANY CLEAN PLAYINGS A STEP NEEDS (Rob, 2026-10-24, the app-wide rule:
+// "if they get it correct it keeps going... not three in a row"). A step not
+// yet missed clears on one clean playing: on one and two bars that is the
+// picture go and then the same bar read from the notation, because that
+// reveal is the teaching; from four bars, one take. A miss makes the step
+// OWED, and then it needs three in a row. A row begun before this rule (stars
+// saved part way) counts as owed.
+function bsmashRecordOwed(record) {
+    return !!(record && (record.owed || record.streak > 0));
+}
+function bsmashStarsFor(step, owed) {
+    if (owed) return 3;
+    return step <= BSMASH_PICTURE_STEPS ? 2 : 1;
+}
+function bsmashNeeded() {
+    return bsmashStarsFor(bsmash.step, bsmash.owed);
+}
+
 function bsmashStarsShown(count) {
     const stars = bsmashEl('beat-stars');
     stars.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
+    const needed = bsmash && bsmash.mode === 'steps' ? bsmashNeeded() : 3;
+    for (let i = 0; i < needed; i++) {
         const star = bsmashMake('span', 'bsmash-star', stars);
         star.textContent = KR.t(i < count ? 'beat.star.full' : 'beat.star.empty');
         if (i < count) star.classList.add('full');
@@ -2812,6 +2831,7 @@ function startBeatMusician(id, keepBand, step) {
     bsmash = {
         mode: 'steps', musician: musician, step: playing, song: bsmashSong(),
         streak: bsmashOnRecord(record, playing) ? record.streak : 0,
+        owed: bsmashOnRecord(record, playing) ? bsmashRecordOwed(record) : false,
         delay: bsmashDelay(), lastBeat: null, pads: pads, frame: frame, take: null, bars: null,
     };
     // A studio take already passed (and the game closed before the part was
@@ -3621,6 +3641,12 @@ function bsmashTakeTwo(issues) {
     // A miss empties the row of stars (§6). On the first star the stars were
     // already empty, so the same go simply runs again; after that it is
     // practice until it's clean, then a new roll starts again at the first star.
+    // Any miss, the first go included, makes the step owed: three in a row.
+    bsmash.owed = true;
+    if (bsmashOnRecord(bsmashMusicianRecord(bsmash.musician.id), bsmash.step)) {
+        bsmashUpdateMusician(bsmash.musician.id, { owed: true });
+    }
+    bsmashHeader();
     if (bsmash.scaffold !== 'star1') {
         bsmash.streak = 0;
         if (bsmashOnRecord(bsmashMusicianRecord(bsmash.musician.id), bsmash.step)) {
@@ -3701,11 +3727,14 @@ function bsmashStarLands(then) {
     const record = bsmashMusicianRecord(id);
     const clearedStep = bsmash.step;
     bsmash.streak++;
-    const cleared = bsmash.streak >= 3;
+    const cleared = bsmash.streak >= bsmashNeeded();
     const changes = { clean: record.clean + 1 };
-    if (bsmashOnRecord(record, clearedStep)) changes.streak = cleared ? 0 : bsmash.streak;
+    if (bsmashOnRecord(record, clearedStep)) {
+        changes.streak = cleared ? 0 : bsmash.streak;
+        changes.owed = cleared ? false : bsmash.owed;
+    }
     // Clearing a step opens the next one - never closes one already open.
-    if (cleared && !record.won && clearedStep + 1 > record.step) { changes.step = clearedStep + 1; changes.streak = 0; }
+    if (cleared && !record.won && clearedStep + 1 > record.step) { changes.step = clearedStep + 1; changes.streak = 0; changes.owed = false; }
     bsmashUpdateMusician(id, changes);
     bsmashStarsShown(bsmash.streak);
     const stars = bsmashEl('beat-stars').querySelectorAll('.bsmash-star');
@@ -3721,6 +3750,7 @@ function bsmashStarLands(then) {
         bsmashLater(() => bsmashEvent('beat.step.cleared.' + clearedStep), 1300);
         bsmash.step = clearedStep + 1;
         bsmash.streak = 0;
+        bsmash.owed = false;
     }
     const next = () => {
         // The name and age are asked after the first win, never before (§11);
@@ -4658,7 +4688,8 @@ function bsmashStepName(record, step) {
     const name = KR.t('beat.step.' + step);
     if (!record || typeof step !== 'number' || step === BSMASH_STUDIO_STEP || !bsmashOnRecord(record, step)) return name;
     let stars = '';
-    for (let i = 0; i < 3; i++) stars += KR.t(i < record.streak ? 'beat.star.full' : 'beat.star.empty');
+    const needed = bsmashStarsFor(step, bsmashRecordOwed(record));
+    for (let i = 0; i < needed; i++) stars += KR.t(i < record.streak ? 'beat.star.full' : 'beat.star.empty');
     return KR.t('beat.step.stars', { step: name, stars: stars });
 }
 

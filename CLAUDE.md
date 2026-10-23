@@ -1196,7 +1196,7 @@ The brand verb is **"Smash"** — every game name uses it (Staff Smash, Note Sma
 **Bonus rounds are "Maestro" bonuses** (the equivalency bonus was once called "Ludicrous"; Rob: that's Tesla's).
 
 ## Core mechanics (apply consistently to any new content)
-- **Rule of three:** three correct in a row confirms real mastery, not a lucky guess. Used everywhere as the advancement gate.
+- **One clean answer moves on; the rule of three is for a MISS** (Rob, 2026-10-24, app-wide, reversing "three in a row everywhere": *"if they get it correct it keeps going... of course I make a mistake. Then they've got three times in a row... grabbing the kids that are capable"*). A level, tier, step or hurdle not yet missed clears on **one clean** answer; a miss (a wrong tap even if the target is then found, a timeout, a strike, the answer shown) makes it **OWED**, and owed takes **three clean in a row**, after which it is no longer owed. The three dots/stars show only while owed. Built in: Staff Smash Lines/Spaces/Mixed (`g1Owed`, first), Note Smash (`g2Owed`), Value Smash's Smash and Sprint (`vsmashSmash.owed`; the joker still saves one miss), Rhythm Stomp Lab (`rstompOwed`; right only after a keypad strike is a miss), Beat Smash's steps (`bsmash.owed`, saved as `owed` on the musician; see below), Stomp the Beat's hurdles (`KRStompSong.needed()`). Staff Numbers keeps its own nine-question deck. **Open for Rob:** whether it moves too fast; `need = owed ? 3 : 1` is the one line in each game.
 - **Duds:** a round with zero valid targets present is a fair, neutral pass — costs time, doesn't break or advance a streak. A correctly-handled dud also counts as a streak "joker."
 - **Scoring:** only correct taps score points; wrong taps or missed targets cost time, never points. Score totals shown to the player are always whole numbers (decimals are fine internally for time bonuses).
 - **Sequential unlocking:** each game's stage list is gated in order (e.g. Staff Smash: Lines → Spaces → Mixed → Staff Numbers → Ledger Bonus, with Ledger Bonus gated behind Staff Numbers clearing — this is intentional, not accidental).
@@ -2164,6 +2164,15 @@ press Record) and the booth that followed the band. Rob, on the four-bar
 Record button: *"I'm a bit disappointed when the four bars comes and now I
 have to press record. I think it should just come the normal way."*
 
+- **HOW MANY CLEAN TAKES A STEP NEEDS (Rob, 2026-10-24, the app-wide rule
+  in "Core mechanics")**: one and two bars, not yet missed, clear on the
+  picture go and the same bar read from the notation (that reveal is the
+  teaching, so it stays); four and eight bars on one clean take. A miss makes
+  the step owed (`owed` on the musician): three in a row. The star row shows
+  what the step needs (`bsmashStarsFor()`: 2, 1 or 3). A row saved part way
+  before the rule counts as owed (`bsmashRecordOwed()`). The intros and step
+  lines say so. Everything below that says "three in a row" now means an owed
+  step.
 - **Steps 1–4 all run the same way** (`BSMASH_STEP_BARS`: 1, 2, 4, 8 bars):
   the bars, the count-in, straight into the take, the fading picture, three in a
   row. One and two bars need every note right; four and eight need the age's

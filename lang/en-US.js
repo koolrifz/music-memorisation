@@ -100,7 +100,7 @@ KR.lang('en-US', {
     'studio.area.ebass':     'Coming soon',
 
     // What the coach says when an instrument lands on the rug.
-    'studio.say.piano':      'Lines, spaces, then the real thing. Three in a row and we move on.',
+    'studio.say.piano':      'Lines, spaces, then the real thing. Get it right and we move on.',
     'studio.say.drums':      'Hit that kick on the beat!',
     'studio.say.congas':     'Know what every note is worth, then count it and stomp it.',
 
@@ -404,10 +404,10 @@ KR.lang('en-US', {
     'beat.line.retakeClean': "That's it! Now a new one.",
     // The steps are spots in the part to FIX UP, then the whole part is
     // played in the studio (Rob, playtest 2). Placeholders for Rob.
-    'beat.line.intro.drums': "My drum part is broken! It needs its quarter notes played back in, and played right. Get a spot right three times in a row, and you go up to the next challenge. In the end we lay down a 32-bar drum track in the studio, so help me fix some spots along the way!",
-    'beat.line.step.1':      'Three in a row! That spot is fixed. Now a two-bar spot.',
+    'beat.line.intro.drums': "My drum part is broken! It needs its quarter notes played back in, and played right. Get a spot right and you go up to the next challenge. Slip up, and it takes three in a row. In the end we lay down a 32-bar drum track in the studio, so help me fix some spots along the way!",
+    'beat.line.step.1':      'Nailed it! That spot is fixed. Now a two-bar spot.',
     'beat.line.step.2':      'Fixed! Now a four-bar spot.',
-    'beat.line.step.3':      'Four bars, three in a row! One more spot: eight bars.',
+    'beat.line.step.3':      'Four bars, nailed! One more spot: eight bars.',
     'beat.line.step.4':      "Every spot is fixed! Into the studio to play the whole part.",
     'beat.line.findOne':     'Find one!',
     'beat.line.wrongPad.1':  'Follow the beats round: 1, 2, 3, 4. Get on the beat!',
@@ -423,7 +423,7 @@ KR.lang('en-US', {
     'beat.heard.hop.1':      "Hop! That one's bouncy.",
     'beat.locked.drums.1':   '{style} drums, locked in. This is your band now.',
     // Riff, on bass. Hip and gruff. Placeholders for Rob to rewrite.
-    'beat.riff.intro.bass': "Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. Three in a row takes you up to the next challenge, and in the end we lay down 32 bars of bass in the studio.",
+    'beat.riff.intro.bass': "Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. Get it right and you go up to the next challenge (slip, and it takes three in a row). In the end we lay down 32 bars of bass in the studio.",
     'beat.won.bass.1':       'That gives me a great idea!',
     'beat.riff.picker.1':    'I made you three bass lines. Dig through them.',
     'beat.riff.picker.2':    'Tap one to hear it. Keep the one that grooves.',
@@ -444,14 +444,14 @@ KR.lang('en-US', {
     'beat.riff.why.wrongPad': 'Follow the beats round, man. Each pad is its own beat. {take}',
     'beat.riff.reveal':      "That's what you played. Now read it, cat.",
     'beat.riff.retakeClean': "There it is. Let's roll a new one.",
-    'beat.riff.step.1':      'Three in a row! That spot is fixed. Now two bars.',
+    'beat.riff.step.1':      'Right on! That spot is fixed. Now two bars.',
     'beat.riff.step.2':      'Fixed, man. Now a four-bar spot.',
-    'beat.riff.step.3':      'Four bars, three in a row. One more spot, cat: eight bars.',
+    'beat.riff.step.3':      'Four bars, in the pocket. One more spot, cat: eight bars.',
     'beat.riff.step.4':      'Every spot fixed. The studio is yours, man: the whole part.',
     'beat.riff.findOne':     'Find one!',
     'beat.riff.comeback':    'Back in the pocket!',
     'beat.riff.playback':    "Now that's a groove. Listen to your band.",
-    'beat.riff.intro.keys': "Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. Three in a row takes you up, and then 32 bars of keys in the studio.",
+    'beat.riff.intro.keys': "Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. Get it right and you move up, and then 32 bars of keys in the studio.",
     'beat.won.keys.1':       'Oh, that gives me an idea for the keys!',
     'beat.locked.keys.1':    "{style} keys, locked in. That's the full band!",
     // The Learner's Permit, when the band is complete: Tango presents it. Placeholders for Rob.
@@ -601,7 +601,7 @@ KR.lang('en-US', {
     'value.medal.gold':          '🥇 Gold',
     'value.sprint.medalEarned':  '{medal}! Now {cards} cards.',
     'value.sprint.topTier':      '{medal}! Keep smashing for points.',
-    'value.sprint.needBronze':   'Clear three screens in a row at {cards} cards to win Bronze.',
+    'value.sprint.needBronze':   'Clear a screen at {cards} cards to win Bronze (after a miss, three in a row).',
 
     /* ---------- Value Smash: the Artistic License ----------
        'value.license.say' and 'value.license.needed' are Tango's lines. */
@@ -684,7 +684,7 @@ KR.lang('en-US', {
     'stomp.intro.play.what': 'a new note starts here',
     'stomp.intro.hold':      '( )',
     'stomp.intro.hold.what': 'nothing new — still ringing, or silence',
-    'stomp.intro.line2':     'Tap one, and it\'s written under the music straight away. Fill all 4 bars, then check your answer. Three phrases right in a row and you\'ve mastered the level.',
+    'stomp.intro.line2':     'Tap one, and it\'s written under the music straight away. Fill all 4 bars, then check your answer. Get a phrase right first time and you\'ve mastered the level. Slip up, and it takes three right in a row.',
     'stomp.intro.start':     'Start Level 1',
     // The stomp round: after the counting is right, play it back.
     'stomp.round.title':     'Now play it!',

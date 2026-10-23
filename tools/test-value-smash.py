@@ -424,6 +424,8 @@ def test_smash(page):
         card(page, i)
     smash_idle(page)
     check('tier 1: a screen with a wrong tap breaks the streak', smash(page)['streak'] == 0 and smash(page)['tier'] == 0)
+    check('...and makes the tier owed: three in a row, with the dots showing',
+          page.evaluate("vsmashSmash.owed && document.getElementById('value-streak').style.visibility !== 'hidden'"))
     next_screen(False)
     wrong = smash(page)['wrong']
     page.click('#value-nothing')
@@ -439,10 +441,13 @@ def test_smash(page):
     page.wait_for_timeout(600)
     check('a dud after a wrong tap moves on without a joker', not smash(page)['joker'])
 
-    page.evaluate('vsmashSmash.streak = 0')
-    while smash(page) and smash(page)['tier'] == 0:
-        smash_clear(page)
+    # Rob, 2026-10-24: one clean screen moves up a tier when nothing was missed.
+    next_screen(False)
+    page.evaluate('vsmashSmash.streak = 0; vsmashSmash.owed = false')
+    smash_clear(page)
     smash_idle(page)
+    check('one clean screen moves up a tier when the tier is not owed', smash(page)['tier'] == 1, smash(page)['tier'])
+
     s = smash(page)
     check('the clock starts at tier 2', s['tier'] == 1 and s['clock'] is not None and s['clock'] > 55, s['clock'])
     check('tier 2 has a flash timer and no Nothing button',
