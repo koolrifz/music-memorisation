@@ -3101,4 +3101,8 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   relay (`runTake`); the run ends when every player has missed in a row.
   Best run kept per device (`progress.run`). Stomp Lab's specs carry no slot,
   so they are numbered on the way in; dots sit on each note's own notehead.
+- **A cleared hurdle always leads on** (Rob, 2026-10-23, stuck after the
+  32-bar gold: *"I can't go any further"*). `ssongNextStep()`: the record's
+  next session (silver, then gold), the round's next hurdle, the next round's
+  first hurdle, and past the last, **Keep going: the run**.
 

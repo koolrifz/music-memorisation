@@ -165,6 +165,19 @@ def main():
             const g = KRStompSong.grade(ssong.plan, []); ssongEndTake(g); const out = KRStompSong.runTake(ssong.run, false);
             ssongShowRunResult(g, false, out); return [out.next, ssong.run.player, ssongEl('ssong-result-actions').innerText]; }""")
         check('two players: a miss hands over to Player 2', r[0] == 'turn' and r[1] == 1 and '2' in r[2], r)
+        # After a record there is always a way on: silver -> gold -> round 2 -> the run.
+        nxt = page.evaluate("""() => {
+            const out = [], rs = ssong.song.rounds;
+            const at = (ri, hi, sid) => { ssong.ri = ri; ssong.hi = hi; ssong.round = rs[ri];
+                ssong.hurdle = rs[ri].hurdles[hi]; ssong.session = sid; return ssongNextStep().textId; };
+            const r0 = rs[0].hurdles, last0 = r0.length - 1, rec = r0[last0];
+            out.push(at(0, last0, rec.sessions[0].id));
+            out.push(at(0, last0, rec.sessions[rec.sessions.length - 1].id));
+            const r1 = rs[1].hurdles, last1 = r1.length - 1;
+            out.push(at(1, last1, r1[last1].sessions[r1[last1].sessions.length - 1].id));
+            return out; }""")
+        check('after a record: next record, then next round, then the run',
+              nxt == ['ssong.next.session', 'ssong.next.round', 'ssong.next.run'], nxt)
         page.evaluate("ssong.settings.players = 1; ssongSave(); ssongOpenHurdle(0, 0, null)")
 
         # Back goes to the menu, then to the chooser
