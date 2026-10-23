@@ -20,4 +20,10 @@ KR.audio = {
     'beat.loop.keys.spicy':   'audio/beat-smash/beat-l1-keys-spicy.wav',
     'beat.loop.keys.smooth':  'audio/beat-smash/beat-l1-keys-smooth.wav',
     'beat.loop.keys.hop':     'audio/beat-smash/beat-l1-keys-hop.wav',
+
+    /* ---------- Stomp the Beat, played from its recording (stomp-song.js) ----------
+       The song as Rob made it in Suno (the "Beat Stomp (Remastered)" file), and the
+       student's kick: bright, with a beater click, so it cuts through the band's own. */
+    'ssong.stomp-the-beat.audio': 'audio/stomp-the-beat/stomp-the-beat.mp3',
+    'ssong.kick':             'audio/stomp-the-beat/student-kick.wav',
 };

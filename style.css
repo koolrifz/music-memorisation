@@ -1992,3 +1992,35 @@ button.vsmash-tile:active { transform: translateY(2px); }
 .rstomp-round-result { display: flex; flex-direction: column; align-items: center; }
 .rstomp-round-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .rstomp-round[hidden], .rstomp-round-result[hidden] { display: none; }
+
+/* ---------- Stomp the Beat, the song (stomp-song.js) ---------- */
+.ssong-menu { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.ssong-sub { margin: 0 0 6px; text-align: center; color: #9fb3c8; font-size: 14px; }
+.ssong-round { margin: 10px 0 0; font-size: 17px; font-weight: 900; color: var(--accent-gold); }
+.ssong-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ssong-chip { flex: 1 1 28%; min-height: 64px; border-radius: 14px; border: 3px solid #3f556c; background: #1b2530; color: white; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+.ssong-chip-sub { font-size: 13px; color: var(--accent-gold); letter-spacing: 1px; }
+.ssong-chip.cleared { border-color: var(--accent-green); }
+.ssong-chip.locked { opacity: 0.45; cursor: default; }
+.ssong-shelf { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; font-weight: 900; }
+.ssong-record { font-size: 26px; color: #56677a; }
+.ssong-record.silver.earned { color: #d7dde4; text-shadow: 0 0 10px rgba(215,221,228,0.8); }
+.ssong-record.gold.earned { color: var(--accent-gold); text-shadow: 0 0 12px rgba(255,200,0,0.9); }
+.ssong-guide-btn.on { border-color: var(--accent-gold); }
+.ssong-play { gap: 6px; }
+.ssong-label { font-weight: 900; color: white; flex: 1; }
+.ssong-count { height: 54px; font-size: 48px; font-weight: 900; line-height: 54px; color: #ff4b4b; text-align: center; }
+.ssong-reading { min-height: 70px; }
+.ssong-playhead { position: absolute; top: 4px; bottom: 4px; width: 3px; background: #ff4b4b; border-radius: 2px; pointer-events: none; }
+.ssong-playhead[hidden] { display: none; }
+.ssong-dot { position: absolute; top: 2px; width: 9px; height: 9px; border-radius: 50%; background: #56677a; }
+.ssong-dot.ok { background: var(--accent-green); }
+.ssong-dot.off { background: var(--accent-gold); }
+.ssong-dot.miss { background: #ff4b4b; }
+.ssong-dot.stray { background: transparent; border-radius: 0; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid #ff4b4b; }
+.bsmash-rec.practice { background: #5a6b7d; border-color: #9fb3c8; }
+.ssong-result { width: 100%; max-width: 480px; background: #1b2530; border: 3px solid #3f556c; border-radius: 14px; padding: 10px 14px; color: white; }
+.ssong-result h3 { margin: 0 0 4px; }
+.ssong-result ul { margin: 0 0 6px; padding-left: 20px; }
+.ssong-result[hidden] { display: none; }
+.ssong-play .krpads { width: 100%; max-width: 480px; }
