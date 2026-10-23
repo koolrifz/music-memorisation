@@ -25,11 +25,21 @@ The game spreads because the music is good and other kids hear it.
 - It fits the way Beat Smash is already played in class (Rob's clarinet
   classes handed an iPad down a line, 2026-10-08).
 
-## Questions for Rob before building
+## Decided (Rob, 2026-10-23)
 
-- Players by nickname from the device's players list, or quick names typed
-  for one game only?
-- Does a turn passed in the middle of a take wait for the bar line, or the
-  end of the take?
-- Scoring: furthest hurdle, total clean bars, or a race to a record?
-- Does a multiplayer game count toward each player's own stars and records?
+> *"In the first instance we don't ask their name. We don't care who they are.
+> It's just player one, player two. Like Pac-Man. Or Space Invaders... I want
+> this game to be able to go in any direction it can and move on a dime."*
+
+- **No names.** Players are Player 1, Player 2 and so on, as in an arcade
+  game. Nothing is asked before play starts.
+- **A group game tracks nothing per player** beyond the game in front of
+  them. It does not touch anyone's stars or records. What to track is decided
+  once the game has been played and we know what matters.
+- The solo game (and Beat Smash's nicknames) is unchanged.
+
+## Still open
+
+- Does the iPad pass on a miss straight away, or at the end of the take?
+- How a game is won: the furthest hurdle, the most clean bars, or the first
+  to press a record?
