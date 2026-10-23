@@ -41,27 +41,35 @@ The game spreads because the music is good and other kids hear it.
 - **A miss ends your turn** (Rob, 2026-10-23): *"when they miss a rhythm...
   their turn is finished. Next player."* A clean take keeps your turn going.
 
-## Where the next player starts: two ways to play (proposed)
+## Decided: the relay, and one question to start (Rob, 2026-10-23)
 
-Rob: *"Do they pick up from where the last person left off or did they go back
-to where they were before in their own round? Maybe both options are
-available."* Both, as two ways to play, chosen before the game:
+> *"The next person picks up from exactly where the other one left off,
+> answering the question that they couldn't answer, and then they get the
+> right to move forward... it's not about who wins really. It's about them
+> staying there the longest they can and enjoying themselves. It might only
+> be 5 minutes but it should be a really fun, engaging 5 minutes, so they can
+> do it on their own too."*
 
-- **Own ladder** (competitive). Each player keeps their own place: Player 2
-  starts where Player 2 left off. The first to press the gold record wins (or,
-  for a short game, the furthest up after so many turns each).
-- **Relay** (the band together). The next player picks up the very hurdle the
-  last one missed. The group climbs one ladder together and wins the record as
-  a band; the score is how many turns it took.
+> *"Why don't we just ask how many are playing? Have it defaulted to one so
+> it's very easy to start... we're just asking one question and keep it
+> really simple."*
 
-Proposed: **one clean take clears a hurdle** in a group game, not three in a
-row, or a turn can run for minutes while the others wait. That matches Rob's
-own rule for Staff Smash (the rule of three only after a miss), and solo play
-keeps its three.
+- **One question before play: how many are playing?** It defaults to 1, so a
+  student alone just presses go. More players: Player 1, Player 2... take
+  turns.
+- **The relay.** A miss ends your turn; the next player takes the very hurdle
+  that was missed, and a clean take moves the band on. The group climbs one
+  ladder together.
+- **Not about winning.** No leaderboard between players. What the game
+  celebrates is how far the band got and how long it kept going.
+- **Played alone it is the same game**, one player taking every turn, so it
+  has to be fun solo too.
+- Later, much later: students building their own material to play with.
 
-## Still open
+## Proposed, for Rob
 
-- Which of the two is the default, and whether the names "Own ladder" and
-  "Relay" are right (placeholders).
-- Do the hurdles in a group game use the same song spots as solo, or random
-  spots so the next player can't just copy what they heard?
+- **One clean take clears a hurdle** in this game (not three in a row), so
+  turns move and nobody waits for minutes. Solo hurdles in the main menu keep
+  their three.
+- **A fresh spot in the song for the next player**, so they can't just copy
+  what they heard the last player miss.

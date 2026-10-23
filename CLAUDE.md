@@ -3081,4 +3081,5 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
 - **The song fades out** (`SSONG_END_FADE`, 0.8 s) at the end of every take,
   at the end of free play and on Stop, guide kicks included (Rob, 2026-10-23).
   Multiplayer "pass the iPad" is an idea: `ideas/pass-the-ipad.md` (Rob:
-  players are Player 1, Player 2, no names, nothing tracked per player yet).
+  one question, "how many are playing?" (default 1); Player 1, Player 2; a
+  relay where the next player takes the missed hurdle; not about winning).
