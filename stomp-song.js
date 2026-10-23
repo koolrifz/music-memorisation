@@ -38,6 +38,7 @@ const SSONG_PAGE_LINES_WIDE = 2;
 const SSONG_SONG_GAIN = 0.95;
 const SSONG_GUIDE_GAIN = 0.5;        // the guide: soft and round, under the band
 const SSONG_STUDENT_GAIN = 1.0;      // the student's kick: bright, on top
+const SSONG_END_FADE = 0.8;          // seconds: the song fades out at the end of a take, and when Stop is pressed
 const SSONG_HEAD_HALF = 6;           // half a notehead, px: a beat is drawn at its notehead's centre
 const SSONG_ANTICIPATE = 0.25;       // beats before the punch-in a tap is beat 1, early; sooner is too soon
 
@@ -148,19 +149,26 @@ function ssongStartSong(cueAt, startWhen, stopAfter) {
     ssong.guideBus.connect(ctx.destination);
 }
 
-function ssongStopSound() {
+// Stop the song, fading over `fade` seconds (Rob, 2026-10-23: "a quick fade
+// at the end of every take... more listenable"). The guide kicks fade with it,
+// and anything booked after the fade is stopped then.
+function ssongStopSound(fade) {
     const ctx = ssongAudio();
     if (!ssong || !ctx) return;
     const now = ctx.currentTime;
+    const end = now + Math.max(0.05, fade || 0);
+    const fadeOut = g => {
+        g.gain.cancelScheduledValues(now);
+        g.gain.setValueAtTime(g.gain.value, now);
+        g.gain.linearRampToValueAtTime(0.0001, end);
+    };
     try {
-        if (ssong.songGain) {
-            ssong.songGain.gain.cancelScheduledValues(now);
-            ssong.songGain.gain.setValueAtTime(ssong.songGain.gain.value, now);
-            ssong.songGain.gain.linearRampToValueAtTime(0.0001, now + 0.05);
-        }
-        if (ssong.songSource) ssong.songSource.stop(now + 0.06);
-        (ssong.sources || []).forEach(s => { try { s.stop(); } catch (e) { /* not started yet */ } });
-        if (ssong.guideBus) ssong.guideBus.disconnect();
+        if (ssong.songGain) fadeOut(ssong.songGain);
+        if (ssong.guideBus) fadeOut(ssong.guideBus);
+        if (ssong.songSource) ssong.songSource.stop(end + 0.02);
+        (ssong.sources || []).forEach(s => { try { s.stop(end + 0.02); } catch (e) { /* not started yet */ } });
+        const bus = ssong.guideBus;
+        if (bus) setTimeout(() => { try { bus.disconnect(); } catch (e) { /* gone */ } }, (end - now) * 1000 + 100);
     } catch (e) { /* already stopped */ }
     ssong.songSource = null; ssong.songGain = null; ssong.guideBus = null; ssong.sources = [];
 }
@@ -185,11 +193,11 @@ function showStompSong(id) {
 }
 
 // Stop everything this song is doing: sounds, the frame loop, the pad.
-function ssongHalt() {
+function ssongHalt(fade) {
     if (!ssong) return;
     if (ssong.frame) cancelAnimationFrame(ssong.frame);
     ssong.frame = 0;
-    ssongStopSound();
+    ssongStopSound(fade);
     if (ssong.pads) { ssong.pads.destroy(); ssong.pads = null; }
     ssong.state = 'menu';
 }
@@ -617,7 +625,7 @@ function ssongJudge() {
         { passed: passed, guided: ssong.guided, pct: g.pct, session: ssong.session });
     ssongSave();
     window.ssongLast = { grade: g, passed: passed, applied: applied, plan: p, taps: ssong.taps.slice() };
-    ssongStopSound();
+    ssongStopSound(SSONG_END_FADE);
     if (ssong.frame) cancelAnimationFrame(ssong.frame);
     ssong.frame = 0;
     ssong.layout.forEach(l => { l.playhead.hidden = true; });
@@ -753,7 +761,7 @@ function ssongEndFree() {
     if (!ssong || ssong.mode !== 'free' || ssong.state === 'result') return;
     if (ssong.frame) cancelAnimationFrame(ssong.frame);
     ssong.frame = 0;
-    ssongStopSound();
+    ssongStopSound(SSONG_END_FADE);
     ssong.state = 'result';
     ssongSetState('result');
     const taps = ssong.taps.map(x => ({ t: x.t }));
@@ -786,6 +794,6 @@ function ssongEndFree() {
 function ssongStopPressed() {
     if (!ssong) return;
     if (ssong.mode === 'free') { ssongEndFree(); return; }
-    ssongHalt();
+    ssongHalt(SSONG_END_FADE);
     ssongPrepareAttempt();
 }
