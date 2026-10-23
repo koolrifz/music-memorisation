@@ -38,8 +38,30 @@ The game spreads because the music is good and other kids hear it.
   once the game has been played and we know what matters.
 - The solo game (and Beat Smash's nicknames) is unchanged.
 
+- **A miss ends your turn** (Rob, 2026-10-23): *"when they miss a rhythm...
+  their turn is finished. Next player."* A clean take keeps your turn going.
+
+## Where the next player starts: two ways to play (proposed)
+
+Rob: *"Do they pick up from where the last person left off or did they go back
+to where they were before in their own round? Maybe both options are
+available."* Both, as two ways to play, chosen before the game:
+
+- **Own ladder** (competitive). Each player keeps their own place: Player 2
+  starts where Player 2 left off. The first to press the gold record wins (or,
+  for a short game, the furthest up after so many turns each).
+- **Relay** (the band together). The next player picks up the very hurdle the
+  last one missed. The group climbs one ladder together and wins the record as
+  a band; the score is how many turns it took.
+
+Proposed: **one clean take clears a hurdle** in a group game, not three in a
+row, or a turn can run for minutes while the others wait. That matches Rob's
+own rule for Staff Smash (the rule of three only after a miss), and solo play
+keeps its three.
+
 ## Still open
 
-- Does the iPad pass on a miss straight away, or at the end of the take?
-- How a game is won: the furthest hurdle, the most clean bars, or the first
-  to press a record?
+- Which of the two is the default, and whether the names "Own ladder" and
+  "Relay" are right (placeholders).
+- Do the hurdles in a group game use the same song spots as solo, or random
+  spots so the next player can't just copy what they heard?
