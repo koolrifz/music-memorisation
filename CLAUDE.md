@@ -3083,3 +3083,22 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   Multiplayer "pass the iPad" is an idea: `ideas/pass-the-ipad.md` (Rob:
   one question, "how many are playing?" (default 1); Player 1, Player 2; a
   relay where the next player takes the missed hurdle; not about winning).
+- **THE RUN: the levels hidden, one take at a time** (Rob, 2026-10-23:
+  *"progress through the levels if it's one take... hide the levels. Just
+  keep them coming until they can't play them anymore. Then that's when they
+  have to hop out"*). The song's menu is now one question, **how many are
+  playing** (1 to 4, default 1), **Let's go!** and Free play; the named
+  hurdles and records show only with the teacher's Open code. The ladder
+  (`KRStompSong.runLadder`, `run.levels` in `content/stomp-songs.js`): one
+  bar and two bars on the beat, then **every 4/4 Stomp Lab level in order,
+  two bars then four**, each rhythm freshly made by `generateRstompPhrase` on
+  the level's own grid and drawn by `renderRstompStaff`; 6/8 is left out.
+  Past the top the last step repeats with new rhythms. Two bars must be clean,
+  four allow a slip (`pass` 0.85). A clean take rolls the next on its own
+  after `SSONG_RUN_NEXT_MS`, at a fresh spot in the song (`runSpots`,
+  `pickSpot`). One player: a miss ends the run, with **Learn this rhythm**
+  opening Stomp Lab on that level (if it is open there). More players: the
+  relay (`runTake`); the run ends when every player has missed in a row.
+  Best run kept per device (`progress.run`). Stomp Lab's specs carry no slot,
+  so they are numbered on the way in; dots sit on each note's own notehead.
+

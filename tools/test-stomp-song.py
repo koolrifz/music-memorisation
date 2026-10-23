@@ -28,7 +28,9 @@ TAP = """async ({shift, extra}) => {
     const pad = document.querySelector('#ssong-pad .krpad');
     const times = ssong.plan.onsets.map(o => o.t).concat(extra || []);
     times.forEach(t => {
-        const wait = (ssong.punchClock + t + shift - ctx.currentTime) * 1000;
+        // The device delay is taken off every tap, so a tap meant to land on
+        // the note is sent that much later, as a real player's would be.
+        const wait = (ssong.punchClock + t + shift + ssong.delay.delay - ctx.currentTime) * 1000;
         if (wait < 0) return;
         setTimeout(() => {
             pad.dispatchEvent(new PointerEvent('pointerdown', {pointerId: 9, bubbles: true}));
@@ -110,6 +112,60 @@ def main():
         page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
         g = page.evaluate('window.ssongLast')
         check('a stray tap spoils the take', not g['passed'] and not g['grade']['perfect'])
+
+        # THE RUN: every step of the ladder plans and draws (the whole Stomp Lab engine)
+        page.click('#view-beat .btn-back')
+        page.wait_for_selector('#ssong-screen-menu.active', timeout=4000)
+        check('the run: one question, how many playing, 1 by default',
+              page.evaluate("document.querySelector('.ssong-player-chip.on').dataset.players") == '1')
+        sweep = page.evaluate("""() => {
+            ssongOpenRun(); ssongHalt(); ssong.mode = 'run';
+            const bad = [];
+            for (let i = 0; i < ssong.ladder.length; i++) {
+                ssong.run.step = i;
+                try { ssongPrepareRun(); } catch (e) { bad.push(i + ':' + e.message); continue; }
+                const svg = document.querySelectorAll('#ssong-reading svg').length;
+                if (!svg || !ssong.plan.onsets.length || ssong.layout.length !== ssong.plan.bars) bad.push(i + ':empty');
+                if (ssong.plan.from + ssong.plan.bars > KRStompSong.totalBars(ssong.beats)) bad.push(i + ':spot');
+            }
+            ssong.run.step = 0; ssongPrepareRun();
+            return [ssong.ladder.length, bad];
+        }""")
+        check('every ladder step plans and draws', not sweep[1] and sweep[0] > 50, sweep)
+        check('no level name on the run screen', page.inner_text('#ssong-label').startswith('Take'), page.inner_text('#ssong-label'))
+        check('no guide button in the run', page.evaluate("document.getElementById('ssong-guide').offsetParent === null"))
+        page.click('#ssong-go')
+        page.evaluate(TAP, {'shift': 0.02})
+        page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
+        check('a clean take moves the run on', page.evaluate('ssong.run.step') == 1 and page.evaluate('window.ssongLast.passed'))
+        page.wait_for_function("ssong.state === 'lead' || ssong.state === 'rec'", timeout=8000)
+        check('and the next take rolls on its own', page.evaluate('ssong.run.takes') == 1)
+        page.evaluate(TAP, {'shift': 0.02, 'extra': [0.25]})   # a stray between beats
+        page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
+        check('one player: a miss ends the run', page.evaluate('ssong.run.over'))
+        txt = page.inner_text('#ssong-result')
+        check('the end says how far, and offers to go again', 'run' in txt.lower() and page.locator('#ssong-result-actions button').count() >= 2, txt)
+        # a quaver level plays clean too
+        page.evaluate("ssongOpenRun(); ssongHalt(); ssong.mode = 'run'; ssong.run.step = ssong.ladder.findIndex(s => s.levelId === '10'); ssongPrepareRun()")
+        page.click('#ssong-go')
+        page.evaluate(TAP, {'shift': 0.01})
+        page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
+        g = page.evaluate('window.ssongLast')
+        check('a quaver level (B1) taken clean passes', g['passed'], (g['grade']['hits'], g['grade']['notes'], g['grade']['issues'][:2]))
+        gap = page.evaluate("""() => {
+            const heads = [...document.querySelectorAll('#ssong-reading .vf-notehead')].map(h => { const r = h.getBoundingClientRect(); return r.left + r.width / 2; });
+            const dots = [...document.querySelectorAll('#ssong-reading .ssong-dot:not(.stray)')].map(d => { const r = d.getBoundingClientRect(); return r.left + r.width / 2; });
+            if (!heads.length || !dots.length) return [heads.length, dots.length];
+            return Math.max(...dots.map(d => Math.min(...heads.map(h => Math.abs(h - d)))));
+        }""")
+        check('quaver dots under their noteheads (within 2 px)', isinstance(gap, (int, float)) and gap <= 2, gap)
+        page.evaluate("ssongCancelNext(); ssongHalt()")
+        # the relay
+        r = page.evaluate("""() => { ssong.settings.players = 2; ssongOpenRun(); ssongHalt(); ssong.mode = 'run';
+            const g = KRStompSong.grade(ssong.plan, []); ssongEndTake(g); const out = KRStompSong.runTake(ssong.run, false);
+            ssongShowRunResult(g, false, out); return [out.next, ssong.run.player, ssongEl('ssong-result-actions').innerText]; }""")
+        check('two players: a miss hands over to Player 2', r[0] == 'turn' and r[1] == 1 and '2' in r[2], r)
+        page.evaluate("ssong.settings.players = 1; ssongSave(); ssongOpenHurdle(0, 0, null)")
 
         # Back goes to the menu, then to the chooser
         page.click('#view-beat .btn-back')

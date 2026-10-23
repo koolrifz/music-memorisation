@@ -2040,3 +2040,9 @@ button.vsmash-tile:active { transform: translateY(2px); }
 .ssong-wait.shake .ssong-wait-sign { animation: ssong-shake 0.4s ease-in-out; }
 @keyframes ssong-shake { 20% { transform: rotate(-12deg); } 50% { transform: rotate(10deg); } 80% { transform: rotate(-6deg); } }
 .ssong-waiting .krpad { opacity: 0.45; }
+/* Stomp the Beat: the run's one question, how many are playing. */
+.ssong-players-q { margin: 6px 0 0; text-align: center; font-weight: 900; color: white; }
+.ssong-players { display: flex; justify-content: center; gap: 10px; }
+.ssong-player-chip { width: 56px; height: 56px; border-radius: 50%; border: 3px solid #3f556c; background: #1b2530; color: white; font-weight: 900; font-size: 22px; cursor: pointer; }
+.ssong-player-chip.on { border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(255,200,0,0.6); }
+.ssong-run-go { font-size: 26px; min-height: 64px; }

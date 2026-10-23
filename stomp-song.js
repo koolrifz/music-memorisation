@@ -40,6 +40,9 @@ const SSONG_GUIDE_GAIN = 0.5;        // the guide: soft and round, under the ban
 const SSONG_STUDENT_GAIN = 1.0;      // the student's kick: bright, on top
 const SSONG_END_FADE = 0.8;          // seconds: the song fades out at the end of a take, and when Stop is pressed
 const SSONG_HEAD_HALF = 6;           // half a notehead, px: a beat is drawn at its notehead's centre
+const SSONG_RUN_NEXT_MS = 2500;     // after a clean take in a run, the next one rolls on its own
+const SSONG_MAX_PLAYERS = 4;
+const SSONG_CROTCHET_GRID = { slotsPerBar: 4, slotValue: 'q', slotsPerBeat: 1, beamSlots: 1 };
 const SSONG_ANTICIPATE = 0.25;       // beats before the punch-in a tap is beat 1, early; sooner is too soon
 
 let ssong = null;                    // what the screen in front of the student is doing
@@ -75,7 +78,7 @@ function ssongSave() {
 }
 
 function ssongLoadSettings() {
-    return Object.assign({ guide: false, freeGuide: true }, ssongStorage().settings);
+    return Object.assign({ guide: false, freeGuide: true, players: 1 }, ssongStorage().settings);
 }
 
 /* ---------- the sounds ---------- */
@@ -195,6 +198,7 @@ function showStompSong(id) {
 // Stop everything this song is doing: sounds, the frame loop, the pad.
 function ssongHalt(fade) {
     if (!ssong) return;
+    ssongCancelNext();
     if (ssong.frame) cancelAnimationFrame(ssong.frame);
     ssong.frame = 0;
     ssongStopSound(fade);
@@ -244,12 +248,32 @@ function ssongRenderMenu() {
     const song = ssong.song, progress = ssong.progress;
     const open = KR.openAll();
 
-    const free = ssongMake('button', 'kr-btn kr-btn-go ssong-free', body); // text-ok
+    // THE RUN (Rob, 2026-10-23): one question, how many are playing (1 to
+    // start), then go. The levels are hidden: the takes just keep coming.
+    ssongMake('p', 'ssong-players-q', body).textContent = KR.t('ssong.run.players');
+    const players = ssongMake('div', 'ssong-players', body);
+    for (let n = 1; n <= SSONG_MAX_PLAYERS; n++) {
+        const chip = ssongMake('button', 'ssong-player-chip', players);
+        chip.type = 'button';
+        chip.textContent = String(n);
+        chip.dataset.players = String(n);
+        chip.classList.toggle('on', ssong.settings.players === n);
+        chip.onclick = () => { ssong.settings.players = n; ssongSave(); ssongRenderMenu(); };
+    }
+    const go = ssongMake('button', 'kr-btn kr-btn-go ssong-run-go', body); // text-ok
+    go.type = 'button';
+    go.textContent = KR.t('ssong.run.go');
+    go.onclick = () => ssongOpenRun();
+    if (progress.run && progress.run.best) ssongMake('p', 'ssong-sub', body).textContent = KR.t('ssong.run.best', { n: progress.run.best });
+
+    const free = ssongMake('button', 'btn btn-secondary ssong-free', body); // text-ok
     free.type = 'button';
     free.textContent = KR.t('ssong.menu.free');
     free.onclick = () => ssongOpenFree();
     ssongMake('p', 'ssong-sub', body).textContent = KR.t('ssong.menu.free.sub');
 
+    // The hurdles by name, and the records: the teacher's, with the Open code.
+    if (!open) return;
     song.rounds.forEach((round, ri) => {
         const title = ssongMake('h2', 'ssong-round', body);
         title.textContent = round.rests
@@ -328,6 +352,7 @@ function ssongOpenHurdle(ri, hi, sessionId) {
 
 // Choose where in the song and what to play, plan it, draw it.
 function ssongPrepareAttempt() {
+    if (ssong.mode === 'run') return ssongPrepareRun();
     const st = KRStompSong.hurdleState(ssong.progress, ssong.round.id, ssong.hurdle.id);
     const hurdle = ssong.hurdle;
     let from, pattern;
@@ -339,6 +364,7 @@ function ssongPrepareAttempt() {
         pattern = KRStompSong.patternFor({ bars: hurdle.bars, rests: ssong.round.rests, attempt: st.attempts });
     }
     ssong.plan = KRStompSong.plan(ssong.beats, { from: from, bars: hurdle.bars, pattern: pattern });
+    ssong.notation = { specBars: pattern.map(ssongSpecs), grid: SSONG_CROTCHET_GRID };
     ssong.taps = [];
     ssong.result = null;
     ssongShowPlay('hurdle');
@@ -355,6 +381,7 @@ function ssongShowPlay(mode) {
     ssongEl('ssong-summary').hidden = true;
     const label = ssongEl('ssong-label');
     if (free) label.textContent = KR.t('ssong.free.label');
+    else if (mode === 'run') label.textContent = ssongRunLabel();
     else label.textContent = ssong.hurdle.record
         ? KR.t('ssong.session.' + ssong.session)
         : ssongHurdleName(ssong.hurdle) + ' · ' + KR.t(ssong.round.rests ? 'ssong.round.short.rests' : 'ssong.round.short.notes');
@@ -387,9 +414,10 @@ function ssongBuildPad() {
 
 // Stomp Lab's grid is four globals that renderRstompStaff reads when it is
 // called, so each call sets Stage A's grid and puts back what was there.
-function ssongWithGrid(fn) {
+function ssongWithGrid(fn, grid) {
+    const g = grid || (ssong && ssong.notation ? ssong.notation.grid : SSONG_CROTCHET_GRID);
     const saved = [rstompSlotsPerBar, rstompSlotValue, rstompSlotsPerBeat, rstompBeamSlots];
-    rstompSlotsPerBar = 4; rstompSlotValue = 'q'; rstompSlotsPerBeat = 1; rstompBeamSlots = 1;
+    rstompSlotsPerBar = g.slotsPerBar; rstompSlotValue = g.slotValue; rstompSlotsPerBeat = g.slotsPerBeat; rstompBeamSlots = g.beamSlots;
     try { return fn(); } finally { [rstompSlotsPerBar, rstompSlotValue, rstompSlotsPerBeat, rstompBeamSlots] = saved; }
 }
 
@@ -408,11 +436,13 @@ function ssongRenderReading() {
     const p = ssong.plan;
     ssong.layout = [];
     const width = Math.max(240, reading.clientWidth || 340);
-    const perLine = Math.min(p.bars, width < 560 ? 2 : 4);
-    const perBar = Math.min(300, Math.floor((width - 16) / perLine));
+    const grid = ssong.notation.grid;
+    const dense = grid.slotsPerBar > 4;                     // quavers and semiquavers want a bar to a line on a phone
+    const perLine = Math.min(p.bars, width < 560 ? (dense ? 1 : 2) : (dense ? 2 : 4));
+    const perBar = Math.min(dense ? 560 : 300, Math.floor((width - 16) / perLine));
     const lines = [];
     for (let first = 0; first < p.bars; first += perLine) {
-        const lineBars = p.pattern.slice(first, first + perLine);
+        const lineBars = ssong.notation.specBars.slice(first, first + perLine);
         const line = ssongMake('div', 'bsmash-line', reading);
         lines.push(line);
         const marks = ssongMake('div', 'bsmash-marks', line);
@@ -423,7 +453,7 @@ function ssongRenderReading() {
         paper.style.width = (perBar * lineBars.length + 8) + 'px';
         marks.style.width = under.style.width = paper.style.width;
         const lastLine = first + perLine >= p.bars;
-        const drawn = ssongWithGrid(() => renderRstompStaff(staff, lineBars.map(ssongSpecs), perBar, { finalBar: lastLine }));
+        const drawn = ssongWithGrid(() => renderRstompStaff(staff, lineBars, perBar, { finalBar: lastLine }));
         const playhead = ssongMake('div', 'ssong-playhead', paper);
         playhead.hidden = true;
         drawn.forEach((layout, i) => {
@@ -431,15 +461,25 @@ function ssongRenderReading() {
             // the inset every note is drawn at, plus half a notehead. The dots
             // and the playhead ride this, so they sit under the notes (Rob,
             // 2026-10-23: the dots were left of the crotchets).
-            const inset = ssongWithGrid(() => layout.noteX[0] - layout.pulseX(0));
+            // A whole-bar rest hangs in the middle of the bar, so the inset is
+            // read off the first glyph that sits on its own slot.
+            const specs = lineBars[i];
+            const own = specs.findIndex(sp => !sp.isRest);
+            const inset = own >= 0 && layout.noteX[own] != null
+                ? ssongWithGrid(() => layout.noteX[own] - layout.pulseX(specs[own].slot)) : 12;
             ssong.layout[first + i] = {
-                x: beat => ssongWithGrid(() => layout.pulseX(beat)) + inset + SSONG_HEAD_HALF,
+                x: beat => ssongWithGrid(() => layout.pulseX(beat * grid.slotsPerBeat)) + inset + SSONG_HEAD_HALF,
+                // A note's own notehead, where there is one starting on that beat.
+                head: beat => {
+                    const k = specs.findIndex(sp => !sp.isRest && Math.abs(sp.slot - beat * grid.slotsPerBeat) < 1e-6);
+                    return k >= 0 && layout.noteX[k] != null ? layout.noteX[k] + SSONG_HEAD_HALF : null;
+                },
                 paper, under, playhead, line, lineIndex: lines.length - 1,
             };
         });
     }
     const phoneLines = window.innerHeight < 700 ? 3 : SSONG_PAGE_LINES_PHONE;
-    ssong.page = { lines: lines, perLine: perLine, size: Math.min(lines.length, perLine === 2 ? phoneLines : SSONG_PAGE_LINES_WIDE), at: -1 };
+    ssong.page = { lines: lines, perLine: perLine, size: Math.min(lines.length, width < 560 ? phoneLines : SSONG_PAGE_LINES_WIDE), at: -1 };
     ssongTurnPage(0);
 }
 
@@ -455,12 +495,7 @@ function ssongTurnPage(lineIndex) {
 // x on a bar's paper at a fractional beat, interpolating between the notation's
 // own slot positions so the playhead glides instead of jumping.
 function ssongX(bar, beat) {
-    const lay = ssong.layout[bar];
-    const b = Math.max(0, Math.min(3.999, beat));
-    const k = Math.floor(b), f = b - k;
-    const x0 = lay.x(k);
-    const x1 = k < 3 ? lay.x(k + 1) : x0 + (x0 - lay.x(2));
-    return x0 + f * (x1 - x0);
+    return ssong.layout[bar].x(Math.max(0, Math.min(3.999, beat)));
 }
 
 /* ---------- rolling tape: one attempt ---------- */
@@ -476,7 +511,7 @@ function ssongSetState(state) {
     go.textContent = KR.t(free ? 'ssong.free.go' : 'ssong.go');
     stop.hidden = !(state === 'lead' || state === 'rec' || state === 'playing');
     stop.textContent = KR.t(free ? 'ssong.free.stop' : 'ssong.stop');
-    ssongEl('ssong-guide').hidden = !(state === 'ready' || (free && state === 'playing'));
+    ssongEl('ssong-guide').hidden = ssong.mode === 'run' || !(state === 'ready' || (free && state === 'playing'));
     ssongShowWait(state === 'lead');
 }
 
@@ -501,7 +536,7 @@ function ssongStartAttempt() {
     const p = ssong.plan, beats = ssong.beats;
     ssong.delay = typeof rstompRoundDelay === 'function' ? rstompRoundDelay() : { delay: 0, source: 'none' };
     ssong.taps = [];
-    ssong.guided = !!ssong.settings.guide;
+    ssong.guided = ssong.mode !== 'run' && !!ssong.settings.guide;
     ssong.sources = [];
     // The song's clock on the audio clock: a time t in the file sounds at
     // clockOf(t). The hurdle's punch-in is the origin of every note and tap.
@@ -618,6 +653,7 @@ function ssongFrame() {
 
 function ssongJudge() {
     if (ssong.state === 'result') return;
+    if (ssong.mode === 'run') return ssongJudgeRun();
     const p = ssong.plan, hurdle = ssong.hurdle;
     const g = KRStompSong.grade(p, ssong.taps, { windowSec: SSONG_WINDOW });
     const passed = KRStompSong.passes(g, hurdle.pass);
@@ -625,6 +661,12 @@ function ssongJudge() {
         { passed: passed, guided: ssong.guided, pct: g.pct, session: ssong.session });
     ssongSave();
     window.ssongLast = { grade: g, passed: passed, applied: applied, plan: p, taps: ssong.taps.slice() };
+    ssongEndTake(g);
+    ssongShowResult(g, passed, applied);
+}
+
+// The take is over: the song fades, the playhead goes, the marks go on.
+function ssongEndTake(g) {
     ssongStopSound(SSONG_END_FADE);
     if (ssong.frame) cancelAnimationFrame(ssong.frame);
     ssong.frame = 0;
@@ -634,7 +676,6 @@ function ssongJudge() {
     ssong.state = 'result';
     ssongSetState('result');
     ssongMarkTake(g);
-    ssongShowResult(g, passed, applied);
 }
 
 // Under the notation: a dot for every note (green played, gold a little off,
@@ -647,7 +688,8 @@ function ssongMarkTake(g) {
     p.onsets.forEach(o => {
         const l = ssong.layout[o.bar];
         const dot = ssongMake('span', 'ssong-dot', l.under);
-        dot.style.left = (ssongX(o.bar, o.beat) - 4) + 'px';
+        const head = ssong.layout[o.bar].head(o.beat);
+        dot.style.left = ((head != null ? head : ssongX(o.bar, o.beat)) - 4) + 'px';
         if (o.id in hitErr) dot.classList.add(Math.abs(hitErr[o.id]) * 1000 > 60 ? 'off' : 'ok');
         else dot.classList.add('miss');
     });
@@ -796,4 +838,160 @@ function ssongStopPressed() {
     if (ssong.mode === 'free') { ssongEndFree(); return; }
     ssongHalt(SSONG_END_FADE);
     ssongPrepareAttempt();
+}
+
+/* =========================================
+   THE RUN: one take at a time, the levels hidden, until a miss
+   =========================================
+   Rob, 2026-10-23: "progress through the levels if it's one take... hide the
+   levels. Just keep them coming until they can't play them anymore. Then
+   that's when they have to hop out." The ladder is the whole Stomp Lab engine:
+   a warm-up on the beat, then every 4/4 level in order (content/stomp-songs.js
+   run.levels), two bars and then four, each rhythm freshly generated by
+   generateRstompPhrase and drawn by renderRstompStaff on that level's grid.
+   One clean take moves on; four bars allow a slip (the step's pass).
+   With more than one player it is the relay (ideas/pass-the-ipad.md): a miss
+   passes the iPad and the next player takes the step that was missed; the
+   run ends when every player has missed it in a row. Nobody wins.
+   ========================================= */
+
+function ssongOpenRun() {
+    ssongHalt();
+    ssong.mode = 'run';
+    ssong.ladder = KRStompSong.runLadder(ssong.song.run.levels);
+    ssong.run = KRStompSong.newRun(ssong.settings.players);
+    ssong.lastSpot = null;
+    switchScreenState('beat', 'ssong-screen-play');
+    ssongPrepareRun();
+    ssongEvent(ssong.run.players > 1 ? 'ssong.run.intro.many' : 'ssong.run.intro', { n: ssong.run.players });
+}
+
+function ssongRunLabel() {
+    const take = ssong.run.takes + 1;
+    return ssong.run.players > 1
+        ? KR.t('ssong.run.label.many', { player: ssong.run.player + 1, take: take })
+        : KR.t('ssong.run.label', { take: take });
+}
+
+// The step's rhythm: plain crotchets for the warm-up, else a phrase from the
+// step's Stomp Lab level, generated on that level's own grid.
+function ssongRunNotation(step) {
+    if (!step.levelId) {
+        const pattern = KRStompSong.patternFor({ bars: step.bars });
+        return { specBars: pattern.map(ssongSpecs), grid: SSONG_CROTCHET_GRID, pattern: pattern };
+    }
+    const base = RSTOMP_LEVELS.find(l => l.id === step.levelId);
+    const level = Object.assign({}, base, { bars: step.bars });
+    const g = rstompGridFor(level);
+    const grid = { slotsPerBar: g.slotsPerBar, slotValue: g.slotValue, slotsPerBeat: g.slotsPerBeat, beamSlots: g.beamSlots || g.slotsPerBeat };
+    // Stomp Lab's specs carry no slot of their own: number them in the bar,
+    // so a note can be found by where it starts.
+    const specBars = ssongWithGrid(() => generateRstompPhrase(level), grid).map(bar => {
+        let at = 0;
+        return bar.map(sp => { const out = Object.assign({}, sp, { slot: at }); at += sp.slots; return out; });
+    });
+    const slotBars = ssongWithGrid(() => rstompSpecsToPhrase(specBars), grid);
+    return { specBars: specBars, grid: grid, slotBars: slotBars };
+}
+
+function ssongPrepareRun() {
+    ssongCancelNext();
+    const step = KRStompSong.runStep(ssong.ladder, ssong.run.step);
+    ssong.step = step;
+    const spots = KRStompSong.runSpots(KRStompSong.totalBars(ssong.beats), step.bars);
+    const from = KRStompSong.pickSpot(spots, ssong.lastSpot);
+    ssong.lastSpot = from;
+    const notation = ssongRunNotation(step);
+    ssong.notation = notation;
+    ssong.plan = notation.slotBars
+        ? KRStompSong.plan(ssong.beats, { from: from, bars: step.bars, slotBars: notation.slotBars, slotsPerBeat: notation.grid.slotsPerBeat })
+        : KRStompSong.plan(ssong.beats, { from: from, bars: step.bars, pattern: notation.pattern });
+    ssong.taps = [];
+    ssong.result = null;
+    ssongShowPlay('run');
+    ssongRenderReading();
+    ssongSetState('ready');
+}
+
+function ssongJudgeRun() {
+    const p = ssong.plan, step = ssong.step, run = ssong.run;
+    const g = KRStompSong.grade(p, ssong.taps, { windowSec: SSONG_WINDOW });
+    const passed = KRStompSong.passes(g, step.pass);
+    const out = KRStompSong.runTake(run, passed);
+    const progress = ssong.progress;
+    progress.run = progress.run || { best: 0, runs: 0 };
+    if (out.next === 'over') progress.run.runs++;
+    progress.run.best = Math.max(progress.run.best || 0, run.cleared);
+    ssongSave();
+    window.ssongLast = { grade: g, passed: passed, run: Object.assign({}, run), plan: p, step: step, taps: ssong.taps.slice() };
+    ssongEndTake(g);
+    ssongShowRunResult(g, passed, out);
+}
+
+function ssongShowRunResult(g, passed, out) {
+    const run = ssong.run;
+    const box = ssongEl('ssong-result');
+    box.hidden = false;
+    const lines = ssongEl('ssong-result-lines');
+    lines.innerHTML = '';
+    const add = text => { ssongMake('li', '', lines).textContent = text; };
+    const actions = ssongEl('ssong-result-actions');
+    actions.innerHTML = '';
+    const button = (cls, text, fn) => {
+        const b = ssongMake('button', 'btn ' + cls, actions);
+        b.type = 'button'; b.textContent = text; b.onclick = () => { ssongCancelNext(); fn(); }; return b;
+    };
+    const head = ssongEl('ssong-result-head');
+    if (out.next === 'same') {
+        head.textContent = KR.t(g.perfect ? 'ssong.result.clean' : 'ssong.result.pass');
+        add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
+        button('btn-start', KR.t('ssong.run.next'), ssongRunNext);
+        ssongEvent('ssong.run.pass');
+        playSound('correct');
+        // Keep them coming: the next take rolls on its own.
+        ssong.nextTimer = setTimeout(ssongRunNext, SSONG_RUN_NEXT_MS);
+        return;
+    }
+    playSound('wrong');
+    if (g.first) add(KR.t('ssong.why.' + g.first.why, { bar: g.first.bar + 1 }));
+    else add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
+    if (out.next === 'turn') {
+        head.textContent = KR.t('ssong.result.cut');
+        button('btn-start', KR.t('ssong.run.turn', { n: out.player + 1 }), ssongRunNext);
+        ssongEvent('ssong.run.turn', { n: out.player + 1 });
+        return;
+    }
+    // The run is over: how far the band got, and somewhere to learn the
+    // rhythm that stopped it (Rob: "we have all these resources for counting
+    // and Stomp Lab").
+    head.textContent = KR.t('ssong.run.over');
+    add(KR.t('ssong.run.cleared', { n: run.cleared }));
+    if (run.players > 1) {
+        const best = run.furthest.indexOf(Math.max.apply(null, run.furthest));
+        add(KR.t('ssong.run.furthest', { n: best + 1 }));
+    }
+    add(KR.t('ssong.run.best', { n: ssong.progress.run.best }));
+    button('btn-start', KR.t('ssong.run.again'), () => ssongOpenRun());
+    if (ssong.step.levelId) button('btn-secondary', KR.t('ssong.run.learn'), () => ssongLearn(ssong.step.levelId));
+    button('btn-secondary', KR.t('ssong.menu'), () => ssongToMenu());
+    ssongEvent('ssong.run.end', { n: run.cleared });
+}
+
+function ssongRunNext() {
+    ssongCancelNext();
+    if (!ssong || ssong.mode !== 'run') return;
+    ssongPrepareRun();
+    ssongRoll();
+}
+
+function ssongCancelNext() {
+    if (ssong && ssong.nextTimer) { clearTimeout(ssong.nextTimer); ssong.nextTimer = 0; }
+}
+
+// Over to Stomp Lab, on the level that stopped the run if it is open there.
+function ssongLearn(levelId) {
+    ssongHalt();
+    ssong = null;
+    launchGame('view-rhythm-lab');
+    if (typeof selectRstompLevel === 'function') selectRstompLevel(levelId);
 }
