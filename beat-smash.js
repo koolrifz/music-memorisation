@@ -1513,6 +1513,7 @@ function leaveBeatSmash() {
 
 function handleBeatBackButton() {
     const active = document.querySelector('#view-beat .screen.active');
+    if (typeof ssongHandleBack === 'function' && ssongHandleBack(active)) return;
     const onPathway = active && active.id === 'beat-screen-pathway';
     if (bsmash && bsmash.picker && !bsmash.picker.locked) bsmashKeepPart(true);
     if (onPathway) leaveBeatSmash();
@@ -2638,6 +2639,16 @@ function bsmashRenderSongs() {
             add: () => addBeatSong(id),
         });
         card.onclick = () => { if (!bsmashJustDropped(card)) auditionBeatSong(id); };
+    });
+    // The recorded song: not built into a band, played in the studio with hurdles.
+    Object.keys(KR.stompSongs || {}).forEach(id => {
+        const card = bsmashMake('button', 'bsmash-song-card ssong-tile', box); // text-ok: class names
+        card.type = 'button';
+        card.dataset.stompSong = id;
+        bsmashMake('span', 'bsmash-song-icon', card).textContent = '🥁';
+        bsmashMake('span', 'bsmash-song-name', card).textContent = KR.t('ssong.title');
+        bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t('ssong.tile');
+        card.onclick = () => showStompSong(id);
     });
 }
 

@@ -941,6 +941,51 @@
         <button class="btn btn-secondary" onclick="showBeatPathway()" data-text="beat.jam.menu"></button>
     </div>
 
+
+    <!-- STOMP THE BEAT, the song (stomp-song.js): its menu and its takes. -->
+    <div id="ssong-screen-menu" class="screen">
+        <div class="kr-guide" id="ssong-menu-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <h2 class="bsmash-picker-title" data-text="ssong.title"></h2>
+        <div class="ssong-menu" id="ssong-menu-body"></div>
+    </div>
+
+    <div id="ssong-screen-play" class="screen ssong-play">
+        <div class="kr-guide" id="ssong-play-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <div class="bsmash-top">
+            <span class="ssong-label" id="ssong-label"></span>
+            <span class="bsmash-stars" id="ssong-stars"></span>
+            <span class="bsmash-rec" id="ssong-rec" data-text="beat.rec"></span>
+        </div>
+        <div class="ssong-count" id="ssong-count"></div>
+        <div class="bsmash-reading ssong-reading" id="ssong-reading"></div>
+        <div class="ssong-result" id="ssong-result" hidden>
+            <h3 id="ssong-result-head"></h3>
+            <ul id="ssong-result-lines"></ul>
+            <div class="bsmash-actions" id="ssong-result-actions"></div>
+        </div>
+        <div class="ssong-result" id="ssong-summary" hidden>
+            <h3 id="ssong-summary-head"></h3>
+            <ul id="ssong-summary-lines"></ul>
+            <p id="ssong-summary-focus"></p>
+            <div class="bsmash-actions">
+                <button class="btn btn-start" onclick="ssongOpenFree()" data-text="ssong.free.go"></button>
+                <button class="btn btn-secondary" onclick="ssongToMenu()" data-text="ssong.menu"></button>
+            </div>
+        </div>
+        <div class="bsmash-actions">
+            <button class="kr-btn kr-btn-go" id="ssong-go" onclick="ssongRoll()"></button>
+            <button class="btn btn-secondary" id="ssong-stop" hidden onclick="ssongStopPressed()"></button>
+            <button class="btn btn-secondary ssong-guide-btn" id="ssong-guide"></button>
+        </div>
+        <div class="krpads" id="ssong-pad"></div>
+    </div>
+
     <!-- The Learner's Permit (brief §10, §15): the booth passed. -->
     <div id="beat-screen-permit" class="screen">
         <div class="kr-guide" id="beat-permit-guide">
@@ -1048,6 +1093,10 @@
 <script src="beat-smash-band.js?v=20261022a"></script>
 <script src="beat-pads.js?v=20261022a"></script>
 <script src="beat-smash.js?v=20261022a"></script>
+<script src="stomp-song-core.js?v=20261022a"></script>
+<script src="content/stomp-songs.js?v=20261022a"></script>
+<script src="content/stomp-the-beat-beats.js?v=20261022a"></script>
+<script src="stomp-song.js?v=20261022a"></script>
 <script src="dashboard.js?v=20261022a"></script>
 <script src="studio.js?v=20261022a"></script>
 <script src="tools.js?v=20261022a"></script>
