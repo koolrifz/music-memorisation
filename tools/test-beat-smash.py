@@ -2120,7 +2120,7 @@ def test_teacher_codes(page):
     page.wait_for_timeout(400)
     chips = page.evaluate("[...document.querySelectorAll('#beat-steps .bsmash-chip')].map(c => c.textContent)")
     check('...Beat Smash: every step open (the one being worked on with its stars)',
-          chips == ['One bar ☆☆☆', 'Two bars', 'Four bars', 'Eight bars', 'The studio'], chips)
+          chips == ['One bar ☆☆', 'Two bars', 'Four bars', 'Eight bars', 'The studio'], chips)
     closed = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .kr-track')].filter(n => n.disabled).length")
     check('...and every musician', closed == 0, closed)
     stats = page.inner_text('#beat-stats')
