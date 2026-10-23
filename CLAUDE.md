@@ -3078,3 +3078,6 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   from Roll tape until the count, a dot per bar to go, then a red 1 2 3 4; a
   tap before beat 1 (less `SSONG_ANTICIPATE`) does nothing to the take, shakes
   the sign and Tango says so once. Back goes up one level at a time.
+- **The song fades out** (`SSONG_END_FADE`, 0.8 s) at the end of every take,
+  at the end of free play and on Stop, guide kicks included (Rob, 2026-10-23).
+  Multiplayer "pass the iPad" is an idea: `ideas/pass-the-ipad.md`.
