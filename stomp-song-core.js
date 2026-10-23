@@ -374,7 +374,8 @@
         const st = hurdleState(progress, roundId, hurdle.id);
         st.attempts++;
         st.best = Math.max(st.best, Math.round(100 * (outcome.pct || 0)));
-        const result = { stars: st.stars, cleared: false, newlyCleared: false, record: null, counted: !outcome.guided };
+        const result = { stars: st.stars, cleared: false, newlyCleared: false, record: null, counted: !outcome.guided,
+                         wasOwed: needed(st) === NEEDS, needed: needed(st) };
         if (outcome.guided) return result;
         if (!outcome.passed) { st.stars = 0; st.owed = true; result.stars = 0; return result; }
         if (hurdle.record) {

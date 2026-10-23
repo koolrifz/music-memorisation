@@ -769,9 +769,18 @@ function ssongShowResult(g, passed, applied) {
     button('btn-secondary', 'ssong.menu', () => ssongToMenu());
 
     // The coach.
-    if (applied.record) ssongEvent('ssong.record.' + applied.record);
-    else if (applied.newlyCleared) ssongEvent('ssong.cleared');
+    if (applied.record) {
+        KR.lastWords = '';
+        ssongEvent('ssong.record.' + applied.record);
+        KR.celebrate({ title: KR.t('ssong.record.' + applied.record), line: KR.lastWords || '', stars: 3 });
+    }
     else if (ssong.guided) ssongEvent('ssong.take.guided');
+    // A take that counts (keeper.js): first take, or 1, 2, 3 of the three a
+    // miss costs; the one that clears the hurdle gets the celebration.
+    else if (passed && KR.keeperKind(applied.wasOwed, applied.stars, applied.needed)) {
+        KR.keeper(KR.keeperKind(applied.wasOwed, applied.stars, applied.needed), { say: ssongEvent });
+    }
+    else if (applied.newlyCleared) ssongEvent('ssong.cleared');
     else if (g.perfect) ssongEvent('ssong.take.clean');
     else if (g.pct < 0.5) ssongEvent('ssong.take.cut');
     else ssongEvent('ssong.take.close');
