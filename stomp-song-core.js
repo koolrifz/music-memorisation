@@ -142,9 +142,17 @@
     // bars of four flags) }. Everything a player needs: where to cue the song,
     // when the punch-in is, the notes to play (times RELATIVE to the punch-in)
     // and where each bar starts.
+    // spec.slotBars (optional): the bars as Stomp Lab's slot stream, each bar a
+    // list of 'play' | 'hold' | 'rest', with spec.slotsPerBeat slots to a beat.
+    // That is how a quaver or semiquaver rhythm from Stomp Lab's generator is
+    // planned; a pattern of four flags a bar is the same thing at one slot a
+    // beat. An onset may sit between beats: its time is read off the beat map
+    // in proportion, so it follows the recording's own drift.
     function plan(beats, spec) {
         const from = spec.from, bars = spec.bars;
-        const pattern = spec.pattern || patternFor({ bars: bars });
+        const pattern = spec.slotBars ? null : (spec.pattern || patternFor({ bars: bars }));
+        const slotBars = spec.slotBars || pattern.map(bar => bar.map(note => note ? 'play' : 'rest'));
+        const spb = spec.slotsPerBeat || 1;
         const cueBar = Math.max(0, from - (spec.lead == null ? LEAD_BARS : spec.lead));
         const cueBeat = cueBar * BEATS_PER_BAR;
         const punchBeat = from * BEATS_PER_BAR;
@@ -154,18 +162,77 @@
         const endAt = beatTime(beats, endBeat);
         const rel = k => beatTime(beats, punchBeat + k) - punchAt;
         const onsets = [], restBeats = [];
-        pattern.forEach((bar, b) => bar.forEach((note, i) => {
-            const k = b * BEATS_PER_BAR + i;
-            if (note) onsets.push({ id: 'b' + (b + 1) + 'n' + (i + 1), bar: b, beat: i, k: k, t: rel(k) });
-            else restBeats.push({ bar: b, beat: i, k: k, t: rel(k) });
+        slotBars.forEach((bar, b) => bar.forEach((slot, i) => {
+            const beat = i / spb;
+            const k = b * BEATS_PER_BAR + beat;
+            if (slot === 'play') onsets.push({ id: 'b' + (b + 1) + 's' + (i + 1), bar: b, beat: beat, k: k, t: rel(k) });
+            else if (slot === 'rest') restBeats.push({ bar: b, beat: beat, k: k, t: rel(k) });
         }));
         const barStarts = [];
         for (let b = 0; b <= bars; b++) barStarts.push(rel(b * BEATS_PER_BAR));
         return {
-            from, bars, pattern, cueBar, cueBeat, punchBeat, endBeat, cueAt, punchAt, endAt,
+            from, bars, pattern, slotBars, slotsPerBeat: spb, cueBar, cueBeat, punchBeat, endBeat, cueAt, punchAt, endAt,
             onsets, restBeats, barStarts, endRel: endAt - punchAt,
             beatSec: (endAt - punchAt) / (bars * BEATS_PER_BAR),
         };
+    }
+
+    /* ---------- the run: one take at a time, until a miss ---------- */
+
+    // Rob, 2026-10-23: "progress through the levels if it's one take... hide
+    // the levels. Just keep them coming until they can't play them anymore.
+    // Then that's when they have to hop out."
+    //
+    // The ladder: a warm-up on the beat (one bar, then two), then every Stomp
+    // Lab level in its 4/4 order, two bars and then four. levelId null is
+    // plain crotchets. Past the top the last step repeats with fresh rhythms,
+    // so a run never runs out.
+    function runLadder(levelIds) {
+        const steps = [{ levelId: null, bars: 1 }, { levelId: null, bars: 2 }];
+        levelIds.forEach(id => { steps.push({ levelId: id, bars: 2 }, { levelId: id, bars: 4 }); });
+        return steps.map((st, i) => Object.assign({ index: i, pass: st.bars <= 2 ? 1 : 0.85 }, st));
+    }
+
+    function runStep(ladder, index) { return ladder[Math.min(index, ladder.length - 1)]; }
+
+    // Where in the song a take may sit: the start of a two-bar phrase, with the
+    // lead before it and the take's bars after it inside the song. Never the
+    // same spot twice running.
+    function runSpots(total, bars, lead) {
+        const out = [];
+        const first = Math.max(1, (lead == null ? LEAD_BARS : lead) + 1);
+        for (let b = first; b + bars <= total; b++) if ((b - 1) % 2 === 0) out.push(b);
+        return out;
+    }
+
+    function pickSpot(spots, last, random) {
+        const pool = spots.length > 1 ? spots.filter(b => b !== last) : spots;
+        return pool[Math.floor((random || Math.random)() * pool.length)];
+    }
+
+    // A run's state, and what one take does to it. One player: a miss ends the
+    // run. More: the relay (Rob, 2026-10-23) - a miss passes the iPad, and the
+    // next player takes the very step that was missed; the run ends when every
+    // player has missed it in a row. Nobody wins: the band gets as far as it
+    // gets.
+    function newRun(players) {
+        return { players: Math.max(1, players | 0), step: 0, player: 0, cleared: 0, takes: 0,
+                 missStreak: 0, over: false, furthest: new Array(Math.max(1, players | 0)).fill(0) };
+    }
+
+    function runTake(run, passed) {
+        run.takes++;
+        if (passed) {
+            run.cleared++;
+            run.step++;
+            run.missStreak = 0;
+            run.furthest[run.player] = Math.max(run.furthest[run.player], run.step);
+            return { next: 'same', player: run.player };
+        }
+        run.missStreak++;
+        if (run.missStreak >= run.players) { run.over = true; return { next: 'over', player: run.player }; }
+        run.player = (run.player + 1) % run.players;
+        return { next: 'turn', player: run.player };
     }
 
     // Which bar (0-based, within the attempt) a time lies in, clamped.
@@ -345,6 +412,7 @@
         BEATS_PER_BAR, LEAD_BARS, OVER_BEATS, NEEDS, REST_BARS,
         beatTime, beatAt, totalBars, rng, patternFor, recordingPattern, plan, barOf,
         grade, passes, analyseFree, blankProgress, hurdleState, applyAttempt, hurdleOpen,
+        runLadder, runStep, runSpots, pickSpot, newRun, runTake,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.KRStompSong = api;

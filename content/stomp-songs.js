@@ -44,6 +44,10 @@ KR.stompSongs['stomp-the-beat'] = {
         { id: 'final',     first: 66, last: 73 },     // the band drops out for its first bars
         { id: 'ending',    first: 74, last: 81 },
     ],
+    // The run (stomp-song.js, "THE RUN"): after a warm-up on the beat, every
+    // 4/4 Stomp Lab level in its own order, two bars then four. 6/8 (20, 21)
+    // is left out: the song is in four.
+    run: { levels: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '22', '23', '24', '25', '26', '27', '28', '29'] },
     rounds: [
         { id: 'crotchets', rests: false, hurdles: [
             { id: '1',  bars: 1,  spots: [13, 27, 34], pass: 1 },

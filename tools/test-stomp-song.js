@@ -80,4 +80,39 @@ t('free play analysis: taps on the beat give a high on-beat share', () => {
     const a = K.analyseFree(beats, taps);
     assert.ok(a.onBeatPct >= 90, a.onBeatPct); assert.ok(a.longestRun >= 20);
 });
+t('plan takes Stomp Lab slot bars: quavers between the beats', () => {
+    const p = K.plan(steady, { from: 5, bars: 1, slotsPerBeat: 2,
+        slotBars: [['play', 'play', 'play', 'hold', 'rest', 'play', 'play', 'hold']] });
+    assert.deepStrictEqual(p.onsets.map(o => o.beat), [0, 0.5, 1, 2.5, 3]);
+    assert.ok(Math.abs(p.onsets[1].t - 0.25) < 1e-9);
+    assert.strictEqual(p.restBeats.length, 1);
+    assert.ok(K.grade(p, perfectTaps(p)).perfect);
+});
+t('the run ladder: warm-up, then each level at two bars and four', () => {
+    const L = K.runLadder(['1', '2']);
+    assert.deepStrictEqual(L.map(s => (s.levelId || '-') + s.bars), ['-1', '-2', '12', '14', '22', '24']);
+    assert.strictEqual(L[0].pass, 1); assert.strictEqual(L[3].pass, 0.85);
+    assert.strictEqual(K.runStep(L, 99), L[5]);
+});
+t('spots fit the song and are never the same twice running', () => {
+    const spots = K.runSpots(80, 4);
+    assert.ok(spots.every(b => b >= 5 && b + 4 <= 80 && (b - 1) % 2 === 0));
+    for (let i = 0; i < 50; i++) assert.notStrictEqual(K.pickSpot(spots, 9), 9);
+});
+t('one player: a pass moves on, a miss ends the run', () => {
+    const r = K.newRun(1);
+    assert.strictEqual(K.runTake(r, true).next, 'same'); assert.strictEqual(r.step, 1);
+    assert.strictEqual(K.runTake(r, false).next, 'over'); assert.ok(r.over); assert.strictEqual(r.cleared, 1);
+});
+t('three players: the relay, and the run ends when all three miss in a row', () => {
+    const r = K.newRun(3);
+    K.runTake(r, true);
+    assert.deepStrictEqual(K.runTake(r, false), { next: 'turn', player: 1 });
+    assert.strictEqual(r.step, 1);
+    K.runTake(r, true); assert.strictEqual(r.step, 2); assert.strictEqual(r.player, 1);
+    K.runTake(r, false); K.runTake(r, false);
+    assert.ok(!r.over);
+    assert.strictEqual(K.runTake(r, false).next, 'over');
+    assert.deepStrictEqual(r.furthest, [1, 2, 0]);
+});
 console.log(n + ' passed');
