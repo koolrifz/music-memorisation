@@ -21,7 +21,7 @@ A recording can't change, so these lines are marked below. For now, record them
 without the braced part, and the game will need a small change to play the braced
 part after them; or leave them to the browser's voice.
 
-## Tango (85 lines)
+## Tango (120 lines)
 
 **Voice:** the drummer, an orange cat with a red mane and a blue vest. She handles rhythm. Bright and warm, encouraging, never hyper: Rob's classes found the old high, quick voice annoying (2026-10-08). A drummer counting a band in: steady, on the beat, a smile in it.
 
@@ -96,10 +96,10 @@ part after them; or leave them to the browser's voice.
 
 | ID (the file name) | Line | Heard when |
 |---|---|---|
-| `beat.line.intro.drums` | My drum part is broken! It needs its quarter notes played back in, and played right. Get a spot right three times in a row, and you go up to the next challenge. In the end we lay down a 32-bar drum track in the studio, so help me fix some spots along the way! | `beat.musician.intro.drums` |
-| `beat.line.step.1` | Three in a row! That spot is fixed. Now a two-bar spot. | `beat.step.cleared.1` |
+| `beat.line.intro.drums` | My drum part is broken! It needs its quarter notes played back in, and played right. Get a spot right and you go up to the next challenge. Slip up, and it takes three in a row. In the end we lay down a 32-bar drum track in the studio, so help me fix some spots along the way! | `beat.musician.intro.drums` |
+| `beat.line.step.1` | Nailed it! That spot is fixed. Now a two-bar spot. | `beat.step.cleared.1` |
 | `beat.line.step.2` | Fixed! Now a four-bar spot. | `beat.step.cleared.2` |
-| `beat.line.step.3` | Four bars, three in a row! One more spot: eight bars. | `beat.step.cleared.3` |
+| `beat.line.step.3` | Four bars, nailed! One more spot: eight bars. | `beat.step.cleared.3` |
 | `beat.line.step.4` | Every spot is fixed! Into the studio to play the whole part. | `beat.step.cleared.4` |
 | `beat.line.eighths.intro.drums` | Eighth notes! Two to a beat: tap the pad for that beat twice. Say it: "1 and". | `beat.eighths.intro.drums` |
 | `beat.line.quavers.intro.drums` | Eighth notes! Two to a beat: tap the pad for that beat twice. "1 and". The off-beats go on the hi-hat. | `beat.quavers.intro.drums` |
@@ -154,8 +154,43 @@ part after them; or leave them to the browser's voice.
 | `studio.tango.notyet` | Not yet! We have a few things to do first before we get there. | `studio.tango.notyet` |
 | `studio.say.drums` | Hit that kick on the beat! | `studio.pick.drums` |
 | `studio.say.congas` | Know what every note is worth, then count it and stomp it. | `studio.pick.congas` |
+| `ssong.line.menu` | Welcome to the studio! Stomp along, or take on the hurdles. The band never stops. Only the guide kick drops out, and then it's all you. | `ssong.menu` |
+| `ssong.line.intro.hurdle` | Listen to the guide kick, and when the red light comes on, it's your take: {bars} of crotchets. Stop at the double bar line! **(filled in: {bars})** | `ssong.intro.hurdle` |
+| `ssong.line.intro.record` | This is the big one. Keep the light on all the way through and we'll cut a record. | `ssong.intro.record` |
+| `ssong.line.intro.free` | Stomp however you like. The guide kick is there if you want it. | `ssong.intro.free` |
+| `ssong.line.guide.on` | Guide on: you'll hear the rhythm played before you. Good for practice, but it won't earn the star. | `ssong.guide.on` |
+| `ssong.line.guide.off` | Guide off. It's all you. | `ssong.guide.off` |
+| `ssong.line.take.clean` | Clean take! Not a note out of place. | `ssong.take.clean` |
+| `ssong.line.take.close` | So close. One more take and it's yours. | `ssong.take.close` |
+| `ssong.line.take.cut` | Cut! Listen for the kick and have another go. | `ssong.take.cut` |
+| `ssong.line.take.guided` | Nice practice. Switch the guide off for a real take. | `ssong.take.guided` |
+| `ssong.line.cleared` | Hurdle cleared! On to the next. | `ssong.cleared` |
+| `ssong.line.record.silver` | A silver record! Now go for gold. | `ssong.record.silver` |
+| `ssong.line.record.gold` | GOLD RECORD! You played the whole song through. | `ssong.record.gold` |
+| `ssong.line.noaudio` | I couldn't load the song. Check the connection and try again. | `ssong.noaudio` |
+| `ssong.line.wait` | Hands still! Wait for my count, then come in on one. | `ssong.wait` |
+| `ssong.line.run.intro` | One take at a time. Keep it clean and the next one comes. Miss one, and you hop out. Ready? | `ssong.run.intro` |
+| `ssong.line.run.intro.many` | {n} players! Take turns. Keep it clean and you keep going. Miss one, and the next player takes over. **(filled in: {n})** | `ssong.run.intro.many` |
+| `ssong.line.run.pass.1` | Next one! | `ssong.run.pass` |
+| `ssong.line.run.pass.2` | Keep it coming! | `ssong.run.pass` |
+| `ssong.line.run.pass.3` | Nice! Here's another. | `ssong.run.pass` |
+| `ssong.line.run.pass.4` | You're on fire! | `ssong.run.pass` |
+| `ssong.line.run.turn` | Cut! Player {n}, you're up. Same one, your turn. **(filled in: {n})** | `ssong.run.turn` |
+| `ssong.line.run.end` | That's the run! {n} clean takes. Go again? **(filled in: {n})** | `ssong.run.end` |
+| `ssong.line.free.done` | What a stomp! Here's how it went. | `ssong.free.done` |
+| `keeper.first.1` | That's a keeper. | `keeper.first` |
+| `keeper.first.2` | Straight in the can! | `keeper.first` |
+| `keeper.first.3` | One take. You nailed it! | `keeper.first` |
+| `keeper.first.4` | That's a take! Keep it. | `keeper.first` |
+| `keeper.owed.1.1` | That's one. Two more in a row. | `keeper.owed.1` |
+| `keeper.owed.1.2` | There it is! Now do it again. | `keeper.owed.1` |
+| `keeper.owed.2.1` | Two in a row! One more for the keeper. | `keeper.owed.2` |
+| `keeper.owed.2.2` | Two down. Make the next one count! | `keeper.owed.2` |
+| `keeper.owed.3.1` | That's a keeper. | `keeper.owed.3` |
+| `keeper.owed.3.2` | In the can! | `keeper.owed.3` |
+| `keeper.owed.3.3` | You stuck with it. That's a keeper! | `keeper.owed.3` |
 
-## Riff (41 lines)
+## Riff (46 lines)
 
 **Voice:** the jazz Scottie dog in a red beret and green vest. Rob: hip and cool, a New York jazz man who knows all the secrets of memorising and of making beautiful music and melody. Relaxed, unhurried, warm; he calls people "cat".
 
@@ -184,12 +219,12 @@ part after them; or leave them to the browser's voice.
 
 | ID (the file name) | Line | Heard when |
 |---|---|---|
-| `beat.riff.intro.bass` | Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. Three in a row takes you up to the next challenge, and in the end we lay down 32 bars of bass in the studio. | `beat.musician.intro.bass` |
-| `beat.riff.step.1` | Three in a row! That spot is fixed. Now two bars. | `beat.step.cleared.1.riff` |
+| `beat.riff.intro.bass` | Hey, I'm Riff. My bass part has a few spots to fix up, man. A half note lasts two beats: press, and HOLD it right through. Get it right and you go up to the next challenge (slip, and it takes three in a row). In the end we lay down 32 bars of bass in the studio. | `beat.musician.intro.bass` |
+| `beat.riff.step.1` | Right on! That spot is fixed. Now two bars. | `beat.step.cleared.1.riff` |
 | `beat.riff.step.2` | Fixed, man. Now a four-bar spot. | `beat.step.cleared.2.riff` |
-| `beat.riff.step.3` | Four bars, three in a row. One more spot, cat: eight bars. | `beat.step.cleared.3.riff` |
+| `beat.riff.step.3` | Four bars, in the pocket. One more spot, cat: eight bars. | `beat.step.cleared.3.riff` |
 | `beat.riff.step.4` | Every spot fixed. The studio is yours, man: the whole part. | `beat.step.cleared.4.riff` |
-| `beat.riff.intro.keys` | Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. Three in a row takes you up, and then 32 bars of keys in the studio. | `beat.musician.intro.keys` |
+| `beat.riff.intro.keys` | Now the keys, man. A few more spots to fix. A whole note lasts the whole bar: press, and let it ring for all four beats. Get it right and you move up, and then 32 bars of keys in the studio. | `beat.musician.intro.keys` |
 | `beat.line.eighths.intro.bass` | Eighth notes on the bass. Two quick ones in a beat, still on the pad for that beat. | `beat.eighths.intro.bass` |
 | `beat.line.eighths.intro.keys` | Eighth notes on the keys. Two to a beat, and the half notes still held right through. | `beat.eighths.intro.keys` |
 | `beat.line.quavers.intro.bass` | Eighth notes on the bass. Two to a beat, and listen for the gap where the rest is: "and, 2 and". | `beat.quavers.intro.bass` |
@@ -223,4 +258,9 @@ part after them; or leave them to the browser's voice.
 | `studio.riff.notyet` | Not yet, youngster. We have a few things to do first before we get there. | `studio.riff.notyet` |
 | `studio.finale.line` | Look at that wall, cat. Every record gold. That's the whole album. You did it. | `studio.finale` |
 | `studio.help.line` | Tap Riff or Tango to see which instruments they look after. Tap a lit-up instrument to play it. | `studio.help` |
-| `studio.say.piano` | Lines, spaces, then the real thing. Three in a row and we move on. | `studio.pick.piano` |
+| `studio.say.piano` | Lines, spaces, then the real thing. Get it right and we move on. | `studio.pick.piano` |
+| `keeper.riff.first.1` | That's a keeper, cat. | `keeper.first.riff` |
+| `keeper.riff.first.2` | One take and in the can, man! | `keeper.first.riff` |
+| `keeper.riff.owed.1` | That's one, cat. Two more. | `keeper.owed.1.riff` |
+| `keeper.riff.owed.2` | Two in a row. One more and it's a keeper. | `keeper.owed.2.riff` |
+| `keeper.riff.owed.3` | You stuck with it, man. That's a keeper! | `keeper.owed.3.riff` |

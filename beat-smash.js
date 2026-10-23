@@ -3528,7 +3528,12 @@ function bsmashVerdict() {
     // The first star's picture go: the star, then the reveal, and the same
     // bar from the notation is the second star (§3, §4.1).
     // A long note let go too soon: the star still lands, with a reminder.
-    if (!bsmashHoldReminder(take)) bsmashEvent('beat.take.clean');
+    // What the clean take says (keeper.js): first take, or 1, 2, 3 of the
+    // three a miss costs; a take that clears the step gets the celebration.
+    const kind = KR.keeperKind(bsmash.owed, bsmash.streak + 1, bsmashNeeded());
+    const reminded = bsmashHoldReminder(take);
+    if (kind) KR.keeper(kind, { say: bsmashEvent, silent: reminded });
+    else if (!reminded) bsmashEvent('beat.take.clean');
     if (bsmash.scaffold === 'star1' && take.go === 'picture') return bsmashStarLands(bsmashReveal);
     bsmashStarLands();
 }
@@ -3747,7 +3752,8 @@ function bsmashStarLands(then) {
         bsmashSave(progress);
     }
     if (cleared) {
-        bsmashLater(() => bsmashEvent('beat.step.cleared.' + clearedStep), 1300);
+        // The keeper line first, then the step's own line, never over it.
+        bsmashLater(() => bsmashAfterTalk(() => bsmashEvent('beat.step.cleared.' + clearedStep)), 1300);
         bsmash.step = clearedStep + 1;
         bsmash.streak = 0;
         bsmash.owed = false;
@@ -3766,7 +3772,7 @@ function bsmashStarLands(then) {
     // step's own words start (Rob, 2026-10-10, on eight bars into the studio:
     // "that instruction doesn't butt up against the beginning instructions
     // for the 32 bar").
-    bsmashLater(() => bsmashAfterTalk(next), cleared ? 4200 : 2200);
+    bsmashLater(() => bsmashAfterTalk(() => bsmashLater(() => bsmashAfterTalk(next), cleared ? 1200 : 0)), cleared ? 3000 : 2200);
 }
 
 // The take, played back over the band from the same place in the song, so

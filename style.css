@@ -2046,3 +2046,32 @@ button.vsmash-tile:active { transform: translateY(2px); }
 .ssong-player-chip { width: 56px; height: 56px; border-radius: 50%; border: 3px solid #3f556c; background: #1b2530; color: white; font-weight: 900; font-size: 22px; cursor: pointer; }
 .ssong-player-chip.on { border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(255,200,0,0.6); }
 .ssong-run-go { font-size: 26px; min-height: 64px; }
+
+/* ---------- THE KEEPER: the celebration screen (keeper.js, Rob 2026-10-24) ----------
+   A clean take that clears a step: first take, or three in a row after a miss.
+   Over everything for a moment; a tap or the clock sends it away. */
+.kr-celebrate { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center;
+    padding: 16px; background: radial-gradient(circle at 50% 45%, rgba(40, 30, 8, .78), rgba(0, 0, 0, .86)); cursor: pointer; overflow: hidden; }
+.kr-celebrate.show { display: flex; animation: kr-cel-fade .25s ease-out; }
+.kr-celebrate-card { position: relative; z-index: 1; max-width: 420px; width: 100%; text-align: center; padding: 22px 18px 24px;
+    border: 4px solid #d99a14; border-radius: 22px; background: linear-gradient(#3a2a08, #1d1504);
+    box-shadow: 0 0 0 3px #7a5208, 0 0 46px rgba(246, 201, 74, .55); animation: kr-cel-pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+.kr-celebrate-stars { font-size: 46px; line-height: 1; color: #f6c94a; letter-spacing: 6px; min-height: 48px; }
+.kr-celebrate-stars span { display: inline-block; opacity: 0; animation: kr-cel-star .45s cubic-bezier(.2, 1.8, .4, 1) forwards;
+    text-shadow: 0 0 14px rgba(246, 201, 74, .9); }
+.kr-celebrate-title { margin-top: 10px; font: 44px/1.05 'Lilita One', 'Trebuchet MS', system-ui, sans-serif; color: #f6c94a;
+    text-shadow: 0 3px 0 #7a5208, 0 0 22px rgba(246, 201, 74, .6); }
+.kr-celebrate-line { margin-top: 12px; font: 20px/1.3 'Trebuchet MS', system-ui, sans-serif; color: #fff7dc; }
+.kr-celebrate-line:empty { display: none; }
+.kr-celebrate-confetti { position: absolute; inset: 0; pointer-events: none; }
+.kr-celebrate-confetti i { position: absolute; top: -12px; width: 9px; height: 15px; border-radius: 2px;
+    background: hsl(var(--hue, 45), 90%, 58%); animation: kr-cel-fall linear forwards; }
+@keyframes kr-cel-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kr-cel-pop { from { transform: scale(.4) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes kr-cel-star { from { transform: scale(0) rotate(-40deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes kr-cel-fall { from { transform: translateY(0) rotate(0); } to { transform: translateY(110vh) rotate(540deg); } }
+@media (max-width: 380px) { .kr-celebrate-title { font-size: 36px; } .kr-celebrate-stars { font-size: 38px; } }
+@media (prefers-reduced-motion: reduce) {
+    .kr-celebrate.show, .kr-celebrate-card, .kr-celebrate-stars span { animation: none; opacity: 1; }
+    .kr-celebrate-confetti { display: none; }
+}

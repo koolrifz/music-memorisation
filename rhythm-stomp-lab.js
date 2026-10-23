@@ -3032,21 +3032,35 @@ function handleRstompSuccess() {
     playSound('correct');
     rstompScore += 4;
     // Right, but only after a strike: that is a miss, and the level is owed.
-    if (rstompAttempt > 1) { rstompOwed = true; rstompStreak = 0; }
+    const wasOwed = rstompOwed;
+    const clean = rstompAttempt === 1;
+    if (!clean) { rstompOwed = true; rstompStreak = 0; }
     else rstompStreak++;
     updateRstompStreakDots();
-    showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
-    rstompScrollToStart(true);
-    // Counted right, so now PLAY it. This runs after every correct counting,
-    // the third included, and the round decides nothing about the streak:
-    // it is the performance, not the gate (see "THE STOMP ROUND" in CLAUDE.md).
-    setTimeout(() => startRstompRound(() => {
+    // What a clean phrase says (keeper.js): first time, or 1, 2, 3 of the
+    // three a miss costs; the one that masters the level is celebrated. A
+    // level's own 'nailed' wording, where Rob has written one, still wins.
+    const kind = clean ? KR.keeperKind(wasOwed, rstompStreak, wasOwed ? 3 : 1) : null;
+    const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
+    const ownNailed = level && level.prompts && level.prompts.nailed;
+    let celebrated = false;
+    const playIt = () => startRstompRound(() => {
         if (rstompStreak >= rstompNeeded()) {
             setTimeout(showRstompLevelComplete, 300);
         } else {
             rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase();
         }
-    }), 900);
+    });
+    if (kind) {
+        KR.lastWords = '';
+        celebrated = KR.keeper(kind, { then: playIt });
+        showRstompFeedback('correct', ownNailed ? rstompPrompt('nailed', { points: 4 }) : (KR.lastWords || rstompPrompt('nailed', { points: 4 })));
+    } else showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
+    rstompScrollToStart(true);
+    // Counted right, so now PLAY it. This runs after every correct counting,
+    // the third included, and the round decides nothing about the streak:
+    // it is the performance, not the gate (see "THE STOMP ROUND" in CLAUDE.md).
+    if (!celebrated) setTimeout(playIt, 900);
 }
 
 /* ---------- THE STOMP ROUND ----------
