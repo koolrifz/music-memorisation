@@ -1100,8 +1100,9 @@ function closeValueTreeCard() {
    Behaviour matched to loadG2Grid / handleG2Click / resolveG2Screen in
    script.js, not imported from them.
 
-   - Tiers 3 -> 6 -> 9 -> 12 cards. Three cleared screens in a row moves up a
-     tier; clearing tier 4 clears the floor.
+   - Tiers 3 -> 6 -> 9 -> 12 cards. One clean screen moves up a tier; after
+     a miss (or a wrong tap) the tier is owed three clean screens in a row
+     (Rob, 2026-10-24). Clearing tier 4 clears the floor.
    - Targets per screen, by tier: 1-2, 2-4, 2-3, 3-4.
    - Duds: about 15% of screens have nothing to smash, never two in a row.
      A dud handled correctly earns a JOKER - a spare life that saves the
@@ -1221,7 +1222,7 @@ function startValueSmash(floor) {
     const sprint = floor.kind === 'sprint';
     vsmashSmash = {
         floor: floor, sprint: sprint, started: Date.now(),
-        tier: sprint ? 1 : 0, streak: 0, joker: false, score: 0, wrong: 0,
+        tier: sprint ? 1 : 0, streak: 0, owed: false, joker: false, score: 0, wrong: 0,
         clock: sprint ? VSMASH_SPRINT_SECONDS : null,   // seconds left; Smash starts it at tier 2
         best: -1,               // Sprint: the highest tier cleared, which sets the medal
         watch: {},              // question key -> clears left on the watchlist
@@ -1365,6 +1366,8 @@ function renderValueSmashGrid() {
 
 function vsmashUpdateHud() {
     const s = vsmashSmash;
+    // The dots are for a tier that is owed three in a row; a clean run needs none.
+    document.getElementById('value-streak').style.visibility = s.owed ? '' : 'hidden';
     document.getElementById('value-streak').innerHTML = [0, 1, 2]
         .map(i => '<span class="streak-dot' + (i < s.streak ? ' active' : '') + '"></span>').join(''); // text-ok
     document.getElementById('value-joker').hidden = !s.joker;
@@ -1510,21 +1513,33 @@ function vsmashSmashResolve(cleared) {
             KR.say('value.smash.jokerUsed', { box: vsmashGuide(), silent: true });
         } else {
             s.streak = 0;
+            s.owed = true;
             if (!cleared) KR.say('value.smash.missed', { box: vsmashGuide(), silent: true });
         }
         vsmashUpdateHud();
         return vsmashLater(loadValueSmashScreen, cleared ? 450 : 1400);
     }
 
-    s.streak++;
+    // Rob, 2026-10-24, the app-wide rule: one clean screen moves up a tier;
+    // a miss makes the tier owed, and then it takes three in a row. Smashed,
+    // but only after a wrong tap, is a miss (the joker saves it once).
+    if (s.wrongHere > 0 && s.joker) {
+        s.joker = false;
+        KR.say('value.smash.jokerUsed', { box: vsmashGuide(), silent: true });
+        s.streak++;
+    } else if (s.wrongHere > 0) {
+        s.owed = true;
+        s.streak = 0;
+    } else s.streak++;
     vsmashAddTime(VSMASH_TIERS[s.tier] / 3 + 2);
     if (s.watch[s.question.key]) s.watch[s.question.key]--;
     s.cards.forEach(c => c.el.classList.add('screen-clear'));
     vsmashUpdateHud();
 
-    if (s.streak < 3) return vsmashLater(loadValueSmashScreen, 350);
+    if (s.streak < (s.owed ? 3 : 1)) return vsmashLater(loadValueSmashScreen, 350);
 
     s.streak = 0;
+    s.owed = false;
     const top = s.tier === VSMASH_TIERS.length - 1;
     if (s.sprint) {
         // A medal for every tier cleared, as in Real Smash: tier 2 Bronze,

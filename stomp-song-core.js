@@ -376,7 +376,7 @@
         st.best = Math.max(st.best, Math.round(100 * (outcome.pct || 0)));
         const result = { stars: st.stars, cleared: false, newlyCleared: false, record: null, counted: !outcome.guided };
         if (outcome.guided) return result;
-        if (!outcome.passed) { st.stars = 0; result.stars = 0; return result; }
+        if (!outcome.passed) { st.stars = 0; st.owed = true; result.stars = 0; return result; }
         if (hurdle.record) {
             // The recording session is one take. A pass is a record.
             const kind = outcome.session || 'silver';
@@ -386,10 +386,21 @@
             st.cleared = true; st.stars = NEEDS; result.stars = NEEDS; result.cleared = true;
             return result;
         }
-        st.stars = Math.min(NEEDS, st.stars + 1);
+        const need = needed(st);
+        st.stars = Math.min(need, st.stars + 1);
         result.stars = st.stars;
-        if (st.stars >= NEEDS) { result.newlyCleared = !st.cleared; st.cleared = true; result.cleared = true; }
+        if (st.stars >= need) {
+            result.newlyCleared = !st.cleared; st.cleared = true; result.cleared = true;
+            st.owed = false;
+        }
         return result;
+    }
+
+    // HOW MANY CLEAN TAKES A HURDLE NEEDS (Rob, 2026-10-24, the app-wide rule):
+    // one, until a take is missed; then three in a row. A row begun before the
+    // rule (stars saved part way, not cleared) counts as owed.
+    function needed(st) {
+        return (st.owed || (!st.cleared && st.stars > 0)) ? NEEDS : 1;
     }
 
     // Is a hurdle open? The first of Round 1 is; each next one opens when the
@@ -409,7 +420,7 @@
     }
 
     const api = {
-        BEATS_PER_BAR, LEAD_BARS, OVER_BEATS, NEEDS, REST_BARS,
+        BEATS_PER_BAR, LEAD_BARS, OVER_BEATS, NEEDS, REST_BARS, needed,
         beatTime, beatAt, totalBars, rng, patternFor, recordingPattern, plan, barOf,
         grade, passes, analyseFree, blankProgress, hurdleState, applyAttempt, hurdleOpen,
         runLadder, runStep, runSpots, pickSpot, newRun, runTake,

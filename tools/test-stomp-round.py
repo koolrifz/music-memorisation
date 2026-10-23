@@ -44,7 +44,7 @@ PLAY = """async ({offsets, key}) => {
 }"""
 
 def start_round(page):
-    page.evaluate("""() => { rstompSelectedLevel = '1'; startRstompLevel(); rstompLocked = true; handleRstompSuccess(); }""")
+    page.evaluate("""() => { rstompSelectedLevel = '1'; startRstompLevel(); rstompOwed = true; rstompLocked = true; handleRstompSuccess(); }""")
     page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
 
 def onset_times(page):
@@ -129,7 +129,7 @@ def main():
         fb = page.inner_text('#rstomp-feedback')
         check('teacher mode shows You wrote / Expected on a wrong answer', 'You wrote:' in fb and 'Expected:' in fb, fb)
         check('the wrong answer is logged', page.evaluate("JSON.parse(localStorage.getItem('koolRiffsStompLog')).length") >= 1)
-        page.evaluate("rstompSelectedLevel = '1'; startRstompLevel(); rstompLocked = true; handleRstompSuccess();")
+        page.evaluate("rstompSelectedLevel = '1'; startRstompLevel(); rstompOwed = true; rstompLocked = true; handleRstompSuccess();")
         page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
 
         # 5. Next goes on to the next phrase with the counting controls back
@@ -150,7 +150,7 @@ def main():
         page.click('#rstomp-restart-btn'); page.wait_for_timeout(3200)
         check('Restart disarms itself', n() == 2 and 'again' not in page.inner_text('#rstomp-restart-btn'))
         # 7. the strip pops back to bar 1 when the counting is right, then follows the playhead
-        page.evaluate("rstompSelectedLevel = '4'; startRstompLevel(); rstompLocked = true;"
+        page.evaluate("rstompSelectedLevel = '4'; startRstompLevel(); rstompOwed = true; rstompLocked = true;"
                       "document.getElementById('rstomp-strip').scrollLeft = 9999; handleRstompSuccess();")
         page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
         page.wait_for_timeout(700)
@@ -163,6 +163,22 @@ def main():
             if page.evaluate("document.getElementById('rstomp-strip').scrollLeft") > 20: moved = True; break
             page.wait_for_timeout(250)
         check('the strip scrolls along with the round', moved or not wide, 'wide=%s' % wide)
+        # 8. Rob, 2026-10-24: one clean phrase masters a level not yet missed;
+        #    after a miss (the answer shown) it takes three in a row.
+        page.click('#rstomp-round-next')
+        page.evaluate("rstompSelectedLevel = '2'; startRstompLevel(); rstompLocked = true; handleRstompSuccess();")
+        page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
+        page.click('#rstomp-round-next')
+        page.wait_for_selector('#modal-rstomp-level-complete.show', timeout=4000)
+        check('one clean phrase, nothing missed: the level is mastered', page.is_visible('#modal-rstomp-level-complete'))
+        page.evaluate("document.getElementById('modal-rstomp-level-complete').classList.remove('show');"
+                      "rstompSelectedLevel = '2'; startRstompLevel(); rstompAttempt = 2; rstompLocked = true; handleRstompSuccess();")
+        page.wait_for_selector('#rstomp-round:not([hidden])', timeout=4000)
+        check('right only after a strike: the level is owed, three dots showing',
+              page.evaluate("rstompOwed && rstompStreak === 0 && document.getElementById('rstomp-streak-dots').style.visibility !== 'hidden'"))
+        page.click('#rstomp-round-next')
+        page.wait_for_timeout(500)
+        check('...and it does not master the level', not page.is_visible('#modal-rstomp-level-complete'))
         check('no script errors', not errors, errors)
         browser.close()
     server.shutdown()

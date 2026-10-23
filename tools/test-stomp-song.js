@@ -64,7 +64,18 @@ t('the recording pattern is fixed, has rests, and is the right length', () => {
     assert.deepStrictEqual(a, b); assert.strictEqual(a.length, 32);
     assert.ok(a.some(bar => bar.some(x => !x)));
 });
-t('progress: three clean takes clear a hurdle; a guided one does not count', () => {
+t('progress: one clean take clears a hurdle; after a miss it takes three; a guided one does not count', () => {
+    const song = { rounds: [{ id: 'r', hurdles: [{ id: '1', bars: 1 }, { id: '2', bars: 2 }] }] };
+    const pr = K.blankProgress(), h = song.rounds[0].hurdles[1];
+    K.applyAttempt(pr, 'r', h, { passed: true, guided: true, pct: 1 });
+    assert.ok(!K.hurdleState(pr, 'r', '2').cleared);
+    const r = K.applyAttempt(pr, 'r', h, { passed: true, guided: false, pct: 1 });
+    assert.ok(r.cleared && K.hurdleState(pr, 'r', '2').cleared);
+    assert.strictEqual(K.needed(K.hurdleState(pr, 'r', '2')), 1);
+    // A row saved part way before the rule counts as owed.
+    assert.strictEqual(K.needed({ stars: 1, cleared: false }), 3);
+});
+t('progress: after a miss, three clean takes clear a hurdle', () => {
     const song = { rounds: [{ id: 'r', hurdles: [{ id: '1', bars: 1 }] }] };
     const pr = K.blankProgress(), h = song.rounds[0].hurdles[0];
     K.applyAttempt(pr, 'r', h, { passed: true, guided: true, pct: 1 });

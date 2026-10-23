@@ -299,7 +299,7 @@ function ssongRenderMenu() {
                     sub.textContent = earned ? KR.t('ssong.record.' + session.id) : KR.t('ssong.record.go');
                 } else {
                     chip.classList.toggle('cleared', st.cleared);
-                    sub.textContent = ssongStars(st.stars, KRStompSong.NEEDS);
+                    sub.textContent = ssongStars(st.stars, KRStompSong.needed(st));
                 }
                 chip.onclick = () => ssongOpenHurdle(ri, hi, session ? session.id : null);
             });
@@ -397,7 +397,7 @@ function ssongRenderStars() {
     box.textContent = '';
     if (ssong.mode !== 'hurdle') return;
     const st = KRStompSong.hurdleState(ssong.progress, ssong.round.id, ssong.hurdle.id);
-    box.textContent = ssong.hurdle.record ? '' : ssongStars(st.stars, KRStompSong.NEEDS);
+    box.textContent = ssong.hurdle.record ? '' : ssongStars(st.stars, KRStompSong.needed(st));
 }
 
 function ssongBuildPad() {
@@ -749,7 +749,7 @@ function ssongShowResult(g, passed, applied) {
         else add(KR.t('ssong.result.pocket'));
     }
     if (ssong.guided) add(KR.t('ssong.result.guided'));
-    else if (!ssong.hurdle.record) add(KR.t('ssong.result.stars', { n: applied.stars, needs: KRStompSong.NEEDS }));
+    else if (!ssong.hurdle.record) add(KR.t('ssong.result.stars', { n: applied.stars, needs: KRStompSong.needed(KRStompSong.hurdleState(ssong.progress, ssong.round.id, ssong.hurdle.id)) }));
     ssongRenderStars();
 
     // What to do next.

@@ -1492,7 +1492,7 @@ function startNextG1Stage() {
 let g2Score = 0; let g2TotalAttempts = 0; let g2TierIndex = 0; const g2Tiers = [3, 6, 9, 12];
 const g2PhaseNames = ['Lines', 'Spaces', 'Mixed Staff', 'Ledger Notes'];
 let g2Phase = 0; let g2LastScreenWasDud = false; let g2PendingStageAdvance = false; let g2CarriedStageTime = 0;
-let g2Streak = 0; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
+let g2Streak = 0; let g2Owed = false; let g2DudStreak = 0; let g2TargetsPresent = 0; let g2TargetsFound = 0; let g2WrongTapsThisScreen = 0;
 let g2TargetNote = ''; let g2Watchlist = {}; let g2IsTransitioning = false; let g2RoundStartedAt = 0;
 let g2LastAnnouncedNote = '';
 let tunerInstrument = 'concert';
@@ -1659,7 +1659,7 @@ function startG2Game() {
     const selectedPhase = g2PathwayStages.find(stage => stage.id === g2SelectedStage)?.phase ?? 0;
     setupG2Helpers(selectedPhase === 0 ? '1' : selectedPhase === 1 ? '2' : '3');
 
-    g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Phase = g2PathwayStages.find(stage => stage.id === g2SelectedStage)?.phase ?? 0; g2Streak = 0; g2DudStreak = 0;
+    g2Score = 0; g2TotalAttempts = 0; g2TierIndex = 0; g2Phase = g2PathwayStages.find(stage => stage.id === g2SelectedStage)?.phase ?? 0; g2Streak = 0; g2Owed = false; g2DudStreak = 0;
     g2SecondsLeft = 60; g2Watchlist = {}; g2IsTransitioning = false; g2LastScreenWasDud = false; g2PendingStageAdvance = false; g2CarriedStageTime = 0;
     g2LastAnnouncedNote = '';
     updateG2WatchlistBadge(); updateG2TrackerUI();
@@ -1674,7 +1674,7 @@ function startG2Game() {
 }
 
 function updateG2TrackerUI() {
-    document.getElementById('g2-tier-tracker-text').innerText = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]} | Streak: ${g2Streak}/3`;
+    document.getElementById('g2-tier-tracker-text').innerText = `${g2PhaseNames[g2Phase]} | Grid: ${g2Tiers[g2TierIndex]}${g2Owed ? ` | Streak: ${g2Streak}/3` : ''}`;
     document.getElementById('g2-score-text').innerText = g2Score;
     document.getElementById('g2-attempts-text').innerText = `Attempts: ${g2TotalAttempts}`;
 }
@@ -1768,7 +1768,11 @@ function resolveG2Screen(cleared) {
     if (cleared) {
         if (g2TargetsPresent > 0) {
             awardG2DuplicateNoteBonus();
-            g2Streak++;
+            // Rob, 2026-10-24, as Staff Smash: one clean screen moves on; a
+            // screen found only after a wrong tap is a miss, and the tier is
+            // then owed three clean screens in a row.
+            if (g2WrongTapsThisScreen > 0) { g2Owed = true; g2Streak = 0; }
+            else g2Streak++;
             awardG2ScreenBonuses();
             g2LastScreenWasDud = false;
             if (g2Watchlist[g2TargetNote]) {
@@ -1776,8 +1780,8 @@ function resolveG2Screen(cleared) {
                 if(g2Watchlist[g2TargetNote] <= 0) delete g2Watchlist[g2TargetNote];
                 updateG2WatchlistBadge();
             }
-            if (g2Streak >= 3) {
-                g2Streak = 0;
+            if (g2Streak >= (g2Owed ? 3 : 1)) {
+                g2Streak = 0; g2Owed = false;
                 awardG2TierBonus();
                 if (g2TierIndex < g2Tiers.length - 1) g2TierIndex++;
                 else if (g2Phase < g2PhaseNames.length - 1) { g2Phase++; g2TierIndex = 0; showG2StageComplete(); return; }
@@ -1787,7 +1791,7 @@ function resolveG2Screen(cleared) {
     } else {
         let missed = g2TargetsPresent - g2TargetsFound;
         if (missed > 0) {
-            g2Streak = 0; g2LastScreenWasDud = false; g2Watchlist[g2TargetNote] = 3; updateG2WatchlistBadge(); g2DudStreak = 0;
+            g2Streak = 0; g2Owed = true; g2LastScreenWasDud = false; g2Watchlist[g2TargetNote] = 3; updateG2WatchlistBadge(); g2DudStreak = 0;
         } else if (g2TargetsPresent === 0 && g2WrongTapsThisScreen === 0) {
             document.querySelectorAll('#g2-grid-container .smash-card').forEach(card => {
                 card.classList.add('dud-correct', 'screen-complete');

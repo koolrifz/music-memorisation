@@ -165,10 +165,10 @@ const RSTOMP_PROMPTS = {
     'miss-some':    "{n} bars aren't right. Can you find them?",
     'name-one':     "Bar {bar} isn't right — read it again.",
     'name-some':    "Bars {bars} aren't right — read them again.",
-    'show-answer':  "Here's the counting — streak reset. New phrase next.",
+    'show-answer':  "Here's the counting. New phrase next: now three clean in a row.",
     'walk-wrong':   'Not quite — look again at the note the cursor is on.',
     'walk-hint':    "Look again — it's {answer}: {because}",
-    'walk-missed':  'Good — but you needed {n} put right. Walk a clean one to build the streak.'
+    'walk-missed':  'Good — but you needed {n} put right. Now walk three clean ones in a row.'
 };
 
 // The level's own wording if it has one, otherwise the default, with {braces}
@@ -758,6 +758,12 @@ let rstompUndoStack = [];
 let rstompCursor = 0;
 let rstompAttempt = 1;
 let rstompStreak = 0;
+// Rob, 2026-10-24, the app-wide rule: one clean phrase clears the level; the
+// rule of three is only for a level that has been missed. A miss (a strike on
+// the keypad, help in the tutorial, the answer shown) makes the level OWED:
+// then three clean phrases in a row clear it.
+let rstompOwed = false;
+function rstompNeeded() { return rstompOwed ? 3 : 1; }
 let rstompScore = 0;
 let rstompLocked = false;
 
@@ -1855,6 +1861,7 @@ function startRstompLevel() {
     initAudio();
     rstompAttempt = 1;
     rstompStreak = 0;
+    rstompOwed = false;
     rstompScore = 0;
     rstompLocked = false;
     const level = RSTOMP_LEVELS.find(entry => entry.id === rstompSelectedLevel);
@@ -2957,10 +2964,12 @@ function renderRstompStaff(container, specBars, perBarWidth, options = {}) {
 /* ---------- Streak + feedback ---------- */
 
 function updateRstompStreakDots() {
-    const dots = [0, 1, 2].map(index =>
+    // The three dots are for a level that is owed; a clean run needs none.
+    const box = document.getElementById('rstomp-streak-dots');
+    box.style.visibility = rstompOwed ? '' : 'hidden';
+    box.innerHTML = [0, 1, 2].map(index =>
         `<span class="streak-dot${index < rstompStreak ? ' active' : ''}" aria-hidden="true"></span>`
     ).join('');
-    document.getElementById('rstomp-streak-dots').innerHTML = dots;
 }
 
 // What the grader compared on the last wrong keypad answer: what was written
@@ -3022,7 +3031,9 @@ function submitRstompPhrase() {
 function handleRstompSuccess() {
     playSound('correct');
     rstompScore += 4;
-    rstompStreak++;
+    // Right, but only after a strike: that is a miss, and the level is owed.
+    if (rstompAttempt > 1) { rstompOwed = true; rstompStreak = 0; }
+    else rstompStreak++;
     updateRstompStreakDots();
     showRstompFeedback('correct', rstompPrompt('nailed', { points: 4 }));
     rstompScrollToStart(true);
@@ -3030,7 +3041,7 @@ function handleRstompSuccess() {
     // the third included, and the round decides nothing about the streak:
     // it is the performance, not the gate (see "THE STOMP ROUND" in CLAUDE.md).
     setTimeout(() => startRstompRound(() => {
-        if (rstompStreak >= 3) {
+        if (rstompStreak >= rstompNeeded()) {
             setTimeout(showRstompLevelComplete, 300);
         } else {
             rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase();
@@ -3222,6 +3233,7 @@ function handleRstompScribeFailure(wrongBars) {
     rstompRevealed = rstompTargetGroups();
     rstompWrongBars = [];
     rstompStreak = 0;
+    rstompOwed = true;
     updateRstompStreakDots();
     showRstompFeedback('wrong', rstompPrompt('show-answer'));
     renderRstompBars();
@@ -3246,6 +3258,7 @@ function handleRstompWalkMisses(missed) {
     playSound('wrong');
     rstompDiagnosis = '';
     rstompStreak = 0;
+    rstompOwed = true;
     updateRstompStreakDots();
     showRstompFeedback('wrong', rstompPrompt('walk-missed', { n: missed }));
     setTimeout(() => { rstompAttempt = 1; rstompLocked = false; startNewRstompPhrase(); }, 2200);
