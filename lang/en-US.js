@@ -795,6 +795,11 @@ KR.lang('en-US', {
     /* ---------- Stomp the Beat, the song (stomp-song.js) ---------- */
     'ssong.title':           'Stomp the Beat',
     'ssong.tile':            'Stomp the Beat · record it!',
+    'ssong.icon':            '🥁',
+    // Stomp the Beat: Soul, the older students' version: the quaver song.
+    'ssong.soul.title':      'Stomp the Beat: Soul',
+    'ssong.soul.tile':       'Quavers · record it!',
+    'ssong.soul.icon':       '🎷',
     'ssong.menu':            'Song menu',
     'ssong.menu.free':       'Free play',
     'ssong.menu.free.sub':   'Just stomp along with the whole song.',
@@ -836,6 +841,11 @@ KR.lang('en-US', {
     'ssong.run.furthest':    'Player {n} got furthest.',
     'ssong.run.again':       'Go again',
     'ssong.run.learn':       'Learn this rhythm',
+    'ssong.run.levelup':     'Level up!',
+    'ssong.run.levelup.next': 'Level {n}: {name}',
+    'ssong.line.run.levelup.1': "Level up! Up you go.",
+    'ssong.line.run.levelup.2': "New level! Something new is coming.",
+    'ssong.line.run.levelup.3': "That's a level in the can. Up you go!",
     'ssong.line.run.intro':  "One take at a time. Keep it clean and the next one comes. Miss one, and you hop out. Ready?",
     'ssong.line.run.intro.many': "{n} players! Take turns. Keep it clean and you keep going. Miss one, and the next player takes over.",
     'ssong.line.run.pass.1': "Next one!",

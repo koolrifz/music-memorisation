@@ -122,15 +122,21 @@ window.KR.jamSongs = [
    warm-up the student auditions these and picks one, and every take of the
    band (one bar to the studio's 32) is played over it. The names are fun
    placeholders (lang/en-US.js, 'song.<id>'), for children who are only
-   listening: "Sunrise, anything." */
+   listening: "Sunrise, anything."
+
+   RETIRING (Rob, 2026-10-24): the recorded songs are replacing these little
+   loops, a song at a time: "We don't need that many. You could actually remove
+   three or four of them." Lemonade (c-1-4-5-1), Moonwalk (c-2-5-1) and
+   Rollercoaster (c-3-6-2-5) are off the chooser. Kept: Sunrise, the one with
+   an audition; Bubblegum, a second Level 1 song; Night Owl and Skate Park, the
+   eighth-note levels. Retired, not deleted: their chords stay below (the
+   warm-up's jam songs still play them), a band begun on one keeps playing and
+   still counts for opening Night Owl, and adding the id back here returns it. */
 window.KR.bandSongs = [
     'c-1-4-1-5',
-    'c-1-4-5-1',
     'c-4-1-5-1',
-    'c-2-5-1',
     'c-2-5-1-6',
     'c-1-6-2-5',
-    'c-3-6-2-5',
 ];
 
 window.KR.songs = {

@@ -21,7 +21,7 @@ A recording can't change, so these lines are marked below. For now, record them
 without the braced part, and the game will need a small change to play the braced
 part after them; or leave them to the browser's voice.
 
-## Tango (120 lines)
+## Tango (123 lines)
 
 **Voice:** the drummer, an orange cat with a red mane and a blue vest. She handles rhythm. Bright and warm, encouraging, never hyper: Rob's classes found the old high, quick voice annoying (2026-10-08). A drummer counting a band in: steady, on the beat, a smile in it.
 
@@ -175,6 +175,9 @@ part after them; or leave them to the browser's voice.
 | `ssong.line.run.pass.2` | Keep it coming! | `ssong.run.pass` |
 | `ssong.line.run.pass.3` | Nice! Here's another. | `ssong.run.pass` |
 | `ssong.line.run.pass.4` | You're on fire! | `ssong.run.pass` |
+| `ssong.line.run.levelup.1` | Level up! Up you go. | `ssong.run.levelup` |
+| `ssong.line.run.levelup.2` | New level! Something new is coming. | `ssong.run.levelup` |
+| `ssong.line.run.levelup.3` | That's a level in the can. Up you go! | `ssong.run.levelup` |
 | `ssong.line.run.turn` | Cut! Player {n}, you're up. Same one, your turn. **(filled in: {n})** | `ssong.run.turn` |
 | `ssong.line.run.end` | That's the run! {n} clean takes. Go again? **(filled in: {n})** | `ssong.run.end` |
 | `ssong.line.free.done` | What a stomp! Here's how it went. | `ssong.free.done` |

@@ -195,6 +195,21 @@
 
     function runStep(ladder, index) { return ladder[Math.min(index, ladder.length - 1)]; }
 
+    // Does going from step `from` to step `to` take the run UP A LEVEL: out of
+    // the warm-up, or on to the next Stomp Lab level? (Rob, 2026-10-24: "when
+    // they move up a level we let them know there's a little celebration and up
+    // they go.") Returns the new level's number in this song (1 = the first
+    // after the warm-up) and its Stomp Lab id, or null. Past the top the last
+    // step only repeats, which is not a new level.
+    function runLevelUp(ladder, from, to) {
+        if (to === from || to >= ladder.length) return null;
+        const a = ladder[from], b = ladder[to];
+        if (!a || !b || !b.levelId || a.levelId === b.levelId) return null;
+        const ids = [];
+        ladder.forEach(st => { if (st.levelId && ids.indexOf(st.levelId) < 0) ids.push(st.levelId); });
+        return { levelId: b.levelId, number: ids.indexOf(b.levelId) + 1 };
+    }
+
     // Where in the song a take may sit: the start of a two-bar phrase, with the
     // lead before it and the take's bars after it inside the song. Never the
     // same spot twice running.
@@ -424,7 +439,7 @@
         BEATS_PER_BAR, LEAD_BARS, OVER_BEATS, NEEDS, REST_BARS, needed,
         beatTime, beatAt, totalBars, rng, patternFor, recordingPattern, plan, barOf,
         grade, passes, analyseFree, blankProgress, hurdleState, applyAttempt, hurdleOpen,
-        runLadder, runStep, runSpots, pickSpot, newRun, runTake,
+        runLadder, runStep, runLevelUp, runSpots, pickSpot, newRun, runTake,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.KRStompSong = api;

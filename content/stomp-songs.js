@@ -22,9 +22,20 @@
 
    ROUNDS. Round 1 is crotchets only. Round 2 adds crotchet rests: the same
    hurdles, with a written rhythm the student reads (and the guide can play).
+   A song may have none (rounds: []): then it is the run and free play alone.
+
+   THE TILE. `title`, `tile` and `icon` are word IDs (lang/en-US.js): the
+   song's name, the line under it on the song chooser, and its picture.
+
+   THE RUN'S LEVELS. `run.levels` are Stomp Lab levels, in the order they are
+   played. `run.leaveOut` takes note values out of every level's vocabulary for
+   this song (Rob, 2026-10-24, the quaver song: "I don't want to do whole notes
+   and half notes with this song"). A level whose new idea was one of them goes
+   from the list rather than repeating the level before it.
    ========================================= */
 KR.stompSongs = KR.stompSongs || {};
 KR.stompSongs['stomp-the-beat'] = {
+    title: 'ssong.title', tile: 'ssong.tile', icon: 'ssong.icon',
     audio: 'ssong.stomp-the-beat.audio',          // content/audio.js
     kick: 'ssong.kick',
     sections: [
@@ -70,4 +81,50 @@ KR.stompSongs['stomp-the-beat'] = {
             ] },
         ] },
     ],
+};
+
+/* STOMP THE BEAT: SOUL. The older students' version of the same song: neo-soul,
+   funk and gospel (Suno, 2026-10-24), and THE QUAVER SONG. Rob: "It's a perfect
+   quaver tune... this song should start where the quavers start. Crotchets and
+   quavers will be perfect for this... I don't want to do whole notes and half
+   notes with this song... we'll do a deep dive into crotchets and quavers."
+
+   About 97 bpm: Suno starts near the 100 asked for (the count-in), settles by the
+   choir and eases down to 96.7 by the end, so the map, never a tempo. The intro
+   has no drums, and the last hit is pushed onto the "and" of 4 in bar 86, so
+   the map was built from a checked grid (tools/grids/stomp-the-beat-soul.json).
+   The sections are Rob's own transcription (2026-10-24), checked against the
+   audio: 87 bars, every change on the bar he marked.
+
+   The run: the warm-up on the beat, then Stage B, the quaver, in Stomp Lab's
+   order, with no semibreves or minims anywhere. B2 ("quavers and longer notes")
+   is left out: without its longer notes it is B1 again. The dotted crotchet
+   stays: the pump is a crotchet and a quaver. No hurdle rounds yet. */
+KR.stompSongs['stomp-the-beat-soul'] = {
+    title: 'ssong.soul.title', tile: 'ssong.soul.tile', icon: 'ssong.soul.icon',
+    audio: 'ssong.stomp-the-beat-soul.audio',
+    kick: 'ssong.kick',
+    sections: [
+        { id: 'countin',   first: 0,  last: 0 },      // spoken, over a keys fill
+        { id: 'intro',     first: 1,  last: 4 },      // keys, pad, horns: no drums
+        { id: 'choir',     first: 5,  last: 8 },
+        { id: 'verse1',    first: 9,  last: 16 },     // sparse
+        { id: 'pre',       first: 17, last: 20 },
+        { id: 'chorus',    first: 21, last: 28 },
+        { id: 'intro2',    first: 29, last: 30 },     // the intro figure
+        { id: 'verse2',    first: 31, last: 38 },     // hi-hats on clear quavers
+        { id: 'pre2',      first: 39, last: 42 },
+        { id: 'chorus2',   first: 43, last: 50 },
+        { id: 'namegame',  first: 51, last: 58 },     // the band drops out: vocals and drums
+        { id: 'breakdown', first: 59, last: 62 },     // kick, handclaps and choir
+        { id: 'bridge',    first: 63, last: 70 },     // gospel choir, organ
+        { id: 'adlibs',    first: 71, last: 74 },
+        { id: 'final',     first: 75, last: 82 },     // full choir and horns
+        { id: 'ending',    first: 83, last: 86 },     // kick on bars 83 and 85 only; the last hit on the "and" of 4
+    ],
+    run: {
+        levels: ['10', '12', '13', '14', '15', '16', '17', '18', '19'],
+        leaveOut: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'dotted-half-note', 'dotted-half-rest'],
+    },
+    rounds: [],
 };

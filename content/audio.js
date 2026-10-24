@@ -26,4 +26,7 @@ KR.audio = {
        student's kick: bright, with a beater click, so it cuts through the band's own. */
     'ssong.stomp-the-beat.audio': 'audio/stomp-the-beat/stomp-the-beat.mp3',
     'ssong.kick':             'audio/stomp-the-beat/student-kick.wav',
+    // Stomp the Beat: Soul, the older students' version (neo-soul, funk and
+    // gospel, Suno, 2026-10-24), the quaver song. 160 kb/s like the first.
+    'ssong.stomp-the-beat-soul.audio': 'audio/stomp-the-beat-soul/stomp-the-beat-soul.mp3',
 };

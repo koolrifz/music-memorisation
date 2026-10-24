@@ -2278,7 +2278,15 @@ their 32 bar is over that same chord progression."*
   `KR.bandSongs` (`content/songs.js`), each a card with a fun placeholder name
   and icon (`song.<id>`, `song.<id>.icon` in `lang/en-US.js`: Sunrise, Lemonade,
   Skate Park, Moonwalk, Night Owl, Bubblegum, Rollercoaster; Rob: *"just short
-  little names... they're just going to listen to it"*). The Roman numerals
+  little names... they're just going to listen to it"*). **Being retired, a
+  few at a time, as the recorded songs arrive** (Rob, 2026-10-24: *"We don't
+  need that many. You could actually remove three or four of them"*): Lemonade,
+  Moonwalk and Rollercoaster are off the chooser, leaving Sunrise, Skate Park,
+  Night Owl and Bubblegum. Retired is not deleted (their chords stay in
+  `KR.songs`, the warm-up's jam songs still use them), a band begun on one
+  keeps playing, and `bsmashSongOpen()` still counts a band finished on one,
+  so Night Owl never locks again. The recorded songs' tiles come after them
+  (see "STOMP THE BEAT, THE SONG"). The Roman numerals
   show on the cards only with the teacher's Open code. A **tap auditions**:
   plain piano chords, a whole note each, the root in the left hand
   (`guide:<song>`), over a little click (`click`).
@@ -3115,4 +3123,65 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   32-bar gold: *"I can't go any further"*). `ssongNextStep()`: the record's
   next session (silver, then gold), the round's next hurdle, the next round's
   first hurdle, and past the last, **Keep going: the run**.
+- **UP A LEVEL IN THE RUN** (Rob, 2026-10-24: *"if they get it right the first
+  time they get to move up a level. And when they move up a level we let them
+  know there's a little celebration and up they go"*). When a clean take
+  finishes a level (out of the warm-up, or a Stomp Lab level's four bars),
+  `KRStompSong.runLevelUp()` says so and `ssongLevelUp()` shows the keeper's
+  celebration screen, "Level up!" and the level they are going up to
+  (`Level 1: Paired Quavers`, numbered within the song, the warm-up not
+  counted), Tango says one of `ssong.line.run.levelup.*`, and the next take
+  rolls once the screen has gone (`SSONG_LEVELUP_PAUSE_MS` after it). Both
+  songs. A take that does not finish a level still just says "Next one!".
+  Open for Rob: the run still ends at the first miss (the run's own rule from
+  2026-10-23), not the app-wide "owed, three in a row".
+- **A song names itself.** `title`, `tile` and `icon` in its
+  `content/stomp-songs.js` entry are word IDs; the chooser's tile and the
+  song menu's heading (`#ssong-title`) read them. A song with `rounds: []` has
+  no hurdles, only the run and free play.
+
+### STOMP THE BEAT: SOUL, the quaver song (2026-10-24)
+The older students' version of the same lyrics (neo-soul, funk, gospel; the
+"Senior" version in Rob's Song Bank), a second recorded-song tile. Rob: *"It's
+a perfect quaver tune... this song should start where the quavers start.
+Crotchets and quavers will be perfect for this... I don't want to do whole
+notes and half notes with this song... we'll do a deep dive into crotchets and
+quavers."*
+
+- **Files:** `audio/stomp-the-beat-soul/stomp-the-beat-soul.mp3` (160 kb/s,
+  216 s; checked in Chromium to decode in line with the WAV to 0.1 ms),
+  `content/stomp-the-beat-soul-beats.js` (GENERATED, 348 beats), its entry in
+  `content/stomp-songs.js` (`stomp-the-beat-soul`), words `ssong.soul.*`.
+- **The tempo:** Suno counts in near the 100 bpm asked for (100.6), the intro
+  runs about 99, and from the choir on it sits at 97.4 easing to 96.7 by the
+  end. So, as with the first song, the MAP and never a tempo: a fixed 100 bpm
+  grid is 2.8 s out by Chorus 2. The best single tempo still misses by up to
+  0.3 s in the intro.
+- **The map was built from a checked grid**, `tools/grids/stomp-the-beat-soul.json`
+  (`build-stomp-chart.py --grid`): the intro has eight bars with no drums, and
+  in bars 81–82 the kick plays syncopated pushes that pull a beat tracker half
+  a beat off for the rest of the song. The grid was checked by where the kick
+  lands (on beats 1 and 3 throughout, both sides of that fill); the map's beats
+  sit on the real kick hits to 3.4 ms (median). It stops at bar 86's beat 4:
+  the last hit is pushed onto the "and" of 4 and nothing sounds on bar 87, so
+  bar 86 is never a take (`totalBars` 86).
+- **Rob's form, checked:** 87 bars, count-in at bar 0; every section change in
+  the audio lands on the bar in his transcription (a fill in the last bar of
+  most sections). The outro is not kick-only: the kick plays only on the
+  downbeats of bars 83 and 85, then quavers through bar 86.
+- **The run:** the warm-up on the beat (one bar, two bars), then Stage B in
+  Stomp Lab's order, `run.levels` = B1, B3–B10 (10, 12–19), two bars then four
+  each. **No semibreves or minims anywhere** (`run.leaveOut`): every level's
+  vocabulary is filtered (`ssongRunNotation`), and the barline-tie generator is
+  told to tie only values the level still has (`tieFromPool`, one opt-in line
+  in `generateRstompPhraseWithTie`; Stomp Lab's own B10 still ties any value).
+  B2 is left out because without its longer notes it is B1 again. The dotted
+  crotchet stays: the pump is a crotchet and a quaver (Rob to confirm).
+  Measured over 12 phrases a step: only quavers, crotchets and dotted
+  crotchets (and their rests and ties).
+- **No hurdle rounds yet** (`rounds: []`): the old rounds are crotchet
+  patterns, which is not where this song starts. Semiquavers were considered
+  and left out: Rob chose the deep dive.
+- Tests: the Soul block at the end of `tools/test-stomp-song.py`, and two
+  cases in `tools/test-stomp-song.js`.
 

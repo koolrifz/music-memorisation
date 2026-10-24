@@ -5,6 +5,8 @@ global.KRStomp = require('../stomp-round.js');
 const K = require('../stomp-song-core.js');
 global.window = global; global.KR = { stompBeats: {} };
 require('../content/stomp-the-beat-beats.js');
+require('../content/stomp-the-beat-soul-beats.js');
+require('../content/stomp-songs.js');
 const beats = KR.stompBeats['stomp-the-beat'];
 let n = 0;
 function t(name, fn) { try { fn(); n++; console.log('PASS  ' + name); } catch (e) { console.log('FAIL  ' + name + '\n   ' + e.message); process.exitCode = 1; } }
@@ -125,5 +127,32 @@ t('three players: the relay, and the run ends when all three miss in a row', () 
     assert.ok(!r.over);
     assert.strictEqual(K.runTake(r, false).next, 'over');
     assert.deepStrictEqual(r.furthest, [1, 2, 0]);
+});
+t('up a level: out of the warm-up, then each new Stomp Lab level, never past the top', () => {
+    const L = K.runLadder(['10', '12']);          // warm 1, warm 2, 10x2, 10x4, 12x2, 12x4
+    assert.strictEqual(K.runLevelUp(L, 0, 1), null);
+    assert.deepStrictEqual(K.runLevelUp(L, 1, 2), { levelId: '10', number: 1 });
+    assert.strictEqual(K.runLevelUp(L, 2, 3), null);
+    assert.deepStrictEqual(K.runLevelUp(L, 3, 4), { levelId: '12', number: 2 });
+    assert.strictEqual(K.runLevelUp(L, 5, 6), null);
+    assert.strictEqual(K.runLevelUp(L, 5, 5), null);
+});
+t('Stomp the Beat: Soul: its map, its 87 bars and its quaver ladder', () => {
+    const soul = KR.stompBeats['stomp-the-beat-soul'], song = KR.stompSongs['stomp-the-beat-soul'];
+    assert.strictEqual(soul.length, 348);
+    for (let k = 1; k < soul.length; k++) assert.ok(soul[k] > soul[k - 1]);
+    assert.ok(Math.abs(soul[0] - 0.21) < 0.03, 'beat 0 is the spoken One');
+    assert.strictEqual(K.totalBars(soul), 86);    // bar 86 is the pushed ending: never a take
+    for (let b = 0; b < 86; b++) {
+        const bpm = 240 / (K.beatTime(soul, 4 * b + 4) - K.beatTime(soul, 4 * b));
+        assert.ok(bpm > 95.5 && bpm < 101, 'bar ' + b + ' at ' + bpm.toFixed(1));
+    }
+    song.sections.forEach((sec, i) => assert.strictEqual(sec.first, i ? song.sections[i - 1].last + 1 : 0));
+    assert.strictEqual(song.sections[song.sections.length - 1].last, 86);
+    assert.ok(song.run.levels.every(id => +id >= 10 && +id <= 19), 'Stage B only: the quaver');
+    assert.ok(song.run.leaveOut.indexOf('half-note') >= 0 && song.run.leaveOut.indexOf('whole-note') >= 0);
+    assert.deepStrictEqual(song.rounds, []);
+    const spots = K.runSpots(K.totalBars(soul), 4);
+    assert.ok(spots[0] === 5 && spots.every(b => b + 4 <= 86));
 });
 console.log(n + ' passed');

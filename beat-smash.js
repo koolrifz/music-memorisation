@@ -2582,7 +2582,10 @@ function bsmashSongOpen(progress, id) {
     const bands = bsmashBands(progress);
     const finished = song => bsmashSongLevel(song) === level - 1
         && bsmashBandFinished(song === bsmashSongOf(progress) ? progress.musicians : (bands[song] || {}).musicians);
-    return bsmashBandSongs().some(finished);
+    // A band finished on a song since taken off the chooser still counts
+    // (content/songs.js, RETIRING): nothing earned is ever locked again.
+    const played = bsmashBandSongs().concat(Object.keys(bands), [bsmashSongOf(progress)]);
+    return played.some(song => song && finished(song));
 }
 
 // How far a band has got, for its song card: finished, where it is up to,
@@ -2659,14 +2662,16 @@ function bsmashRenderSongs() {
         });
         card.onclick = () => { if (!bsmashJustDropped(card)) auditionBeatSong(id); };
     });
-    // The recorded song: not built into a band, played in the studio with hurdles.
+    // The recorded songs: not built into a band, played in the studio with
+    // hurdles. Each names itself (content/stomp-songs.js: title, tile, icon).
     Object.keys(KR.stompSongs || {}).forEach(id => {
+        const song = KR.stompSongs[id];
         const card = bsmashMake('button', 'bsmash-song-card ssong-tile', box); // text-ok: class names
         card.type = 'button';
         card.dataset.stompSong = id;
-        bsmashMake('span', 'bsmash-song-icon', card).textContent = '🥁';
-        bsmashMake('span', 'bsmash-song-name', card).textContent = KR.t('ssong.title');
-        bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t('ssong.tile');
+        bsmashMake('span', 'bsmash-song-icon', card).textContent = KR.t(song.icon || 'ssong.icon');
+        bsmashMake('span', 'bsmash-song-name', card).textContent = KR.t(song.title || 'ssong.title');
+        bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t(song.tile || 'ssong.tile');
         card.onclick = () => showStompSong(id);
     });
 }
