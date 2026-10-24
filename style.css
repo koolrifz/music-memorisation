@@ -2062,6 +2062,8 @@ button.vsmash-tile:active { transform: translateY(2px); }
 .ssong-kit[data-frame="down"] img[data-frame="down"] { visibility: visible; }
 /* Her kick drum's head lights with each stomp: green on the beat, gold off it.
    It washes over the painted head (multiply), as the old beat light did. */
+.ssong-kit .ssong-kit-badge { position: absolute; inset: auto; aspect-ratio: 1; height: auto; object-fit: contain; pointer-events: none; visibility: visible !important; transform: scale(.82); opacity: .92; }
+.ssong-kit .ssong-kit-badge[hidden] { display: none; }
 .ssong-kit-head { position: absolute; aspect-ratio: 1; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: multiply; transition: opacity .18s ease-out; }
 .ssong-kit-head.on { background: #58cc02; opacity: .85; box-shadow: 0 0 24px 8px rgba(88,204,2,.7); transition: none; }
 .ssong-kit-head.off { background: #ffc800; opacity: .85; box-shadow: 0 0 18px 6px rgba(255,200,0,.6); transition: none; }
