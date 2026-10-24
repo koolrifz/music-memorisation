@@ -1398,25 +1398,42 @@ function ssongTimer(frac) {
    sticks down on the beat, up on the "and". Before the song and after it,
    halfway: where she talks from. Her kick drum's head lights with each stomp,
    green on the beat, gold off it (the beat light, as in the old warm-up). */
-function ssongKitArtIn() {
-    return ['up', 'mid', 'down'].every(f => KR.art && KR.art['beat.kit.warmup.' + f]);
+// The drum room's own Tango (ssong.kit.*, Rob's earlier Tango, 2026-10-24);
+// the old warm-up's kit pictures (beat.kit.warmup.*) if those are missing.
+function ssongKitSet() {
+    const has = set => ['up', 'mid', 'down'].every(f => KR.art && KR.art[set + '.' + f]);
+    if (has('ssong.kit')) return { art: 'ssong.kit', place: 'ssong.kit' };
+    if (has('beat.kit.warmup')) return { art: 'beat.kit.warmup', place: 'beat.kit.warmup' };
+    return null;
 }
+
+function ssongKitArtIn() { return !!ssongKitSet(); }
 
 function ssongKitShow() {
     const kit = ssongEl('ssong-kit');
     if (!kit) return;
-    kit.hidden = !ssongKitArtIn();
-    if (kit.hidden) return;
+    const set = ssongKitSet();
+    kit.hidden = !set;
+    if (!set) return;
     kit.querySelectorAll('img[data-frame]').forEach(img => {
-        const src = KR.art['beat.kit.warmup.' + img.dataset.frame];
+        const src = KR.art[set.art + '.' + img.dataset.frame];
         if (img.getAttribute('src') !== src) img.src = src;
     });
-    const place = KR.artPlaces && KR.artPlaces['beat.kit.warmup'];
+    const place = KR.artPlaces && KR.artPlaces[set.place];
     const head = ssongEl('ssong-kit-head');
+    if (place) kit.style.aspectRatio = String(place.aspect);
     if (place && head) {
         head.style.left = (place.head.left * 100) + '%';
         head.style.top = (place.head.top * 100) + '%';
         head.style.width = (place.head.width * 100) + '%';
+    }
+    // The Kool Riffs badge on a blank kick drum head (the old kit has Rob's
+    // logo painted on it already).
+    const badge = ssongEl('ssong-kit-badge');
+    if (badge) {
+        badge.hidden = set.art !== 'ssong.kit' || !KR.art['logo.badge'];
+        if (!badge.hidden && badge.getAttribute('src') !== KR.art['logo.badge']) badge.src = KR.art['logo.badge'];
+        if (head && !badge.hidden) { badge.style.left = head.style.left; badge.style.top = head.style.top; badge.style.width = head.style.width; }
     }
     ssongKitFrame(null);
 }

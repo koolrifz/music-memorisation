@@ -3323,6 +3323,19 @@ choices."*
   green on an on-beat stomp, gold off it (`ssongKitHit`). Smaller in a take
   (17vh, 13vh under 700 px) so the music keeps its room. The song screens now pad
   64 px at the top so the gold box clears Back.
+- **THE DRUM ROOM'S TANGO IS ROB'S EARLIER ONE** (2026-10-24, later): the lanky
+  orange Tango with the spiky tuft and ponytail, at a plain red kit, four frames
+  made in Gemini **by editing one base picture** (the brief: generate the base with
+  no arms and a blank kick head, then upload it with each arm prompt and "change
+  nothing else"). Measured: the kit sits in exactly the same place in all four
+  (best shift 0, 0), so flicking frames moves only her arms. `ssong.kit.up / .mid /
+  .down / .base` in `content/art.js` (`art/tango-drums-*.webp`, keyed off the green,
+  800 × 670), the head at `KR.artPlaces['ssong.kit']`; the Kool Riffs badge is laid
+  on the blank head (`#ssong-kit-badge`). `ssongKitSet()` falls back to the cat
+  Tango (`beat.kit.warmup.*`) if they are missing. **Only the drum room changed:**
+  the cat Tango is still in the old band screens and the studio; Rob has not
+  said whether this Tango replaces her everywhere. `base` (no arms) is spare, for
+  a puppet with separate arms later.
 - **Recalibrate my beat** (was "Re-time my taps", which ran the whole jam): a box
   over the menu (`#beat-calibrate`, "RECALIBRATE" in `beat-smash.js`). **A web page
   cannot ask whether Bluetooth is on**; it can read the speaker's own delay

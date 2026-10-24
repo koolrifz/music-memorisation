@@ -18,6 +18,18 @@ KR.art = {
     'beat.kit.warmup.mid':  'art/tango-kit-mid.webp',
     'beat.kit.warmup.down': 'art/tango-kit-down.webp',
 
+    // The drum room (stomp-song.js, 2026-10-24): Rob's earlier Tango, the
+    // lanky orange one with the ponytail, at a plain red kit. Four frames
+    // made in Gemini by editing one base picture, so the kit is in exactly
+    // the same place in every frame and only her arms move: sticks up (the
+    // "and"), one up one down (in between), the hit (the beat), and no arms
+    // (spare, for a puppet later). The kick drum's head is left blank: the
+    // game puts the Kool Riffs badge on it.
+    'ssong.kit.up':    'art/tango-drums-up.webp',
+    'ssong.kit.mid':   'art/tango-drums-mid.webp',
+    'ssong.kit.down':  'art/tango-drums-down.webp',
+    'ssong.kit.base':  'art/tango-drums-base.webp',
+
     // The musician on screen during their steps (1 to 8 bars; not the
     // studio). A song can have its own: 'beat.coach.<musician>.<song>', e.g.
     // 'beat.coach.drums.c-1-4-1-5'. Until then every song uses these.
@@ -57,4 +69,6 @@ KR.art = {
    game needs to know where the head is in Tango's kit picture. */
 KR.artPlaces = {
     'beat.kit.warmup': { aspect: 800 / 665, head: { left: 0.34, top: 0.5474, width: 0.34 } },
+    // The drum room's kit: the kick drum's head, measured on the frames.
+    'ssong.kit':       { aspect: 800 / 670, head: { left: 0.3661, top: 0.6096, width: 0.2882 } },
 };
