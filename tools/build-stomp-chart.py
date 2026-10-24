@@ -2,6 +2,8 @@
 """Build a beat map for an audio-backed song (Stomp the Beat and its successors).
 
     python tools/build-stomp-chart.py "Beat Stomp (Remastered).wav" stomp-the-beat
+    python tools/build-stomp-chart.py "Stomp the Beat - senior 02.wav" stomp-the-beat-soul \
+        --grid tools/grids/stomp-the-beat-soul.json
 
 Writes content/<id>-beats.js (generated: do not edit) and prints a report.
 
@@ -13,25 +15,46 @@ three steps and checked against the audio itself:
      lands ON the band's kick, not a flam away from it);
   3. a smooth curve is fitted through those hits, so a missing or doubtful kick
      (the intro, the breakdowns) is filled in from its neighbours.
+
+--bpm N      the tracker's first guess at the tempo (default 112, Stomp the Beat).
+--grid FILE  a JSON list of rough beat times (seconds; beat 0 = the count-in
+             "One") used INSTEAD of the tracker in step 1. For a song the tracker
+             loses its place in: Stomp the Beat: Soul has eight bars with no drums
+             at the start, and a syncopated fill and a pushed ending that pull a
+             tracker half a beat off (it then stays there to the end). Its grid
+             was checked by where the kick lands: on beats 1 and 3, every bar.
+             With a grid, a beat with no kick near it is steered by the grid
+             itself, lightly (ROUGH_WEIGHT), so the drumless intro still gets a map.
 Needs: pip install librosa scipy numpy soundfile
 """
-import json, sys, os
+import argparse, json, os
 import numpy as np, librosa
 from scipy.interpolate import LSQUnivariateSpline
 from scipy.signal import find_peaks
 
 SR, HOP = 22050, 64                       # 2.9 ms per frame
-src, song_id = sys.argv[1], sys.argv[2]
+ROUGH_WEIGHT = 0.2                        # how much a grid beat with no kick near it steers the curve
+ap = argparse.ArgumentParser()
+ap.add_argument('src'); ap.add_argument('song_id')
+ap.add_argument('--bpm', type=float, default=112)
+ap.add_argument('--grid')
+args = ap.parse_args()
+src, song_id = args.src, args.song_id
 y, sr = librosa.load(src, sr=SR, mono=True)
 
-# 1. the rough pulse (the same settings that matched Rob's ear on 2026-10-23)
-H = 256
-oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=H)
-S = np.abs(librosa.stft(y, n_fft=2048, hop_length=H)); f = librosa.fft_frequencies(sr=sr, n_fft=2048)
-low = S[(f > 35) & (f < 120)].sum(0); lflux = np.maximum(0, np.diff(low, prepend=low[0])); lflux /= lflux.max()
-_, b = librosa.beat.beat_track(onset_envelope=oenv / oenv.max() + lflux, sr=sr, hop_length=H,
-                               tightness=40, start_bpm=112, trim=False)
-rough = librosa.frames_to_time(b, sr=sr, hop_length=H)
+# 1. the rough pulse (the same settings that matched Rob's ear on 2026-10-23),
+#    or the checked grid given for this song
+if args.grid:
+    with open(args.grid) as fh:
+        rough = np.array(json.load(fh), dtype=float)
+else:
+    H = 256
+    oenv = librosa.onset.onset_strength(y=y, sr=sr, hop_length=H)
+    S = np.abs(librosa.stft(y, n_fft=2048, hop_length=H)); f = librosa.fft_frequencies(sr=sr, n_fft=2048)
+    low = S[(f > 35) & (f < 120)].sum(0); lflux = np.maximum(0, np.diff(low, prepend=low[0])); lflux /= lflux.max()
+    _, b = librosa.beat.beat_track(onset_envelope=oenv / oenv.max() + lflux, sr=sr, hop_length=H,
+                                   tightness=40, start_bpm=args.bpm, trim=False)
+    rough = librosa.frames_to_time(b, sr=sr, hop_length=H)
 
 # 2. the real kick hits: peaks of the low band's rise, to a few ms
 S2 = np.abs(librosa.stft(y, n_fft=1024, hop_length=HOP)); f2 = librosa.fft_frequencies(sr=sr, n_fft=1024)
@@ -54,7 +77,13 @@ idx = np.arange(len(rough))
 use = ok.copy()
 for _ in range(4):
     knots = np.arange(KNOT, len(rough) - KNOT, KNOT)
-    spl = LSQUnivariateSpline(idx[use], found[use], knots, k=3)
+    if args.grid:
+        # Every beat steers: a kick that agrees with the curve fully, the grid
+        # lightly where there is no such kick (no drums, or a doubtful hit).
+        spl = LSQUnivariateSpline(idx, np.where(use, found, rough), knots,
+                                  w=np.where(use, 1.0, ROUGH_WEIGHT), k=3)
+    else:
+        spl = LSQUnivariateSpline(idx[use], found[use], knots, k=3)
     resid_all = found - spl(idx)
     use = ok & (np.abs(np.nan_to_num(resid_all, nan=9)) < 0.020)
 beats = spl(idx)

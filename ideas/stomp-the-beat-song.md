@@ -50,3 +50,10 @@ then of crotchets and crotchet rests (opens once a record is pressed).
 
 Ending is 8 bars of audio against 12 written; lyric tweak to mention crotchets;
 reaction cues from the band; the 3-pad (MPC) idea; real-device latency.
+
+## Stomp the Beat: Soul (2026-10-24)
+
+The older students' version of the song (neo-soul, funk, gospel) is a second
+tile, and the quaver song: the run starts at Stage B and has no minims or
+semibreves. A clean take that finishes a level now celebrates ("Level up!",
+naming the next level) on both songs. See CLAUDE.md, "STOMP THE BEAT: SOUL".

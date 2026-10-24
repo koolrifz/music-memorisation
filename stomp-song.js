@@ -41,6 +41,7 @@ const SSONG_STUDENT_GAIN = 1.0;      // the student's kick: bright, on top
 const SSONG_END_FADE = 0.8;          // seconds: the song fades out at the end of a take, and when Stop is pressed
 const SSONG_HEAD_HALF = 6;           // half a notehead, px: a beat is drawn at its notehead's centre
 const SSONG_RUN_NEXT_MS = 2500;     // after a clean take in a run, the next one rolls on its own
+const SSONG_LEVELUP_PAUSE_MS = 600;  // after the level-up celebration has gone, a breath before the next take
 const SSONG_MAX_PLAYERS = 4;
 const SSONG_CROTCHET_GRID = { slotsPerBar: 4, slotValue: 'q', slotsPerBeat: 1, beamSlots: 1 };
 const SSONG_ANTICIPATE = 0.25;       // beats before the punch-in a tap is beat 1, early; sooner is too soon
@@ -190,6 +191,7 @@ function showStompSong(id) {
         sources: [], pads: null, frame: 0, taps: [], delay: { delay: 0, source: 'none' },
     };
     if (ssongAudio()) ssongLoadAssets().catch(() => { /* shown when a take is rolled */ });
+    ssongEl('ssong-title').textContent = KR.t(song.title || 'ssong.title');
     switchScreenState('beat', 'ssong-screen-menu');
     ssongRenderMenu();
     ssongEvent('ssong.menu');
@@ -273,7 +275,8 @@ function ssongRenderMenu() {
     ssongMake('p', 'ssong-sub', body).textContent = KR.t('ssong.menu.free.sub');
 
     // The hurdles by name, and the records: the teacher's, with the Open code.
-    if (!open) return;
+    // A song with no hurdle rounds is the run and free play alone.
+    if (!open || !song.rounds.length) return;
     song.rounds.forEach((round, ri) => {
         const title = ssongMake('h2', 'ssong-round', body);
         title.textContent = round.rests
@@ -915,7 +918,11 @@ function ssongRunNotation(step) {
         return { specBars: pattern.map(ssongSpecs), grid: SSONG_CROTCHET_GRID, pattern: pattern };
     }
     const base = RSTOMP_LEVELS.find(l => l.id === step.levelId);
-    const level = Object.assign({}, base, { bars: step.bars });
+    // The song may take values out of every level (content/stomp-songs.js,
+    // run.leaveOut): the quaver song has no semibreves or minims.
+    const leaveOut = (ssong.song.run && ssong.song.run.leaveOut) || [];
+    const level = Object.assign({}, base, { bars: step.bars, pool: base.pool.filter(v => leaveOut.indexOf(v) < 0) },
+        leaveOut.length ? { tieFromPool: true } : {});
     const g = rstompGridFor(level);
     const grid = { slotsPerBar: g.slotsPerBar, slotValue: g.slotValue, slotsPerBeat: g.slotsPerBeat, beamSlots: g.beamSlots || g.slotsPerBeat };
     // Stomp Lab's specs carry no slot of their own: number them in the bar,
@@ -980,8 +987,10 @@ function ssongShowRunResult(g, passed, out) {
         head.textContent = KR.t(g.perfect ? 'ssong.result.clean' : 'ssong.result.pass');
         add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
         button('btn-start', KR.t('ssong.run.next'), ssongRunNext);
-        ssongEvent('ssong.run.pass');
         playSound('correct');
+        const up = KRStompSong.runLevelUp(ssong.ladder, ssong.step.index, run.step);
+        if (up) { ssongLevelUp(up); return; }
+        ssongEvent('ssong.run.pass');
         // Keep them coming: the next take rolls on its own.
         ssong.nextTimer = setTimeout(ssongRunNext, SSONG_RUN_NEXT_MS);
         return;
@@ -1009,6 +1018,25 @@ function ssongShowRunResult(g, passed, out) {
     if (ssong.step.levelId) button('btn-secondary', KR.t('ssong.run.learn'), () => ssongLearn(ssong.step.levelId));
     button('btn-secondary', KR.t('ssong.menu'), () => ssongToMenu());
     ssongEvent('ssong.run.end', { n: run.cleared });
+}
+
+// UP A LEVEL (Rob, 2026-10-24: "if they get it right the first time they get
+// to move up a level. And when they move up a level we let them know there's a
+// little celebration and up they go"). The levels stay hidden until then: the
+// celebration names the one they are going up to, Tango says so, and the next
+// take rolls once the screen has gone (by itself, or at a tap).
+function ssongLevelUp(up) {
+    window.ssongLastLevelUp = up;
+    ssongEvent('ssong.run.levelup');
+    KR.celebrate({
+        title: KR.t('ssong.run.levelup'),
+        line: KR.t('ssong.run.levelup.next', { n: up.number, name: rstompLevelName(up.levelId) }),
+        stars: 1,
+        then: () => {
+            if (!ssong || ssong.mode !== 'run' || ssong.state !== 'result' || ssong.nextTimer) return;
+            ssong.nextTimer = setTimeout(ssongRunNext, SSONG_LEVELUP_PAUSE_MS);
+        },
+    });
 }
 
 function ssongRunNext() {

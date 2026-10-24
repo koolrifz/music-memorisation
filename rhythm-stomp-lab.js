@@ -1417,10 +1417,16 @@ function generateRstompPhraseWithTie(level, grid) {
 
     const leadRuns = [];
     const tailRuns = [];
+    // Stomp Lab's own tie levels tie ANY value over the barline. A song that
+    // takes values out of a level (stomp-song.js, run.leaveOut) sets
+    // tieFromPool, so the two tied notes are values the level still has: the
+    // quaver song never ties a minim or a semibreve.
+    const inPool = n => !level.tieFromPool
+        || grid.units.some(u => !u.isRest && u.value === rstompValueForSlots(n, grid.slotValue));
     for (let n = 1; n <= grid.slotsPerBar; n++) {
         // r-runs sit at the END of their bar, so their lead fills from slot 0;
         // s-runs sit at the START, so their tail begins at slot n.
-        if (!rstompValueForSlots(n, grid.slotValue)) continue;
+        if (!rstompValueForSlots(n, grid.slotValue) || !inPool(n)) continue;
         if (rstompPickUnitShape(grid, grid.slotsPerBar - n, 0)) leadRuns.push(n);
         if (rstompPickUnitShape(grid, grid.slotsPerBar - n, n)) tailRuns.push(n);
     }
