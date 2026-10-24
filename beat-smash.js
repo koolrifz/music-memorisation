@@ -517,7 +517,13 @@ function bsmashUpdateMusician(id, changes) {
    leaving the audio clock to the student's tap on it. It covers the speaker,
    the touch screen and the headphones together, which is why it is measured
    rather than read from the browser. */
+// The saved delay, moved for the speaker in use now (rstompRoundDelay(): one
+// place for every game that grades taps).
 function bsmashDelay() {
+    if (typeof rstompRoundDelay === 'function') {
+        const d = rstompRoundDelay();
+        return d.source === 'outputLatency' ? 0 : d.delay;
+    }
     try {
         const saved = JSON.parse(localStorage.getItem(BSMASH_DELAY_KEY));
         if (saved && typeof saved.delay === 'number') return saved.delay;
@@ -525,8 +531,13 @@ function bsmashDelay() {
     return 0;
 }
 
+// `out` is the output delay the browser reported when this was measured: a
+// Bluetooth headset adds a lot, the phone's own speaker little. Saved with the
+// delay so a later session on another speaker can tell, and adjust.
 function bsmashSaveDelay(delay) {
-    try { localStorage.setItem(BSMASH_DELAY_KEY, JSON.stringify({ delay: delay, at: Date.now() })); } catch (e) {}
+    const ctx = typeof rstompAudio === 'function' ? rstompAudio() : null;
+    const out = ctx && typeof ctx.outputLatency === 'number' ? ctx.outputLatency : null;
+    try { localStorage.setItem(BSMASH_DELAY_KEY, JSON.stringify({ delay: delay, out: out, at: Date.now() })); } catch (e) {}
 }
 
 /* =========================================

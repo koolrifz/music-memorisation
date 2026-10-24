@@ -3088,15 +3088,31 @@ let rstompRoundPads = null;
 let rstompRoundDone = null;
 window.rstompRoundLog = [];             // the last round's rows, for the teacher / console
 
+// THE TAP DELAY, and the speaker it was measured on (Rob, 2026-10-24: random
+// taps "out of time" passed a run take). The delay saved by the Beat Smash
+// warm-up is taken off every tap; measured through Bluetooth headphones it can
+// be a quarter of a second, and played later on the phone's own speaker every
+// on-time tap was then graded early and a late one passed. So the saved delay
+// carries the output delay the browser reported when it was measured (`out`);
+// when the browser now reports a different one, the delay moves by the
+// difference. A delay saved before `out` existed, and well over what the
+// browser reports now, is marked `stale`: the song says to re-time the taps.
+const RSTOMP_DELAY_MOVED = 0.04;      // seconds of change in the speaker's delay that count
+const RSTOMP_DELAY_STALE = 0.12;      // an old delay this far over the speaker's own is suspect
 function rstompRoundDelay() {
-    let saved = 0;
+    let saved = null;
     try {
         const d = JSON.parse(localStorage.getItem('koolRiffsBeatDelay'));
-        if (d && typeof d.delay === 'number') saved = d.delay;
+        if (d && typeof d.delay === 'number' && d.delay) saved = d;
     } catch (e) { /* no storage: fall back */ }
-    if (saved) return { delay: saved, source: 'jam' };
     const ctx = typeof rstompAudio === 'function' ? rstompAudio() : null;
-    return { delay: (ctx && ctx.outputLatency) || 0, source: 'outputLatency' };
+    const now = ctx && typeof ctx.outputLatency === 'number' && ctx.outputLatency > 0 ? ctx.outputLatency : null;
+    if (!saved) return { delay: now || 0, source: 'outputLatency', out: now };
+    if (now != null && typeof saved.out === 'number' && saved.out > 0 && Math.abs(now - saved.out) > RSTOMP_DELAY_MOVED) {
+        return { delay: Math.max(0, saved.delay - saved.out + now), source: 'jam-moved', saved: saved.delay, out: now, was: saved.out };
+    }
+    const stale = now != null && typeof saved.out !== 'number' && saved.delay - now > RSTOMP_DELAY_STALE;
+    return { delay: saved.delay, source: 'jam', saved: saved.delay, out: now, stale: stale };
 }
 
 function rstompRoundEventTime(e) {

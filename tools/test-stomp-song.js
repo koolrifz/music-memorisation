@@ -104,7 +104,7 @@ t('plan takes Stomp Lab slot bars: quavers between the beats', () => {
 t('the run ladder: warm-up, then each level at two bars and four', () => {
     const L = K.runLadder(['1', '2']);
     assert.deepStrictEqual(L.map(s => (s.levelId || '-') + s.bars), ['-1', '-2', '12', '14', '22', '24']);
-    assert.strictEqual(L[0].pass, 1); assert.strictEqual(L[3].pass, 0.85);
+    assert.strictEqual(L[0].pass, 1); assert.strictEqual(L[3].pass, 1);   // every step clean (2026-10-24)
     assert.strictEqual(K.runStep(L, 99), L[5]);
 });
 t('spots fit the song and are never the same twice running', () => {
