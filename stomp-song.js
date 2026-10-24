@@ -31,7 +31,7 @@
    Stomp Lab's round and Beat Smash do (rstompRoundDelay, rstompRoundEventTime).
    ========================================= */
 const SSONG_KEY = 'koolRiffsStompSong';
-const SSONG_WINDOW = 0.18;           // seconds each side of a note (the matcher caps it at half the gap)
+const SSONG_WINDOW = 0.15;           // seconds each side of a note (the matcher caps it at half the gap). Was 0.18: at 112 bpm that called two-thirds of every beat on time (Rob, 2026-10-24)
 const SSONG_PRE_ROLL = 0.4;          // seconds between pressing Roll tape and the song sounding
 const SSONG_PAGE_LINES_PHONE = 4;    // a long take shows this many lines at a time, then turns the page
 const SSONG_PAGE_LINES_WIDE = 2;
@@ -673,8 +673,38 @@ function ssongJudge() {
         { passed: passed, guided: ssong.guided, pct: g.pct, session: ssong.session });
     ssongSave();
     window.ssongLast = { grade: g, passed: passed, applied: applied, plan: p, taps: ssong.taps.slice() };
+    ssongLogTake(g, passed, ssong.round.id + ' ' + hurdle.id);
     ssongEndTake(g);
     ssongShowResult(g, passed, applied);
+}
+
+// TIMING, CHECKABLE (Rob, 2026-10-24: random taps passed a run take, and
+// nothing on screen could say why). Under every result: if the saved tap
+// delay looks like it was measured on another speaker, say so and where to
+// re-time it; with the teacher's Open code, the delay used and where it came
+// from, and how far each note was off.
+function ssongTimingLines(g, add) {
+    const d = ssong.delay || {};
+    if (d.stale) add(KR.t('ssong.delay.stale'));
+    if (!KR.openAll()) return;
+    add(KR.t('ssong.debug.delay', { ms: Math.round((d.delay || 0) * 1000), source: d.source || 'none',
+        out: d.out == null ? '?' : Math.round(d.out * 1000) }));
+    const errs = g.log.filter(e => e.kind === 'hit').map(e => (e.error >= 0 ? '+' : '') + Math.round(e.error * 1000));
+    add(KR.t('ssong.debug.taps', { taps: ssong.taps.length, notes: g.notes, errors: errs.join(' ') || '-' }));
+}
+
+// The last 10 graded takes, kept on the device for a teacher to look at
+// (localStorage koolRiffsSongLog), as Stomp Lab keeps koolRiffsStompLog.
+const SSONG_LOG_KEY = 'koolRiffsSongLog';
+function ssongLogTake(g, passed, what) {
+    try {
+        const log = JSON.parse(localStorage.getItem(SSONG_LOG_KEY) || '[]');
+        log.push({ at: Date.now(), song: ssong.id, what: what, passed: passed, notes: g.notes, hits: g.hits,
+                   strays: g.strays, leanMs: g.leanMs, window: SSONG_WINDOW, delay: ssong.delay,
+                   onsets: ssong.plan.onsets.map(o => Math.round(o.t * 1000)),
+                   taps: ssong.taps.map(t => Math.round(t.t * 1000)) });
+        localStorage.setItem(SSONG_LOG_KEY, JSON.stringify(log.slice(-10)));
+    } catch (e) { /* no storage: nothing kept */ }
 }
 
 // The take is over: the song fades, the playhead goes, the marks go on.
@@ -760,6 +790,7 @@ function ssongShowResult(g, passed, applied) {
         else if (g.leanMs >= 25) add(KR.t('ssong.result.late', { ms: g.leanMs }));
         else add(KR.t('ssong.result.pocket'));
     }
+    ssongTimingLines(g, add);
     if (ssong.guided) add(KR.t('ssong.result.guided'));
     else if (!ssong.hurdle.record) add(KR.t('ssong.result.stars', { n: applied.stars, needs: KRStompSong.needed(KRStompSong.hurdleState(ssong.progress, ssong.round.id, ssong.hurdle.id)) }));
     ssongRenderStars();
@@ -974,6 +1005,7 @@ function ssongJudgeRun() {
     progress.run.best = Math.max(progress.run.best || 0, run.cleared);
     ssongSave();
     window.ssongLast = { grade: g, passed: passed, run: Object.assign({}, run), plan: p, step: step, taps: ssong.taps.slice() };
+    ssongLogTake(g, passed, 'run ' + (step.levelId || 'warm-up') + ' x' + step.bars);
     ssongEndTake(g);
     ssongShowRunResult(g, passed, out);
 }
@@ -992,6 +1024,7 @@ function ssongShowRunResult(g, passed, out) {
         b.type = 'button'; b.textContent = text; b.onclick = () => { ssongCancelNext(); fn(); }; return b;
     };
     const head = ssongEl('ssong-result-head');
+    ssongTimingLines(g, add);
     if (out.next === 'same') {
         head.textContent = KR.t(g.perfect ? 'ssong.result.clean' : 'ssong.result.pass');
         add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));

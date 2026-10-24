@@ -190,7 +190,9 @@
     function runLadder(levelIds) {
         const steps = [{ levelId: null, bars: 1 }, { levelId: null, bars: 2 }];
         levelIds.forEach(id => { steps.push({ levelId: id, bars: 2 }, { levelId: id, bars: 4 }); });
-        return steps.map((st, i) => Object.assign({ index: i, pass: st.bars <= 2 ? 1 : 0.85 }, st));
+        // Every step clean, four bars too (Rob, 2026-10-24: four bars allowed a
+        // missed note and two stray taps, which was more than "a slip").
+        return steps.map((st, i) => Object.assign({ index: i, pass: 1 }, st));
     }
 
     function runStep(ladder, index) { return ladder[Math.min(index, ladder.length - 1)]; }

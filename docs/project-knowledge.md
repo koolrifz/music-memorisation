@@ -3184,6 +3184,30 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   Rob is mapping the other songs. Not built: locking a song until the level
   below is done (the band songs do this; ask Rob before copying it).
 
+### "I tapped randomly and moved up": the tap delay (Rob, 2026-10-24)
+Checked first: the grader is sound. 32 real-browser run takes of random or
+mashed taps all failed, and under 1 in 300 of 140,000 simulated ones passed
+(only on the easiest one-bar steps). The likely cause was the **saved tap
+delay** (`koolRiffsBeatDelay`, from the Beat Smash warm-up), taken off every
+tap and never re-measured: measured through Bluetooth headphones it can be a
+quarter of a second, so on the phone's speaker on-time taps graded early and
+late ones passed. Not proven on his phone. Changed:
+- **The saved delay remembers the speaker** (`out`, the browser's
+  `outputLatency` when measured, `bsmashSaveDelay()`), and
+  `rstompRoundDelay()` moves it by the difference when the browser reports
+  another (`jam-moved`). One place, used by the song, Stomp Lab's round and
+  Beat Smash (`bsmashDelay()` now reads it). A delay saved before `out` existed
+  and well over today's output delay is `stale`: the result screen says to
+  re-time the taps in the Beat Smash warm-up (`ssong.delay.stale`).
+  `outputLatency` is 0 or missing on some phones; then nothing moves.
+- **With the Open code, every song result shows the delay used**, its source,
+  the speaker's own delay and how far each note was off (`ssongTimingLines()`).
+  The last 10 graded takes are in `localStorage.koolRiffsSongLog`.
+- **The run is clean on every step** (`runLadder` pass 1): four bars had let a
+  missed note and two stray taps through. Hurdles keep 0.85 at 4, 8 and 32 bars.
+- **`SSONG_WINDOW` 0.18 -> 0.15 s**: at 112 bpm 0.18 called two-thirds of every
+  beat on time.
+
 ### STOMP THE BEAT: SOUL, the quaver song (2026-10-24)
 The older students' version of the same lyrics (neo-soul, funk, gospel; the
 "Senior" version in Rob's Song Bank), a second recorded-song tile. Rob: *"It's
