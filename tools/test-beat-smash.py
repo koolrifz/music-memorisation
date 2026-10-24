@@ -2140,7 +2140,7 @@ def test_teacher_codes(page):
     page.wait_for_timeout(1800)
     left = page.evaluate("Object.keys(localStorage).filter(k => k.indexOf('koolRiffs') === 0)")
     check('The RESET code takes every game on this device back to zero', left == [], left)
-    page.evaluate('KR.speak = () => {}')
+    page.evaluate('KR.speak = () => {}; BSMASH_SONG_MENU = false')   # the reset reloads the page
     page.click('.game-card.red')
     page.wait_for_timeout(600)
     check('...so Beat Smash starts from the warm-up again', screen(page) == 'beat-screen-studio'
