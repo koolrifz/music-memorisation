@@ -2325,7 +2325,7 @@ def test_wait_for_count(page):
                  sign: [box('beat-countin').top, box('beat-countin').bottom], reading: [box('beat-reading').top, box('beat-reading').bottom], pads: box('beat-pads').top,
                  drawn: !document.getElementById('beat-tango-sign').hasAttribute('hidden') }; })()""")
     check('Rob\'s Tango at her kit is on screen above the music; the sign stands alone between her and the music',
-          laid['coach'] and 'tango-kit-mid' in laid['src'] and laid['coachBottom'] <= laid['sign'][0] and laid['sign'][1] <= laid['reading'][0]
+          laid['coach'] and 'tango-drums-mid' in laid['src'] and laid['coachBottom'] <= laid['sign'][0] and laid['sign'][1] <= laid['reading'][0]
           and not laid['drawn'], laid)
     check('...and the music sits just above the pads (Rob: "so their eyes don\'t have to cover so much distance")',
           0 <= laid['pads'] - laid['reading'][1] < 24, laid)
@@ -2492,7 +2492,7 @@ def test_coach_art(browser):
     page.wait_for_timeout(300)
     seen = {who: step(page, who, 1) for who in ('drums', 'bass', 'keys')}
     check('Each musician\'s own picture in their steps: Tango at her kit, Riff on the double bass, Riff at the keys',
-          'tango-kit-mid' in seen['drums']['src'] and 'riff-double-bass' in seen['bass']['src'] and 'riff-keys' in seen['keys']['src']
+          'tango-drums-mid' in seen['drums']['src'] and 'riff-double-bass' in seen['bass']['src'] and 'riff-keys' in seen['keys']['src']
           and all(v['coach'] and v['loaded'] for v in seen.values()), {k: v['src'] for k, v in seen.items()})
     heights = [step(page, 'bass', n)['coach'] for n in (1, 2, 3)]
     heights = [h and round(h[1] - h[0]) for h in heights]
