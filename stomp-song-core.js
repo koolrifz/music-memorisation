@@ -370,6 +370,86 @@
         return out;
     }
 
+    /* ---------- on the beat, rushed, dragged (Rob, 2026-10-24) ----------
+       "Present stats on percent on the beat, percent rushed, percent dragged."
+       Every tap is set against the note (or beat) nearest it: within onSec it
+       is ON the beat, sooner it RUSHED, later it DRAGGED. The three add up to
+       100. The diagnosis is one word the screen turns into one short line:
+         steady    ON_PASS or more of the taps on the beat
+         rushing   otherwise, rushed is the main problem (at least RUSH_SHARE
+                   of the taps, and twice as many as dragged)
+         dragging  the same, the other way
+         mixed     a bit of both: "close, keep listening and stomping"
+         few       too few taps to say anything */
+    const ON_SEC = 0.07;                  // a tap this close to its note is on the beat
+    const RUSH_SHARE = 0.2;               // rushed (or dragged) this share of taps is a pattern, not a wobble
+    const ON_PASS = 0.8;
+
+    function timingSplit(errors, options) {
+        const o = Object.assign({ onSec: ON_SEC }, options);
+        const n = errors.length;
+        let on = 0, rushed = 0, dragged = 0;
+        errors.forEach(e => { if (Math.abs(e) <= o.onSec) on++; else if (e < 0) rushed++; else dragged++; });
+        // Percentages that add up to 100: the biggest remainder takes the spare.
+        const pct = [on, rushed, dragged].map(x => n ? 100 * x / n : 0);
+        const whole = pct.map(Math.floor);
+        let spare = n ? 100 - whole.reduce((a, b) => a + b, 0) : 0;
+        pct.map((x, i) => [x - whole[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (spare > 0) { whole[i]++; spare--; } });
+        let diagnosis;
+        if (n < 3) diagnosis = 'few';
+        else if (on >= ON_PASS * n) diagnosis = 'steady';
+        else if (rushed >= RUSH_SHARE * n && rushed >= 2 * dragged) diagnosis = 'rushing';
+        else if (dragged >= RUSH_SHARE * n && dragged >= 2 * rushed) diagnosis = 'dragging';
+        else diagnosis = 'mixed';
+        return { taps: n, on, rushed, dragged, onPct: whole[0], rushedPct: whole[1], draggedPct: whole[2], diagnosis };
+    }
+
+    // A take's taps, each against the nearest written note (seconds, signed:
+    // negative is early). p is a plan; taps are on the punch-in's clock.
+    function tapErrors(p, taps) {
+        if (!p.onsets.length) return [];
+        return taps.map(tap => {
+            let best = null;
+            p.onsets.forEach(o => { const e = tap.t - o.t; if (best === null || Math.abs(e) < Math.abs(best)) best = e; });
+            return best;
+        });
+    }
+
+    /* ---------- the warm-up round (Rob, 2026-10-24) ----------
+       "30 second rounds of free play using the same 30 seconds of the tune but
+       must pass a hurdle to start working on the rest of the tune." The round
+       plays the song from its count-in for `seconds`; the student stomps the
+       beat. Taps in the count-in bar are not counted. Every tap is set
+       against the nearest beat. The hurdle is passed when the beat was kept
+       (an on-beat stomp on at least WARM_COVER of the beats in the round) and
+       kept cleanly (at least WARM_ON of the stomps on the beat), so a stream
+       of random taps can't pass it and neither can a few careful ones. */
+    const WARM_SECONDS = 30;
+    const WARM_COVER = 0.75;
+    const WARM_ON = 0.75;
+
+    function warmRound(beats, taps, options) {
+        const o = Object.assign({ seconds: WARM_SECONDS, firstBeat: BEATS_PER_BAR, onSec: ON_SEC, cover: WARM_COVER, on: WARM_ON }, options);
+        // The beats in the round: from bar 1 to the last whole beat before the end.
+        const inRound = [];
+        for (let k = o.firstBeat; k < beats.length && beats[k] <= o.seconds - 0.05; k++) inRound.push(k);
+        const start = beatTime(beats, o.firstBeat - 0.5);
+        const counted = taps.filter(t => t.t >= start && t.t <= o.seconds);
+        const errors = [], kept = new Set();
+        counted.forEach(tap => {
+            const k = Math.round(beatAt(beats, tap.t));
+            const e = tap.t - beatTime(beats, k);
+            errors.push(e);
+            if (Math.abs(e) <= o.onSec) kept.add(k);
+        });
+        const split = timingSplit(errors, { onSec: o.onSec });
+        const beatsKept = inRound.filter(k => kept.has(k)).length;
+        const cover = inRound.length ? beatsKept / inRound.length : 0;
+        const onShare = split.taps ? split.on / split.taps : 0;
+        const passed = cover >= o.cover && onShare >= o.on;
+        return Object.assign(split, { beats: inRound.length, beatsKept, coverPct: Math.round(100 * cover), passed });
+    }
+
     /* ---------- progress: the rule of three and the records ---------- */
 
     // progress = { rounds: { <roundId>: { <hurdleId>: { stars, cleared, attempts, best } } },
@@ -442,6 +522,7 @@
         beatTime, beatAt, totalBars, rng, patternFor, recordingPattern, plan, barOf,
         grade, passes, analyseFree, blankProgress, hurdleState, applyAttempt, hurdleOpen,
         runLadder, runStep, runLevelUp, runSpots, pickSpot, newRun, runTake,
+        ON_SEC, WARM_SECONDS, timingSplit, tapErrors, warmRound,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.KRStompSong = api;

@@ -144,7 +144,13 @@ def main():
         page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
         check('one player: a miss ends the run', page.evaluate('ssong.run.over'))
         txt = page.inner_text('#ssong-result')
-        check('the end says how far, and offers to go again', 'run' in txt.lower() and page.locator('#ssong-result-actions button').count() >= 2, txt)
+        check('the end says Try Another One, with the on-beat / rushed / dragged split, and offers to go again',
+              'Try Another One' in txt and page.locator('#ssong-result-split .ssong-split-chip').count() == 3
+              and page.locator('#ssong-result-actions button').count() >= 2, txt)
+        check('...and Tango says what went wrong (the stray, the timing being clean)',
+              'extra tap' in page.inner_text('#ssong-play-guide').lower(), page.inner_text('#ssong-play-guide'))
+        check('Try another one starts the same rung again', page.evaluate("""() => { const at = ssong.run.step;
+            document.querySelector('#ssong-result-actions .btn-start').click(); const ok = ssong.run.step === at && !ssong.run.over; ssongHalt(); return ok; }"""))
         # a quaver level plays clean too
         page.evaluate("ssongOpenRun(); ssongHalt(); ssong.mode = 'run'; ssong.run.step = ssong.ladder.findIndex(s => s.levelId === '10'); ssongPrepareRun()")
         page.click('#ssong-go')
@@ -190,7 +196,7 @@ def main():
         tiles = page.evaluate("[...document.querySelectorAll('.ssong-tile')].map(t => [t.dataset.stompSong, t.innerText])")
         check('two recorded songs on the chooser, each with its own name; the Soul one is Level 3',
               len(tiles) == 2 and tiles[1][0] == 'stomp-the-beat-soul' and 'Soul' in tiles[1][1]
-              and 'Level 3 · Splitting the Beat' in tiles[1][1] and 'Level' not in tiles[0][1], tiles)
+              and 'Level 3 · Splitting the Beat' in tiles[1][1] and 'Level 1' in tiles[0][1], tiles)
         page.click('.ssong-tile[data-stomp-song="stomp-the-beat-soul"]')
         page.wait_for_selector('#ssong-screen-menu.active', timeout=4000)
         check('its menu carries its own title', page.inner_text('#ssong-title') == 'Stomp the Beat: Soul', page.inner_text('#ssong-title'))
@@ -234,6 +240,96 @@ def main():
         check('...then up they go: the next take is B1, on the quaver grid, by itself',
               page.evaluate('ssong.step.levelId') == '10' and page.evaluate('ssong.notation.grid.slotsPerBar') == 8)
         page.evaluate("ssongCancelNext(); ssongHalt()")
+
+        # BEAT SMASH'S MENU, THE WARM-UP AND RECALIBRATE (Rob, 2026-10-24)
+        page.evaluate("localStorage.clear()")
+        page.reload()
+        page.evaluate("KR.speak = () => {}; enterBeatSmash()")
+        page.wait_for_selector('#beat-screen-pathway.active', timeout=4000)
+        ids = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .kr-track')].map(n => n.dataset.id + (n.disabled ? '-' : '+'))")
+        check('the menu: the warm-up, Level 1 and Level 3 (locked), nothing else',
+              ids == ['warm+', 'stomp-the-beat-', 'stomp-the-beat-soul-'], ids)
+        menu = page.inner_text('#beat-screen-pathway')
+        check('...named as Rob asked', 'Warm-up with Tango' in menu and 'Level 1 · Stomp the Beat' in menu and 'Level 3 · Stomp the Beat' in menu, menu)
+        hidden = page.evaluate("['beat-player-chip', 'beat-steps', 'beat-settings'].map(id => document.getElementById(id).offsetParent === null)")
+        check('no name, no step chips, no instrument settings', hidden == [True, True, True], hidden)
+        check('Re-time my taps is now Recalibrate my beat', page.inner_text('#beat-retune').lower() == 'recalibrate my beat', page.inner_text('#beat-retune'))
+        page.click('#beat-pathway-start')
+        page.wait_for_selector('#ssong-screen-warm.active', timeout=4000)
+        cards = page.evaluate("[...document.querySelectorAll('.ssong-warm-card')].map(c => c.dataset.song + (c.classList.contains('locked') ? '-' : '+'))")
+        check('the warm-up: Tango asks for a tune, Stomp the Beat first and open, the next locked',
+              cards == ['stomp-the-beat+', 'stomp-the-beat-soul-'] and 'pick a tune' in page.inner_text('#ssong-warm-guide').lower(), cards)
+        page.click('.ssong-warm-card[data-song="stomp-the-beat"]')
+        page.wait_for_selector('#ssong-screen-play.active', timeout=4000)
+        check('the drum room: Tango at her kit, and the round clock', page.is_visible('#ssong-kit') and page.is_visible('#ssong-timer'))
+        WARM = """async ({shift, every}) => {
+            const ctx = rstompAudio();
+            for (let i = 0; i < 400 && ssong.state !== 'playing'; i++) await new Promise(r => setTimeout(r, 25));
+            const pad = document.querySelector('#ssong-pad .krpad');
+            const beats = ssong.beats.filter((b, k) => k >= 4 && b <= ssong.warmSeconds);
+            beats.forEach((b, i) => { if (i % every) return;
+                const wait = (ssong.freeStart + b + shift + ssong.delay.delay - ctx.currentTime) * 1000;
+                if (wait < 0) return;
+                setTimeout(() => { pad.dispatchEvent(new PointerEvent('pointerdown', {pointerId: 9, bubbles: true}));
+                    pad.dispatchEvent(new PointerEvent('pointerup', {pointerId: 9, bubbles: true})); }, wait); });
+            return beats.length; }"""
+        page.evaluate("KRStompSong.WARM_SECONDS = 10")       # a short round, to keep the test quick
+        page.click('#ssong-go')
+        page.evaluate(WARM, {'shift': -0.12, 'every': 1})
+        page.wait_for_selector('#ssong-summary:not([hidden])', timeout=30000)
+        w = page.evaluate('window.ssongLastWarm')
+        check('a rushed round: Try Another One, 100% rushed, and Tango says slow down',
+              not w['passed'] and w['rushedPct'] == 100 and 'Try Another One' in page.inner_text('#ssong-summary')
+              and 'slow down' in page.inner_text('#ssong-play-guide').lower(), [w, page.inner_text('#ssong-play-guide')])
+        check('...and the level is still shut', page.evaluate("ssongLevelOpen('stomp-the-beat')") is False)
+        page.click('#ssong-summary-actions .btn-start')            # Another round
+        page.click('#ssong-go')
+        page.evaluate(WARM, {'shift': 0.01, 'every': 1})
+        page.wait_for_selector('#ssong-summary:not([hidden])', timeout=30000)
+        w = page.evaluate('window.ssongLastWarm')
+        check("the beat kept: That's a Take, and the rest of the song opens",
+              w['passed'] and "That's a Take" in page.inner_text('#ssong-summary') and page.evaluate("ssongLevelOpen('stomp-the-beat')"), w)
+        page.wait_for_selector('#kr-celebrate.show', timeout=3000)
+        page.click('#kr-celebrate')
+        check('...with the way into Level 1 first', 'level 1' in page.inner_text('#ssong-summary-actions .btn-start').lower(), page.inner_text('#ssong-summary-actions'))
+        page.click('#ssong-summary-actions .btn-start')
+        page.wait_for_function("ssong && ssong.mode === 'run'", timeout=4000)
+        check('...into the run, on the drum room screen', page.is_visible('#ssong-kit') and page.evaluate('ssong.run.step') == 0)
+        page.evaluate("ssong.run.step = 3; ssongPrepareRun(); ssongSave()")
+        page.click('#view-beat .btn-back')
+        page.wait_for_selector('#beat-screen-pathway.active', timeout=4000)
+        check('Back goes to the menu, which carries on where they were',
+              page.text_content('#beat-pathway-start') == 'Carry on' and 'Welcome back' in page.inner_text('#beat-pathway-guide'),
+              [page.text_content('#beat-pathway-start'), page.inner_text('#beat-pathway-guide')])
+        page.click('#beat-pathway-start')
+        page.wait_for_function("ssong && ssong.mode === 'run'", timeout=4000)
+        check('...Carry on: the same level and the same mini level', page.evaluate('ssong.run.step') == 3, page.evaluate('ssong.run.step'))
+        page.evaluate("ssongHalt()")
+        page.reload()
+        page.evaluate("KR.speak = () => {}; enterBeatSmash()")
+        check('...and after the page is closed and opened again', page.text_content('#beat-pathway-start') == 'Carry on'
+              and page.evaluate('ssongMenuSelected') == 'stomp-the-beat')
+        page.click('#beat-pathway-track [data-id=warm]')
+        check('the warm-up record carries on with the last tune', page.text_content('#beat-pathway-start') == 'Carry on')
+        # Recalibrate my beat: the tap test sets the delay; fine tune moves it; reset forgets it.
+        page.click('#beat-retune')
+        check('Recalibrate opens a box of settings', page.is_visible('#beat-calibrate') and 'not measured' in page.inner_text('#beat-cal-now'))
+        page.click('#beat-cal-test')
+        page.evaluate("""() => { const ctx = rstompAudio(); const pad = document.querySelector('#beat-cal-pad .krpad');
+            bsmashCal.clicks.forEach(c => { const wait = (c + 0.045 - ctx.currentTime) * 1000; setTimeout(() => {
+                pad.dispatchEvent(new PointerEvent('pointerdown', {pointerId: 7, bubbles: true}));
+                pad.dispatchEvent(new PointerEvent('pointerup', {pointerId: 7, bubbles: true})); }, wait); }); }""")
+        page.wait_for_function("window.bsmashLastCal", timeout=20000)
+        cal = page.evaluate('window.bsmashLastCal')
+        check('the tap test measures the delay from the click to the tap (45 ms)', cal['delay'] is not None and 0.03 < cal['delay'] < 0.07, cal)
+        check('...and saves it for every game that grades taps', abs(page.evaluate('rstompRoundDelay().delay') - cal['delay']) < 0.002
+              and 'Done' in page.inner_text('#beat-cal-status'))
+        page.click('#beat-cal-later')
+        check('fine tune adds 10 ms', abs(page.evaluate('rstompRoundDelay().delay') - cal['delay'] - 0.01) < 0.002)
+        page.click('#beat-cal-reset')
+        check('reset forgets it', 'not measured' in page.inner_text('#beat-cal-now'))
+        page.click('#beat-cal-close')
+        check('Done closes the box', not page.is_visible('#beat-calibrate'))
         check('no page errors', not errors, errors)
         browser.close()
     server.shutdown()

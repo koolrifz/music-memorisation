@@ -2300,7 +2300,7 @@ The loop files were re-rendered with `render.js`.
 
 **Not built yet:** "my bit";
 Tango noticing "You didn't need the blocks!"; re-offering calibration when the
-audio output changes (there is a **Re-time my taps** button instead); art
+audio output changes (there is a **Recalibrate my beat** box instead: see "BEAT SMASH'S MENU IS THE SONGS"); art
 (the picker shows each style's icon until `KR.art['beat.drums.spicy']` etc.
 exist). Sharing and swapping a part are built: see "MY BAND" below.
 
@@ -3264,3 +3264,81 @@ quavers."*
 - Tests: the Soul block at the end of `tools/test-stomp-song.py`, and two
   cases in `tools/test-stomp-song.js`.
 
+
+## BEAT SMASH'S MENU IS THE SONGS (Rob, 2026-10-24, branch `idea/beat-smash-song-menu`)
+Rob, from three screenshots of his phone: *"Don't ask their name. Remove that...
+Let's keep Warmup. Then let's list on the menu only the new songs that we have
+mapped and are working... Remove Tango · Drums, Riff · Bass, Riff · Keys. Remove
+the blue box 1 bar, 2 bars... Remove the blue box with all the instrument
+choices."*
+
+- **The menu** (`ssongRenderBeatMenu()` in `stomp-song.js`, drawn on the
+  pathway's shelf by `renderBeatPathway()`): **Warm-up with Tango**, **Level 1 ·
+  Stomp the Beat**, **Level 3 · Stomp the Beat: Soul** (`SSONG_MENU_SONGS`). No
+  "Playing as", no step chips, no sound settings, and the name and age are never
+  asked (the ask after the first star is off). Stomp the Beat carries `level: 1`
+  in `content/stomp-songs.js` for the menu only: it has no album and its run still
+  climbs every 4/4 level as the test bed.
+- **The band is not deleted.** `var BSMASH_SONG_MENU = true` (top of
+  `beat-smash.js`); false brings the old pathway back exactly as it was.
+  `tools/test-beat-smash.py` sets it false after every reload and still tests the
+  band, the old jam warm-up and the name prompt.
+- **Carry on** (*"should remember where the player was... Return to the level and
+  the mini level"*): `koolRiffsStompSong.place` = `{ kind: 'warm' | 'run', song,
+  step }`, the step being the run's rung (a level at two or four bars). Each song
+  also keeps `progress.run.at`, updated as each take is set up and judged; the
+  warm-up record carries on with `warmSong`, the last tune warmed up. The menu
+  opens on the record of the last place, Start reads **Carry on** and Tango says
+  where they were (`beat.menu.back.*`). A miss's **Try another one** starts the
+  same rung again (it used to start the run from the bottom).
+- **Warm-up with Tango, the drum room** (*"She asks you to pick a tune... 30
+  second rounds of free play using the same 30 seconds of the tune but must pass
+  a hurdle to start working on the rest of the tune"*): `ssongOpenWarmPick()`
+  (Tango at her kit, the tunes as cards: Stomp the Beat first, each next once the
+  one before is warmed up), then `ssongOpenWarm()`: rounds of the song's first
+  `WARM_SECONDS` (30), count-in included, guide kick on by default, a round clock.
+  **The hurdle** (`KRStompSong.warmRound`, pure, Node-tested): an on-beat stomp
+  (within `ON_SEC`, 70 ms) on at least `WARM_COVER` (75%) of the beats from bar 1,
+  and at least `WARM_ON` (75%) of all stomps on the beat. Measured: 1000 rounds of
+  random stomping, none passed; every other beat, perfectly, fails (not enough of
+  the beat kept). Passing once opens that song's level on the menu
+  (`ssongLevelOpen`), with a celebration and a button straight into it. The old
+  jam warm-up is still in the code, reached only with the flag off.
+- **How a take went** (*"If successful say, That's a Take. If unsuccessful say,
+  Try Another One... Present stats on percent on the beat, percent rushed, percent
+  dragged... be more concise"*): `KRStompSong.timingSplit()` sets every stomp
+  against its nearest note (the warm-up: nearest beat): within 70 ms on the beat,
+  sooner rushed, later dragged; the three always add to 100. Three chips under the
+  head (`ssongRenderSplit`), and **Tango says the one thing** (`ssongCoach`):
+  `steady` first (80% on the beat), else `rushing` / `dragging` (at least 20% of
+  stomps, and twice the other), else `mixed`; `few` under three stomps. A miss
+  with steady timing names the slip instead (missed note, rest, extra, over). The
+  run's result box lost its clean-takes count, best run and "why" line. The
+  hurdles (teacher's Open code) use the same head and chips.
+- **The drum room on every song screen** (*"wire in Tango to make it the drum
+  room and have her playing away with what's on the screen"*): Rob's three kit
+  pictures (`#ssong-kit`), the frame chosen every animation frame from the beat
+  AS HEARD on the song's beat map (`ssongKitFrame`: sticks down on the beat, up on
+  the "and"), so she follows the recording's drift; her kick drum's head flashes
+  green on an on-beat stomp, gold off it (`ssongKitHit`). Smaller in a take
+  (17vh, 13vh under 700 px) so the music keeps its room. The song screens now pad
+  64 px at the top so the gold box clears Back.
+- **Recalibrate my beat** (was "Re-time my taps", which ran the whole jam): a box
+  over the menu (`#beat-calibrate`, "RECALIBRATE" in `beat-smash.js`). **A web page
+  cannot ask whether Bluetooth is on**; it can read the speaker's own delay
+  (`outputLatency`), so the box shows it and says "that looks like Bluetooth" at
+  100 ms or more. The fix is the **tap test**: 16 clicks at 100 bpm straight to the
+  speakers, the first bar not counted, the delay = the median click-to-tap gap,
+  then the mean of the taps within 60 ms of it; at least 8 taps or it says try
+  again. Saved with `bsmashSaveDelay()` (so a later change of speaker moves it, as
+  before). Fine tune ±10 ms, Reset forgets it. `ssong.delay.stale` now points
+  here.
+- **Open, for Rob:** the hurdle numbers (75% / 75% / 70 ms) are first guesses,
+  constants at the top of the warm-up block in `stomp-song-core.js`; whether
+  Level 3 should also need Level 1's run, not just a warm-up on its own tune;
+  what makes a song's record gold on the menu (today: the run reaching the top of
+  its ladder, `progress.run.topped`); Tango plays the beat, not the written rhythm
+  (playing the rhythm would give the answer away mid-take).
+- Tests: `node tools/test-stomp-song.js` (the split, the warm-up round),
+  `python tools/test-stomp-song.py` (the menu, the warm-up rounds, Carry on after a
+  reload, the tap test).

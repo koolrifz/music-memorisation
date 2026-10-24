@@ -2047,6 +2047,74 @@ button.vsmash-tile:active { transform: translateY(2px); }
 .ssong-player-chip.on { border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(255,200,0,0.6); }
 .ssong-run-go { font-size: 26px; min-height: 64px; }
 
+/* ---------- Warm-up with Tango, the drum room, how a take went (2026-10-24) ---------- */
+/* The song screens clear the Back button, as the studio does. */
+#ssong-screen-menu, #ssong-screen-warm, #ssong-screen-play { padding-top: 64px; }
+/* No player on the song menu: the empty "Playing as" pill is gone. */
+#beat-player-chip[hidden] { display: none !important; }
+/* Tango at her kit: Rob's three pictures, one shown at a time (data-frame). */
+.ssong-kit { position: relative; flex: none; aspect-ratio: 800 / 665; height: min(30vh, 280px); max-width: 100%; margin: 0 auto; }
+.ssong-kit[hidden] { display: none !important; }
+.ssong-kit img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; visibility: hidden; pointer-events: none; }
+.ssong-kit.still img { visibility: visible; }
+.ssong-kit[data-frame="up"] img[data-frame="up"],
+.ssong-kit[data-frame="mid"] img[data-frame="mid"],
+.ssong-kit[data-frame="down"] img[data-frame="down"] { visibility: visible; }
+/* Her kick drum's head lights with each stomp: green on the beat, gold off it.
+   It washes over the painted head (multiply), as the old beat light did. */
+.ssong-kit-head { position: absolute; aspect-ratio: 1; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: multiply; transition: opacity .18s ease-out; }
+.ssong-kit-head.on { background: #58cc02; opacity: .85; box-shadow: 0 0 24px 8px rgba(88,204,2,.7); transition: none; }
+.ssong-kit-head.off { background: #ffc800; opacity: .85; box-shadow: 0 0 18px 6px rgba(255,200,0,.6); transition: none; }
+/* In a take the music needs the room: Tango smaller, and smaller again on a short phone. */
+.ssong-play[data-mode="run"] .ssong-kit, .ssong-play[data-mode="hurdle"] .ssong-kit { height: min(17vh, 170px); }
+@media (max-height: 700px) {
+    .ssong-kit { height: min(24vh, 200px); }
+    .ssong-play[data-mode="run"] .ssong-kit, .ssong-play[data-mode="hurdle"] .ssong-kit { height: 13vh; }
+}
+/* In a take the WAIT sign and the count sit in a smaller space. */
+.ssong-play[data-mode="run"] .ssong-wait, .ssong-play[data-mode="hurdle"] .ssong-wait { min-height: 96px; }
+.ssong-play[data-mode="run"] .ssong-wait-sign, .ssong-play[data-mode="hurdle"] .ssong-wait-sign { width: 104px; height: 104px; border-width: 6px; }
+.ssong-play[data-mode="run"] .ssong-wait .ssong-count, .ssong-play[data-mode="hurdle"] .ssong-wait .ssong-count { width: 96px; height: 96px; line-height: 82px; font-size: 52px; }
+/* The warm-up round's clock. */
+.ssong-timer { position: relative; width: 100%; max-width: 480px; height: 22px; border-radius: 999px; background: #1b2530; border: 2px solid #3f556c; overflow: hidden; }
+.ssong-timer[hidden] { display: none !important; }
+.ssong-timer-fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(90deg, #58cc02, #ffc800); }
+.ssong-timer span { position: relative; display: block; text-align: center; font-weight: 900; font-size: 13px; line-height: 18px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+/* After a warm-up round that opens the level: the way into it gets a row of its own. */
+#ssong-summary-actions { flex-wrap: wrap; }
+#ssong-summary-actions > :first-child:nth-last-child(3) { flex-basis: 100%; }
+/* That's a Take / Try Another One: on the beat, rushed, dragged. */
+.ssong-split { display: flex; gap: 8px; margin: 6px 0 8px; }
+.ssong-split:empty { display: none; }
+.ssong-split-chip { flex: 1; border-radius: 12px; padding: 6px 4px; text-align: center; border: 2px solid; background: rgba(255,255,255,.04); }
+.ssong-split-chip b { display: block; font-size: 22px; line-height: 1.1; }
+.ssong-split-chip span { display: block; font-size: 12px; font-weight: 800; color: var(--text-muted); }
+.ssong-split-chip.on { border-color: var(--accent-green); color: var(--accent-green); }
+.ssong-split-chip.rushed { border-color: #ff8a3d; color: #ff8a3d; }
+.ssong-split-chip.dragged { border-color: #5aa9ff; color: #5aa9ff; }
+.ssong-result h3 { font: 26px/1.1 'Lilita One', 'Trebuchet MS', system-ui, sans-serif; color: var(--accent-gold); }
+/* The warm-up's tune picker. */
+.ssong-warm { gap: 8px; }
+.ssong-warm-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 480px; }
+.ssong-warm-card { cursor: pointer; touch-action: manipulation; padding: 10px 6px; }
+.ssong-warm-card.locked { opacity: 0.5; }
+/* Recalibrate my beat: a box over the menu. */
+.bsmash-cal { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.72); }
+.bsmash-cal[hidden] { display: none !important; }
+.bsmash-cal-card { width: 100%; max-width: 440px; max-height: 100%; overflow-y: auto; background: #1b2530; border: 3px solid var(--accent-gold); border-radius: 18px; padding: 16px; color: white; display: flex; flex-direction: column; gap: 8px; }
+.bsmash-cal-card h2 { margin: 0; font: 26px/1.1 'Lilita One', 'Trebuchet MS', system-ui, sans-serif; color: var(--accent-gold); }
+.bsmash-cal-card p { margin: 0; font-size: 15px; line-height: 1.35; }
+.bsmash-cal-card p:empty { display: none; }
+.bsmash-cal-now { font-weight: 900; font-size: 18px !important; }
+.bsmash-cal-bt { color: #ffc800; font-weight: 800; }
+.bsmash-cal-bt[hidden] { display: none; }
+.bsmash-cal-status { min-height: 20px; font-weight: 900; color: var(--accent-green); text-align: center; }
+.bsmash-cal-card .krpads:empty { display: none; }
+.bsmash-cal-fine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bsmash-cal-fine .bsmash-setting-title { min-width: 0; text-align: left; }
+.bsmash-cal-help { font-size: 13px !important; color: var(--text-muted); }
+.bsmash-cal-card .kr-btn, .bsmash-cal-card .btn { margin: 0; }
+
 /* ---------- THE KEEPER: the celebration screen (keeper.js, Rob 2026-10-24) ----------
    A clean take that clears a step: first take, or three in a row after a miss.
    Over everything for a moment; a tap or the clock sends it away. */
