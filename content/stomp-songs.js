@@ -29,7 +29,7 @@
 
    EACH SONG IS A LEVEL (Rob, 2026-10-24: "we should follow the rhythm stomp
    lab levels... Each song is a level"). `album` names the Stomp Lab album the
-   song is: Level 1 The Beat, 2 Ties and Syncopation, 3 Splitting the Beat, 4
+   song is: Level 1 The Beat, 2 The Held Beat, 3 Splitting the Beat, 4
    The Pump, 5 Syncopation and Review (RSTOMP_ALBUMS, in order), and its tile
    says so. A song without one is not a level yet (Stomp the Beat, the crotchet
    song, also tests every level).
