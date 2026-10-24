@@ -3128,9 +3128,9 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   know there's a little celebration and up they go"*). When a clean take
   finishes a level (out of the warm-up, or a Stomp Lab level's four bars),
   `KRStompSong.runLevelUp()` says so and `ssongLevelUp()` shows the keeper's
-  celebration screen, "Level up!" and the level they are going up to
-  (`Level 1: Paired Quavers`, numbered within the song, the warm-up not
-  counted), Tango says one of `ssong.line.run.levelup.*`, and the next take
+  celebration screen, "Level up!" and the Stomp Lab level they are going up
+  to (`Next: Paired Quavers`: no number, because a SONG is now the level, see
+  below), Tango says one of `ssong.line.run.levelup.*`, and the next take
   rolls once the screen has gone (`SSONG_LEVELUP_PAUSE_MS` after it). Both
   songs. A take that does not finish a level still just says "Next one!".
   Open for Rob: the run still ends at the first miss (the run's own rule from
@@ -3139,6 +3139,19 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
   `content/stomp-songs.js` entry are word IDs; the chooser's tile and the
   song menu's heading (`#ssong-title`) read them. A song with `rounds: []` has
   no hurdles, only the run and free play.
+- **EACH SONG IS A LEVEL: one Stomp Lab album per song** (Rob, 2026-10-24:
+  *"we should follow the rhythm stomp lab levels. That's 5 levels up until 6/8
+  time. Each song is a level"*). The five albums before 6/8, in
+  `RSTOMP_ALBUMS` order, are the five levels: **1 The Beat** (A1–A4), **2 Ties
+  and Syncopation** (A5–A9), **3 Splitting the Beat** (B1–B4), **4 The Pump**
+  (B5–B7), **5 Syncopation and Review** (B8–B10). A song's `album` says which
+  it is, its tile reads "Level 3 · Splitting the Beat" (`ssongLevelOf()`,
+  `ssong.tile.level`), and its `run.levels` are that album's levels. So far:
+  Stomp the Beat: Soul is Level 3. Stomp the Beat (the crotchet song) has no
+  album: it still runs every 4/4 level, as the test bed (Rob, earlier the same
+  day: it *"stays the quarter-note level, also used to test all levels"*).
+  Rob is mapping the other songs. Not built: locking a song until the level
+  below is done (the band songs do this; ask Rob before copying it).
 
 ### STOMP THE BEAT: SOUL, the quaver song (2026-10-24)
 The older students' version of the same lyrics (neo-soul, funk, gospel; the
@@ -3169,16 +3182,19 @@ quavers."*
   the audio lands on the bar in his transcription (a fill in the last bar of
   most sections). The outro is not kick-only: the kick plays only on the
   downbeats of bars 83 and 85, then quavers through bar 86.
-- **The run:** the warm-up on the beat (one bar, two bars), then Stage B in
-  Stomp Lab's order, `run.levels` = B1, B3–B10 (10, 12–19), two bars then four
-  each. **No semibreves or minims anywhere** (`run.leaveOut`): every level's
+- **The run: Level 3, Splitting the Beat** (Rob: *"That gospel stomp the beat
+  needs to go at level 3 Splitting the beat"*, which replaced the first
+  version's B1–B10): the warm-up on the beat (one bar, two bars), then the
+  album's levels, `run.levels` = B1, B3, B4 (10, 12, 13), two bars then four
+  each; past B4 its four bars repeat with new rhythms. The pumps and the
+  syncopation are Levels 4 and 5, songs still to come. **No semibreves or
+  minims anywhere** (`run.leaveOut`): every level's
   vocabulary is filtered (`ssongRunNotation`), and the barline-tie generator is
   told to tie only values the level still has (`tieFromPool`, one opt-in line
   in `generateRstompPhraseWithTie`; Stomp Lab's own B10 still ties any value).
-  B2 is left out because without its longer notes it is B1 again. The dotted
-  crotchet stays: the pump is a crotchet and a quaver (Rob to confirm).
-  Measured over 12 phrases a step: only quavers, crotchets and dotted
-  crotchets (and their rests and ties).
+  B2 is left out because without its longer notes it is B1 again. B4's ties
+  make dotted crotchets; measured over 12 phrases a step: only quavers,
+  crotchets and dotted crotchets (and their rests and ties).
 - **No hurdle rounds yet** (`rounds: []`): the old rounds are crotchet
   patterns, which is not where this song starts. Semiquavers were considered
   and left out: Rob chose the deep dive.

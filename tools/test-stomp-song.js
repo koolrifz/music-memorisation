@@ -137,7 +137,7 @@ t('up a level: out of the warm-up, then each new Stomp Lab level, never past the
     assert.strictEqual(K.runLevelUp(L, 5, 6), null);
     assert.strictEqual(K.runLevelUp(L, 5, 5), null);
 });
-t('Stomp the Beat: Soul: its map, its 87 bars and its quaver ladder', () => {
+t('Stomp the Beat: Soul: its map, its 87 bars, and Level 3 (Splitting the Beat)', () => {
     const soul = KR.stompBeats['stomp-the-beat-soul'], song = KR.stompSongs['stomp-the-beat-soul'];
     assert.strictEqual(soul.length, 348);
     for (let k = 1; k < soul.length; k++) assert.ok(soul[k] > soul[k - 1]);
@@ -149,7 +149,8 @@ t('Stomp the Beat: Soul: its map, its 87 bars and its quaver ladder', () => {
     }
     song.sections.forEach((sec, i) => assert.strictEqual(sec.first, i ? song.sections[i - 1].last + 1 : 0));
     assert.strictEqual(song.sections[song.sections.length - 1].last, 86);
-    assert.ok(song.run.levels.every(id => +id >= 10 && +id <= 19), 'Stage B only: the quaver');
+    assert.strictEqual(song.album, 'quavers', 'Level 3, Splitting the Beat');
+    assert.deepStrictEqual(song.run.levels, ['10', '12', '13'], 'the album, less B2');
     assert.ok(song.run.leaveOut.indexOf('half-note') >= 0 && song.run.leaveOut.indexOf('whole-note') >= 0);
     assert.deepStrictEqual(song.rounds, []);
     const spots = K.runSpots(K.totalBars(soul), 4);

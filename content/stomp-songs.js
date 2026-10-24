@@ -27,8 +27,15 @@
    THE TILE. `title`, `tile` and `icon` are word IDs (lang/en-US.js): the
    song's name, the line under it on the song chooser, and its picture.
 
+   EACH SONG IS A LEVEL (Rob, 2026-10-24: "we should follow the rhythm stomp
+   lab levels... Each song is a level"). `album` names the Stomp Lab album the
+   song is: Level 1 The Beat, 2 Ties and Syncopation, 3 Splitting the Beat, 4
+   The Pump, 5 Syncopation and Review (RSTOMP_ALBUMS, in order), and its tile
+   says so. A song without one is not a level yet (Stomp the Beat, the crotchet
+   song, also tests every level).
+
    THE RUN'S LEVELS. `run.levels` are Stomp Lab levels, in the order they are
-   played. `run.leaveOut` takes note values out of every level's vocabulary for
+   played: for a song that is a level, its album's. `run.leaveOut` takes note values out of every level's vocabulary for
    this song (Rob, 2026-10-24, the quaver song: "I don't want to do whole notes
    and half notes with this song"). A level whose new idea was one of them goes
    from the list rather than repeating the level before it.
@@ -96,12 +103,15 @@ KR.stompSongs['stomp-the-beat'] = {
    The sections are Rob's own transcription (2026-10-24), checked against the
    audio: 87 bars, every change on the bar he marked.
 
-   The run: the warm-up on the beat, then Stage B, the quaver, in Stomp Lab's
-   order, with no semibreves or minims anywhere. B2 ("quavers and longer notes")
-   is left out: without its longer notes it is B1 again. The dotted crotchet
-   stays: the pump is a crotchet and a quaver. No hurdle rounds yet. */
+   LEVEL 3, SPLITTING THE BEAT (Rob, later the same day: "That gospel stomp the
+   beat needs to go at level 3 Splitting the beat"). The run: the warm-up on the
+   beat, then that album's levels, B1, B3 and B4, with no semibreves or minims
+   anywhere. B2 ("quavers and longer notes") is left out: without its longer
+   notes it is B1 again. The pumps and syncopation (B5-B10) are Levels 4 and 5,
+   songs of their own. No hurdle rounds yet. */
 KR.stompSongs['stomp-the-beat-soul'] = {
     title: 'ssong.soul.title', tile: 'ssong.soul.tile', icon: 'ssong.soul.icon',
+    album: 'quavers',                               // Level 3, Splitting the Beat
     audio: 'ssong.stomp-the-beat-soul.audio',
     kick: 'ssong.kick',
     sections: [
@@ -123,7 +133,7 @@ KR.stompSongs['stomp-the-beat-soul'] = {
         { id: 'ending',    first: 83, last: 86 },     // kick on bars 83 and 85 only; the last hit on the "and" of 4
     ],
     run: {
-        levels: ['10', '12', '13', '14', '15', '16', '17', '18', '19'],
+        levels: ['10', '12', '13'],                  // the album's 10-13, less 11
         leaveOut: ['whole-note', 'whole-rest', 'half-note', 'half-rest', 'dotted-half-note', 'dotted-half-rest'],
     },
     rounds: [],

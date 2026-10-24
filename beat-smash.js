@@ -2671,7 +2671,10 @@ function bsmashRenderSongs() {
         card.dataset.stompSong = id;
         bsmashMake('span', 'bsmash-song-icon', card).textContent = KR.t(song.icon || 'ssong.icon');
         bsmashMake('span', 'bsmash-song-name', card).textContent = KR.t(song.title || 'ssong.title');
-        bsmashMake('small', 'bsmash-song-status', card).textContent = KR.t(song.tile || 'ssong.tile');
+        // A song that is a level says which (Rob: "Each song is a level").
+        const level = typeof ssongLevelOf === 'function' ? ssongLevelOf(song) : null;
+        bsmashMake('small', 'bsmash-song-status', card).textContent = level
+            ? KR.t('ssong.tile.level', level) : KR.t(song.tile || 'ssong.tile');
         card.onclick = () => showStompSong(id);
     });
 }

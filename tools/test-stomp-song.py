@@ -188,8 +188,9 @@ def main():
 
         # STOMP THE BEAT: SOUL, the quaver song (Rob, 2026-10-24)
         tiles = page.evaluate("[...document.querySelectorAll('.ssong-tile')].map(t => [t.dataset.stompSong, t.innerText])")
-        check('two recorded songs on the chooser, each with its own name',
-              len(tiles) == 2 and tiles[1][0] == 'stomp-the-beat-soul' and 'Soul' in tiles[1][1] and 'Quavers' in tiles[1][1], tiles)
+        check('two recorded songs on the chooser, each with its own name; the Soul one is Level 3',
+              len(tiles) == 2 and tiles[1][0] == 'stomp-the-beat-soul' and 'Soul' in tiles[1][1]
+              and 'Level 3 · Splitting the Beat' in tiles[1][1] and 'Level' not in tiles[0][1], tiles)
         page.click('.ssong-tile[data-stomp-song="stomp-the-beat-soul"]')
         page.wait_for_selector('#ssong-screen-menu.active', timeout=4000)
         check('its menu carries its own title', page.inner_text('#ssong-title') == 'Stomp the Beat: Soul', page.inner_text('#ssong-title'))
@@ -214,8 +215,8 @@ def main():
             ssong.run.step = 0; ssongPrepareRun();
             return [ssong.ladder.map(s => s.levelId), bad, Object.keys(values).sort()];
         }""")
-        check('the ladder: the warm-up on the beat, then Stage B, the quaver, from B1',
-              sweep[0][:3] == [None, None, '10'] and all(x is None or 10 <= int(x) <= 19 for x in sweep[0]), sweep[0])
+        check('the ladder: the warm-up on the beat, then Splitting the Beat: B1, B3, B4',
+              sweep[0] == [None, None, '10', '10', '12', '12', '13', '13'], sweep[0])
         check('every step of it plans and draws', not sweep[1], sweep[1][:5])
         check('crotchets and quavers only: no minim or semibreve anywhere', not set(sweep[2]) & {'w', 'h', 'hd'}, sweep[2])
         # Up a level: the second warm-up take, clean, celebrates, then rolls into B1.
@@ -226,7 +227,7 @@ def main():
         page.wait_for_selector('#kr-celebrate.show', timeout=3000)
         cel = page.inner_text('#kr-celebrate')
         check('a clean take that finishes a level: a celebration naming the next',
-              'Level up' in cel and 'Level 1: Paired Quavers' in cel, cel)
+              'Level up' in cel and 'Next: Paired Quavers' in cel, cel)
         check('...Tango says so', 'level' in page.inner_text('#ssong-play-guide').lower(), page.inner_text('#ssong-play-guide'))
         check('...and the next take waits for it', page.evaluate('ssong.state') == 'result')
         page.wait_for_function("ssong.state === 'lead' || ssong.state === 'rec'", timeout=9000)
