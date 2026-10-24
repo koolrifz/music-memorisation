@@ -713,7 +713,7 @@
             <div class="bsmash-steps" id="beat-steps"></div>
             <button class="kr-btn kr-btn-go" id="beat-pathway-start" onclick="startSelectedBeat()" disabled data-text="beat.start"></button>
             <div class="bsmash-settings" id="beat-settings"></div>
-            <button class="btn btn-secondary" onclick="retuneBeatTiming()" data-text="beat.retune"></button>
+            <button class="btn btn-secondary" id="beat-retune" onclick="retuneBeatTiming()" data-text="beat.retune"></button>
             <p class="bsmash-stats" id="beat-stats" hidden></p>
             <button class="kr-btn kr-btn-quiet" onclick="leaveBeatSmash()" data-text="beat.toDashboard"></button>
         </div>
@@ -942,6 +942,18 @@
     </div>
 
 
+    <!-- WARM-UP WITH TANGO (stomp-song.js, "THE WARM-UP"): the drum room.
+         Tango at her kit asks the student to pick a tune. -->
+    <div id="ssong-screen-warm" class="screen ssong-warm">
+        <div class="kr-guide" id="ssong-warm-guide">
+            <img class="kr-guide-portrait" hidden alt="">
+            <div class="kr-guide-text"></div>
+        </div>
+        <div class="ssong-kit still" aria-hidden="true"><img data-art="beat.kit.warmup.mid" alt=""></div>
+        <h2 class="bsmash-picker-title" data-text="ssong.warm.pick"></h2>
+        <div class="ssong-warm-cards" id="ssong-warm-cards"></div>
+    </div>
+
     <!-- STOMP THE BEAT, the song (stomp-song.js): its menu and its takes. -->
     <div id="ssong-screen-menu" class="screen">
         <div class="kr-guide" id="ssong-menu-guide">
@@ -962,6 +974,17 @@
             <span class="bsmash-stars" id="ssong-stars"></span>
             <span class="bsmash-rec" id="ssong-rec" data-text="beat.rec"></span>
         </div>
+        <!-- The drum room: Tango at her kit, playing in time with the song
+             (Rob's three pictures, content/art.js). Her kick drum's head
+             lights with each stomp. -->
+        <div class="ssong-kit" id="ssong-kit" hidden data-frame="mid" aria-hidden="true">
+            <img data-frame="up" data-art="beat.kit.warmup.up" alt="">
+            <img data-frame="mid" data-art="beat.kit.warmup.mid" alt="">
+            <img data-frame="down" data-art="beat.kit.warmup.down" alt="">
+            <span class="ssong-kit-head" id="ssong-kit-head"></span>
+        </div>
+        <!-- The warm-up's 30-second round: how much is left. -->
+        <div class="ssong-timer" id="ssong-timer" hidden><div class="ssong-timer-fill" id="ssong-timer-fill"></div><span id="ssong-timer-left"></span></div>
         <div class="ssong-wait" id="ssong-wait" hidden>
             <div class="ssong-wait-sign" id="ssong-wait-sign">
                 <span class="ssong-wait-hand">✋</span>
@@ -973,14 +996,16 @@
         <div class="bsmash-reading ssong-reading" id="ssong-reading"></div>
         <div class="ssong-result" id="ssong-result" hidden>
             <h3 id="ssong-result-head"></h3>
+            <div class="ssong-split" id="ssong-result-split"></div>
             <ul id="ssong-result-lines"></ul>
             <div class="bsmash-actions" id="ssong-result-actions"></div>
         </div>
         <div class="ssong-result" id="ssong-summary" hidden>
             <h3 id="ssong-summary-head"></h3>
+            <div class="ssong-split" id="ssong-summary-split"></div>
             <ul id="ssong-summary-lines"></ul>
             <p id="ssong-summary-focus"></p>
-            <div class="bsmash-actions">
+            <div class="bsmash-actions" id="ssong-summary-actions">
                 <button class="btn btn-start" onclick="ssongOpenFree()" data-text="ssong.free.go"></button>
                 <button class="btn btn-secondary" onclick="ssongToMenu()" data-text="ssong.menu"></button>
             </div>
@@ -991,6 +1016,30 @@
             <button class="btn btn-secondary ssong-guide-btn" id="ssong-guide"></button>
         </div>
         <div class="krpads" id="ssong-pad"></div>
+    </div>
+
+    <!-- RECALIBRATE MY BEAT (beat-smash.js, "RECALIBRATE"): the delay
+         between the music and a stomp, for this device and its speaker. -->
+    <div class="bsmash-cal" id="beat-calibrate" hidden role="dialog" aria-modal="true" aria-labelledby="beat-cal-title">
+        <div class="bsmash-cal-card">
+            <h2 id="beat-cal-title" data-text="beat.cal.title"></h2>
+            <p data-text="beat.cal.intro"></p>
+            <p class="bsmash-cal-now" id="beat-cal-now"></p>
+            <p class="bsmash-cal-speaker" id="beat-cal-speaker"></p>
+            <p class="bsmash-cal-bt" id="beat-cal-bt" hidden data-text="beat.cal.bt"></p>
+            <button class="kr-btn kr-btn-go" id="beat-cal-test" onclick="startBeatCalTest()" data-text="beat.cal.test"></button>
+            <p class="bsmash-cal-status" id="beat-cal-status" aria-live="polite"></p>
+            <div class="krpads" id="beat-cal-pad"></div>
+            <div class="bsmash-cal-fine">
+                <span class="bsmash-setting-title" data-text="beat.cal.fine"></span>
+                <button class="bsmash-chip" id="beat-cal-earlier" onclick="nudgeBeatDelay(-0.01)" data-text="beat.cal.earlier"></button>
+                <button class="bsmash-chip" id="beat-cal-later" onclick="nudgeBeatDelay(0.01)" data-text="beat.cal.later"></button>
+                <button class="bsmash-chip" id="beat-cal-reset" onclick="resetBeatDelay()" data-text="beat.cal.reset"></button>
+            </div>
+            <p class="bsmash-cal-help" data-text="beat.cal.fine.help"></p>
+            <p class="bsmash-cal-help" data-text="beat.cal.tip"></p>
+            <button class="btn btn-start" id="beat-cal-close" onclick="closeBeatCalibrate()" data-text="beat.cal.close"></button>
+        </div>
     </div>
 
     <!-- The Learner's Permit (brief §10, §15): the booth passed. -->

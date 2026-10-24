@@ -45,6 +45,11 @@ const SSONG_LEVELUP_PAUSE_MS = 600;  // after the level-up celebration has gone,
 const SSONG_MAX_PLAYERS = 4;
 const SSONG_CROTCHET_GRID = { slotsPerBar: 4, slotValue: 'q', slotsPerBeat: 1, beamSlots: 1 };
 const SSONG_ANTICIPATE = 0.25;       // beats before the punch-in a tap is beat 1, early; sooner is too soon
+const SSONG_KIT_FLASH_MS = 180;      // the kick drum's head lights this long on a stomp
+// The songs on Beat Smash's menu, in order (Rob, 2026-10-24: "list on the menu
+// only the new songs that we have mapped and are working"). The first is the
+// warm-up's first tune.
+const SSONG_MENU_SONGS = ['stomp-the-beat', 'stomp-the-beat-soul'];
 
 let ssong = null;                    // what the screen in front of the student is doing
 const ssongBuffers = {};             // audio id -> AudioBuffer
@@ -80,6 +85,68 @@ function ssongSave() {
 
 function ssongLoadSettings() {
     return Object.assign({ guide: false, freeGuide: true, players: 1 }, ssongStorage().settings);
+}
+
+// WHERE THE STUDENT WAS (Rob, 2026-10-24: "Carry On should remember where the
+// player was the last time they were here. Return to the level and the mini
+// level"). One place per device: { kind: 'warm' | 'run', song, step }, the
+// run's step being the mini level (the ladder's rung: a level, two or four
+// bars). Each song also keeps its own rung, progress.run.at, so picking that
+// song on the menu carries on there too.
+function ssongPlace() {
+    const place = ssongStorage().place;
+    return place && place.kind && (!place.song || KR.stompSongs[place.song]) ? place : null;
+}
+
+function ssongSavePlace(kind, song, step) {
+    const all = ssongStorage();
+    all.place = { kind: kind, song: song || null, step: step || 0, at: Date.now() };
+    if (kind === 'warm' && song) all.warmSong = song;      // the warm-up's record carries on with the last tune
+    try { localStorage.setItem(SSONG_KEY, JSON.stringify(all)); } catch (e) { /* no storage: it just isn't kept */ }
+}
+
+// A song's progress without opening it (the menu reads every song's).
+function ssongProgressOf(id) { return ssongLoadProgress(id); }
+
+// Has the warm-up's hurdle been passed on this tune? That opens the rest of
+// the song: its level.
+function ssongWarmPassed(id) {
+    const w = ssongProgressOf(id).warm;
+    return !!(w && w.passed);
+}
+
+// The songs on the menu that exist on this device, in order.
+function ssongMenuSongs() {
+    return SSONG_MENU_SONGS.filter(id => KR.stompSongs && KR.stompSongs[id] && KR.stompBeats && KR.stompBeats[id]);
+}
+
+// A song's level is open once its warm-up round is passed (the teacher's Open
+// code opens every one).
+function ssongLevelOpen(id) { return KR.openAll() || ssongWarmPassed(id); }
+
+// A tune in the warm-up: the first always; each next once the one before has
+// been warmed up (Rob: "start with the Level 1 song").
+function ssongWarmOpen(id) {
+    const list = ssongMenuSongs(), at = list.indexOf(id);
+    return KR.openAll() || at <= 0 || ssongWarmPassed(list[at - 1]);
+}
+
+// The song set up in `ssong`, nothing playing, no screen chosen. `home` is
+// where Back goes from its screens: 'song' (its own menu, the old way in from
+// the song chooser) or 'beat' (Beat Smash's menu).
+function ssongInit(id, home) {
+    if (typeof bsmashStopAll === 'function') bsmashStopAll();
+    ssongHalt();
+    const song = KR.stompSongs && KR.stompSongs[id];
+    const beats = KR.stompBeats && KR.stompBeats[id];
+    if (!song || !beats) { ssong = null; return false; }
+    ssong = {
+        id: id, song: song, beats: beats, mode: 'menu', state: 'menu', home: home || 'song',
+        progress: ssongLoadProgress(id), settings: ssongLoadSettings(),
+        sources: [], pads: null, frame: 0, taps: [], delay: { delay: 0, source: 'none' },
+    };
+    if (ssongAudio()) ssongLoadAssets().catch(() => { /* shown when a take is rolled */ });
+    return true;
 }
 
 /* ---------- the sounds ---------- */
@@ -180,18 +247,8 @@ function ssongStopSound(fade) {
 /* ---------- coming in and going out ---------- */
 
 function showStompSong(id) {
-    if (typeof bsmashStopAll === 'function') bsmashStopAll();
-    ssongHalt();
-    const song = KR.stompSongs && KR.stompSongs[id];
-    const beats = KR.stompBeats && KR.stompBeats[id];
-    if (!song || !beats) return;
-    ssong = {
-        id: id, song: song, beats: beats, mode: 'menu', state: 'menu',
-        progress: ssongLoadProgress(id), settings: ssongLoadSettings(),
-        sources: [], pads: null, frame: 0, taps: [], delay: { delay: 0, source: 'none' },
-    };
-    if (ssongAudio()) ssongLoadAssets().catch(() => { /* shown when a take is rolled */ });
-    ssongEl('ssong-title').textContent = KR.t(song.title || 'ssong.title');
+    if (!ssongInit(id, 'song')) return;
+    ssongEl('ssong-title').textContent = KR.t(ssong.song.title || 'ssong.title');
     switchScreenState('beat', 'ssong-screen-menu');
     ssongRenderMenu();
     ssongEvent('ssong.menu');
@@ -206,12 +263,20 @@ function ssongHalt(fade) {
     ssongStopSound(fade);
     if (ssong.pads) { ssong.pads.destroy(); ssong.pads = null; }
     ssong.state = 'menu';
+    ssongKitFrame(null);
 }
 
 // The back button: from a take to the song's menu, from the menu to the song
 // chooser. Returns true when it handled it.
+// From Beat Smash's menu, Back goes back there: from the warm-up's play
+// screen to its tune picker, from anything else to the menu.
 function ssongHandleBack(active) {
     if (!active || active.id.indexOf('ssong-screen-') !== 0) return false;
+    if (active.id === 'ssong-screen-warm') { ssongToBeatMenu(); return true; }
+    if (ssong && ssong.home === 'beat' && active.id === 'ssong-screen-play') {
+        if (ssong.mode === 'warm') ssongOpenWarmPick(); else ssongToBeatMenu();
+        return true;
+    }
     if (active.id === 'ssong-screen-play') { ssongToMenu(); return true; }
     ssongHalt();
     ssong = null;
@@ -219,7 +284,14 @@ function ssongHandleBack(active) {
     return true;
 }
 
+function ssongToBeatMenu() {
+    ssongHalt();
+    ssong = null;
+    showBeatPathway();
+}
+
 function ssongToMenu() {
+    if (ssong && ssong.home === 'beat') return ssongToBeatMenu();
     ssongHalt();
     ssong.mode = 'menu';
     switchScreenState('beat', 'ssong-screen-menu');
@@ -233,10 +305,12 @@ document.addEventListener('visibilitychange', () => {
 // EACH SONG IS A LEVEL (Rob, 2026-10-24): a song's `album` is a Stomp Lab
 // album, and its place among the albums is the song's level number.
 // { n, name } for the tile, or null for a song that is not a level.
+// A song with no album may still name its level (Stomp the Beat, the crotchet
+// song, is Level 1 on the menu but runs every level as the test bed).
 function ssongLevelOf(song) {
-    if (!song || !song.album || typeof RSTOMP_ALBUMS === 'undefined') return null;
-    const at = RSTOMP_ALBUMS.findIndex(a => a.id === song.album);
-    return at < 0 ? null : { n: at + 1, name: KR.t(RSTOMP_ALBUMS[at].titleId) };
+    if (!song || typeof RSTOMP_ALBUMS === 'undefined') return null;
+    const at = song.album ? RSTOMP_ALBUMS.findIndex(a => a.id === song.album) : (song.level ? song.level - 1 : -1);
+    return at < 0 || !RSTOMP_ALBUMS[at] ? null : { n: at + 1, name: KR.t(RSTOMP_ALBUMS[at].titleId) };
 }
 
 function ssongEvent(name, vars) {
@@ -334,7 +408,7 @@ function ssongRenderMenu() {
 
 function ssongGuideButton(btn) {
     btn.type = 'button';
-    const free = ssong.mode === 'free';
+    const free = ssong.mode === 'free' || ssong.mode === 'warm';
     const on = free ? ssong.settings.freeGuide : ssong.settings.guide;
     btn.textContent = KR.t(free ? (on ? 'ssong.guide.free.on' : 'ssong.guide.free.off') : (on ? 'ssong.guide.on' : 'ssong.guide.off'));
     btn.classList.toggle('on', on);
@@ -386,13 +460,18 @@ function ssongPrepareAttempt() {
 
 // The play screen in its two uses: a hurdle (notation, stars) and free play.
 function ssongShowPlay(mode) {
-    const free = mode === 'free';
+    const free = mode === 'free' || mode === 'warm';
+    ssongEl('ssong-screen-play').dataset.mode = mode;
     ssongEl('ssong-reading').hidden = free;
     ssongEl('ssong-stars').hidden = free;
     ssongEl('ssong-result').hidden = true;
     ssongEl('ssong-summary').hidden = true;
+    ssongEl('ssong-timer').hidden = mode !== 'warm';
+    ssongTimer(0);
+    ssongKitShow();
     const label = ssongEl('ssong-label');
-    if (free) label.textContent = KR.t('ssong.free.label');
+    if (mode === 'warm') label.textContent = KR.t('ssong.warm.label', { song: KR.t(ssong.song.title || 'ssong.title') });
+    else if (free) label.textContent = KR.t('ssong.free.label');
     else if (mode === 'run') label.textContent = ssongRunLabel();
     else label.textContent = ssong.hurdle.record
         ? KR.t('ssong.session.' + ssong.session)
@@ -516,13 +595,15 @@ function ssongSetState(state) {
     ssong.state = state;
     const go = ssongEl('ssong-go');
     const stop = ssongEl('ssong-stop');
-    const free = ssong.mode === 'free';
+    const warm = ssong.mode === 'warm';
+    const free = ssong.mode === 'free' || warm;
     go.hidden = state !== 'ready';
     // Nothing but the pad while the tape rolls, nothing but the result's own
     // buttons after it (Rob: "there's not many choices").
-    go.textContent = KR.t(free ? 'ssong.free.go' : 'ssong.go');
+    go.textContent = KR.t(warm ? 'ssong.warm.go' : free ? 'ssong.free.go' : 'ssong.go');
     stop.hidden = !(state === 'lead' || state === 'rec' || state === 'playing');
-    stop.textContent = KR.t(free ? 'ssong.free.stop' : 'ssong.stop');
+    stop.textContent = KR.t(free && !warm ? 'ssong.free.stop' : 'ssong.stop');
+    if (state !== 'lead' && state !== 'rec' && state !== 'playing') ssongKitFrame(null);
     ssongEl('ssong-guide').hidden = ssong.mode === 'run' || !(state === 'ready' || (free && state === 'playing'));
     ssongShowWait(state === 'lead');
 }
@@ -535,7 +616,8 @@ function ssongRoll() {
     const begin = () => {
         ssongEl('ssong-go').disabled = false;
         if (!ssong || ssong.state !== 'ready') return;
-        if (ssong.mode === 'free') ssongStartFree(); else ssongStartAttempt();
+        if (ssong.mode === 'warm') ssongStartWarm();
+        else if (ssong.mode === 'free') ssongStartFree(); else ssongStartAttempt();
     };
     ssongLoadAssets().then(begin).catch(() => {
         ssongEl('ssong-go').disabled = false;
@@ -585,13 +667,20 @@ function ssongPress(press) {
         if (ssong.state === 'ready' && ssongBuffers[ssong.song.kick]) ssongKick(ctx.currentTime + 0.005, false);
         return;
     }
-    if (ssong.mode !== 'free' && ssong.state === 'lead' && ssongTooSoon(press)) return;
+    const free = ssong.mode === 'free' || ssong.mode === 'warm';
+    if (!free && ssong.state === 'lead' && ssongTooSoon(press)) return;
     ssongKick(ctx.currentTime + 0.003, false);
-    if (ssong.mode === 'free') {
-        ssong.taps.push({ t: press.time - ssong.freeStart });
+    if (free) {
+        const t = press.time - ssong.freeStart;
+        ssong.taps.push({ t: t });
+        // Tango's kick drum lights: green on the beat, gold off it.
+        const k = Math.round(KRStompSong.beatAt(ssong.beats, t));
+        ssongKitHit(Math.abs(t - KRStompSong.beatTime(ssong.beats, k)) <= KRStompSong.ON_SEC);
         return;
     }
-    ssong.taps.push({ raw: press.raw - ssong.punchClock, delay: ssong.delay.delay, t: press.time - ssong.punchClock });
+    const tap = { raw: press.raw - ssong.punchClock, delay: ssong.delay.delay, t: press.time - ssong.punchClock };
+    ssong.taps.push(tap);
+    if (ssong.state === 'rec') ssongKitHit(Math.abs(KRStompSong.tapErrors(ssong.plan, [tap])[0]) <= KRStompSong.ON_SEC);
 }
 
 // WAIT FOR THE COUNT (Rob, 2026-10-23, as in Beat Smash: "They get nervous...
@@ -626,11 +715,13 @@ function ssongFrame() {
     if (!ssong || (ssong.state !== 'lead' && ssong.state !== 'rec' && ssong.state !== 'playing')) return;
     const ctx = ssongAudio();
     ssong.frame = requestAnimationFrame(ssongFrame);
-    if (ssong.mode === 'free') return ssongFreeFrame();
+    if (ssong.mode === 'free' || ssong.mode === 'warm') return ssongFreeFrame();
     const p = ssong.plan;
     const heard = ssongHeard();
     const rel = heard - ssong.punchClock;                      // seconds from the punch-in, as heard
-    const beatPos = KRStompSong.beatAt(ssong.beats, p.punchAt + rel) - p.punchBeat;   // beats from the punch-in
+    const songBeat = KRStompSong.beatAt(ssong.beats, p.punchAt + rel);
+    const beatPos = songBeat - p.punchBeat;                    // beats from the punch-in
+    ssongKitFrame(songBeat);
     const rec = beatPos >= 0 && beatPos < p.bars * 4;
     const rect = ssongEl('ssong-rec');
     rect.classList.toggle('recording', rec);
@@ -779,17 +870,13 @@ function ssongShowResult(g, passed, applied) {
     const head = ssongEl('ssong-result-head');
     const lines = ssongEl('ssong-result-lines');
     lines.innerHTML = '';
-    let key = passed ? 'ssong.result.pass' : (g.pct < 0.5 ? 'ssong.result.cut' : 'ssong.result.close');
-    if (ssong.guided) key = 'ssong.result.practice';
-    head.textContent = KR.t(g.perfect && !ssong.guided ? 'ssong.result.clean' : key);
+    // "If successful say, That's a Take. If unsuccessful say, Try Another One"
+    // (Rob, 2026-10-24), and the stomps on the beat, rushed and dragged.
+    head.textContent = KR.t(ssong.guided ? 'ssong.result.practice' : passed ? 'ssong.take.yes' : 'ssong.take.no');
+    const split = ssongTakeSplit(g);
     const add = text => { ssongMake('li', '', lines).textContent = text; };
     add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
     if (g.first) add(KR.t('ssong.why.' + g.first.why, { bar: g.first.bar + 1 }));
-    if (g.hits >= 2) {
-        if (g.leanMs <= -25) add(KR.t('ssong.result.early', { ms: Math.abs(g.leanMs) }));
-        else if (g.leanMs >= 25) add(KR.t('ssong.result.late', { ms: g.leanMs }));
-        else add(KR.t('ssong.result.pocket'));
-    }
     ssongTimingLines(g, add);
     if (ssong.guided) add(KR.t('ssong.result.guided'));
     else if (!ssong.hurdle.record) add(KR.t('ssong.result.stars', { n: applied.stars, needs: KRStompSong.needed(KRStompSong.hurdleState(ssong.progress, ssong.round.id, ssong.hurdle.id)) }));
@@ -825,7 +912,7 @@ function ssongShowResult(g, passed, applied) {
     }
     else if (applied.newlyCleared) ssongEvent('ssong.cleared');
     else if (g.perfect) ssongEvent('ssong.take.clean');
-    else if (g.pct < 0.5) ssongEvent('ssong.take.cut');
+    else if (!passed) ssongCoach(split, g);
     else ssongEvent('ssong.take.close');
     if (passed && !ssong.guided) playSound('correct'); else if (!ssong.guided) playSound('wrong');
 }
@@ -867,13 +954,16 @@ function ssongBufferSeconds() {
 
 function ssongFreeFrame() {
     const ctx = ssongAudio();
-    const pos = KRStompSong.beatAt(ssong.beats, ssongHeard() - ssong.freeStart);
+    const heard = ssongHeard() - ssong.freeStart;
+    const pos = KRStompSong.beatAt(ssong.beats, heard);
     const whole = Math.floor(pos);
     if (whole !== ssong.lastBeat) {
         ssong.lastBeat = whole;
         if (ssong.pads && ssong.settings.freeGuide && whole >= 0) ssong.pads.glow(0, 'beat', 140);
     }
-    if (ctx.currentTime >= ssong.freeEnd) ssongEndFree();
+    ssongKitFrame(heard >= 0 ? pos : null);
+    if (ssong.mode === 'warm') ssongTimer(Math.max(0, heard) / ssong.warmSeconds);
+    if (ctx.currentTime >= ssong.freeEnd) { if (ssong.mode === 'warm') ssongEndWarm(); else ssongEndFree(); }
 }
 
 function ssongEndFree() {
@@ -893,6 +983,11 @@ function ssongEndFree() {
     box.hidden = false;
     const lines = ssongEl('ssong-summary-lines');
     lines.innerHTML = '';
+    ssongEl('ssong-summary-split').innerHTML = '';
+    ssongActions('ssong-summary-actions', [
+        { cls: 'btn-start', textId: 'ssong.free.go', fn: () => ssongOpenFree() },
+        { cls: 'btn-secondary', textId: 'ssong.menu', fn: () => ssongToMenu() },
+    ]);
     const add = text => { ssongMake('li', '', lines).textContent = text; };
     ssongEl('ssong-summary-head').textContent = KR.t('ssong.free.title');
     add(KR.t('ssong.free.taps', { n: a.taps }));
@@ -913,6 +1008,7 @@ function ssongEndFree() {
 function ssongStopPressed() {
     if (!ssong) return;
     if (ssong.mode === 'free') { ssongEndFree(); return; }
+    if (ssong.mode === 'warm') { ssongEndWarm(); return; }
     ssongHalt(SSONG_END_FADE);
     ssongPrepareAttempt();
 }
@@ -932,11 +1028,14 @@ function ssongStopPressed() {
    run ends when every player has missed it in a row. Nobody wins.
    ========================================= */
 
-function ssongOpenRun() {
+// `startAt`: the rung to start on (Carry on, or "Try another one" after a
+// miss: the same level and mini level). From the song's own menu, the bottom.
+function ssongOpenRun(startAt) {
     ssongHalt();
     ssong.mode = 'run';
     ssong.ladder = KRStompSong.runLadder(ssong.song.run.levels);
     ssong.run = KRStompSong.newRun(ssong.settings.players);
+    ssong.run.step = Math.max(0, Math.min((startAt | 0), ssong.ladder.length - 1));
     ssong.lastSpot = null;
     switchScreenState('beat', 'ssong-screen-play');
     ssongPrepareRun();
@@ -979,6 +1078,11 @@ function ssongPrepareRun() {
     ssongCancelNext();
     const step = KRStompSong.runStep(ssong.ladder, ssong.run.step);
     ssong.step = step;
+    if (ssong.home === 'beat') {
+        ssong.progress.run = Object.assign({ best: 0, runs: 0 }, ssong.progress.run, { at: ssong.run.step });
+        ssongSave();
+        ssongSavePlace('run', ssong.id, ssong.run.step);
+    }
     const spots = KRStompSong.runSpots(KRStompSong.totalBars(ssong.beats), step.bars);
     const from = KRStompSong.pickSpot(spots, ssong.lastSpot);
     ssong.lastSpot = from;
@@ -1003,7 +1107,12 @@ function ssongJudgeRun() {
     progress.run = progress.run || { best: 0, runs: 0 };
     if (out.next === 'over') progress.run.runs++;
     progress.run.best = Math.max(progress.run.best || 0, run.cleared);
+    // Where to carry on from: the rung after a clean take, the same rung after
+    // a miss. The top of the ladder reached is the song's record turning gold.
+    progress.run.at = Math.min(run.step, ssong.ladder.length - 1);
+    if (run.step >= ssong.ladder.length - 1) progress.run.topped = true;
     ssongSave();
+    if (ssong.home === 'beat') ssongSavePlace('run', ssong.id, progress.run.at);
     window.ssongLast = { grade: g, passed: passed, run: Object.assign({}, run), plan: p, step: step, taps: ssong.taps.slice() };
     ssongLogTake(g, passed, 'run ' + (step.levelId || 'warm-up') + ' x' + step.bars);
     ssongEndTake(g);
@@ -1023,11 +1132,13 @@ function ssongShowRunResult(g, passed, out) {
         const b = ssongMake('button', 'btn ' + cls, actions);
         b.type = 'button'; b.textContent = text; b.onclick = () => { ssongCancelNext(); fn(); }; return b;
     };
-    const head = ssongEl('ssong-result-head');
+    // That's a Take / Try Another One (Rob, 2026-10-24), the stomps on the
+    // beat, rushed and dragged, and Tango saying what to work on. Short: the
+    // old run summary (clean takes, best run, the why) is gone from the box.
+    ssongEl('ssong-result-head').textContent = KR.t(passed ? 'ssong.take.yes' : 'ssong.take.no');
+    const split = ssongTakeSplit(g);
     ssongTimingLines(g, add);
     if (out.next === 'same') {
-        head.textContent = KR.t(g.perfect ? 'ssong.result.clean' : 'ssong.result.pass');
-        add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
         button('btn-start', KR.t('ssong.run.next'), ssongRunNext);
         playSound('correct');
         const up = KRStompSong.runLevelUp(ssong.ladder, ssong.step.index, run.step);
@@ -1038,28 +1149,69 @@ function ssongShowRunResult(g, passed, out) {
         return;
     }
     playSound('wrong');
-    if (g.first) add(KR.t('ssong.why.' + g.first.why, { bar: g.first.bar + 1 }));
-    else add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
     if (out.next === 'turn') {
-        head.textContent = KR.t('ssong.result.cut');
         button('btn-start', KR.t('ssong.run.turn', { n: out.player + 1 }), ssongRunNext);
         ssongEvent('ssong.run.turn', { n: out.player + 1 });
         return;
     }
-    // The run is over: how far the band got, and somewhere to learn the
-    // rhythm that stopped it (Rob: "we have all these resources for counting
-    // and Stomp Lab").
-    head.textContent = KR.t('ssong.run.over');
-    add(KR.t('ssong.run.cleared', { n: run.cleared }));
+    // The run is over: another go at the same rung (the level and its mini
+    // level), somewhere to learn the rhythm that stopped it (Rob: "we have
+    // all these resources for counting and Stomp Lab"), or the menu.
     if (run.players > 1) {
         const best = run.furthest.indexOf(Math.max.apply(null, run.furthest));
         add(KR.t('ssong.run.furthest', { n: best + 1 }));
     }
-    add(KR.t('ssong.run.best', { n: ssong.progress.run.best }));
-    button('btn-start', KR.t('ssong.run.again'), () => ssongOpenRun());
+    const at = run.step;
+    button('btn-start', KR.t('ssong.again.same'), () => ssongOpenRun(at));
     if (ssong.step.levelId) button('btn-secondary', KR.t('ssong.run.learn'), () => ssongLearn(ssong.step.levelId));
-    button('btn-secondary', KR.t('ssong.menu'), () => ssongToMenu());
-    ssongEvent('ssong.run.end', { n: run.cleared });
+    button('btn-secondary', KR.t(ssong.home === 'beat' ? 'ssong.toMenu' : 'ssong.menu'), () => ssongToMenu());
+    ssongCoach(split, g);
+}
+
+/* ---------- how a take went: on the beat, rushed, dragged ----------
+   Rob, 2026-10-24: "diagnose their issue, are they rushing? Present stats on
+   percent on the beat, percent rushed, percent dragged. If rushing, slow down
+   and relax into the beat. If dragging, push a bit faster. Feel the beat. If a
+   mixture, they are close but keep listening and stomping. (Be more
+   concise.)" The numbers go in three chips; what to do about them is Tango's
+   one line. */
+function ssongTakeSplit(g) {
+    const split = KRStompSong.timingSplit(KRStompSong.tapErrors(ssong.plan, ssong.taps));
+    ssongRenderSplit('ssong-result-split', split);
+    window.ssongLastSplit = split;
+    return split;
+}
+
+function ssongRenderSplit(boxId, split) {
+    const box = ssongEl(boxId);
+    box.innerHTML = '';
+    if (!split || !split.taps) return;
+    [['on', split.onPct], ['rushed', split.rushedPct], ['dragged', split.draggedPct]].forEach(([kind, pct]) => {
+        const chip = ssongMake('span', 'ssong-split-chip ' + kind, box);
+        ssongMake('b', '', chip).textContent = KR.t('ssong.split.pct', { pct: pct });
+        ssongMake('span', '', chip).textContent = KR.t('ssong.split.' + kind);
+        chip.dataset.kind = kind;
+    });
+}
+
+// Tango's one line for a take that missed: the timing if that is what went
+// wrong, else the first thing that did (a missed note, a tap on a rest).
+function ssongCoach(split, g) {
+    const d = split ? split.diagnosis : 'few';
+    if (d !== 'steady') return ssongEvent('ssong.coach.' + d);
+    if (g && g.first) return ssongEvent('ssong.coach.' + g.first.why, { bar: g.first.bar + 1 });
+    ssongEvent('ssong.coach.mixed');
+}
+
+function ssongActions(boxId, list) {
+    const box = ssongEl(boxId);
+    box.innerHTML = '';
+    list.forEach(a => {
+        const b = ssongMake('button', 'btn ' + a.cls, box);
+        b.type = 'button';
+        b.textContent = a.text != null ? a.text : KR.t(a.textId, a.vars);
+        b.onclick = a.fn;
+    });
 }
 
 // UP A LEVEL (Rob, 2026-10-24: "if they get it right the first time they get
@@ -1098,4 +1250,282 @@ function ssongLearn(levelId) {
     ssong = null;
     launchGame('view-rhythm-lab');
     if (typeof selectRstompLevel === 'function') selectRstompLevel(levelId);
+}
+
+/* =========================================
+   THE WARM-UP WITH TANGO: the drum room
+   =========================================
+   Rob, 2026-10-24: "In the Warm-up with Tango allow for the song to be played
+   freely but focused on the beat... She asks you to pick a tune and we'll get
+   started smashing the beat... They can have 30 second rounds of free play
+   using the same 30 seconds of the tune but must pass a hurdle to start
+   working on the rest of the tune as it's not yet complete."
+   So: pick a tune (Stomp the Beat first), then rounds of the song's first 30
+   seconds, count-in and all, stomping the beat. Every round is judged the same
+   way (KRStompSong.warmRound): the beat kept on enough of the beats, and
+   cleanly enough. Passing it once opens the song's level on the menu. Rounds
+   can be played for as long as anyone likes after that.
+   ========================================= */
+
+function ssongOpenWarmPick() {
+    if (typeof bsmashStopAll === 'function') bsmashStopAll();
+    ssongHalt();
+    ssong = null;
+    switchScreenState('beat', 'ssong-screen-warm');
+    const box = ssongEl('ssong-warm-cards');
+    box.innerHTML = '';
+    ssongMenuSongs().forEach(id => {
+        const song = KR.stompSongs[id];
+        const open = ssongWarmOpen(id);
+        const card = ssongMake('button', 'bsmash-song-card ssong-warm-card' + (open ? '' : ' locked'), box); // text-ok: class names
+        card.type = 'button';
+        card.dataset.song = id;
+        ssongMake('span', 'bsmash-song-icon', card).textContent = KR.t(song.icon || 'ssong.icon');
+        ssongMake('span', 'bsmash-song-name', card).textContent = KR.t(song.title || 'ssong.title');
+        const level = ssongLevelOf(song);
+        if (level) ssongMake('small', 'bsmash-song-status', card).textContent = KR.t('beat.menu.level', { n: level.n, name: level.name });
+        ssongMake('small', 'bsmash-song-status ssong-warm-state', card).textContent = // text-ok: class names
+            KR.t(!open ? 'ssong.warm.card.locked' : ssongWarmPassed(id) ? 'ssong.warm.card.done' : 'ssong.warm.card.go');
+        card.onclick = () => { if (open) ssongOpenWarm(id); else ssongEvent('ssong.warm.locked'); };
+    });
+    ssongEvent('ssong.warm.pick');
+}
+
+function ssongOpenWarm(id) {
+    if (!ssongInit(id, 'beat')) return;
+    ssong.mode = 'warm';
+    ssong.taps = [];
+    ssongSavePlace('warm', id, 0);
+    switchScreenState('beat', 'ssong-screen-play');
+    ssongShowPlay('warm');
+    ssongSetState('ready');
+    ssongEvent('ssong.warm.intro');
+}
+
+function ssongStartWarm() {
+    const ctx = ssongAudio();
+    ssong.delay = typeof rstompRoundDelay === 'function' ? rstompRoundDelay() : { delay: 0, source: 'none' };
+    ssong.sources = [];
+    ssong.taps = [];
+    const secs = Math.min(KRStompSong.WARM_SECONDS, ssongBufferSeconds());
+    ssong.warmSeconds = secs;
+    const startWhen = ctx.currentTime + SSONG_PRE_ROLL;
+    ssong.freeStart = startWhen;            // the file's own clock: time 0 sounds now
+    ssongStartSong(0, startWhen, secs + 0.5);
+    ssong.guideBus.gain.value = ssong.settings.freeGuide ? 1 : 0;
+    ssong.beats.forEach(t => { if (t <= secs) ssongKick(startWhen + t, true); });
+    // A stomp just after the last beat is still judged, then the round ends.
+    ssong.freeEnd = startWhen + secs + 0.35 + (ssong.delay.delay || 0);
+    ssongEl('ssong-summary').hidden = true;
+    ssong.lastBeat = -1;
+    ssongSetState('playing');
+    ssong.frame = requestAnimationFrame(ssongFrame);
+}
+
+function ssongEndWarm() {
+    if (!ssong || ssong.mode !== 'warm' || ssong.state === 'result') return;
+    if (ssong.frame) cancelAnimationFrame(ssong.frame);
+    ssong.frame = 0;
+    ssongStopSound(SSONG_END_FADE);
+    ssong.state = 'result';
+    ssongSetState('result');
+    ssongTimer(1);
+    const a = KRStompSong.warmRound(ssong.beats, ssong.taps, { seconds: ssong.warmSeconds || KRStompSong.WARM_SECONDS });
+    const w = ssong.progress.warm = Object.assign({ rounds: 0, passed: false }, ssong.progress.warm);
+    const opened = a.passed && !w.passed;
+    w.rounds++;
+    if (a.passed) w.passed = true;
+    w.last = { taps: a.taps, onPct: a.onPct, rushedPct: a.rushedPct, draggedPct: a.draggedPct, coverPct: a.coverPct, passed: a.passed, at: Date.now() };
+    ssongSave();
+    window.ssongLastWarm = a;
+
+    const box = ssongEl('ssong-summary');
+    box.hidden = false;
+    ssongEl('ssong-summary-head').textContent = KR.t(a.passed ? 'ssong.take.yes' : 'ssong.take.no');
+    ssongRenderSplit('ssong-summary-split', a);
+    const lines = ssongEl('ssong-summary-lines');
+    lines.innerHTML = '';
+    ssongMake('li', '', lines).textContent = KR.t('ssong.warm.kept', { kept: a.beatsKept, beats: a.beats });
+    if (ssong.delay && ssong.delay.stale) ssongMake('li', '', lines).textContent = KR.t('ssong.delay.stale');
+    ssongEl('ssong-summary-focus').textContent = '';
+    const id = ssong.id;
+    const level = ssongLevelOf(ssong.song);
+    const toLevel = { cls: 'btn-start', textId: 'ssong.warm.toLevel',
+        vars: { level: level ? KR.t('beat.menu.level', { n: level.n, name: KR.t(ssong.song.title) }) : KR.t(ssong.song.title) },
+        fn: () => ssongStartLevel(id) };
+    const again = { cls: a.passed ? 'btn-secondary' : 'btn-start', textId: 'ssong.warm.again', fn: () => ssongOpenWarm(id) };
+    const pick = { cls: 'btn-secondary', textId: 'ssong.warm.pickAgain', fn: () => ssongOpenWarmPick() };
+    ssongActions('ssong-summary-actions', ssongLevelOpen(id) ? [toLevel, again, pick] : [again, pick]);
+
+    if (opened) {
+        playSound('correct');
+        KR.lastWords = '';
+        ssongEvent('ssong.warm.open');
+        KR.celebrate({ title: KR.t('ssong.take.yes'), line: KR.lastWords || '', stars: 1 });
+    } else if (a.passed) {
+        playSound('correct');
+        ssongEvent('ssong.warm.pass');
+    } else if (a.diagnosis === 'steady') ssongEvent('ssong.warm.sparse');
+    else ssongEvent('ssong.coach.' + a.diagnosis);
+}
+
+// From the warm-up (or the menu) into a song's level, on the rung it was left.
+function ssongStartLevel(id) {
+    if (!ssongInit(id, 'beat')) return;
+    const at = (ssong.progress.run && ssong.progress.run.at) || 0;
+    switchScreenState('beat', 'ssong-screen-play');
+    ssongOpenRun(at);
+    ssongEvent(ssong.run.players > 1 ? 'ssong.run.intro.many' : 'ssong.run.intro', { n: ssong.run.players });
+}
+
+// How much of the round has gone, 0 to 1, and the seconds left.
+function ssongTimer(frac) {
+    const fill = ssongEl('ssong-timer-fill');
+    if (!fill) return;
+    const f = Math.max(0, Math.min(1, frac || 0));
+    fill.style.width = (100 * (1 - f)) + '%';
+    const secs = (ssong && ssong.warmSeconds) || KRStompSong.WARM_SECONDS;
+    ssongEl('ssong-timer-left').textContent = KR.t('ssong.warm.left', { s: Math.ceil(secs * (1 - f)) });
+}
+
+/* =========================================
+   THE DRUM ROOM: Tango at her kit, on every song screen
+   =========================================
+   Rob, 2026-10-24: "Can we wire in Tango to make it the drum room and have
+   her playing away with what's on the screen?" Rob's three pictures (sticks
+   up, halfway, down) are shown one at a time from the beat AS HEARD, read off
+   the song's beat map, so she plays the recording's own drifting tempo:
+   sticks down on the beat, up on the "and". Before the song and after it,
+   halfway: where she talks from. Her kick drum's head lights with each stomp,
+   green on the beat, gold off it (the beat light, as in the old warm-up). */
+function ssongKitArtIn() {
+    return ['up', 'mid', 'down'].every(f => KR.art && KR.art['beat.kit.warmup.' + f]);
+}
+
+function ssongKitShow() {
+    const kit = ssongEl('ssong-kit');
+    if (!kit) return;
+    kit.hidden = !ssongKitArtIn();
+    if (kit.hidden) return;
+    kit.querySelectorAll('img[data-frame]').forEach(img => {
+        const src = KR.art['beat.kit.warmup.' + img.dataset.frame];
+        if (img.getAttribute('src') !== src) img.src = src;
+    });
+    const place = KR.artPlaces && KR.artPlaces['beat.kit.warmup'];
+    const head = ssongEl('ssong-kit-head');
+    if (place && head) {
+        head.style.left = (place.head.left * 100) + '%';
+        head.style.top = (place.head.top * 100) + '%';
+        head.style.width = (place.head.width * 100) + '%';
+    }
+    ssongKitFrame(null);
+}
+
+// beat: the song's beat position as heard (fractional), or null when nothing plays.
+function ssongKitFrame(beat) {
+    const kit = ssongEl('ssong-kit');
+    if (!kit || kit.hidden) return;
+    let frame = 'mid';
+    if (beat != null && beat >= 0) {
+        const f = beat - Math.floor(beat);
+        frame = f < 1 / 6 ? 'down' : f < 0.4 ? 'mid' : f < 0.75 ? 'up' : 'mid';
+    }
+    if (kit.dataset.frame !== frame) kit.dataset.frame = frame;
+}
+
+function ssongKitHit(onBeat) {
+    const head = ssongEl('ssong-kit-head');
+    if (!head) return;
+    head.classList.remove('on', 'off');
+    void head.offsetWidth;
+    head.classList.add(onBeat ? 'on' : 'off');
+    clearTimeout(head.ssongTimer);
+    head.ssongTimer = setTimeout(() => head.classList.remove('on', 'off'), SSONG_KIT_FLASH_MS);
+}
+
+/* =========================================
+   BEAT SMASH'S MENU (Rob, 2026-10-24)
+   =========================================
+   "Let's keep Warm-up, then list on the menu only the new songs that we have
+   mapped and are working: Warm up with Tango, Level 1 Stomp the Beat, Level 3
+   Stomp the Beat." No name, no band's musicians, no step chips, no sound
+   settings. Drawn on the pathway's shelf by renderBeatPathway()
+   (beat-smash.js) when BSMASH_SONG_MENU is on. */
+let ssongMenuSelected = null;
+
+function ssongMenuName(id) {
+    if (id === 'warm') return KR.t('beat.menu.warm');
+    const song = KR.stompSongs[id];
+    const level = ssongLevelOf(song);
+    return level ? KR.t('beat.menu.level', { n: level.n, name: KR.t(song.title) }) : KR.t(song.title);
+}
+
+// Where a song's run is up to, in words: "Paired Quavers, 4 bars".
+function ssongWhereName(id, step) {
+    const song = KR.stompSongs[id];
+    const ladder = KRStompSong.runLadder(song.run.levels);
+    const st = KRStompSong.runStep(ladder, step || 0);
+    const level = st.levelId && typeof rstompLevelName === 'function' ? rstompLevelName(st.levelId) : KR.t('beat.menu.where.beat');
+    return KR.t('beat.menu.where', { level: level, bars: KR.t('ssong.hurdle.' + st.bars) });
+}
+
+// keep: a record was just picked, so keep it; else (coming to the menu) the
+// record of the place they were last.
+function ssongRenderBeatMenu(keep) {
+    const songs = ssongMenuSongs();
+    const ids = ['warm'].concat(songs);
+    const open = new Set(['warm']);
+    const records = { warm: { cleared: songs.length > 0 && ssongWarmPassed(songs[0]) } };
+    songs.forEach(id => {
+        if (ssongLevelOpen(id)) open.add(id);
+        const run = ssongProgressOf(id).run;
+        records[id] = { cleared: !!(run && run.topped) };
+    });
+    const place = ssongPlace();
+    if (!keep || !ssongMenuSelected || !open.has(ssongMenuSelected)) {
+        ssongMenuSelected = place && place.kind === 'run' && open.has(place.song) ? place.song : 'warm';
+    }
+    KR.shelf.render(document.getElementById('beat-pathway-track'), {
+        albums: [{ id: 'songs', titleId: 'shelf.album.all', levelIds: ids }],
+        levelName: ssongMenuName,
+        discLabel: id => id === 'warm' ? KR.t('beat.menu.warm.icon') : KR.t(KR.stompSongs[id].icon || 'ssong.icon'),
+        unlocked: open,
+        records: records,
+        current: ssongMenuSelected,
+        onPick: id => { ssongMenuSelected = id; ssongRenderBeatMenu(true); },
+    });
+    document.querySelectorAll('#beat-pathway-track .kr-track').forEach(node =>
+        node.classList.toggle('recommended', node.dataset.id === ssongMenuSelected));
+    // Start, or Carry on where they were.
+    const start = document.getElementById('beat-pathway-start');
+    start.disabled = false;
+    const carry = ssongMenuCarries(ssongMenuSelected);
+    start.textContent = KR.t(carry ? 'beat.carryOn' : 'beat.start');
+    // Tango: welcome back, and where they were; else what to do.
+    const box = document.getElementById('beat-pathway-guide');
+    const sel = ssongMenuSelected;
+    if (carry && sel === 'warm') KR.say('beat.menu.back.warm', { box: box, speaker: 'tango', silent: true, vars: { song: KR.t(KR.stompSongs[ssongWarmSong()].title) } });
+    else if (carry) KR.say('beat.menu.back.run', { box: box, speaker: 'tango', silent: true,
+        vars: { song: ssongMenuName(sel), where: ssongWhereName(sel, (ssongProgressOf(sel).run || {}).at || 0) } });
+    else KR.say('beat.menu.say', { box: box, speaker: 'tango', silent: true });
+}
+
+// Is there somewhere to carry on from on this record?
+function ssongWarmSong() {
+    const id = ssongStorage().warmSong;
+    return id && KR.stompSongs[id] && ssongWarmOpen(id) ? id : null;
+}
+
+function ssongMenuCarries(id) {
+    if (id === 'warm') return !!ssongWarmSong();
+    const place = ssongPlace();
+    const run = ssongProgressOf(id).run;
+    return !!((run && run.at > 0) || (place && place.kind === 'run' && place.song === id));
+}
+
+function ssongStartFromMenu() {
+    const id = ssongMenuSelected || 'warm';
+    if (id === 'warm') return ssongWarmSong() ? ssongOpenWarm(ssongWarmSong()) : ssongOpenWarmPick();
+    if (!ssongLevelOpen(id)) { KR.say('beat.menu.locked', { box: document.getElementById('beat-pathway-guide'), speaker: 'tango' }); return; }
+    ssongStartLevel(id);
 }

@@ -31,8 +31,8 @@
    lab levels... Each song is a level"). `album` names the Stomp Lab album the
    song is: Level 1 The Beat, 2 The Held Beat, 3 Splitting the Beat, 4
    The Pump, 5 Syncopation and Review (RSTOMP_ALBUMS, in order), and its tile
-   says so. A song without one is not a level yet (Stomp the Beat, the crotchet
-   song, also tests every level).
+   says so. A song without one may name its `level` for the menu alone (Stomp
+   the Beat, the crotchet song, is Level 1 and also tests every level).
 
    THE RUN'S LEVELS. `run.levels` are Stomp Lab levels, in the order they are
    played: for a song that is a level, its album's. `run.leaveOut` takes note values out of every level's vocabulary for
@@ -43,6 +43,9 @@
 KR.stompSongs = KR.stompSongs || {};
 KR.stompSongs['stomp-the-beat'] = {
     title: 'ssong.title', tile: 'ssong.tile', icon: 'ssong.icon',
+    // Level 1 on Beat Smash's menu (Rob, 2026-10-24), with no album: its run
+    // still climbs every 4/4 level, as the test bed.
+    level: 1,
     audio: 'ssong.stomp-the-beat.audio',          // content/audio.js
     kick: 'ssong.kick',
     sections: [

@@ -91,6 +91,9 @@ def fresh(page, setup='', rules_seen=True):
     page.reload()
     page.wait_for_timeout(400)
     page.evaluate('KR.speak = () => {}')
+    # These tests are the band's: the old pathway, with its musicians, steps and
+    # names (Rob moved the menu to the songs on 2026-10-24; the band is kept).
+    page.evaluate('BSMASH_SONG_MENU = false')
 
 
 def screen(page):
@@ -1798,6 +1801,7 @@ def test_my_band(page):
           band['parts'].get('drums') == 'smooth' and 'keys' not in band['parts'] and band['parts'].get('guide') == 'guide:c-1-4-1-5'
           and band['me'] == ['drums'] and band['mix']['keys']['style'] == 'off', band)
     page.reload()
+    page.wait_for_function('typeof BSMASH_SONG_MENU !== "undefined"'); page.evaluate('BSMASH_SONG_MENU = false')
     page.wait_for_timeout(400)
     page.click('.game-card.red')
     page.wait_for_timeout(400)
@@ -1882,6 +1886,7 @@ def test_resume(page):
     page.wait_for_timeout(2500)
     check('A star won is saved as it lands', record(page, 'bass')['streak'] == 2, record(page, 'bass'))
     page.reload()
+    page.wait_for_function('typeof BSMASH_SONG_MENU !== "undefined"'); page.evaluate('BSMASH_SONG_MENU = false')
     page.wait_for_timeout(400)
     page.click('.game-card.red')
     page.wait_for_timeout(400)
@@ -1894,6 +1899,7 @@ def test_resume(page):
     page.wait_for_function("bsmash && bsmash.phase === 'ready'", timeout=8000)
     bars = page.evaluate("bsmash.bars.map(b => b.join()).join('|')")
     page.reload()
+    page.wait_for_function('typeof BSMASH_SONG_MENU !== "undefined"'); page.evaluate('BSMASH_SONG_MENU = false')
     page.wait_for_timeout(400)
     page.click('.game-card.red')
     page.wait_for_timeout(400)
@@ -1904,6 +1910,7 @@ def test_resume(page):
     record_passing_take(page)
     check('A studio take at the pass mark is saved before Keep is pressed', record(page, 'bass').get('studioPassed') is True, record(page, 'bass'))
     page.reload()
+    page.wait_for_function('typeof BSMASH_SONG_MENU !== "undefined"'); page.evaluate('BSMASH_SONG_MENU = false')
     page.wait_for_timeout(400)
     page.click('.game-card.red')
     page.wait_for_timeout(400)
@@ -1923,6 +1930,7 @@ def test_resume(page):
     fresh(page)
     page.evaluate("const p = bsmashLoad(); p.jamDone = true; p.song = 'c-1-4-1-5'; bsmashSave(p);")
     page.reload()
+    page.wait_for_function('typeof BSMASH_SONG_MENU !== "undefined"'); page.evaluate('BSMASH_SONG_MENU = false')
     page.wait_for_timeout(400)
     page.click('.game-card.red')
     page.wait_for_timeout(400)
@@ -2132,7 +2140,7 @@ def test_teacher_codes(page):
     page.wait_for_timeout(1800)
     left = page.evaluate("Object.keys(localStorage).filter(k => k.indexOf('koolRiffs') === 0)")
     check('The RESET code takes every game on this device back to zero', left == [], left)
-    page.evaluate('KR.speak = () => {}')
+    page.evaluate('KR.speak = () => {}; BSMASH_SONG_MENU = false')   # the reset reloads the page
     page.click('.game-card.red')
     page.wait_for_timeout(600)
     check('...so Beat Smash starts from the warm-up again', screen(page) == 'beat-screen-studio'
@@ -2395,6 +2403,7 @@ def test_coach_briefing(page):
     music is greyed, there is no sign and no count, and a tap only thuds."""
     # KR.speaking() itself: busy while a line is said, quiet after it.
     page.reload()
+    page.wait_for_function('typeof BSMASH_SONG_MENU !== "undefined"'); page.evaluate('BSMASH_SONG_MENU = false')
     page.wait_for_timeout(400)
     busy = page.evaluate("KR.audio = {}; KR.speak('beat.line.copy', 'Copy me!', 'tango'); KR.speaking()")
     page.wait_for_function("!KR.speaking()", timeout=6000)

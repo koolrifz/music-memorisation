@@ -156,4 +156,49 @@ t('Stomp the Beat: Soul: its map, its 87 bars, and Level 3 (Splitting the Beat)'
     const spots = K.runSpots(K.totalBars(soul), 4);
     assert.ok(spots[0] === 5 && spots.every(b => b + 4 <= 86));
 });
+t('on the beat / rushed / dragged: the split adds to 100 and names the pattern', () => {
+    const a = K.timingSplit([0, 0.01, -0.2, -0.15, 0.02, -0.1]);
+    assert.deepStrictEqual([a.onPct, a.rushedPct, a.draggedPct, a.diagnosis], [50, 50, 0, 'rushing']);
+    const b = K.timingSplit([0.1, 0.12, 0.15, 0, 0]);
+    assert.strictEqual(b.diagnosis, 'dragging');
+    const c = K.timingSplit([-0.1, 0.1, 0, 0.2, -0.2]);
+    assert.strictEqual(c.diagnosis, 'mixed');
+    assert.strictEqual(K.timingSplit([0, 0.02, -0.03, 0.01, 0.1]).diagnosis, 'steady');
+    assert.strictEqual(K.timingSplit([0.3]).diagnosis, 'few');
+    [[0.1, -0.1, 0], [0, 0, 0, 0.2, 0.3, -0.3, 0.01]].forEach(e => {
+        const s = K.timingSplit(e);
+        assert.strictEqual(s.onPct + s.rushedPct + s.draggedPct, 100);
+    });
+});
+t('a take\'s taps are set against the nearest written note', () => {
+    const p = K.plan(steady, { from: 5, bars: 1, pattern: [[1, 0, 1, 1]] });
+    const e = K.tapErrors(p, [{ t: -0.05 }, { t: 1.1 }, { t: 1.4 }]);
+    assert.ok(Math.abs(e[0] + 0.05) < 1e-9 && Math.abs(e[1] - 0.1) < 1e-9 && Math.abs(e[2] + 0.1) < 1e-9);
+});
+t('the warm-up round: the beat kept passes; random, sparse or rushed stomping does not', () => {
+    const inRound = beats.filter((b, k) => k >= 4 && b <= K.WARM_SECONDS - 0.05);
+    assert.ok(inRound.length > 45 && inRound.length < 60, inRound.length + ' beats in 30 s');
+    // Every beat, a little lean and wobble: passes.
+    const good = inRound.map((b, i) => ({ t: b + 0.015 + (i % 3 - 1) * 0.02 }));
+    const g = K.warmRound(beats, good);
+    assert.ok(g.passed && g.coverPct === 100 && g.diagnosis === 'steady', JSON.stringify(g));
+    // Count-in taps don't count.
+    assert.strictEqual(K.warmRound(beats, [{ t: beats[1] }].concat(good)).taps, good.length);
+    // Random stomping: never passes (1000 tries).
+    let passes = 0;
+    for (let i = 0; i < 1000; i++) {
+        const r = K.rng(i + 1), taps = [];
+        for (let j = 0; j < 60; j++) taps.push({ t: beats[4] + r() * (K.WARM_SECONDS - beats[4]) });
+        if (K.warmRound(beats, taps).passed) passes++;
+    }
+    assert.strictEqual(passes, 0, passes + ' random rounds passed');
+    // Only every other beat, but perfectly: not enough of the beat kept.
+    const sparse = K.warmRound(beats, inRound.filter((b, i) => i % 2 === 0).map(b => ({ t: b })));
+    assert.ok(!sparse.passed && sparse.diagnosis === 'steady');
+    // Every beat, 120 ms early: rushing, and not passed.
+    const rush = K.warmRound(beats, inRound.map(b => ({ t: b - 0.12 })));
+    assert.ok(!rush.passed && rush.diagnosis === 'rushing' && rush.rushedPct === 100);
+    // Every beat, 120 ms late: dragging.
+    assert.strictEqual(K.warmRound(beats, inRound.map(b => ({ t: b + 0.12 }))).diagnosis, 'dragging');
+});
 console.log(n + ' passed');

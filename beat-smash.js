@@ -409,6 +409,13 @@ const BSMASH_BAND_FULL = 1.0;              // the band after a success
 const BSMASH_JAM_BAND = 0.55;              // Tango warming up, under the student's taps
 const BSMASH_PICKER_INTRO_MS = 2000;       // the win is felt before any choice (§8.2 state 1)
 
+// THE SONG MENU (Rob, 2026-10-24): Beat Smash's menu is the warm-up with
+// Tango and the recorded songs, one level each (stomp-song.js, "BEAT SMASH'S
+// MENU"); the band's musicians, the step chips, the sound settings and the
+// name are off it. Nothing of the band is deleted: false brings the old
+// pathway back exactly as it was (tools/test-beat-smash.py runs with it off).
+var BSMASH_SONG_MENU = true;
+
 const BSMASH_PROGRESS_KEY = 'koolRiffsBeatProgress';
 const BSMASH_DELAY_KEY = 'koolRiffsBeatDelay';   // per device, not per player
 const BSMASH_GUEST_KEY = 'koolRiffsBeatGuest';   // progress before a name is given
@@ -1512,8 +1519,10 @@ function enterBeatSmash() {
     bsmashAudio();          // inside the tap that opened the game: iOS needs that
     KR.event('beat.open');
     // The first time in is the warm-up; after that, and for a teacher with
-    // everything open (who came to jump to a step), the pathway.
-    if (!bsmashLoad().jamDone && !KR.openAll()) startBeatJam();
+    // everything open (who came to jump to a step), the pathway. With the
+    // song menu, always the menu: the warm-up is its first record.
+    if (BSMASH_SONG_MENU) showBeatPathway();
+    else if (!bsmashLoad().jamDone && !KR.openAll()) startBeatJam();
     else showBeatPathway();
 }
 
@@ -3780,8 +3789,10 @@ function bsmashStarLands(then) {
     const next = () => {
         // The name and age are asked after the first win, never before (§11);
         // whatever was to come next waits for them.
+        // Not with the song menu (Rob, 2026-10-24: "Don't ask their name...
+        // It doesn't matter who they are at the moment").
         const player = bsmashPlayer();
-        if (firstStar && (!player || BSMASH_AGES.indexOf(player.age) === -1)) {
+        if (!BSMASH_SONG_MENU && firstStar && (!player || BSMASH_AGES.indexOf(player.age) === -1)) {
             bsmash.afterName = then || null;
             return showBeatPlayers(true);
         }
@@ -4609,6 +4620,16 @@ function bsmashUnlocked(index, progress) {
 }
 
 function renderBeatPathway() {
+    // The song menu: no "Playing as", no step chips, no settings (Rob,
+    // 2026-10-24: "remove the name and personalisation... Remove the blue box").
+    const songMenu = BSMASH_SONG_MENU && typeof ssongRenderBeatMenu === 'function';
+    bsmashEl('beat-steps').hidden = songMenu;
+    bsmashEl('beat-settings').hidden = songMenu;
+    if (songMenu) {
+        bsmashEl('beat-player-chip').hidden = true;
+        bsmashRenderStats();
+        return ssongRenderBeatMenu();
+    }
     const progress = bsmashLoad();
     const player = bsmashPlayer();
     const chip = bsmashEl('beat-player-chip');
@@ -4749,6 +4770,7 @@ function bsmashRenderSteps() {
 }
 
 function startSelectedBeat() {
+    if (BSMASH_SONG_MENU && typeof ssongStartFromMenu === 'function') { bsmashAudio(); return ssongStartFromMenu(); }
     const id = bsmashSelected;
     if (!id) return;
     bsmashAudio();
@@ -4818,7 +4840,160 @@ function bsmashRenderPathwaySettings() {
         chosen, v => save(s => { s.jamSong = v; }));
 }
 
+// "Recalibrate my beat" (was "Re-time my taps", which ran the whole warm-up
+// jam to measure the delay). Rob, 2026-10-24: "Tapping this will bring up a
+// text box for settings to handle bluetooth (if possible) and any other
+// setting we may need to tap in time and get accurate results."
 function retuneBeatTiming() {
     bsmashAudio();
-    startBeatJam();
+    openBeatCalibrate();
+}
+
+/* =========================================
+   RECALIBRATE MY BEAT
+   =========================================
+   A box over the menu. What it can and cannot do, honestly: a web page cannot
+   ask whether Bluetooth is on. What the browser CAN say is how much delay its
+   speaker adds (AudioContext.outputLatency, on most phones), and a Bluetooth
+   headset adds a lot (often 150 ms and more). So the box shows the delay in
+   use, the speaker's own, and says "that looks like Bluetooth" past
+   BSMASH_CAL_BT. The real fix is the TAP TEST: clicks on the audio clock,
+   the student taps along, and the delay from the click as booked to the tap
+   is the device's delay, headset and touch screen together (the same thing
+   the old jam measured, without the jam). Saved per device with the speaker's
+   delay at the time (bsmashSaveDelay), so a change of speaker moves it
+   (rstompRoundDelay). Fine tune moves it by 10 ms; Reset forgets it, and the
+   browser's own figure is used. */
+const BSMASH_CAL_BPM = 100;
+const BSMASH_CAL_CLICKS = 16;          // clicks in the tap test
+const BSMASH_CAL_SKIP = 4;             // the first bar is for finding the beat: not counted
+const BSMASH_CAL_WINDOW = 0.3;         // seconds: a tap this close to a click is a tap on it
+const BSMASH_CAL_MIN = 8;              // taps needed to trust the answer
+const BSMASH_CAL_BT = 0.1;             // a speaker delay this big looks like Bluetooth
+const BSMASH_CAL_MAX = 0.6;            // the delay is never set past this
+let bsmashCal = null;
+
+function openBeatCalibrate() {
+    bsmashEl('beat-calibrate').hidden = false;
+    bsmashCalStatus('');
+    bsmashCalRender();
+}
+
+function closeBeatCalibrate() {
+    bsmashCalStop();
+    bsmashEl('beat-calibrate').hidden = true;
+}
+
+function bsmashCalRender() {
+    const d = typeof rstompRoundDelay === 'function' ? rstompRoundDelay() : { delay: bsmashDelay(), source: 'jam' };
+    const measured = d.source !== 'outputLatency' && d.source !== 'none';
+    bsmashEl('beat-cal-now').textContent = measured ? KR.t('beat.cal.now', { ms: Math.round(d.delay * 1000) }) : KR.t('beat.cal.none');
+    const ctx = typeof rstompAudio === 'function' ? rstompAudio() : null;
+    const out = ctx && typeof ctx.outputLatency === 'number' && ctx.outputLatency > 0 ? ctx.outputLatency : null;
+    bsmashEl('beat-cal-speaker').textContent = out != null ? KR.t('beat.cal.speaker', { ms: Math.round(out * 1000) }) : '';
+    bsmashEl('beat-cal-bt').hidden = !(out != null && out >= BSMASH_CAL_BT);
+    bsmashEl('beat-cal-reset').disabled = !measured;
+}
+
+function bsmashCalStatus(text) { bsmashEl('beat-cal-status').textContent = text; }
+
+// A click, straight to the speakers (not through Stomp Lab's master, which
+// rstompAudioStop() can leave faded).
+function bsmashCalClick(ctx, when, downbeat) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = downbeat ? 1180 : 820;
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(0.4, when + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(when); osc.stop(when + 0.06);
+    return osc;
+}
+
+function startBeatCalTest() {
+    const ctx = typeof rstompAudio === 'function' ? rstompAudio() : null;
+    if (!ctx) return;
+    if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+    bsmashCalStop();
+    const beat = 60 / BSMASH_CAL_BPM;
+    const t0 = ctx.currentTime + 0.8;
+    const clicks = [];
+    const sources = [];
+    for (let i = 0; i < BSMASH_CAL_CLICKS; i++) {
+        clicks.push(t0 + i * beat);
+        sources.push(bsmashCalClick(ctx, t0 + i * beat, i % 4 === 0));
+    }
+    bsmashCal = { clicks: clicks, taps: [], sources: sources, timer: 0, pads: null };
+    bsmashCal.pads = KRPads.create({
+        container: bsmashEl('beat-cal-pad'),
+        count: 1,
+        now: typeof rstompRoundEventTime === 'function' ? rstompRoundEventTime : (() => ctx.currentTime),
+        delay: () => 0,
+        label: () => KR.t('beat.cal.tap'),
+        onPress: press => { if (bsmashCal) bsmashCal.taps.push(press.raw); },
+    });
+    bsmashEl('beat-cal-test').disabled = true;
+    const end = clicks[clicks.length - 1] + BSMASH_CAL_WINDOW + 0.2;
+    const tick = () => {
+        if (!bsmashCal) return;
+        const left = clicks.filter(t => t > ctx.currentTime).length;
+        bsmashCalStatus(ctx.currentTime < t0 ? KR.t('beat.cal.ready') : KR.t('beat.cal.listen', { n: left }));
+        if (ctx.currentTime >= end) return bsmashCalFinish();
+        bsmashCal.timer = setTimeout(tick, 100);
+    };
+    tick();
+}
+
+// The delay is the typical gap from a click to the tap on it: the median,
+// then the mean of the taps close to it, so one stray tap moves nothing.
+function bsmashCalMeasure(clicks, taps) {
+    const gaps = [];
+    taps.forEach(t => {
+        let best = null, at = -1;
+        clicks.forEach((c, i) => { if (best === null || Math.abs(t - c) < Math.abs(best)) { best = t - c; at = i; } });
+        if (at >= BSMASH_CAL_SKIP && Math.abs(best) <= BSMASH_CAL_WINDOW) gaps.push(best);
+    });
+    if (gaps.length < BSMASH_CAL_MIN) return null;
+    const sorted = gaps.slice().sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const near = gaps.filter(g => Math.abs(g - median) <= 0.06);
+    const mean = near.reduce((a, b) => a + b, 0) / near.length;
+    return Math.max(0.001, Math.min(BSMASH_CAL_MAX, mean));
+}
+
+function bsmashCalFinish() {
+    const cal = bsmashCal;
+    const delay = cal ? bsmashCalMeasure(cal.clicks, cal.taps) : null;
+    window.bsmashLastCal = { taps: cal ? cal.taps.length : 0, delay: delay };
+    bsmashCalStop();
+    if (delay == null) { bsmashCalStatus(KR.t('beat.cal.fail')); return; }
+    bsmashSaveDelay(delay);
+    bsmashCalStatus(KR.t('beat.cal.done', { ms: Math.round(delay * 1000) }));
+    bsmashCalRender();
+}
+
+function bsmashCalStop() {
+    if (!bsmashCal) return;
+    clearTimeout(bsmashCal.timer);
+    bsmashCal.sources.forEach(src => { try { src.stop(); } catch (e) { /* done already */ } });
+    if (bsmashCal.pads) bsmashCal.pads.destroy();
+    bsmashEl('beat-cal-pad').innerHTML = '';
+    bsmashEl('beat-cal-test').disabled = false;
+    bsmashCal = null;
+}
+
+// Fine tune: on-time stomps marked late mean the delay is too small.
+function nudgeBeatDelay(by) {
+    const d = typeof rstompRoundDelay === 'function' ? rstompRoundDelay() : { delay: bsmashDelay() };
+    bsmashSaveDelay(Math.max(0.001, Math.min(BSMASH_CAL_MAX, (d.delay || 0) + by)));
+    bsmashCalStatus('');
+    bsmashCalRender();
+}
+
+function resetBeatDelay() {
+    try { localStorage.removeItem(BSMASH_DELAY_KEY); } catch (e) { /* nothing kept */ }
+    bsmashCalStatus('');
+    bsmashCalRender();
 }
