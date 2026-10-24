@@ -799,6 +799,7 @@ KR.lang('en-US', {
     // Stomp the Beat: Soul, the older students' version: the quaver song.
     'ssong.soul.title':      'Stomp the Beat: Soul',
     'ssong.soul.tile':       'Quavers · record it!',
+    'ssong.tile.level':      'Level {n} · {name}',
     'ssong.soul.icon':       '🎷',
     'ssong.menu':            'Song menu',
     'ssong.menu.free':       'Free play',
@@ -842,7 +843,7 @@ KR.lang('en-US', {
     'ssong.run.again':       'Go again',
     'ssong.run.learn':       'Learn this rhythm',
     'ssong.run.levelup':     'Level up!',
-    'ssong.run.levelup.next': 'Level {n}: {name}',
+    'ssong.run.levelup.next': 'Next: {name}',
     'ssong.line.run.levelup.1': "Level up! Up you go.",
     'ssong.line.run.levelup.2': "New level! Something new is coming.",
     'ssong.line.run.levelup.3': "That's a level in the can. Up you go!",

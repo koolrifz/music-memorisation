@@ -230,6 +230,15 @@ document.addEventListener('visibilitychange', () => {
     if (document.hidden && ssong && ssong.state !== 'menu') ssongToMenu();
 });
 
+// EACH SONG IS A LEVEL (Rob, 2026-10-24): a song's `album` is a Stomp Lab
+// album, and its place among the albums is the song's level number.
+// { n, name } for the tile, or null for a song that is not a level.
+function ssongLevelOf(song) {
+    if (!song || !song.album || typeof RSTOMP_ALBUMS === 'undefined') return null;
+    const at = RSTOMP_ALBUMS.findIndex(a => a.id === song.album);
+    return at < 0 ? null : { n: at + 1, name: KR.t(RSTOMP_ALBUMS[at].titleId) };
+}
+
 function ssongEvent(name, vars) {
     if (typeof KR !== 'undefined' && KR.event) KR.event(name, vars);
 }
