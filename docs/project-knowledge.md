@@ -94,7 +94,10 @@ the only version young children can use, and the tutorial with it. Both can
 carry the same bonus stomp round.
 
 ### The handover is at A5 — and the digits carry no information
-**A1–A4 are played on the two-button interface, A5–D8 on the keypad.**
+**Stage A's first five levels (quarters alone, quarters and rests, halves,
+wholes, wholes and halves) are played on the two-button interface; A5 (the full
+crotchet vocabulary, now level 6) onwards on the keypad.** The level order
+changed on 2026-10-24 (see "THE BEAT COMES FIRST"); the handover did not.
 
 Measured at 400 phrases a level: **through Stage A the digit sequence never
 varies.** It is always the level's labels in order — `1 2 3 4 1 2 3 4…` —
@@ -478,21 +481,57 @@ level teaches: design brief **§13**. Do not invent a level order from the code.
 | **C — 6/8 simple** | `1 2 3 4 5 6` | **BUILT, 2 levels** — see below |
 | **D — the semiquaver** | `1 e + a …` | four 16ths · mixed · patterns 1–2 · dotted 8th+16th · reversed · syncopation · review |
 
-### Stage A — built, nine levels, brief §13.4
-| # | Level | New idea |
-|---|---|---|
-| A1 | Whole notes and rests | The bar, the beat numbers, **the bracket**. Exactly two possible bars. |
-| A2 | Half notes and rests | Two events in a bar |
-| A3 | Whole and half mixed | Switching scale inside a bar |
-| A4 | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
-| A5 | Quarters, halves, wholes | Full crotchet vocabulary; long-hand sprinkled |
-| A6 | **Strong and weak beats** (was "Syncopation") | Strong beats 1 and 3, weak beats 2 and 4. Crotchet / minim / crotchet — `1 2 (3) 4`: a long note starting on a weak beat. The minim stays a minim: Rob's named exception to hiding beat 3 |
-| A7 | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
-| A8 | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
-| A9 | Ties across the barline | Any value crossing |
+### Stage A — built, ten levels, brief §13.4 (REORDERED 2026-10-24)
+Listed in **play order**. The ID is permanent (saved progress, word IDs, the
+songs' run lists); the number a student sees is the level's place in
+`RSTOMP_LEVELS` (`rstompLevelNumber()`), so **the IDs no longer run in order.**
 
-**It opens on whole notes, NOT the quarter note.** An earlier version of this
-file said the opposite; brief §13.1 records that as a reversal, for two reasons:
+| Plays as | ID | Level | New idea |
+|---|---|---|---|
+| 1 | `0` | **Quarter notes** (new) | The beat alone: four stomps a bar, every bar the same. Find the pulse and smash it. |
+| 2 | `4` (A4) | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
+| 3 | `2` (A2) | Half notes and rests | A hold of two, the smallest step away from the beat |
+| 4 | `1` (A1) | Whole notes and rests | A hold of four |
+| 5 | `3` (A3) | Whole and half mixed | Switching scale inside a bar |
+| 6 | `5` (A5) | Quarters, halves, wholes | Full crotchet vocabulary; **the keypad arrives**; long-hand sprinkled |
+| 7 | `6` (A6) | **Strong and weak beats** (was "Syncopation") | Strong beats 1 and 3, weak beats 2 and 4. Crotchet / minim / crotchet — `1 2 (3) 4`: a long note starting on a weak beat. The minim stays a minim: Rob's named exception to hiding beat 3 |
+| 8 | `7` (A7) | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
+| 9 | `8` (A8) | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
+| 10 | `9` (A9) | Ties across the barline | Any value crossing |
+
+**Albums:** The Beat = `0`, `4`; The Held Beat = `2`, `1`, `3`, `5`–`9`
+(eight tracks). The songs' album levels (Soul is Level 3) are unchanged.
+
+### THE BEAT COMES FIRST — Rob, 2026-10-24, reversing "it opens on whole notes"
+> *"We're going to update the thinking. Back when I wrote that rule was when
+> the counting was the main thing that was happening. I hadn't been able to
+> imagine a game like the one we've just developed. So now that it's an
+> experiential activity, the beat has to come first. And whatever we do with
+> the beat first, that's the way the pedagogy back end has to work too. I'm
+> not worried too much about the brackets. The brackets are not the important
+> thing at the moment. They will reinforce what we're doing, but the most
+> important thing is getting them to smash the beat."*
+
+Stomp Lab is now stomped, not only counted (the stomp round, Beat Smash, the
+songs), and in a stomping game the body is the pulse, so the first thing a
+student does is one stomp per beat. Half notes come before whole notes: a hold
+of two is a smaller step away from the beat than a hold of four. **What it
+gives up, knowingly:** the bracket is no longer introduced in its cleanest
+form (whole notes, two bar shapes); it first appears on quarter rests, `(2)`,
+and the note's own hold bracket arrives with the half note.
+
+- **Code:** `RSTOMP_LEVELS` order, `RSTOMP_ALBUMS`, `rstompFirstLevel()` (never
+  assume `'1'`), `rstompLevelNumber()` (the title and the number on the
+  record). The walkthrough screen opens on the first level.
+- **Old devices:** `getRstompProgress()` always adds the first level, and
+  nothing already open closes. The Value Smash gate still treats a device with
+  only the first level (or the old `'1'`) open and no plays as never played.
+- **Stomp the Beat's run** follows the new order and leaves out `0`: its
+  warm-up already is it.
+
+**Superseded — the reasoning that used to stand here**, kept so the reversal
+is understood (brief §13.1 had itself reversed an earlier quarter-first
+order):
 
 - **The canon is percussion-shaped.** Drum and band methods open on the quarter
   note because for a drummer one strike per beat *is* the pulse. These are wind

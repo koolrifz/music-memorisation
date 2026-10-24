@@ -181,7 +181,27 @@ function rstompPrompt(name, vars) {
 }
 
 const RSTOMP_LEVELS = [
-    /* A1-A4 ARE PLAYED ON THE TWO-BUTTON INTERFACE, A5 ONWARDS ON THE KEYPAD.
+    /* THE BEAT COMES FIRST (Rob, 2026-10-24, reversing "it opens on whole
+       notes"). The array's ORDER is the play order and the number a student
+       sees; the IDs are permanent (saved progress, word IDs and the songs'
+       run lists are keyed by them), so they no longer run in order:
+
+         0 quarter notes alone · 4 quarters and rests        (The Beat)
+         2 halves · 1 wholes · 3 wholes and halves ·
+         5 the full vocabulary, keypad arrives · 6 · 7 · 8 · 9 (The Held Beat)
+
+       Rob: "now that it's an experiential activity, the beat has to come
+       first. And whatever we do with the beat first, that's the way the
+       pedagogy back end has to work too... The brackets are not the
+       important thing at the moment. They will reinforce what we're doing,
+       but the most important thing is getting them to smash the beat."
+       Half notes before whole notes: a hold of two is a smaller step away
+       from the beat than a hold of four.
+
+       The first FIVE are played on the two-button interface; level 5 (the
+       full crotchet vocabulary) is still where the keypad arrives. */
+
+    /* THE TWO-BUTTON LEVELS COME FIRST, THE KEYPAD AFTER.
        Rob's call, and the reason is sharper than "easier first".
 
        THE DIGITS CARRY NO INFORMATION. Measured across all 29 levels, 400
@@ -213,24 +233,15 @@ const RSTOMP_LEVELS = [
        NOTHING, since the digits are positional. It was considered and
        rejected on the measurement above. */
 
-    // A1. The two-button walkthrough - the tutorial for the whole idea, and a
-    // complete experience on its own for a child who can't yet write numerals
-    // (CLAUDE.md, "TWO interfaces").
-    { id: '1',
+    // THE BEAT ALONE. Four quarter notes a bar, every bar: one stomp per
+    // beat, nothing else. Every phrase is the same, and that is the point:
+    // the student finds the pulse and smashes it, and the stomp round after
+    // each phrase is the beat itself. The walkthrough screen opens on it.
+    { id: '0',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
-      pool: ['whole-note', 'whole-rest'] },
+      pool: ['quarter-note'] },
 
-    // A2. Two events in a bar - the first time anything happens twice.
-    { id: '2',
-      labels: RSTOMP_LABELS_BEAT, slot: 'q',
-      pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'] },
-
-    // A3. Switching scale inside a bar.
-    { id: '3',
-      labels: RSTOMP_LABELS_BEAT, slot: 'q',
-      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'] },
-
-    // A4. THE QUARTER-NOTE MAP (brief S13.5). The beat itself, in every
+    // THE QUARTER-NOTE MAP (brief S13.5, was A4). The beat itself, in every
     // position. Fifteen bar shapes - everything from four quarters down to one
     // quarter, that one quarter in each of the four places - with the all-rest
     // bar excluded by the engraving rule. SEVEN of the fifteen do not start on
@@ -241,6 +252,22 @@ const RSTOMP_LEVELS = [
     { id: '4',
       labels: RSTOMP_LABELS_BEAT, slot: 'q',
       pool: ['quarter-note', 'quarter-rest'] },
+
+    // Half notes and rests (was A2): two events in a bar, a hold of two.
+    { id: '2',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['half-note', 'half-rest'], avoidRepeats: ['half-note'] },
+
+    // Whole notes and rests (was A1): a hold of four. Once the walkthrough
+    // level; the beat-alone level above is that now.
+    { id: '1',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest'] },
+
+    // Whole and half mixed (was A3): switching scale inside a bar.
+    { id: '3',
+      labels: RSTOMP_LABELS_BEAT, slot: 'q',
+      pool: ['whole-note', 'whole-rest', 'half-note', 'half-rest'], avoidRepeats: ['half-note'] },
 
     // A5. THE KEYPAD ARRIVES. No new notation - the whole crotchet vocabulary
     // is already known - so the level's one new idea is that the student now
@@ -739,7 +766,10 @@ function rstompSpecsToPhrase(specBars) {
     return specBars.map(rstompSpecsToSlots);
 }
 
-let rstompSelectedLevel = '1';
+let rstompSelectedLevel = '0';
+
+// The first level in play order. Never assume it is '1'.
+function rstompFirstLevel() { return RSTOMP_LEVELS[0].id; }
 let rstompSpecBars = [];        // SOURCE OF TRUTH: bars, each a list of {slots,value,isRest,tied}
 let rstompPhrase = [];          // derived slot stream: bars, each slotsPerBar of 'play'/'hold'/'rest'
 let rstompPositions = [];       // the counted positions: [{barIndex, slotIndex, absolute}]
@@ -778,9 +808,17 @@ let rstompWrongBars = [];       // 1-based bar numbers to mark, when we're namin
 /* ---------- Persistence (same shape as the other games, per CLAUDE.md) ---------- */
 
 function getRstompProgress() {
-    const fallback = { unlockedStages: ['1'], stageProgress: {}, lastPosition: '1', totalPlays: 0 };
-    try { return KR.openStages({ ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmLabProgress') || '{}') }, RSTOMP_LEVELS.map(level => level.id)); }
-    catch (error) { return fallback; }
+    const first = rstompFirstLevel();
+    const fallback = { unlockedStages: [first], stageProgress: {}, lastPosition: first, totalPlays: 0 };
+    let progress;
+    try { progress = { ...fallback, ...JSON.parse(localStorage.getItem('koolRiffsRhythmLabProgress') || '{}') }; }
+    catch (error) { progress = { ...fallback }; }
+    // The first level is always open. Progress saved before the beat moved
+    // to the front (2026-10-24) has only '1' and up: nothing it had is closed,
+    // and the new first level is added to it.
+    progress.unlockedStages = (progress.unlockedStages || []).slice();
+    if (!progress.unlockedStages.includes(first)) progress.unlockedStages.unshift(first);
+    return KR.openStages(progress, RSTOMP_LEVELS.map(level => level.id));
 }
 
 function saveRstompProgress(progress) {
@@ -815,8 +853,8 @@ function enterRhythmLab() {
 // The shelf: levels are tracks, grouped into albums of about four or five.
 // Titles live in lang/ ('stomp.album.<id>'); the order here is the play order.
 const RSTOMP_ALBUMS = [
-    { id: 'beat',      levelIds: ['1', '2', '3', '4'] },
-    { id: 'ties',      levelIds: ['5', '6', '7', '8', '9'] },
+    { id: 'beat',      levelIds: ['0', '4'] },
+    { id: 'ties',      levelIds: ['2', '1', '3', '5', '6', '7', '8', '9'] },
     { id: 'quavers',   levelIds: ['10', '11', '12', '13'] },
     { id: 'pump',      levelIds: ['14', '15', '16'] },
     { id: 'review',    levelIds: ['17', '18', '19'] },
@@ -826,19 +864,24 @@ const RSTOMP_ALBUMS = [
 ].map(album => ({ ...album, titleId: 'stomp.album.' + album.id }));
 
 function rstompLevelName(levelId) { return KR.t('stomp.level.' + levelId); }
-function rstompLevelTitle(levelId) { return KR.t('stomp.level.title', { n: levelId, name: rstompLevelName(levelId) }); }
+// The number a student sees is the level's place in the play order, not its
+// ID: the IDs stopped running in order when the beat moved to the front.
+function rstompLevelNumber(levelId) { return RSTOMP_LEVELS.findIndex(level => level.id === levelId) + 1; }
+function rstompLevelTitle(levelId) { return KR.t('stomp.level.title', { n: rstompLevelNumber(levelId), name: rstompLevelName(levelId) }); }
 
 function renderRstompPathway() {
     const progress = getRstompProgress();
-    const unlocked = new Set(progress.unlockedStages || ['1']);
+    const unlocked = new Set(progress.unlockedStages || [rstompFirstLevel()]);
     const host = document.getElementById('rstomp-shelf');
     if (!host) return;
-    let recommended = progress.lastPosition || '1';
-    if (!unlocked.has(recommended)) recommended = [...unlocked][unlocked.size - 1];
+    let recommended = progress.lastPosition || rstompFirstLevel();
+    // The furthest open level in PLAY order (the IDs no longer run in order).
+    if (!unlocked.has(recommended)) recommended = RSTOMP_LEVELS.map(level => level.id).filter(id => unlocked.has(id)).pop() || rstompFirstLevel();
     rstompSelectedLevel = recommended;
     KR.shelf.render(host, {
         albums: RSTOMP_ALBUMS,
         levelName: rstompLevelName,
+        discLabel: id => String(rstompLevelNumber(id)),
         unlocked,
         records: progress.stageProgress || {},
         current: rstompSelectedLevel,
@@ -861,12 +904,12 @@ function selectRstompLevel(levelId, rerender = true) {
     }
 }
 
-// Level 1 gets the guided walkthrough screen first, since that's the
+// The first level gets the guided walkthrough screen first, since that's the
 // tutorial for the whole interaction model; every other level launches
 // straight into the game, same as the rest of the app.
 function startSelectedRstompLevel() {
-    if (rstompSelectedLevel === '1') {
-        document.getElementById('rstomp-intro-sub').textContent = rstompLevelTitle('1');
+    if (rstompSelectedLevel === rstompFirstLevel()) {
+        document.getElementById('rstomp-intro-sub').textContent = rstompLevelTitle(rstompFirstLevel());
         switchScreenState('rhythm-lab', 'rhythm-lab-screen-intro');
     } else {
         startRstompLevel();

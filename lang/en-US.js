@@ -663,6 +663,7 @@ KR.lang('en-US', {
 
     /* ---------- Rhythm Stomp Lab: levels and albums ----------
        Each level is a track; tracks are grouped into albums on the shelf. */
+    'stomp.level.0':  'Quarter Notes',
     'stomp.level.1':  'Whole Notes and Rests',
     'stomp.level.2':  'Half Notes and Rests',
     'stomp.level.3':  'Whole and Half Mixed',
