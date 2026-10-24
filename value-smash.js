@@ -1644,8 +1644,11 @@ function openStompFromLicense() {
    played is never blocked, and nothing is ever re-locked. */
 function vsmashGateStompLab() {
     const stomp = getRstompProgress();
-    const unlocked = stomp.unlockedStages || ['1'];
-    const neverPlayed = (stomp.totalPlays || 0) === 0 && unlocked.length === 1 && unlocked[0] === '1';
+    // Only the first level open (or, from before the beat moved to the
+    // front, the old first level '1' with it) and never played.
+    const first = rstompFirstLevel();
+    const unlocked = stomp.unlockedStages || [first];
+    const neverPlayed = (stomp.totalPlays || 0) === 0 && unlocked.every(id => id === first || id === '1');
     if (!neverPlayed || vsmashLoad().license) return false;
     launchGame('view-dashboard');
     document.getElementById('modal-value-gate').classList.add('show');
