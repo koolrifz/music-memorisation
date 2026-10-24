@@ -11,12 +11,14 @@
    falls back to its own drawing (the kit) or shows no picture (a coach).
    ========================================= */
 KR.art = {
-    // Beat Smash's warm-up: Tango at the Kool Riffs kit, in three stick
-    // positions. Her sticks come down on the beat and are up on the "and";
-    // halfway while she talks.
-    'beat.kit.warmup.up':   'art/tango-kit-up.webp',
-    'beat.kit.warmup.mid':  'art/tango-kit-mid.webp',
-    'beat.kit.warmup.down': 'art/tango-kit-down.webp',
+    // Beat Smash's warm-up: Tango at her kit, in three stick positions. Her
+    // sticks come down on the beat and are up on the "and"; halfway while she
+    // talks. Since 2026-10-24 this is Rob's earlier Tango (the lanky orange
+    // one with the ponytail, the drum room's frames below), everywhere; the
+    // cat Tango's pictures (art/tango-kit-*.webp) are no longer used.
+    'beat.kit.warmup.up':   'art/tango-drums-up.webp',
+    'beat.kit.warmup.mid':  'art/tango-drums-mid.webp',
+    'beat.kit.warmup.down': 'art/tango-drums-down.webp',
 
     // The drum room (stomp-song.js, 2026-10-24): Rob's earlier Tango, the
     // lanky orange one with the ponytail, at a plain red kit. Four frames
@@ -33,7 +35,7 @@ KR.art = {
     // The musician on screen during their steps (1 to 8 bars; not the
     // studio). A song can have its own: 'beat.coach.<musician>.<song>', e.g.
     // 'beat.coach.drums.c-1-4-1-5'. Until then every song uses these.
-    'beat.coach.drums': 'art/tango-kit-mid.webp',
+    'beat.coach.drums': 'art/tango-drums-mid.webp',
     'beat.coach.bass':  'art/riff-double-bass.webp',
     'beat.coach.keys':  'art/riff-keys.webp',
 
@@ -68,7 +70,7 @@ KR.art = {
    The warm-up's beat light is laid over the kick drum's front head, so the
    game needs to know where the head is in Tango's kit picture. */
 KR.artPlaces = {
-    'beat.kit.warmup': { aspect: 800 / 665, head: { left: 0.34, top: 0.5474, width: 0.34 } },
+    'beat.kit.warmup': { aspect: 800 / 670, head: { left: 0.3661, top: 0.6096, width: 0.2882 } },
     // The drum room's kit: the kick drum's head, measured on the frames.
     'ssong.kit':       { aspect: 800 / 670, head: { left: 0.3661, top: 0.6096, width: 0.2882 } },
 };

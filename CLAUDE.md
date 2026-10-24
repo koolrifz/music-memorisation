@@ -1434,9 +1434,12 @@ yet.** Every new game is designed so that it slots into it.
 Rob's two characters, created in 1997; he owns them, and they will be redrawn.
 **Riff** is a jazz Scottie dog (grey, red beret, green vest, white beard; the
 1997 sunglasses are gone) with a
-**hip, gruff** voice, and he handles **pitch**: the Notation games. **Tango** is
-an orange cat who walks on two legs, with a big **red mane** and a **blue
-vest**. She is a drummer, and she handles **rhythm**: Value Smash, Stomp Lab
+**hip, gruff** voice, and he handles **pitch**: the Notation games. **Tango**
+is, since 2026-10-24, **Rob's earlier design, everywhere**: a lanky orange
+character with a spiky orange tuft, a long orange ponytail, a white muzzle and
+whiskers, and a navy vest (the red-maned cat of the 2026 redraws is retired;
+her kit pictures stay in `art/` unused, and the studio's standing Tango and
+gold-box head are still the cat until Rob's new pictures arrive). She is a drummer, and she handles **rhythm**: Value Smash, Stomp Lab
 and Beat Smash. Her voice was **high, tight, squeaky**; Rob's classes found it
 annoying (2026-10-08), so it is now **bright but not hyper** (the browser
 voice's pitch 1.2, rate 0.95 in `content/dialogue.js`, was 1.6 and 1.1).
@@ -3334,8 +3337,13 @@ choices."*
   on the blank head (`#ssong-kit-badge`). `ssongKitSet()` falls back to the cat
   Tango (`beat.kit.warmup.*`) if they are missing. **Only the drum room changed:**
   the cat Tango is still in the old band screens and the studio; Rob has not
-  said whether this Tango replaces her everywhere. `base` (no arms) is spare, for
-  a puppet with separate arms later.
+  **Rob, the same night: "she needs to be everywhere, replace the old one."** So
+  `beat.kit.warmup.*` and `beat.coach.drums` now point at these frames too (the
+  old jam warm-up and the drummer's steps), with `KR.artPlaces['beat.kit.warmup']`
+  re-measured to the new kick head. Still the cat: the studio's standing Tango
+  and her gold-box head (`studio.tango`, `studio.head.tango`), until Rob makes
+  them. `base` (no arms) is kept: arms are cut from the frames by difference
+  against it, which is how separate arm and head layers will be made.
 - **Recalibrate my beat** (was "Re-time my taps", which ran the whole jam): a box
   over the menu (`#beat-calibrate`, "RECALIBRATE" in `beat-smash.js`). **A web page
   cannot ask whether Bluetooth is on**; it can read the speaker's own delay
