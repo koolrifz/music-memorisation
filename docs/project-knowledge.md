@@ -3173,8 +3173,8 @@ song chooser. Full note: `ideas/stomp-the-beat-song.md`.
 - **EACH SONG IS A LEVEL: one Stomp Lab album per song** (Rob, 2026-10-24:
   *"we should follow the rhythm stomp lab levels. That's 5 levels up until 6/8
   time. Each song is a level"*). The five albums before 6/8, in
-  `RSTOMP_ALBUMS` order, are the five levels: **1 The Beat** (A1–A4), **2 Ties
-  and Syncopation** (A5–A9), **3 Splitting the Beat** (B1–B4), **4 The Pump**
+  `RSTOMP_ALBUMS` order, are the five levels: **1 The Beat** (A1–A4), **2 The
+  Held Beat** (A5–A9), **3 Splitting the Beat** (B1–B4), **4 The Pump**
   (B5–B7), **5 Syncopation and Review** (B8–B10). A song's `album` says which
   it is, its tile reads "Level 3 · Splitting the Beat" (`ssongLevelOf()`,
   `ssong.tile.level`), and its `run.levels` are that album's levels. So far:

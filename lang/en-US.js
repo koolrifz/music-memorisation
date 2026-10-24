@@ -722,7 +722,7 @@ KR.lang('en-US', {
     'stomp.debug.expected':  'Expected: {expected}',
 
     'stomp.album.beat':      'The Beat',
-    'stomp.album.ties':      'Ties and Syncopation',
+    'stomp.album.ties':      'The Held Beat',
     'stomp.album.quavers':   'Splitting the Beat',
     'stomp.album.pump':      'The Pump',
     'stomp.album.review':    'Syncopation and Review',
