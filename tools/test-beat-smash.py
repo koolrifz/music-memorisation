@@ -620,7 +620,7 @@ def test_beat_light(page):
         bubble: k.top - g.bottom }; })()""")
     check('The light is the kick drum of Rob\'s picture of Tango at her kit, the pads right under it',
           size['art'] and size['shown'] and size['drawing'] == 'none' and size['kit'] >= 0.7 * size['width']
-          and 0.3 * size['kit'] <= size['ring'] <= 0.4 * size['kit'] and 0 <= size['gap'] < 60, size)
+          and 0.25 * size['kit'] <= size['ring'] <= 0.4 * size['kit'] and 0 <= size['gap'] < 60, size)   # Rob's earlier Tango's kick is 29% of the kit (the cat's was 34%)
     check('...the light lying exactly over his kick drum\'s head (KR.artPlaces)', size['onHead'] < 2, size)
     check('...and her box is her speech bubble, right above her head', 0 <= size['bubble'] < 40, size)
     # Asked of the frame picker directly: away from the shaker and the count-in.
