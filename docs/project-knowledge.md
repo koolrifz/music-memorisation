@@ -486,7 +486,7 @@ level teaches: design brief **§13**. Do not invent a level order from the code.
 | A3 | Whole and half mixed | Switching scale inside a bar |
 | A4 | **Quarter notes and rests — the full map** | The beat itself, in every position. 15 bar shapes; **7 do not start on a struck beat 1** |
 | A5 | Quarters, halves, wholes | Full crotchet vocabulary; long-hand sprinkled |
-| A6 | **Syncopation** | Crotchet / minim / crotchet — `1 2 (3) 4`. The minim stays a minim: Rob's named exception to hiding beat 3 |
+| A6 | **Strong and weak beats** (was "Syncopation") | Strong beats 1 and 3, weak beats 2 and 4. Crotchet / minim / crotchet — `1 2 (3) 4`: a long note starting on a weak beat. The minim stays a minim: Rob's named exception to hiding beat 3 |
 | A7 | **Ties inside the bar** | The long-hand drill; the level test of equivalency |
 | A8 | Dotted half in normal notation | The shortcut A7 revealed; scaffold down |
 | A9 | Ties across the barline | Any value crossing |

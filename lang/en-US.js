@@ -668,7 +668,7 @@ KR.lang('en-US', {
     'stomp.level.3':  'Whole and Half Mixed',
     'stomp.level.4':  'Quarter Notes and Rests',
     'stomp.level.5':  'Quarters, Halves, Wholes',
-    'stomp.level.6':  'Syncopation',
+    'stomp.level.6':  'Strong and Weak Beats',
     'stomp.level.7':  'Ties Inside the Bar',
     'stomp.level.8':  'Dotted Half Notes',
     'stomp.level.9':  'Ties Across the Barline',
