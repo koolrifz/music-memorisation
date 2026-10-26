@@ -308,6 +308,11 @@ def main():
         page.click('.ssong-warm-card[data-song="stomp-the-beat"]')
         page.wait_for_selector('#ssong-screen-play.active', timeout=4000)
         check('the drum room: Tango at her kit, and the round clock', page.is_visible('#ssong-kit') and page.is_visible('#ssong-timer'))
+        pup = page.evaluate("""() => { const k = document.getElementById('ssong-kit');
+            return { puppet: !!k.querySelector('.kr-puppet'), frames: [...k.querySelectorAll(':scope > img[data-frame]')].filter(i => getComputedStyle(i).visibility === 'visible').length,
+                     layers: k.querySelectorAll('.kr-puppet img').length, badge: !document.getElementById('ssong-kit-badge').hidden }; }""")
+        check('Tango is the puppet: her layers in, the three stick pictures out, the badge on her kick drum',
+              pup['puppet'] and pup['frames'] == 0 and pup['layers'] == 23 and pup['badge'], pup)
         WARM = """async ({shift, every}) => {
             const ctx = rstompAudio();
             for (let i = 0; i < 400 && ssong.state !== 'playing'; i++) await new Promise(r => setTimeout(r, 25));
@@ -322,12 +327,17 @@ def main():
         page.evaluate("KRStompSong.WARM_SECONDS = 10")       # a short round, to keep the test quick
         page.click('#ssong-go')
         page.evaluate(WARM, {'shift': -0.12, 'every': 1})
+        moves = page.evaluate("""async () => { const seen = new Set(); const k = document.getElementById('ssong-kit');
+            for (let i = 0; i < 40; i++) { seen.add(k.ssongPuppet.state().filter(n => n.startsWith('limb.')).sort().join(' ')); await new Promise(r => setTimeout(r, 30)); }
+            return [...seen]; }""")
+        check('...and she plays along: her arms and foot change with the beat', len(moves) >= 3, moves)
         page.wait_for_selector('#ssong-summary:not([hidden])', timeout=30000)
         w = page.evaluate('window.ssongLastWarm')
         check('a rushed round: Try Another One, 100% rushed, and Tango says slow down',
               not w['passed'] and w['rushedPct'] == 100 and 'Try Another One' in page.inner_text('#ssong-summary')
               and 'slow down' in page.inner_text('#ssong-play-guide').lower(), [w, page.inner_text('#ssong-play-guide')])
         check('...and the level is still shut', page.evaluate("ssongLevelOpen('stomp-the-beat')") is False)
+        check('...and Tango says oops with her face', 'head.oops' in page.evaluate("document.getElementById('ssong-kit').ssongPuppet.state()"))
         page.click('#ssong-summary-actions .btn-start')            # Another round
         page.click('#ssong-go')
         page.evaluate(WARM, {'shift': 0.01, 'every': 1})
@@ -335,6 +345,7 @@ def main():
         w = page.evaluate('window.ssongLastWarm')
         check("the beat kept: That's a Take, and the rest of the song opens",
               w['passed'] and "That's a Take" in page.inner_text('#ssong-summary') and page.evaluate("ssongLevelOpen('stomp-the-beat')"), w)
+        check('...and she laughs', 'head.laugh' in page.evaluate("document.getElementById('ssong-kit').ssongPuppet.state()"))
         page.wait_for_selector('#kr-celebrate.show', timeout=3000)
         page.click('#kr-celebrate')
         check('...with the way into Level 1 first', 'level 1' in page.inner_text('#ssong-summary-actions .btn-start').lower(), page.inner_text('#ssong-summary-actions'))

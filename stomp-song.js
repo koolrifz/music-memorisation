@@ -45,6 +45,8 @@ const SSONG_LEVELUP_PAUSE_MS = 600;  // after the level-up celebration has gone,
 const SSONG_MAX_PLAYERS = 4;
 const SSONG_CROTCHET_GRID = { slotsPerBar: 4, slotValue: 'q', slotsPerBeat: 1, beamSlots: 1 };
 const SSONG_ANTICIPATE = 0.25;       // beats before the punch-in a tap is beat 1, early; sooner is too soon
+const SSONG_POINT_MS = 1400;     // Tango points at the student as the tape rolls
+const SSONG_CHEER_MS = 2400;     // ...and cheers, sticks crossed, on a level up
 const SSONG_KIT_FLASH_MS = 180;      // the kick drum's head lights this long on a stomp
 // The songs on Beat Smash's menu, in order (Rob, 2026-10-24: "list on the menu
 // only the new songs that we have mapped and are working"). The first is the
@@ -604,6 +606,13 @@ function ssongSetState(state) {
     stop.hidden = !(state === 'lead' || state === 'rec' || state === 'playing');
     stop.textContent = KR.t(free && !warm ? 'ssong.free.stop' : 'ssong.stop');
     if (state !== 'lead' && state !== 'rec' && state !== 'playing') ssongKitFrame(null);
+    // Her face through a take: "your turn!" as the tape rolls, listening
+    // through the count, concentrating while the student plays.
+    const puppet = ssongPuppet();
+    if (puppet) {
+        if (state === 'lead' && ssong.mode !== 'free' && ssong.mode !== 'warm') ssongKitReact('point', SSONG_POINT_MS);
+        puppet.mood(state === 'lead' ? 'listen' : state === 'rec' ? 'focus' : null);
+    }
     ssongEl('ssong-guide').hidden = ssong.mode === 'run' || !(state === 'ready' || (free && state === 'playing'));
     ssongShowWait(state === 'lead');
 }
@@ -873,6 +882,7 @@ function ssongShowResult(g, passed, applied) {
     // "If successful say, That's a Take. If unsuccessful say, Try Another One"
     // (Rob, 2026-10-24), and the stomps on the beat, rushed and dragged.
     head.textContent = KR.t(ssong.guided ? 'ssong.result.practice' : passed ? 'ssong.take.yes' : 'ssong.take.no');
+    ssongKitReact(passed ? 'laugh' : 'oops');
     const split = ssongTakeSplit(g);
     const add = text => { ssongMake('li', '', lines).textContent = text; };
     add(KR.t('ssong.result.score', { hits: g.hits, notes: g.notes }));
@@ -1137,6 +1147,7 @@ function ssongShowRunResult(g, passed, out) {
     // beat, rushed and dragged, and Tango saying what to work on. Short: the
     // old run summary (clean takes, best run, the why) is gone from the box.
     ssongEl('ssong-result-head').textContent = KR.t(passed ? 'ssong.take.yes' : 'ssong.take.no');
+    ssongKitReact(passed ? 'laugh' : 'oops');
     const split = ssongTakeSplit(g);
     ssongTimingLines(g, add);
     if (out.next === 'same') {
@@ -1221,6 +1232,7 @@ function ssongActions(boxId, list) {
 // celebration names the one they are going up to, Tango says so, and the next
 // take rolls once the screen has gone (by itself, or at a tap).
 function ssongLevelUp(up) {
+    ssongKitReact('cheer', SSONG_CHEER_MS);
     window.ssongLastLevelUp = up;
     ssongEvent('ssong.run.levelup');
     KR.celebrate({
@@ -1343,6 +1355,7 @@ function ssongEndWarm() {
     const box = ssongEl('ssong-summary');
     box.hidden = false;
     ssongEl('ssong-summary-head').textContent = KR.t(a.passed ? 'ssong.take.yes' : 'ssong.take.no');
+    ssongKitReact(a.passed ? 'laugh' : 'oops');
     ssongRenderSplit('ssong-summary-split', a);
     const lines = ssongEl('ssong-summary-lines');
     lines.innerHTML = '';
@@ -1410,13 +1423,33 @@ function ssongKitSet() {
 
 function ssongKitArtIn() { return !!ssongKitSet(); }
 
+// TANGO THE PUPPET (Rob, 2026-10-26): when her layers are in, the drum room
+// plays her as a puppet (tango-puppet.js) instead of the three stick pictures:
+// each arm, her hi-hat foot and her face move on their own. The pictures stay
+// as the fallback.
+function ssongPuppet() {
+    const kit = ssongEl('ssong-kit');
+    if (!kit || typeof KRPuppet === 'undefined' || !KRPuppet.ready()) return null;
+    if (!kit.ssongPuppet) kit.ssongPuppet = KRPuppet.make(kit);
+    return kit.ssongPuppet;
+}
+
+// A reaction from her (laugh, oops, cheer, point...), if the puppet is in.
+function ssongKitReact(kind, ms) {
+    const p = ssongPuppet();
+    if (p) p.react(kind, ms);
+}
+
 function ssongKitShow() {
     const kit = ssongEl('ssong-kit');
     if (!kit) return;
-    const set = ssongKitSet();
+    const puppet = ssongPuppet();
+    const set = puppet ? { art: 'ssong.kit', place: 'tango.puppet' } : ssongKitSet();
     kit.hidden = !set;
     if (!set) return;
-    kit.querySelectorAll('img[data-frame]').forEach(img => {
+    kit.classList.toggle('puppet', !!puppet);
+    if (puppet) kit.dataset.frame = 'none';
+    if (!puppet) kit.querySelectorAll('img[data-frame]').forEach(img => {
         const src = KR.art[set.art + '.' + img.dataset.frame];
         if (img.getAttribute('src') !== src) img.src = src;
     });
@@ -1443,6 +1476,7 @@ function ssongKitShow() {
 function ssongKitFrame(beat) {
     const kit = ssongEl('ssong-kit');
     if (!kit || kit.hidden) return;
+    if (kit.ssongPuppet) { kit.ssongPuppet.beat(beat); return; }
     let frame = 'mid';
     if (beat != null && beat >= 0) {
         const f = beat - Math.floor(beat);

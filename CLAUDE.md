@@ -3390,6 +3390,36 @@ choices."*
   and her gold-box head (`studio.tango`, `studio.head.tango`), until Rob makes
   them. `base` (no arms) is kept: arms are cut from the frames by difference
   against it, which is how separate arm and head layers will be made.
+- **TANGO THE PUPPET** (Rob, 2026-10-26: *"We've managed to produce 70+ images
+  of Tango poses. How do we proceed to animate her?"*). Rob made 22 poses in
+  Gemini, three versions each, every one an **edit of one clean base** (no arms,
+  the empty stand removed), so the kit sits at zero shift in all 66. Each part
+  that changed was cut out by difference against the base and laid over one body:
+  `art/tango-puppet/` (23 WebP, about 280 KB), listed as `tango.puppet.*` in
+  `content/art.js`, with every layer's place as fractions of the 800 × 665 stage
+  in `KR.artPlaces['tango.puppet']`. `tango-puppet.js` (`KRPuppet.make(parent)`)
+  plays them. **The drum room uses it when the layers are in** (`ssongPuppet()`);
+  the three stick pictures are the fallback, and the old jam warm-up and the
+  drummer's steps still use them.
+  - **The groove, from the beat as heard:** the left arm on the crash every
+    quaver, the right arm on the hi-hat on 1 and 3 and the snare on 2 and 4 with a
+    wind-up before it, the foot closing the hi-hat on 2 and 4. With no beat,
+    sticks halfway.
+  - **Her face:** blinks; her mouth moves while a line of hers is being said
+    (`KR.speaking()` and `KR.lastSpeaker`); points "your turn" as the tape rolls
+    (`SSONG_POINT_MS`), listens through the count, concentrates through the take;
+    laughs on That's a Take, says oops on Try Another One, cheers with crossed
+    sticks on a level up (`ssongKitReact()`).
+  - **Which version of each pose, and why:** `tools/build-tango-puppet.py`
+    (FACES and LIMBS) holds the picks and rebuilds the layers from Rob's frames.
+    The other versions redrew her face, a cymbal or the vest, or put an arm in
+    front of a drum. The head swap is a box (her head, neck and the top of the
+    vest) feathered at the bottom so the join doesn't show.
+  - **Missing:** a head tilt. H5 (right) came back untilted and H4 (left) redraws
+    her head; H4 is in as `tilt` but nothing uses it. The studio's standing Tango
+    (S1, S2) is still to go in.
+  - Test: the drum room block of `tools/test-stomp-song.py` (her layers in, the
+    stick pictures out, the arms moving with the beat, oops and laugh).
 - **Recalibrate my beat** (was "Re-time my taps", which ran the whole jam): a box
   over the menu (`#beat-calibrate`, "RECALIBRATE" in `beat-smash.js`). **A web page
   cannot ask whether Bluetooth is on**; it can read the speaker's own delay
