@@ -58,6 +58,35 @@ KR.art = {
     'studio.head.tango':  'art/studio/head-tango.webp',
     'studio.head.riff':   'art/studio/head-riff.webp',
 
+    // TANGO THE PUPPET (Rob, 2026-10-26): one body with her arms, faces and
+    // hi-hat foot laid over it, each cut from one of Rob's Gemini frames by
+    // difference against the clean base (every frame is an edit of that one
+    // picture, so nothing but the changed part moves). tango-puppet.js plays
+    // them; the three stick pictures above are the fallback.
+    'tango.puppet.body': 'art/tango-puppet/body.webp',
+    'tango.puppet.head.neutral': 'art/tango-puppet/head-neutral.webp',
+    'tango.puppet.head.blink': 'art/tango-puppet/head-blink.webp',
+    'tango.puppet.head.ah': 'art/tango-puppet/head-ah.webp',
+    'tango.puppet.head.oo': 'art/tango-puppet/head-oo.webp',
+    'tango.puppet.head.tilt': 'art/tango-puppet/head-tilt.webp',
+    'tango.puppet.head.laugh': 'art/tango-puppet/head-laugh.webp',
+    'tango.puppet.head.oops': 'art/tango-puppet/head-oops.webp',
+    'tango.puppet.head.wink': 'art/tango-puppet/head-wink.webp',
+    'tango.puppet.head.focus': 'art/tango-puppet/head-focus.webp',
+    'tango.puppet.head.listen': 'art/tango-puppet/head-listen.webp',
+    'tango.puppet.limb.L-up': 'art/tango-puppet/limb-L-up.webp',
+    'tango.puppet.limb.L-mid': 'art/tango-puppet/limb-L-mid.webp',
+    'tango.puppet.limb.L-crash': 'art/tango-puppet/limb-L-crash.webp',
+    'tango.puppet.limb.L-tom': 'art/tango-puppet/limb-L-tom.webp',
+    'tango.puppet.limb.R-up': 'art/tango-puppet/limb-R-up.webp',
+    'tango.puppet.limb.R-mid': 'art/tango-puppet/limb-R-mid.webp',
+    'tango.puppet.limb.R-snare': 'art/tango-puppet/limb-R-snare.webp',
+    'tango.puppet.limb.R-hat': 'art/tango-puppet/limb-R-hat.webp',
+    'tango.puppet.limb.cheer': 'art/tango-puppet/limb-cheer.webp',
+    'tango.puppet.limb.point': 'art/tango-puppet/limb-point.webp',
+    'tango.puppet.limb.foot-up': 'art/tango-puppet/limb-foot-up.webp',
+    'tango.puppet.limb.foot-down': 'art/tango-puppet/limb-foot-down.webp',
+
     // The Kool Riffs logo, three sizes (Rob's, 2026-10-11): the full one for
     // big spaces (the studio's control-room window), the badge for a circle
     // (Tango's kick drum head, headers), the mark for the smallest places.
@@ -71,6 +100,34 @@ KR.art = {
    game needs to know where the head is in Tango's kit picture. */
 KR.artPlaces = {
     'beat.kit.warmup': { aspect: 800 / 670, head: { left: 0.3661, top: 0.6096, width: 0.2882 } },
+    // The puppet's layers, as fractions of its 800 x 665 stage (x, y the top
+    // left, w the width; each picture keeps its own shape), and the kick
+    // drum's head measured on the body.
+    'tango.puppet': { aspect: 800 / 665, head: { left: 0.3725, top: 0.6090, width: 0.2713 }, layers: {
+        'body': { x: 0.0000, y: 0.0000, w: 1.0000 },
+        'head.neutral': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.blink': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.ah': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.oo': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.tilt': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.laugh': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.oops': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.wink': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.focus': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'head.listen': { x: 0.3874, y: 0.0212, w: 0.3438 },
+        'limb.L-up': { x: 0.3073, y: 0.0000, w: 0.1800 },
+        'limb.L-mid': { x: 0.2156, y: 0.1620, w: 0.2838 },
+        'limb.L-crash': { x: 0.2306, y: 0.1737, w: 0.2712 },
+        'limb.L-tom': { x: 0.1594, y: 0.3632, w: 0.3287 },
+        'limb.R-up': { x: 0.5792, y: 0.0657, w: 0.1388 },
+        'limb.R-mid': { x: 0.5281, y: 0.1970, w: 0.3050 },
+        'limb.R-snare': { x: 0.6302, y: 0.2817, w: 0.2062 },
+        'limb.R-hat': { x: 0.6198, y: 0.3356, w: 0.2125 },
+        'limb.cheer': { x: 0.3556, y: 0.0529, w: 0.3075 },
+        'limb.point': { x: 0.2456, y: 0.2499, w: 0.6000 },
+        'limb.foot-up': { x: 0.7147, y: 0.6788, w: 0.1875 },
+        'limb.foot-down': { x: 0.6760, y: 0.4299, w: 0.2637 },
+    } },
     // The drum room's kit: the kick drum's head, measured on the frames.
     'ssong.kit':       { aspect: 800 / 670, head: { left: 0.3661, top: 0.6096, width: 0.2882 } },
 };
