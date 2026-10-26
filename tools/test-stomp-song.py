@@ -194,9 +194,10 @@ def main():
 
         # STOMP THE BEAT: SOUL, the quaver song (Rob, 2026-10-24)
         tiles = page.evaluate("[...document.querySelectorAll('.ssong-tile')].map(t => [t.dataset.stompSong, t.innerText])")
-        check('two recorded songs on the chooser, each with its own name; the Soul one is Level 3',
-              len(tiles) == 2 and tiles[1][0] == 'stomp-the-beat-soul' and 'Soul' in tiles[1][1]
-              and 'Level 3 · Splitting the Beat' in tiles[1][1] and 'Level 1' in tiles[0][1], tiles)
+        check('three recorded songs on the chooser, in level order, each with its own name',
+              len(tiles) == 3 and [t[0] for t in tiles] == ['stomp-the-beat', 'the-long-hold', 'stomp-the-beat-soul']
+              and 'Soul' in tiles[2][1] and 'Level 3 · Splitting the Beat' in tiles[2][1] and 'Level 1' in tiles[0][1]
+              and 'The Long Hold' in tiles[1][1] and 'Level 2 · The Held Beat' in tiles[1][1], tiles)
         page.click('.ssong-tile[data-stomp-song="stomp-the-beat-soul"]')
         page.wait_for_selector('#ssong-screen-menu.active', timeout=4000)
         check('its menu carries its own title', page.inner_text('#ssong-title') == 'Stomp the Beat: Soul', page.inner_text('#ssong-title'))
@@ -241,6 +242,51 @@ def main():
               page.evaluate('ssong.step.levelId') == '10' and page.evaluate('ssong.notation.grid.slotsPerBar') == 8)
         page.evaluate("ssongCancelNext(); ssongHalt()")
 
+        # THE LONG HOLD, Level 2 (Rob, 2026-10-26): snippets, each in its topic's section
+        page.evaluate("""() => { ssongHalt(); document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-beat').classList.add('active'); showBeatSongs(); }""")
+        page.click('.ssong-tile[data-stomp-song="the-long-hold"]')
+        page.wait_for_selector('#ssong-screen-menu.active', timeout=4000)
+        check('The Long Hold: its own title', page.inner_text('#ssong-title') == 'The Long Hold', page.inner_text('#ssong-title'))
+        dec = page.evaluate("""async () => { await ssongLoadAssets(); const b = ssongBuffers[ssong.song.audio], c = b.getChannelData(0);
+            const first = th => { for (let i = 0; i < c.length; i++) if (Math.abs(c[i]) > th) return i / b.sampleRate; return -1; };
+            const k = Math.floor(100 * b.sampleRate); let at = k, m = 0;
+            for (let i = k; i < k + b.sampleRate; i++) if (Math.abs(c[i]) > m) { m = Math.abs(c[i]); at = i; }
+            return [b.duration, first(0.2), at / b.sampleRate]; }""")
+        check('it decodes (about 218.8 s), in line with the WAV the map was built from (within 3 ms)',
+              218 < dec[0] < 219.5 and abs(dec[1] - 1.1429) < 0.003 and abs(dec[2] - 100.0923) < 0.003, dec)
+        sweep = page.evaluate("""() => {
+            ssongOpenRun(); ssongHalt(); ssong.mode = 'run';
+            const bad = [], used = {};
+            for (let i = 0; i < ssong.ladder.length; i++) {
+                ssong.run.step = i;
+                const st = ssong.ladder[i], ranges = KRStompSong.runRanges(ssong.song, st.levelId);
+                for (let rep = 0; rep < 6; rep++) {
+                    try { ssongPrepareRun(); } catch (e) { bad.push(i + ':' + e.message); break; }
+                    const p = ssong.plan;
+                    if (!document.querySelectorAll('#ssong-reading svg').length || !p.onsets.length) bad.push(i + ':empty');
+                    if (!ranges.some(r => p.from >= r.first && p.from + p.bars - 1 <= r.last)) bad.push(i + ':outside ' + p.from);
+                    const sec = ssong.song.sections.find(s => p.from >= s.first && p.from <= s.last).id;
+                    used[(st.levelId || 'warm')] = (used[(st.levelId || 'warm')] || []).concat(sec);
+                }
+            }
+            ssong.run.step = 0; ssongPrepareRun();
+            return [ssong.ladder.map(s => s.levelId), bad, used];
+        }""")
+        check('its ladder: the warm-up, then the album: half, whole, mixed, all three, strong and weak, ties, dotted half, ties across',
+              sweep[0] == [None, None, '2', '2', '1', '1', '3', '3', '5', '5', '6', '6', '7', '7', '8', '8', '9', '9'], sweep[0])
+        check('every take plans, draws and sits inside its sections', not sweep[1], sweep[1][:5])
+        check('...the dotted half in the Dot section or the breakdown, ties across the barline in the bridge',
+              set(sweep[2]['8']) <= {'dot', 'breakdown'} and set(sweep[2]['9']) == {'bridge'}, sweep[2])
+        page.evaluate("ssong.run.step = ssong.ladder.findIndex(s => s.levelId === '8'); ssongPrepareRun()")
+        page.click('#ssong-go')
+        page.evaluate(TAP, {'shift': 0.02})
+        page.wait_for_selector('#ssong-result:not([hidden])', timeout=60000)
+        g = page.evaluate('window.ssongLast')
+        check('a dotted-half take, played well in the Dot section, passes', g['passed'] and g['grade']['hits'] == g['grade']['notes'],
+              (g['grade']['hits'], g['grade']['notes'], g['plan']['from']))
+        page.evaluate("ssongCancelNext(); ssongHalt()")
+
         # BEAT SMASH'S MENU, THE WARM-UP AND RECALIBRATE (Rob, 2026-10-24)
         page.evaluate("localStorage.clear()")
         page.reload()
@@ -248,9 +294,9 @@ def main():
         page.wait_for_selector('#beat-screen-pathway.active', timeout=4000)
         ids = page.evaluate("[...document.querySelectorAll('#beat-pathway-track .kr-track')].map(n => n.dataset.id + (n.disabled ? '-' : '+'))")
         check('the menu: the warm-up, Level 1 and Level 3 (locked), nothing else',
-              ids == ['warm+', 'stomp-the-beat-', 'stomp-the-beat-soul-'], ids)
+              ids == ['warm+', 'stomp-the-beat-', 'the-long-hold-', 'stomp-the-beat-soul-'], ids)
         menu = page.inner_text('#beat-screen-pathway')
-        check('...named as Rob asked', 'Warm-up with Tango' in menu and 'Level 1 · Stomp the Beat' in menu and 'Level 3 · Stomp the Beat' in menu, menu)
+        check('...named as Rob asked', 'Warm-up with Tango' in menu and 'Level 1 · Stomp the Beat' in menu and 'Level 2 · The Long Hold' in menu and 'Level 3 · Stomp the Beat' in menu, menu)
         hidden = page.evaluate("['beat-player-chip', 'beat-steps', 'beat-settings'].map(id => document.getElementById(id).offsetParent === null)")
         check('no name, no step chips, no instrument settings', hidden == [True, True, True], hidden)
         check('Re-time my taps is now Recalibrate my beat', page.inner_text('#beat-retune').lower() == 'recalibrate my beat', page.inner_text('#beat-retune'))
@@ -258,7 +304,7 @@ def main():
         page.wait_for_selector('#ssong-screen-warm.active', timeout=4000)
         cards = page.evaluate("[...document.querySelectorAll('.ssong-warm-card')].map(c => c.dataset.song + (c.classList.contains('locked') ? '-' : '+'))")
         check('the warm-up: Tango asks for a tune, Stomp the Beat first and open, the next locked',
-              cards == ['stomp-the-beat+', 'stomp-the-beat-soul-'] and 'pick a tune' in page.inner_text('#ssong-warm-guide').lower(), cards)
+              cards == ['stomp-the-beat+', 'the-long-hold-', 'stomp-the-beat-soul-'] and 'pick a tune' in page.inner_text('#ssong-warm-guide').lower(), cards)
         page.click('.ssong-warm-card[data-song="stomp-the-beat"]')
         page.wait_for_selector('#ssong-screen-play.active', timeout=4000)
         check('the drum room: Tango at her kit, and the round clock', page.is_visible('#ssong-kit') and page.is_visible('#ssong-timer'))

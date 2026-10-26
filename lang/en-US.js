@@ -801,6 +801,10 @@ KR.lang('en-US', {
     'ssong.soul.title':      'Stomp the Beat: Soul',
     'ssong.soul.tile':       'Quavers · record it!',
     'ssong.tile.level':      'Level {n} · {name}',
+    // The Long Hold: Level 2, ties and holding notes.
+    'ssong.longhold.title':  'The Long Hold',
+    'ssong.longhold.tile':   'Ties · record it!',
+    'ssong.longhold.icon':   '🎹',
     'ssong.soul.icon':       '🎷',
     'ssong.menu':            'Song menu',
     'ssong.menu.free':       'Free play',
