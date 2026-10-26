@@ -6,6 +6,7 @@ const K = require('../stomp-song-core.js');
 global.window = global; global.KR = { stompBeats: {} };
 require('../content/stomp-the-beat-beats.js');
 require('../content/stomp-the-beat-soul-beats.js');
+require('../content/the-long-hold-beats.js');
 require('../content/stomp-songs.js');
 const beats = KR.stompBeats['stomp-the-beat'];
 let n = 0;
@@ -155,6 +156,43 @@ t('Stomp the Beat: Soul: its map, its 87 bars, and Level 3 (Splitting the Beat)'
     assert.deepStrictEqual(song.rounds, []);
     const spots = K.runSpots(K.totalBars(soul), 4);
     assert.ok(spots[0] === 5 && spots.every(b => b + 4 <= 86));
+});
+t('The Long Hold: its map, 80 bars and the final note, Level 2, sections end to end', () => {
+    const lh = KR.stompBeats['the-long-hold'], song = KR.stompSongs['the-long-hold'];
+    assert.strictEqual(lh.length, 325);
+    for (let k = 1; k < lh.length; k++) assert.ok(lh[k] > lh[k - 1]);
+    assert.ok(Math.abs(K.beatTime(lh, 2.5) - 0.16) < 0.05, 'the Rhodes pickup is beat 2.5 of bar 0');
+    assert.ok(Math.abs(lh[4] - 1.16) < 0.02, 'bar 1');
+    assert.strictEqual(K.totalBars(lh), 81);
+    for (let b = 1; b < 81; b++) {
+        const bpm = 240 / (K.beatTime(lh, 4 * b + 4) - K.beatTime(lh, 4 * b));
+        assert.ok(bpm > 86.5 && bpm < 91, 'bar ' + b + ' at ' + bpm.toFixed(1));
+    }
+    song.sections.forEach((sec, i) => assert.strictEqual(sec.first, i ? song.sections[i - 1].last + 1 : 0));
+    assert.strictEqual(song.sections[song.sections.length - 1].last, 80);
+    assert.strictEqual(song.album, 'ties');
+    assert.deepStrictEqual(song.run.levels, ['2', '1', '3', '5', '6', '7', '8', '9']);
+});
+t('The Long Hold: every take sits inside the sections that sing its topic', () => {
+    const lh = KR.stompBeats['the-long-hold'], song = KR.stompSongs['the-long-hold'];
+    const sec = id => song.sections.find(s => s.id === id);
+    const L = K.runLadder(song.run.levels);
+    L.forEach(st => {
+        const ranges = K.runRanges(song, st.levelId);
+        assert.ok(ranges && ranges.length, 'level ' + st.levelId + ' names its sections');
+        const spots = K.runSpots(K.totalBars(lh), st.bars, null, ranges);
+        assert.ok(spots.length, 'level ' + st.levelId + ' x' + st.bars + ' has a spot');
+        spots.forEach(b => assert.ok(ranges.some(r => b >= r.first && b + st.bars - 1 <= r.last), st.levelId + ' at ' + b));
+    });
+    const dot = K.runSpots(81, 4, null, K.runRanges(song, '8'));
+    assert.deepStrictEqual(dot, [49, 53, 57], 'the dotted half: the Dot section and the breakdown');
+    assert.deepStrictEqual(K.runSpots(81, 2, null, K.runRanges(song, '9')), [61, 63, 65, 67], 'ties across the barline: the bridge');
+    assert.ok(sec('verse3').first === 37 && sec('final').first === 69);
+});
+t('spots: a range too small for the take falls back to the whole song; no ranges, the whole song', () => {
+    assert.deepStrictEqual(K.runSpots(20, 2, null, [{ first: 9, last: 12 }]), [9, 11]);
+    assert.deepStrictEqual(K.runSpots(20, 4, null, [{ first: 9, last: 11 }]), K.runSpots(20, 4));
+    assert.strictEqual(K.runRanges({ run: {} }, '5'), null);
 });
 t('on the beat / rushed / dragged: the split adds to 100 and names the pattern', () => {
     const a = K.timingSplit([0, 0.01, -0.2, -0.15, 0.02, -0.1]);

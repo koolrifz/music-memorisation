@@ -49,7 +49,7 @@ const SSONG_KIT_FLASH_MS = 180;      // the kick drum's head lights this long on
 // The songs on Beat Smash's menu, in order (Rob, 2026-10-24: "list on the menu
 // only the new songs that we have mapped and are working"). The first is the
 // warm-up's first tune.
-const SSONG_MENU_SONGS = ['stomp-the-beat', 'stomp-the-beat-soul'];
+const SSONG_MENU_SONGS = ['stomp-the-beat', 'the-long-hold', 'stomp-the-beat-soul'];
 
 let ssong = null;                    // what the screen in front of the student is doing
 const ssongBuffers = {};             // audio id -> AudioBuffer
@@ -940,7 +940,7 @@ function ssongStartFree() {
     ssong.guideBus.gain.value = ssong.settings.freeGuide ? 1 : 0;
     // Every beat of the song has its guide kick booked; the Guide button only
     // opens or closes the bus, so it can be switched while the song plays.
-    ssong.beats.forEach(t => ssongKick(startWhen + t, true));
+    ssong.beats.forEach(t => { if (t >= 0) ssongKick(startWhen + t, true); });   // a map can start before the file (The Long Hold's pickup)
     ssong.freeEnd = startWhen + ssongBufferSeconds();
     ssongEl('ssong-summary').hidden = true;
     ssong.lastBeat = -1;
@@ -1083,7 +1083,8 @@ function ssongPrepareRun() {
         ssongSave();
         ssongSavePlace('run', ssong.id, ssong.run.step);
     }
-    const spots = KRStompSong.runSpots(KRStompSong.totalBars(ssong.beats), step.bars);
+    const spots = KRStompSong.runSpots(KRStompSong.totalBars(ssong.beats), step.bars, null,
+        KRStompSong.runRanges(ssong.song, step.levelId));
     const from = KRStompSong.pickSpot(spots, ssong.lastSpot);
     ssong.lastSpot = from;
     const notation = ssongRunNotation(step);
@@ -1313,7 +1314,7 @@ function ssongStartWarm() {
     ssong.freeStart = startWhen;            // the file's own clock: time 0 sounds now
     ssongStartSong(0, startWhen, secs + 0.5);
     ssong.guideBus.gain.value = ssong.settings.freeGuide ? 1 : 0;
-    ssong.beats.forEach(t => { if (t <= secs) ssongKick(startWhen + t, true); });
+    ssong.beats.forEach(t => { if (t >= 0 && t <= secs) ssongKick(startWhen + t, true); });
     // A stomp just after the last beat is still judged, then the round ends.
     ssong.freeEnd = startWhen + secs + 0.35 + (ssong.delay.delay || 0);
     ssongEl('ssong-summary').hidden = true;

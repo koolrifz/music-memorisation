@@ -142,3 +142,61 @@ KR.stompSongs['stomp-the-beat-soul'] = {
     },
     rounds: [],
 };
+
+/* THE LONG HOLD ("Music is movement"), Level 2, Ties and Syncopation (Suno,
+   2026-10-26). Written for the album's topics, a section each: note values,
+   strong and weak beats, ties inside the bar, the dotted half note, ties across
+   the barline. About 89 bpm, easing to 88; a Rhodes pickup of a beat and a half
+   before bar 1, so the map starts BEFORE the file (beats 0-2 are negative) and
+   no guide kick is booked before time 0. Kick: beat 1, the "and" of 2, beat 3;
+   finger clicks on 2 and 4. The map was built from a checked grid
+   (tools/grids/the-long-hold.json): the beat tracker held the kick pattern on
+   the same beats from bar 1 to bar 76.
+
+   THE FORM, checked against the audio: Rob's form with Verse 2 at 8 bars, not
+   6. The recording's four-bar harmonic loop starts on bars 1, 5, 9...; the
+   band drops out at bars 37-40 (Verse 3, kick only), the breakdown's harmony
+   is its own at 57-60, and the final chorus (69) matches the chorus (29). The
+   outro has no kick (Suno left it out); the final note is bar 81, beat 1.
+
+   THE RUN PLAYS SNIPPETS (Rob: "When we encounter the specific topic like
+   dotted minims we run this section of the song... we can progress randomly
+   through the tune without them hearing the full version"). run.where names,
+   per Stomp Lab level, the sections a take may sit in; each take is a random
+   spot inside them (runSpots, runRanges). */
+KR.stompSongs['the-long-hold'] = {
+    title: 'ssong.longhold.title', tile: 'ssong.longhold.tile', icon: 'ssong.longhold.icon',
+    album: 'ties',                                  // Level 2, Ties and Syncopation
+    audio: 'ssong.the-long-hold.audio',
+    kick: 'ssong.kick',
+    sections: [
+        { id: 'countin',   first: 0,  last: 0 },      // the Rhodes pickup, a beat and a half
+        { id: 'intro',     first: 1,  last: 4 },      // kick q. e + beat 3, clicks on 2 and 4
+        { id: 'intro2',    first: 5,  last: 8 },      // "Strong, weak, strong, weak... Hold it"
+        { id: 'verse1',    first: 9,  last: 16 },     // note values
+        { id: 'verse2',    first: 17, last: 24 },     // strong and weak (8 bars in the recording)
+        { id: 'pre',       first: 25, last: 28 },     // "Gather the beats... Hold them"
+        { id: 'chorus',    first: 29, last: 36 },     // "Music is movement!"
+        { id: 'verse3',    first: 37, last: 40 },     // ties inside the bar; the band drops to the kick
+        { id: 'tietrick',  first: 41, last: 48 },     // "Take the tie out! Put the tie back!"
+        { id: 'dot',       first: 49, last: 56 },     // the dotted half note
+        { id: 'breakdown', first: 57, last: 60 },     // "Some say dotted minim! Some say dotted half!"
+        { id: 'bridge',    first: 61, last: 68 },     // ties across the barline
+        { id: 'final',     first: 69, last: 76 },     // the chorus again
+        { id: 'outro',     first: 77, last: 80 },     // Rhodes, no kick
+    ],
+    run: {
+        levels: ['2', '1', '3', '5', '6', '7', '8', '9'],   // the album, in its order
+        where: {
+            warm: ['intro2', 'chorus', 'final'],
+            '2': ['verse1', 'pre', 'chorus'], '1': ['verse1', 'pre', 'chorus'],
+            '3': ['verse1', 'pre', 'final'],  '5': ['verse1', 'pre', 'final'],
+            '6': ['intro2', 'verse2'],
+            '7': ['verse3', 'tietrick'],
+            '8': ['dot', 'breakdown'],
+            '9': ['bridge'],
+        },
+    },
+    rounds: [],
+};
+

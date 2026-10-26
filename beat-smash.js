@@ -2684,7 +2684,9 @@ function bsmashRenderSongs() {
     });
     // The recorded songs: not built into a band, played in the studio with
     // hurdles. Each names itself (content/stomp-songs.js: title, tile, icon).
-    Object.keys(KR.stompSongs || {}).forEach(id => {
+    // In level order (The Long Hold, Level 2, sits between the other two).
+    const levelN = id => { const l = typeof ssongLevelOf === 'function' ? ssongLevelOf(KR.stompSongs[id]) : null; return l ? l.n : 99; };
+    Object.keys(KR.stompSongs || {}).sort((a, b) => levelN(a) - levelN(b)).forEach(id => {
         const song = KR.stompSongs[id];
         const card = bsmashMake('button', 'bsmash-song-card ssong-tile', box); // text-ok: class names
         card.type = 'button';

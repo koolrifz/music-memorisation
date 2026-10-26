@@ -29,4 +29,5 @@ KR.audio = {
     // Stomp the Beat: Soul, the older students' version (neo-soul, funk and
     // gospel, Suno, 2026-10-24), the quaver song. 160 kb/s like the first.
     'ssong.stomp-the-beat-soul.audio': 'audio/stomp-the-beat-soul/stomp-the-beat-soul.mp3',
+    'ssong.the-long-hold.audio':     'audio/the-long-hold/the-long-hold.mp3',
 };

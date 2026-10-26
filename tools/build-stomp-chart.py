@@ -2,6 +2,8 @@
 """Build a beat map for an audio-backed song (Stomp the Beat and its successors).
 
     python tools/build-stomp-chart.py "Beat Stomp (Remastered).wav" stomp-the-beat
+    python tools/build-stomp-chart.py "Music Is Movement - Level 3 - Rhythm.wav" the-long-hold \
+        --grid tools/grids/the-long-hold.json
     python tools/build-stomp-chart.py "Stomp the Beat - senior 02.wav" stomp-the-beat-soul \
         --grid tools/grids/stomp-the-beat-soul.json
 

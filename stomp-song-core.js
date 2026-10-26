@@ -215,11 +215,34 @@
     // Where in the song a take may sit: the start of a two-bar phrase, with the
     // lead before it and the take's bars after it inside the song. Never the
     // same spot twice running.
-    function runSpots(total, bars, lead) {
+    //
+    // `ranges` ([{first, last}], bars) keeps a take INSIDE the sections that
+    // sing about its topic (Rob, 2026-10-26, The Long Hold: "When we encounter
+    // the specific topic like dotted minims we run this section of the song...
+    // we can progress randomly through the tune without them hearing the full
+    // version, just snippets"). A take sits wholly in one range. If no range
+    // can hold it, every spot in the song is allowed, so a run never stalls.
+    function runSpots(total, bars, lead, ranges) {
         const out = [];
         const first = Math.max(1, (lead == null ? LEAD_BARS : lead) + 1);
         for (let b = first; b + bars <= total; b++) if ((b - 1) % 2 === 0) out.push(b);
-        return out;
+        if (!ranges || !ranges.length) return out;
+        // A take of four bars or more starts on the section's own four-bar
+        // phrase (bar 1 or 5 of it), as the band's phrases do; shorter ones
+        // on any two-bar line inside it.
+        const step = bars >= 4 ? 4 : 2;
+        const inside = out.filter(b => ranges.some(r => b >= r.first && b + bars - 1 <= r.last && (b - r.first) % step === 0));
+        return inside.length ? inside : out;
+    }
+
+    // The bar ranges a run step's takes may use: the song's run.where names
+    // section ids per Stomp Lab level ('warm' for the warm-up on the beat).
+    // Null when the song names none, so the whole song is open.
+    function runRanges(song, levelId) {
+        const where = song && song.run && song.run.where;
+        const ids = where && where[levelId || 'warm'];
+        if (!ids || !song.sections) return null;
+        return song.sections.filter(s => ids.indexOf(s.id) >= 0).map(s => ({ first: s.first, last: s.last }));
     }
 
     function pickSpot(spots, last, random) {
@@ -521,7 +544,7 @@
         BEATS_PER_BAR, LEAD_BARS, OVER_BEATS, NEEDS, REST_BARS, needed,
         beatTime, beatAt, totalBars, rng, patternFor, recordingPattern, plan, barOf,
         grade, passes, analyseFree, blankProgress, hurdleState, applyAttempt, hurdleOpen,
-        runLadder, runStep, runLevelUp, runSpots, pickSpot, newRun, runTake,
+        runLadder, runStep, runLevelUp, runSpots, runRanges, pickSpot, newRun, runTake,
         ON_SEC, WARM_SECONDS, timingSplit, tapErrors, warmRound,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -3268,6 +3268,52 @@ quavers."*
   cases in `tools/test-stomp-song.js`.
 
 
+### THE LONG HOLD, the Level 2 song: snippets by topic (Rob, 2026-10-26)
+"Music is movement": Rob's song for album 2 (The Held Beat: half, whole, mixed,
+all three, strong and weak, ties inside the bar, the dotted half, ties across),
+a section of the song per topic. Rob: *"When we encounter the specific topic
+like dotted minims we run this section of the song... we can progress randomly
+through the tune without them hearing the full version. Just snippets."*
+
+- **Files:** `audio/the-long-hold/the-long-hold.mp3` (160 kb/s, 218.8 s; checked
+  in Chromium to decode in line with the WAV to under 3 ms),
+  `content/the-long-hold-beats.js` (GENERATED from `tools/grids/the-long-hold.json`),
+  its entry in `content/stomp-songs.js` (`the-long-hold`, `album: 'ties'`), words
+  `ssong.longhold.*`. Third on Beat Smash's menu (`SSONG_MENU_SONGS`), between
+  Level 1 and Level 3; the old chooser now sorts the recorded songs by level.
+- **Tempo and map:** about 89 bpm easing to 88. A Rhodes pickup of a beat and a
+  half before bar 1, so **the map starts before the file** (beats 0-2 are
+  negative). Free play and the warm-up book no guide kick before time 0 (the
+  only code change for it). The kick is beat 1, the "and" of 2 and beat 3, finger
+  clicks on 2 and 4; the beat tracker held that pattern on the same beats from
+  bar 1 to bar 76, which is how the grid was checked. Map vs the real kick:
+  median 2.3 ms.
+- **The form is Rob's, with Verse 2 at 8 bars, not 6** (his document says 6;
+  the recording has 8). Checked: the four-bar harmonic loop starts on bars 1, 5,
+  9...; the band drops out at bars 37-40 (Verse 3, kick only); the breakdown's
+  harmony is its own at 57-60; the final chorus (69) matches the chorus (29). The
+  outro (77-80) has no kick (Suno left out "kick on 1 and 3"); the final note is
+  bar 81, beat 1, never in a take.
+- **SNIPPETS: `run.where`** names, per Stomp Lab level, the sections a take may
+  sit in (`warm` for the warm-up on the beat). `KRStompSong.runRanges()` turns it
+  into bar ranges and `runSpots(total, bars, lead, ranges)` keeps every take
+  wholly inside one; a take of four bars or more starts on the section's own
+  four-bar phrase. If no range can hold a take, the whole song is open, so a run
+  never stalls; a song with no `where` is unchanged. Today: warm-up in intro 2
+  and the choruses; the note-value levels (2, 1, 3, 5) in Verse 1, the pre-chorus
+  and a chorus; strong and weak (6) in intro 2 and Verse 2; ties (7) in Verse 3
+  and the Tie Trick; the dotted half (8) in the Dot section and the breakdown;
+  ties across the barline (9) in the bridge. The choruses for the note-value
+  levels are Claude's call, for variety: Rob to confirm.
+- **The run:** the album's levels in its order, `['2', '1', '3', '5', '6', '7',
+  '8', '9']`, two bars then four each. No hurdle rounds.
+- **Open for Rob:** the WAV was named "Level 3"; it is set as Level 2 (album 2's
+  topics). The song's name is taken from his form document, "The Long Hold".
+- Tests: The Long Hold blocks in `tools/test-stomp-song.js` (map, form, every
+  take inside its sections) and `tools/test-stomp-song.py` (decodes in line with
+  the WAV, the ladder, every take plans and sits in its sections, a dotted-half
+  take passes).
+
 ## BEAT SMASH'S MENU IS THE SONGS (Rob, 2026-10-24, branch `idea/beat-smash-song-menu`)
 Rob, from three screenshots of his phone: *"Don't ask their name. Remove that...
 Let's keep Warmup. Then let's list on the menu only the new songs that we have
