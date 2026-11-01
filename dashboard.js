@@ -13,9 +13,9 @@
    and shows its pathway as a row of dots (cleared, open, locked) and one
    line of numbers. A game with more stages than fit as dots shows a bar.
 
-   The nickname box at the top sets the player for the whole app: the same
-   list Value Smash and Beat Smash use (vsmashPlayers). It never blocks a
-   game: Beat Smash still asks only after the first star if nobody is set.
+   The top of the dashboard says who is playing: Player 1 to 4, never a
+   name (Rob, 2026-11-01: "Think of old video games like Pac-Man"). The same
+   list Value Smash and Beat Smash use (vsmashPlayers). Nothing is typed.
    Loaded last, after every game, because it reads them all.
    ========================================= */
 
@@ -128,16 +128,17 @@ function renderDashboard() {
     });
 }
 
-/* ---------- Who is playing: the top of the dashboard ---------- */
+/* ---------- Who is playing: the top of the dashboard ----------
+   "Playing as Player 1", and a button to pass to Player 2, 3 or 4. */
 let krHomeSwitching = false;
 
 function renderHomePlayer() {
     const box = document.getElementById('home-player');
     if (!box || typeof vsmashPlayers !== 'function') return;
     const players = vsmashPlayers();
-    const current = players.list.find(p => p.id === players.current) || null;
+    const current = players.list.find(p => p.id === players.current);
     box.innerHTML = '';
-    if (current && !krHomeSwitching) {
+    if (!krHomeSwitching) {
         const row = krHomeMake('div', 'home-player-row', box);
         krHomeMake('span', 'home-player-name', row).textContent = KR.t('home.player.playingAs', { name: current.name });
         const change = krHomeMake('button', 'home-player-change', row);
@@ -148,57 +149,22 @@ function renderHomePlayer() {
     }
     const guide = krHomeMake('div', 'kr-guide home-player-guide', box);
     krHomeMake('div', 'kr-guide-text', guide).textContent = KR.t('home.player.ask');
-    if (players.list.length) {
-        const list = krHomeMake('div', 'home-player-list', box);
-        players.list.forEach(p => {
-            const chip = krHomeMake('button', 'home-player-chip', list);
-            chip.type = 'button';
-            chip.textContent = p.name;
-            if (current && p.id === current.id) chip.classList.add('current');
-            chip.onclick = () => krHomeChoose(p.id);
-        });
-    }
-    const form = krHomeMake('div', 'home-player-form', box);
-    const input = krHomeMake('input', 'home-player-input', form);
-    input.id = 'home-player-input';
-    input.type = 'text';
-    input.maxLength = 20;
-    input.autocomplete = 'off';
-    input.placeholder = KR.t('home.player.placeholder');
-    input.onkeydown = e => { if (e.key === 'Enter') addHomePlayer(); };
-    const go = krHomeMake('button', 'btn btn-start home-player-go', form);
-    go.type = 'button';
-    go.textContent = KR.t('home.player.go');
-    go.onclick = addHomePlayer;
+    const list = krHomeMake('div', 'home-player-list', box);
+    players.list.forEach(p => {
+        const chip = krHomeMake('button', 'home-player-chip', list);
+        chip.type = 'button';
+        chip.textContent = p.name;
+        if (p.id === current.id) chip.classList.add('current');
+        chip.onclick = () => krHomeChoose(p.id);
+    });
 }
 
-function addHomePlayer() {
-    const input = document.getElementById('home-player-input');
-    const name = (input ? input.value : '').trim().replace(/\s+/g, ' ');
-    if (!name) {
-        const guide = document.querySelector('#home-player .kr-guide-text');
-        if (guide) guide.textContent = KR.t('home.player.needed');
-        if (input) input.focus();
-        return;
-    }
-    const players = vsmashPlayers();
-    let player = players.list.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (!player) {
-        player = { id: 'p' + Date.now().toString(36), name: name };
-        players.list.push(player);
-        vsmashSavePlayers(players);
-    }
-    krHomeChoose(player.id);
-}
-
-// Set the player for the whole app. A guest's Beat Smash warm-up and song go
-// with them to their nickname, as when Beat Smash asks.
+// Set the player for the whole app.
 function krHomeChoose(id) {
-    const guest = typeof bsmashReadGuest === 'function' && bsmashReadGuest() ? bsmashLoad() : null;
     const players = vsmashPlayers();
+    if (!players.list.some(p => p.id === id)) return;
     players.current = id;
     vsmashSavePlayers(players);
-    if (guest && typeof bsmashAdoptGuest === 'function') bsmashAdoptGuest(guest);
     krHomeSwitching = false;
     renderDashboard();
 }

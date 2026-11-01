@@ -47,7 +47,7 @@ def serve():
 
 # ---------- helpers ----------
 
-PLAYER = "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam'}],current:'p1'}));"
+PLAYER = "localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',slot:1}],current:'p1'}));"
 
 
 def value_progress(**fields):
@@ -196,37 +196,37 @@ def test_language(page):
 
 
 def test_players(page):
+    """Player 1 to 4, no names (Rob, 2026-11-01). The full set is in
+    tools/test-players.py; this is Value Smash's side of it."""
     print('\n== Players and progress')
     fresh(page)
     page.click('.game-card.orange')
     page.wait_for_timeout(400)
-    check('first visit asks for a name', screens(page) == ['value-screen-player'])
-    page.fill('#value-name-input', '  Sam  ')
-    page.press('#value-name-input', 'Enter')
-    page.wait_for_timeout(400)
-    check('a name opens the pathway', screens(page) == ['value-screen-pathway'])
+    check('first visit goes straight to the floors, as Player 1',
+          screens(page) == ['value-screen-pathway'] and 'Player 1' in page.inner_text('#value-player-chip'))
     nodes = page.evaluate("[...document.querySelectorAll('#value-pathway-track .kr-track')].map(n => n.className)")
     check('only the Tree is open', 'unlocked' in nodes[0] and all('locked' in n and 'unlocked' not in n for n in nodes[1:]), nodes)
     page.click('#value-player-chip')
     page.wait_for_timeout(300)
-    page.fill('#value-name-input', 'Alex')
-    page.click('#value-screen-player .kr-btn-go')
+    check('the picker is Player 1 to 4, nothing to type',
+          page.locator('#value-player-list button').all_inner_texts() == ['Player 1', 'Player 2', 'Player 3', 'Player 4']
+          and page.locator('#value-screen-player input').count() == 0)
+    page.locator('#value-player-list button').nth(1).click()
     page.wait_for_timeout(300)
     page.evaluate("const p = vsmashLoad(); p.unlocked.push('v1-smash'); vsmashSave(p)")
     page.click('#value-player-chip')
     page.wait_for_timeout(300)
-    page.fill('#value-name-input', 'sam')
-    page.press('#value-name-input', 'Enter')
+    page.locator('#value-player-list button').nth(0).click()
     page.wait_for_timeout(300)
     players = json.loads(page.evaluate("localStorage.getItem('koolRiffsPlayers')"))
-    check('the same name twice is the same player', [p['name'] for p in players['list']] == ['Sam', 'Alex'])
+    check('no name is ever saved', all('name' not in p for p in players['list']), players)
     check("each player's progress is their own", page.evaluate('vsmashLoad().unlocked') == ['v1-tree'])
     page.evaluate("localStorage.setItem('koolRiffsPlayers', '{bad json'); localStorage.setItem('koolRiffsValueProgress', 'null')")
     page.reload()
     page.wait_for_timeout(500)
     page.click('.game-card.orange')
     page.wait_for_timeout(400)
-    check('broken saved data asks for a name, not a crash', screens(page) == ['value-screen-player'])
+    check('broken saved data is Player 1, not a crash', screens(page) == ['value-screen-pathway'])
 
 
 def test_tree(page):

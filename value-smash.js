@@ -68,20 +68,63 @@ function vsmashStopTimers() {
 }
 
 /* ---------- Players ----------
-   A list of names on this device, no passwords, no network - so that on a
-   shared school iPad each student's progress is their own.
-   Stored as { list: [{id, name}], current: id }.
-   Only Value Smash uses players for now. */
+   PLAYER ONE TO FOUR, NO NAMES (Rob, 2026-11-01): "Think of old video games
+   like Pac-Man... Otherwise, it's player one. And if there's more players,
+   there's player two, three, and four. So no need for names or security."
+   Four fixed slots on this device, no passwords, no network, nothing typed.
+   Stored as { list: [{id, slot}], current: id }. A player's name is never
+   stored: it is made on the way out from the slot ('player.name', "Player 1").
+   The one place a student types anything is a high score's three-letter
+   moniker (high-scores.js), and only when they make the table.
+   Old saves that held typed names keep their progress: each named player
+   takes the next free slot (first four only) and the name is wiped. */
+const KR_PLAYER_SLOTS = 4;
 function vsmashPlayers() {
-    let players = null;
-    try { players = JSON.parse(localStorage.getItem(VSMASH_PLAYERS_KEY)); } catch (e) {}
-    if (!players || !Array.isArray(players.list)) players = { list: [], current: null };
-    if (!players.list.some(p => p.id === players.current)) players.current = null;
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(VSMASH_PLAYERS_KEY)); } catch (e) {}
+    const old = (raw && Array.isArray(raw.list)) ? raw.list.filter(p => p && p.id) : [];
+    const used = new Set();
+    const list = [];
+    const keep = (p, slot) => {
+        used.add(slot);
+        const player = { id: p.id, slot: slot };
+        if (p.age !== undefined) player.age = p.age;     // Beat Smash's old band only
+        list.push(player);
+    };
+    old.forEach(p => {
+        if (p.slot >= 1 && p.slot <= KR_PLAYER_SLOTS && !used.has(p.slot)) keep(p, p.slot);
+    });
+    old.forEach(p => {
+        if (list.some(q => q.id === p.id)) return;
+        for (let slot = 1; slot <= KR_PLAYER_SLOTS; slot++) {
+            if (!used.has(slot)) return keep(p, slot);
+        }
+    });
+    for (let slot = 1; slot <= KR_PLAYER_SLOTS; slot++) {
+        if (!used.has(slot)) keep({ id: 'player' + slot }, slot);
+    }
+    list.sort((a, b) => a.slot - b.slot);
+    list.forEach(p => { p.name = KR.t('player.name', { n: p.slot }); });
+    const current = list.some(p => p.id === (raw && raw.current)) ? raw.current : list[0].id;
+    const players = { list: list, current: current };
+    // A save from before this held typed names: wipe them now, not later.
+    if (raw && (old.some(p => 'name' in p) || old.length !== list.length || raw.current !== current)) {
+        vsmashSavePlayers(players);
+    }
     return players;
 }
 
+// Only the slot, the id and the old band's age are kept; never a name.
 function vsmashSavePlayers(players) {
-    try { localStorage.setItem(VSMASH_PLAYERS_KEY, JSON.stringify(players)); } catch (e) {}
+    const clean = {
+        list: players.list.map(p => {
+            const kept = { id: p.id, slot: p.slot };
+            if (p.age !== undefined) kept.age = p.age;
+            return kept;
+        }),
+        current: players.current,
+    };
+    try { localStorage.setItem(VSMASH_PLAYERS_KEY, JSON.stringify(clean)); } catch (e) {}
 }
 
 function vsmashCurrentPlayer() {
@@ -143,8 +186,7 @@ function enterValueSmash() {
     vsmashStopTimers();
     launchGame('view-value');
     KR.event('value.open');
-    if (vsmashCurrentPlayer()) showValuePathway();
-    else showValuePlayers();
+    showValuePathway();
 }
 
 function handleValueBackButton() {
@@ -155,7 +197,8 @@ function handleValueBackButton() {
     else launchGame('view-dashboard');
 }
 
-/* ---------- The player picker ---------- */
+/* ---------- The player picker ----------
+   Four buttons, Player 1 to Player 4. Nothing to type. */
 function showValuePlayers() {
     const players = vsmashPlayers();
     switchScreenState('value', 'value-screen-player');
@@ -170,39 +213,13 @@ function showValuePlayers() {
         button.onclick = () => chooseValuePlayer(p.id);
         list.appendChild(button);
     });
-
-    const input = document.getElementById('value-name-input');
-    input.value = '';
-    input.placeholder = KR.t('value.player.namePlaceholder');
-    input.onkeydown = (e) => { if (e.key === 'Enter') addValuePlayer(); };
-
-    const ask = players.list.length ? 'value.player.askSwitch' : 'value.player.askFirst';
-    KR.say(ask, { box: document.getElementById('value-player-guide') });
+    KR.say('value.player.ask', { box: document.getElementById('value-player-guide') });
 }
 
 function chooseValuePlayer(playerId) {
     const players = vsmashPlayers();
     if (!players.list.some(p => p.id === playerId)) return;
     players.current = playerId;
-    vsmashSavePlayers(players);
-    showValuePathway();
-}
-
-function addValuePlayer() {
-    const input = document.getElementById('value-name-input');
-    const name = input.value.trim().replace(/\s+/g, ' ');
-    if (!name) {
-        KR.say('value.player.nameNeeded', { box: document.getElementById('value-player-guide') });
-        input.focus();
-        return;
-    }
-    const players = vsmashPlayers();
-    // The same name twice is the same student coming back, not a new one.
-    const existing = players.list.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (existing) return chooseValuePlayer(existing.id);
-    const player = { id: 'p' + Date.now().toString(36), name: name };
-    players.list.push(player);
-    players.current = player.id;
     vsmashSavePlayers(players);
     showValuePathway();
 }
