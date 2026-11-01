@@ -60,7 +60,7 @@ KR.lang('en-US', {
     'studio.hi.guest':       'Hi there!',
     'studio.prompt':         'Tap Riff or Tango to meet them!',
     'studio.help.label':     'Help',
-    'studio.settings.label': 'Dashboard, settings and your name',
+    'studio.settings.label': 'Dashboard, settings and players',
     'studio.back':           'Studio',
     'studio.back.label':     'Back to the studio',
     'studio.finale.line':     "Look at that wall, cat. Every record gold. That's the whole album. You did it.",
@@ -171,12 +171,19 @@ KR.lang('en-US', {
     'home.stats.beat.warmedUp': 'Warmed up. Choose a song!',
 
     // Who is playing, at the very top.
+    /* ---------- Players: Player 1 to 4, never a name (Rob, 2026-11-01) ---------- */
+    'player.name':           'Player {n}',
+
+    /* ---------- The high score table (high-scores.js) ---------- */
+    'high.title':            'High Scores',
+    'high.new':              'New high score!',
+    'high.ask':              'Put in your moniker: three letters or numbers.',
+    'high.enter':            'Enter',
+    'high.slotTag':          'P{n}',
+
     'home.player.playingAs': 'Playing as {name}',
-    'home.player.change':    'Not you?',
-    'home.player.ask':       "What's your nickname?",
-    'home.player.placeholder': 'Nickname',
-    'home.player.go':        "Let's go",
-    'home.player.needed':    'Type a nickname first!',
+    'home.player.change':    'Switch player',
+    'home.player.ask':       "Who's playing? Tap your player.",
 
     /* ---------- Beat Smash: every screen ---------- */
     'beat.title':            'Beat Smash',
@@ -229,10 +236,8 @@ KR.lang('en-US', {
     'beat.stats.early':      'Last beat test: {onBeat}% on the beat in {taps} taps. Leans {lean} ms early (the device included), steady to ±{steady} ms. Tests kept: {tests}.',
 
     /* ---------- Beat Smash: who is playing ---------- */
-    'beat.player.ask':             "Who's playing? Tap your nickname, or make one up. Then tap your age.",
+    'beat.player.ask':             "Who's playing? Tap your player. Then tap your age.",
     'beat.player.age':             'How old are you? Tap one.',
-    'beat.player.nameNeeded':      'Type a nickname first.',
-    'beat.player.namePlaceholder': 'Your nickname',
     'beat.player.add':             "Let's go",
     'beat.player.playingAs':       'Playing as: {name} ▾',
     'beat.age.6-8':                '6–8',
@@ -308,7 +313,7 @@ KR.lang('en-US', {
     'beat.line.share.failed': "Hmm, that didn't record. Try again in a moment.",
     'beat.report.button':    'My report',
     'beat.report.title':     'My Beat Smash report',
-    'beat.report.who':       'Nickname: {name}',
+    'beat.report.who':       '{name}',
     'beat.report.guest':     'Guest',
     'beat.report.song':      'Song: {song}',
     'beat.report.date':      'Date: {date}',
@@ -557,11 +562,7 @@ KR.lang('en-US', {
     'value.toDashboard':     'Back to Dashboard',
 
     /* ---------- Value Smash: who is playing ---------- */
-    'value.player.askFirst':        "Hi! What's your name?",
-    'value.player.askSwitch':       "Who's playing? Tap your name, or type a new one.",
-    'value.player.nameNeeded':      'Type your name first.',
-    'value.player.namePlaceholder': 'Your name',
-    'value.player.add':             "Let's go",
+    'value.player.ask':             "Who's playing? Tap your player.",
     'value.player.playingAs':       'Playing as: {name} ▾',
 
     /* ---------- Value Smash: the pathway ---------- */

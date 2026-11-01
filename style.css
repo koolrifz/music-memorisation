@@ -2150,3 +2150,22 @@ button.vsmash-tile:active { transform: translateY(2px); }
     .kr-celebrate.show, .kr-celebrate-card, .kr-celebrate-stars span { animation: none; opacity: 1; }
     .kr-celebrate-confetti { display: none; }
 }
+
+/* =========================================
+   THE HIGH SCORE TABLE (high-scores.js): arcade style, a moniker of three
+   letters only when a score makes the table.
+   ========================================= */
+.kr-high { margin: 14px auto 6px; max-width: 320px; padding: 12px 14px; border-radius: 12px;
+    background: #111a24; border: 2px solid var(--accent-gold); text-align: center; }
+.kr-high-title { color: var(--accent-gold); font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 16px; }
+.kr-high-ask { margin: 6px 0 10px; font-size: 14px; color: #c9d4df; }
+.kr-high-form { display: flex; gap: 10px; justify-content: center; align-items: center; }
+.kr-high-input { width: 5.2em; min-height: 56px; font-size: 28px; font-weight: 900; text-align: center;
+    letter-spacing: 6px; text-transform: uppercase; font-family: monospace; border-radius: 10px;
+    border: 2px solid var(--accent-gold); background: #0b1118; color: #fff; }
+.kr-high-go { min-height: 56px; }
+.kr-high-list { list-style: none; margin: 8px 0 0; padding: 0; font-family: monospace; font-size: 18px; }
+.kr-high-row { display: grid; grid-template-columns: 2em 1fr auto; gap: 8px; padding: 3px 6px; color: #e8eef4; }
+.kr-high-row.lit { color: #111a24; background: var(--accent-gold); border-radius: 6px; font-weight: 900; }
+.kr-high-rank { opacity: 0.7; }
+.kr-high-tag { text-align: left; letter-spacing: 3px; }

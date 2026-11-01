@@ -696,11 +696,11 @@ def test_one_bar_step(page):
     page.wait_for_timeout(300)
     check('...and the first star lands at once, on the first clean playing', record(page)['streak'] == 1, record(page))
     page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-player'", timeout=8000)
-    check('After the first star, and not before, the name and age are asked', screen(page) == 'beat-screen-player')
-    page.fill('#beat-name-input', 'Garnet')
+    check('After the first star, and not before, the age is asked (no name: Player 1, Rob 2026-11-01)',
+          screen(page) == 'beat-screen-player' and page.locator('#beat-screen-player input').count() == 0)
     page.click('#beat-screen-player .btn-start')
     page.wait_for_timeout(200)
-    check('An age is needed as well as a name', screen(page) == 'beat-screen-player')
+    check('An age is needed before going on', screen(page) == 'beat-screen-player')
     page.click('#beat-age-row .bsmash-age:nth-child(1)')
     page.click('#beat-screen-player .btn-start')
     page.wait_for_timeout(600)
@@ -934,13 +934,12 @@ def test_picker(page):
     page.wait_for_timeout(400)
     page.click('#beat-player-chip')
     page.wait_for_timeout(300)
-    check('"Playing as" lists every name, to switch or add one', screen(page) == 'beat-screen-player'
-          and page.is_visible('#beat-name-input') and page.locator('#beat-player-list button').count() == 1)
-    page.fill('#beat-name-input', 'Ruby')
-    page.click('#beat-screen-player .btn-start')
+    check('"Playing as" lists Player 1 to 4, nothing to type', screen(page) == 'beat-screen-player'
+          and page.locator('#beat-screen-player input').count() == 0 and page.locator('#beat-player-list button').count() == 4)
+    page.locator('#beat-player-list button').nth(1).click()
     page.wait_for_timeout(200)
-    check('A new name must choose its own age', screen(page) == 'beat-screen-player'
-          and page.evaluate('bsmashPlayer().name') == 'Ruby' and not page.evaluate('bsmashPlayer().age'))
+    check('Another player must choose their own age', screen(page) == 'beat-screen-player'
+          and page.evaluate('bsmashPlayer().name') == 'Player 2' and not page.evaluate('bsmashPlayer().age'))
     page.click('#beat-age-row .bsmash-age:nth-child(2)')
     page.click('#beat-screen-player .btn-start')
     page.wait_for_timeout(400)
@@ -1188,8 +1187,8 @@ def test_riff_keys(page):
     page.click('#beat-picker-next')
     page.wait_for_function("(document.querySelector('#view-beat .screen.active') || {}).id === 'beat-screen-permit'", timeout=6000)
     card = page.inner_text('#beat-permit-card')
-    check('The Learner\'s Permit: L plates, their name, their band',
-          'L' in card and 'Sam' in card and 'Drums: Spicy' in card and 'Bass: Smooth' in card and 'Keys: Hop' in card, card)
+    check('The Learner\'s Permit: L plates, the player (Player 1, no name), their band',
+          'L' in card and 'Player 1' in card and 'Sam' not in card and 'Drums: Spicy' in card and 'Bass: Smooth' in card and 'Keys: Hop' in card, card)
     check('...presented by Tango', 'Learner\'s Permit' in guide(page, 'beat-permit-guide'), guide(page, 'beat-permit-guide'))
     page.click('#beat-screen-permit .btn-secondary')
     page.wait_for_timeout(400)
@@ -1813,7 +1812,7 @@ def test_my_band(page):
     page.wait_for_timeout(300)
     report = page.inner_text('#beat-report')
     check('My report: nickname, song, beat test, and each musician\'s steps for the teacher',
-          screen(page) == 'beat-screen-report' and 'Nickname: Zed' in report and 'Song: Sunrise' in report
+          screen(page) == 'beat-screen-report' and 'Player 1' in report and 'Song: Sunrise' in report
           and 'Beat test: 92%' in report and 'One bar: 5 takes, 3 passed' in report and '90% of notes right' in report
           and 'a little early (16 ms)' in report and 'The studio: 2 takes, 1 passed' in report
           and 'Take in the band: 91% (32 bars)' in report, report)
@@ -1831,7 +1830,7 @@ def test_my_band(page):
                  button: document.getElementById('beat-band-share').textContent, text: bsmashShared.text }; })()""")
     check('...the recording is the band and their takes, 32 bars as a WAV, with the report as a picture and as the message',
           made['types'] == ['audio/wav', 'image/png'] and made['names'][0].endswith('.wav') and 76 < made['seconds'] < 82
-          and 0.85 < made['peak'] < 0.95 and made['button'] == 'Send to my teacher' and 'Nickname: Zed' in made['text']
+          and 0.85 < made['peak'] < 0.95 and made['button'] == 'Send to my teacher' and 'Player 1' in made['text']
           and 'teacher' in guide(page, 'beat-band-guide'), made)
     page.click('.bsmash-mixer-row[data-id=bass] .bsmash-chip.me')
     page.wait_for_timeout(200)
@@ -1926,7 +1925,7 @@ def test_resume(page):
     page.evaluate("bsmashKeepPart(true)")
     check('Keeping the part clears it', record(page, 'bass')['won'] and not record(page, 'bass').get('studioPassed'), record(page, 'bass'))
 
-    # Before any name is given: the warm-up and the song are kept on the device.
+    # Nothing chosen: Player 1's warm-up and song are kept on the device.
     fresh(page)
     page.evaluate("const p = bsmashLoad(); p.jamDone = true; p.song = 'c-1-4-1-5'; bsmashSave(p);")
     page.reload()
@@ -1936,11 +1935,9 @@ def test_resume(page):
     page.wait_for_timeout(400)
     check('A guest\'s warm-up and song survive the tab closing: back to the pathway, not the jam',
           screen(page) == 'beat-screen-pathway' and page.evaluate("bsmashSong()") == 'c-1-4-1-5', screen(page))
-    adopted = page.evaluate("""(() => {
-        localStorage.setItem('koolRiffsPlayers', JSON.stringify({list:[{id:'p1',name:'Sam',age:'9-10'}],current:null}));
-        chooseBeatPlayer('p1');
-        return { guest: localStorage.getItem('koolRiffsBeatGuest'), song: bsmashSong(), jam: bsmashLoad().jamDone }; })()""")
-    check('...and go with them to their name', adopted == {'guest': None, 'song': 'c-1-4-1-5', 'jam': True}, adopted)
+    kept = page.evaluate("({ guest: localStorage.getItem('koolRiffsBeatGuest'), slot: vsmashCurrentPlayer().slot })")
+    check('...kept for Player 1 itself: there is no guest any more (Rob, 2026-11-01: no names)',
+          kept == {'guest': None, 'slot': 1}, kept)
 
 
 def test_eighths_song(page):
@@ -2165,7 +2162,7 @@ def test_teacher_codes(page):
 
 
 def test_dashboard(page):
-    """Rob, 2026-10-05: the nickname at the very top, then every game in his
+    """Rob, 2026-10-05: who is playing at the very top, then every game in his
     order, its number in the coloured square, its pathway and its numbers."""
     fresh(page)
     cards = page.evaluate("""[...document.querySelectorAll('#home-games .game-card')].map(c => ({
@@ -2180,16 +2177,9 @@ def test_dashboard(page):
     check('...a fresh device: nothing played yet', all(c['stats'] == 'Not played yet' for c in cards), [c['stats'] for c in cards])
     top = page.evaluate("""(() => { const v = document.getElementById('view-dashboard');
         const first = [...v.children].find(e => e.offsetHeight > 0); return first && first.id; })()""")
-    check('"What\'s your nickname?" is the very first thing on the dashboard', top == 'home-player'
-          and 'nickname' in page.inner_text('#home-player').lower(), [top, page.inner_text('#home-player')])
-    page.click('#home-player .home-player-go')
-    check('...an empty nickname is refused', 'first' in page.inner_text('#home-player').lower()
-          and page.evaluate("vsmashCurrentPlayer()") is None)
-    page.fill('#home-player-input', 'Ziggy')
-    page.press('#home-player-input', 'Enter')
-    page.wait_for_timeout(200)
-    check('...a nickname sets the player for the whole app', page.evaluate("vsmashCurrentPlayer() && vsmashCurrentPlayer().name") == 'Ziggy'
-          and 'Playing as Ziggy' in page.inner_text('#home-player'), page.inner_text('#home-player'))
+    check('"Playing as Player 1" is the very first thing on the dashboard (Rob, 2026-11-01: no names)',
+          top == 'home-player' and 'Playing as Player 1' in page.inner_text('#home-player')
+          and page.locator('#home-player input').count() == 0, [top, page.inner_text('#home-player')])
     # Some progress in several games, then back to the dashboard.
     page.evaluate("""(() => {
         const id = vsmashCurrentPlayer().id;
@@ -2212,27 +2202,23 @@ def test_dashboard(page):
           cards['beat']['dots'] == ['cleared', 'cleared', 'cleared', 'open', 'locked']
           and cards['beat']['stats'].startswith('Bubblegum: '), cards['beat'])
     page.click('#home-player .home-player-change')
-    page.fill('#home-player-input', 'Ruby')
-    page.click('#home-player .home-player-go')
+    page.click('#home-player .home-player-chip:has-text("Player 2")')
     page.wait_for_timeout(200)
-    check('"Not you?" adds another: Ruby\'s Value Smash and Beat Smash are her own',
-          page.evaluate("vsmashPlayers().list.length") == 2 and 'Playing as Ruby' in page.inner_text('#home-player')
+    check('"Switch player" to Player 2: their Value Smash and Beat Smash are their own',
+          'Playing as Player 2' in page.inner_text('#home-player')
           and page.evaluate("document.querySelector('#home-games [data-game=beat] .home-stats').textContent") == 'Not played yet')
     page.click('#home-player .home-player-change')
-    page.click('#home-player .home-player-chip:has-text("Ziggy")')
+    page.click('#home-player .home-player-chip:has-text("Player 1")')
     page.wait_for_timeout(200)
-    check('...and a chip switches back to Ziggy', 'Playing as Ziggy' in page.inner_text('#home-player')
+    check('...and a chip switches back to Player 1', 'Playing as Player 1' in page.inner_text('#home-player')
           and page.evaluate("document.querySelector('#home-games [data-game=beat] .home-stats').textContent") != 'Not played yet')
     page.click('#home-games [data-game=beat]')
     page.wait_for_timeout(400)
     check('...and a card still opens its game', page.evaluate("document.getElementById('view-beat').classList.contains('active')"))
     page.evaluate("bsmashStopAll(); launchGame('view-dashboard')")
-    # A guest's Beat Smash warm-up goes with them to the nickname given here.
+    # An old guest Beat Smash warm-up goes to the player playing.
     fresh(page, "localStorage.setItem('koolRiffsBeatGuest', JSON.stringify({ jamDone: true }));")
-    page.fill('#home-player-input', 'Kai')
-    page.click('#home-player .home-player-go')
-    page.wait_for_timeout(200)
-    check('A guest\'s warm-up moves to the nickname given on the dashboard',
+    check('An old guest warm-up moves to Player 1',
           page.evaluate("bsmashLoad().jamDone && !localStorage.getItem('koolRiffsBeatGuest')"))
 
 

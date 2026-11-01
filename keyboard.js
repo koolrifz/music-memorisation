@@ -36,7 +36,7 @@
                                    results screen goes on to what is next (Value
                                    Smash too: its green button).
 
-   The keys do nothing while a text box has the focus, so a nickname can still
+   The keys do nothing while a text box has the focus, so a moniker can still
    be typed. Nothing is drawn on the screen for them: there are no new words.
    ========================================================================= */
 (function () {

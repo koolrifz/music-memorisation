@@ -437,8 +437,9 @@ function bsmashStopTimers() {
 /* =========================================
    PLAYERS AND PROGRESS
    =========================================
-   The players list is value-smash.js's (one list per device). Beat Smash
-   adds an age to a player, asked once (§12).
+   The players list is value-smash.js's: Player 1 to 4, no names (Rob,
+   2026-11-01). Beat Smash's old band (BSMASH_SONG_MENU false) adds an age to
+   a player, asked once (§12); the song menu never asks.
 
    The first minute needs no name: nothing to read before the first win
    (§11). Until a player is chosen, progress is the guest record, kept on
@@ -482,7 +483,16 @@ function bsmashReadAll() {
 // THE ONLY TWO FUNCTIONS THAT TOUCH BEAT SMASH PROGRESS.
 function bsmashLoad() {
     const player = bsmashPlayer();
-    const saved = player ? bsmashReadAll().players[player.id] : bsmashReadGuest();
+    let saved = player ? bsmashReadAll().players[player.id] : bsmashReadGuest();
+    // Before Player 1 to 4 there was a guest record until a name was given.
+    // It goes to the player playing, if they have no Beat Smash of their own.
+    if (player && !saved && bsmashReadGuest()) {
+        saved = bsmashReadGuest();
+        const all = bsmashReadAll();
+        all.players[player.id] = saved;
+        try { localStorage.setItem(BSMASH_PROGRESS_KEY, JSON.stringify(all)); } catch (e) {}
+        try { localStorage.removeItem(BSMASH_GUEST_KEY); } catch (e) {}
+    }
     const blank = bsmashBlankProgress();
     const progress = Object.assign(blank, saved ? JSON.parse(JSON.stringify(saved)) : {});
     progress.settings = Object.assign(bsmashBlankProgress().settings, progress.settings);
@@ -4226,8 +4236,8 @@ function bsmashMeHits(take, cycle) {
    to their teacher, along with statistics. And we can wrap that into a nice
    report." One report, three ways: on screen (#beat-report), as a picture
    to send (bsmashReportImage) and as the message's text (bsmashReportText).
-   They all read bsmashReport(), so they can't disagree. No real names: the
-   student is their nickname. */
+   They all read bsmashReport(), so they can't disagree. No names at all:
+   the student is Player 1 to 4 (Rob, 2026-11-01). */
 function bsmashReport() {
     const progress = bsmashLoad();
     const player = bsmashPlayer();
@@ -4496,16 +4506,17 @@ function bsmashSendShared(shared) {
 let bsmashChosenAge = null;
 let bsmashPlayerThen = false;
 
-// switching: from the "Playing as" chip - show every name, to switch or add.
+// switching: from the "Playing as" chip - show the four players, to switch.
+// Player 1 to 4: nothing typed (Rob, 2026-11-01). Only the old band asks an age.
 function showBeatPlayers(backToStudio, switching) {
     bsmashPlayerThen = !!backToStudio;
     switchScreenState('beat', 'beat-screen-player');
     const players = vsmashPlayers();
     const current = bsmashPlayer();
-    const needName = !current || !!switching;
-    // Switching players asks afresh: a new name mustn't inherit the last one's age.
-    bsmashChosenAge = !needName && BSMASH_AGES.indexOf(current.age) !== -1 ? current.age : null;
-    bsmashEl('beat-name-part').hidden = !needName;
+    const choosing = !current || !!switching;
+    // Switching players asks afresh: a new player mustn't inherit the last one's age.
+    bsmashChosenAge = !choosing && BSMASH_AGES.indexOf(current.age) !== -1 ? current.age : null;
+    bsmashEl('beat-name-part').hidden = !choosing;
     const list = bsmashEl('beat-player-list');
     list.innerHTML = '';
     players.list.forEach(p => {
@@ -4514,12 +4525,8 @@ function showBeatPlayers(backToStudio, switching) {
         button.textContent = p.name;
         button.onclick = () => chooseBeatPlayer(p.id);
     });
-    const input = bsmashEl('beat-name-input');
-    input.value = '';
-    input.placeholder = KR.t('beat.player.namePlaceholder');
-    input.onkeydown = (e) => { if (e.key === 'Enter') addBeatPlayer(); };
     bsmashRenderAges();
-    KR.say(needName ? 'beat.player.ask' : 'beat.player.age', { box: bsmashEl('beat-player-guide'), speaker: 'tango' });
+    KR.say(choosing ? 'beat.player.ask' : 'beat.player.age', { box: bsmashEl('beat-player-guide'), speaker: 'tango' });
 }
 
 function bsmashRenderAges() {
@@ -4537,47 +4544,16 @@ function bsmashRenderAges() {
 function chooseBeatPlayer(playerId) {
     const players = vsmashPlayers();
     if (!players.list.some(p => p.id === playerId)) return;
-    const guest = bsmashLoad();
     players.current = playerId;
     vsmashSavePlayers(players);
-    bsmashAdoptGuest(guest);
     const player = bsmashPlayer();
     if (BSMASH_AGES.indexOf(player.age) !== -1) return bsmashPlayerDone();
     showBeatPlayers(bsmashPlayerThen);
 }
 
-// A guest's first minute and first star go with them to their name - unless
-// that name already has Beat Smash progress on this device.
-function bsmashAdoptGuest(guest) {
-    const player = bsmashPlayer();
-    if (!player || !bsmashReadGuest()) return;
-    if (!bsmashReadAll().players[player.id]) bsmashSave(guest);
-    try { localStorage.removeItem(BSMASH_GUEST_KEY); } catch (e) {}
-}
-
+// "Let's go" under the ages: the player is already chosen, this sets the age.
 function addBeatPlayer() {
     const guide = bsmashEl('beat-player-guide');
-    const input = bsmashEl('beat-name-input');
-    const name = input.value.trim().replace(/\s+/g, ' ');
-    let player = bsmashPlayer();
-    if (!player && !name) {
-        KR.say('beat.player.nameNeeded', { box: guide, speaker: 'tango' });
-        input.focus();
-        return;
-    }
-    if (name) {
-        const guest = bsmashLoad();
-        const players = vsmashPlayers();
-        player = players.list.find(p => p.name.toLowerCase() === name.toLowerCase());
-        if (!player) {
-            player = { id: 'p' + Date.now().toString(36), name: name };
-            players.list.push(player);
-        }
-        players.current = player.id;
-        vsmashSavePlayers(players);
-        bsmashAdoptGuest(guest);
-        if (BSMASH_AGES.indexOf(player.age) !== -1 && !bsmashChosenAge) bsmashChosenAge = player.age;
-    }
     if (!bsmashChosenAge) { KR.say('beat.player.age', { box: guide, speaker: 'tango' }); return; }
     const players = vsmashPlayers();
     const record = players.list.find(p => p.id === players.current);

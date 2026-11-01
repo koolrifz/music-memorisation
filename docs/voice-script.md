@@ -21,7 +21,7 @@ A recording can't change, so these lines are marked below. For now, record them
 without the braced part, and the game will need a small change to play the braced
 part after them; or leave them to the browser's voice.
 
-## Tango (123 lines)
+## Tango (137 lines)
 
 **Voice:** the drummer, an orange cat with a red mane and a blue vest. She handles rhythm. Bright and warm, encouraging, never hyper: Rob's classes found the old high, quick voice annoying (2026-10-08). A drummer counting a band in: steady, on the beat, a smile in it.
 
@@ -181,6 +181,20 @@ part after them; or leave them to the browser's voice.
 | `ssong.line.run.turn` | Cut! Player {n}, you're up. Same one, your turn. **(filled in: {n})** | `ssong.run.turn` |
 | `ssong.line.run.end` | That's the run! {n} clean takes. Go again? **(filled in: {n})** | `ssong.run.end` |
 | `ssong.line.free.done` | What a stomp! Here's how it went. | `ssong.free.done` |
+| `ssong.line.warm.pick` | Welcome to the drum room! Pick a tune and let's start smashing the beat. | `ssong.warm.pick` |
+| `ssong.line.warm.intro` | Thirty seconds of the tune. Stomp on every beat with me. Keep the beat, and the rest of the song is yours to finish. | `ssong.warm.intro` |
+| `ssong.line.warm.open` | That's a take! The rest of the song is open. Let's go and finish it. | `ssong.warm.open` |
+| `ssong.line.warm.pass` | That's a take! Locked in. | `ssong.warm.pass` |
+| `ssong.line.warm.sparse` | Steady! Now keep it going on every beat. | `ssong.warm.sparse` |
+| `ssong.line.warm.locked` | Warm up on Stomp the Beat first. Then this one opens. | `ssong.warm.locked` |
+| `ssong.tip.rushing` | Rushing. Slow down and relax into the beat. | `ssong.coach.rushing` |
+| `ssong.tip.dragging` | Dragging. Push a little faster. Feel the beat. | `ssong.coach.dragging` |
+| `ssong.tip.mixed` | Close! Keep listening and stomping. | `ssong.coach.mixed` |
+| `ssong.tip.few` | Stomp on every beat. | `ssong.coach.few` |
+| `ssong.why.missed` | Bar {bar}: a note was missed. **(filled in: {bar})** | `ssong.coach.missed` |
+| `ssong.why.rest` | Bar {bar}: you played on a rest. **(filled in: {bar})** | `ssong.coach.rest` |
+| `ssong.why.extra` | Bar {bar}: an extra tap. **(filled in: {bar})** | `ssong.coach.extra` |
+| `ssong.why.over` | You played past the double bar line. Stop there! | `ssong.coach.over` |
 | `keeper.first.1` | That's a keeper. | `keeper.first` |
 | `keeper.first.2` | Straight in the can! | `keeper.first` |
 | `keeper.first.3` | One take. You nailed it! | `keeper.first` |

@@ -1367,7 +1367,7 @@ async function shareGameResult(gameId) {
 }
 
 // The result as a square picture, in the game's colour: the game, the stage,
-// the score, and the nickname playing. Returns a PNG File.
+// the score, and who played: Player 1 to 4, never a name. Returns a PNG File.
 const SCORE_CARD_GAMES = {
     game1: { id: 'staff', colour: '#ce82ff' },
     game2: { id: 'note', colour: '#1cb0f6' },
@@ -2405,6 +2405,8 @@ function finishG3Round(isGraduation = false) {
     document.getElementById('final-score').innerText = score;
     document.getElementById('final-accuracy').innerText = `${accuracy}%`;
     document.getElementById('g3-personal-best').innerText = `${personalBests.game3[currentMode]} ${isNewPb ? '(New PB! 🎉)' : ''}`;
+    // The arcade table: a moniker only when the score makes it (high-scores.js).
+    if (typeof KRHigh !== 'undefined') KRHigh.offer(document.getElementById('g3-high-scores'), 'real.' + g3SelectedStage + '.' + currentMode, score);
     
     let medal = 'Keep Practising! 💪';
     const title = document.getElementById('g3-summary-title');
