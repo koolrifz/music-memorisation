@@ -38,11 +38,10 @@ records" (2026-10-13). The pillars disappear from the student's view.
   the Beat, Stomp the Beat: Soul, The Long Hold (Rob, 2026-11-02: *"Yes, Long
   Hold is a song!"*), Jam City, Kool Riffs. Five also matches the five Stomp Lab
   albums before 6/8 ("EACH SONG IS A LEVEL" in `CLAUDE.md`).
-- **The Long Hold's pitch tracks start at Note Smash** (Rob, 2026-11-02).
-  **Open, to check with Rob:** he also said it starts at **quavers**, but it is
-  built as Level 2, The Held Beat (halves, wholes, ties; no quavers), and Soul
-  is the quaver song (Level 3). Don't move its rhythm levels until he confirms
-  which he meant.
+- **The Long Hold's pitch tracks start at Note Smash** (Rob, 2026-11-02). Its
+  rhythm stays Level 2, The Held Beat, as built (Rob: "quavers" was a slip).
+- **Rob's next step:** tidy the rhythm levels, then divide every rhythm and
+  pitch level among the five songs.
 - **Tap a record on the wall: a short hook** (about 5 s of that song) plays,
   then they choose it. The hook is a time range in the song's own recording.
 
