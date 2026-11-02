@@ -34,10 +34,15 @@ greeting's logic.)
 **The wall is SONGS, not pillars.** This REVERSES "THE STUDIO WALL: five pillar
 records" (2026-10-13). The pillars disappear from the student's view.
 
-- **Four songs, four gold albums** in the studio's background picture. Rob's
-  four, as he named them: Stomp the Beat, the second Stomp the Beat (Soul), Jam
-  City, Kool Riffs. **Open:** The Long Hold is built and mapped as Level 2 but
-  was not in his list.
+- **Five songs, five gold albums** in the studio's background picture: Stomp
+  the Beat, Stomp the Beat: Soul, The Long Hold (Rob, 2026-11-02: *"Yes, Long
+  Hold is a song!"*), Jam City, Kool Riffs. Five also matches the five Stomp Lab
+  albums before 6/8 ("EACH SONG IS A LEVEL" in `CLAUDE.md`).
+- **The Long Hold's pitch tracks start at Note Smash** (Rob, 2026-11-02).
+  **Open, to check with Rob:** he also said it starts at **quavers**, but it is
+  built as Level 2, The Held Beat (halves, wholes, ties; no quavers), and Soul
+  is the quaver song (Level 3). Don't move its rhythm levels until he confirms
+  which he meant.
 - **Tap a record on the wall: a short hook** (about 5 s of that song) plays,
   then they choose it. The hook is a time range in the song's own recording.
 
@@ -63,7 +68,7 @@ LADDER" (2026-10-13), where each level turned gold.
 
 | State | Looks like |
 |---|---|
-| A track still to do | its own icon, **not a record**. Claude's suggestion: an **empty sleeve** (a square), so to-do and done differ in shape, not colour alone |
+| A track still to do | an **empty album sleeve** (a square), never a record (Rob, 2026-11-02: *"perfect"*). To-do and done differ in shape, not colour alone |
 | A track done | a **black vinyl** record |
 | A song with every track done | a **gold record on the wall**, and nowhere else |
 
@@ -75,9 +80,10 @@ apart: "nail the take, and the track is done."
 with Tango). Riff's room, at his piano, is where the pitch drilling happens:
 *"You better get into the practice room and get some speed on your reading of
 your notes... I'll give you a hand, let's go."* That is Riff's tutorial, as the
-counting walkthrough is Tango's. **Open:** call it the **woodshed** (Riff
-explains it once: musicians call the practice room the woodshed) or simply the
-**practice room**. On-screen spelling: "practice room" (noun), "practise" (verb).
+counting walkthrough is Tango's. **Both names, Rob's call (2026-11-02):** it is
+the **practice room**, and Riff tells them musicians call it **the woodshed**
+(*"Get into the woodshed"* then means the same place). On-screen spelling:
+"practice room" (noun), "practise" (verb).
 
 **Parked, not now:** collecting things to use later, as in the games Rob's son
 plays (Resident Evil, The Witcher, Cyberpunk): tracks that can be *used* in a
